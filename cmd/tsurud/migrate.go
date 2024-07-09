@@ -51,10 +51,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
-	err = migration.Register("migrate-pool-teams-to-pool-constraints", pool.MigratePoolTeamsToPoolConstraints)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
 	err = migration.Register("migrate-app-service-envs", appMigrate.MigrateAppTsuruServicesVarToServiceEnvs)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
@@ -221,50 +217,51 @@ func setPoolToApps() error {
 	return nil
 }
 
-func createRole(name, contextType string) (permission.Role, error) {
+func createRole(ctx context.Context, name, contextType string) (permission.Role, error) {
 	role, err := permission.NewRole(name, contextType, "")
 	if err == permTypes.ErrRoleAlreadyExists {
-		role, err = permission.FindRole(name)
+		role, err = permission.FindRole(ctx, name)
 	}
 	return role, err
 }
 
 func migrateRoles() error {
+	ctx := context.Background()
 	adminTeam, err := config.GetString("admin-team")
 	if err != nil {
 		return err
 	}
-	adminRole, err := createRole("admin", "global")
+	adminRole, err := createRole(ctx, "admin", "global")
 	if err != nil {
 		return err
 	}
-	err = adminRole.AddPermissions("*")
+	err = adminRole.AddPermissions(ctx, "*")
 	if err != nil {
 		return err
 	}
-	teamMember, err := createRole("team-member", "team")
+	teamMember, err := createRole(ctx, "team-member", "team")
 	if err != nil {
 		return err
 	}
-	err = teamMember.AddPermissions(permission.PermApp.FullName(),
+	err = teamMember.AddPermissions(ctx, permission.PermApp.FullName(),
 		permission.PermTeam.FullName(),
 		permission.PermServiceInstance.FullName())
 	if err != nil {
 		return err
 	}
-	err = teamMember.AddEvent(permTypes.RoleEventTeamCreate.String())
+	err = teamMember.AddEvent(ctx, permTypes.RoleEventTeamCreate.String())
 	if err != nil {
 		return err
 	}
-	teamCreator, err := createRole("team-creator", "global")
+	teamCreator, err := createRole(ctx, "team-creator", "global")
 	if err != nil {
 		return err
 	}
-	err = teamCreator.AddPermissions(permission.PermTeamCreate.FullName())
+	err = teamCreator.AddPermissions(ctx, permission.PermTeamCreate.FullName())
 	if err != nil {
 		return err
 	}
-	err = teamCreator.AddEvent(permTypes.RoleEventUserCreate.String())
+	err = teamCreator.AddEvent(ctx, permTypes.RoleEventUserCreate.String())
 	if err != nil {
 		return err
 	}
@@ -285,17 +282,17 @@ func migrateRoles() error {
 		}
 		for _, team := range teams {
 			if team.Name == adminTeam {
-				err := u.AddRole(adminRole.Name, "")
+				err := u.AddRole(ctx, adminRole.Name, "")
 				if err != nil {
 					fmt.Printf("%s\n", err.Error())
 				}
 				continue
 			}
-			err := u.AddRole(teamMember.Name, team.Name)
+			err := u.AddRole(ctx, teamMember.Name, team.Name)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 			}
-			err = u.AddRole(teamCreator.Name, "")
+			err = u.AddRole(ctx, teamCreator.Name, "")
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 			}

@@ -55,7 +55,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		}
 	}
 
-	allowed := permission.Check(t, permission.PermPlanCreate)
+	allowed := permission.Check(ctx, t, permission.PermPlanCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -122,7 +122,7 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	404: Plan not found
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermPlanDelete)
+	allowed := permission.Check(ctx, t, permission.PermPlanDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}

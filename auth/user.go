@@ -84,7 +84,7 @@ func GetUserByEmail(email string) (*User, error) {
 	return &u, nil
 }
 
-func (u *User) Create() error {
+func (u *User) Create(ctx context.Context) error {
 	conn, err := db.Conn()
 	if err != nil {
 		addr, _ := db.DbConfig("")
@@ -102,7 +102,7 @@ func (u *User) Create() error {
 	if err != nil {
 		return err
 	}
-	err = u.AddRolesForEvent(permTypes.RoleEventUserCreate, "")
+	err = u.AddRolesForEvent(ctx, permTypes.RoleEventUserCreate, "")
 	if err != nil {
 		log.Errorf("unable to add default roles during user creation for %q: %s", u.Email, err)
 	}
@@ -168,13 +168,13 @@ func (u *User) Reload() error {
 	return conn.Users().Find(bson.M{"email": u.Email}).One(u)
 }
 
-func expandRolePermissions(roleInstances []authTypes.RoleInstance) ([]permission.Permission, error) {
+func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permission.Permission, error) {
 	var permissions []permission.Permission
 	roles := make(map[string]*permission.Role)
 	for _, roleData := range roleInstances {
 		role := roles[roleData.Name]
 		if role == nil {
-			foundRole, err := permission.FindRole(roleData.Name)
+			foundRole, err := permission.FindRole(ctx, roleData.Name)
 			if err != nil && err != permTypes.ErrRoleNotFound {
 				return nil, err
 			}
@@ -198,7 +198,7 @@ func (u *User) UserGroups() ([]authTypes.Group, error) {
 	return groups, nil
 }
 
-func (u *User) Permissions() ([]permission.Permission, error) {
+func (u *User) Permissions(ctx context.Context) ([]permission.Permission, error) {
 	groups, err := u.UserGroups()
 	if err != nil {
 		return nil, err
@@ -207,7 +207,7 @@ func (u *User) Permissions() ([]permission.Permission, error) {
 	for _, group := range groups {
 		allRoles = append(allRoles, group.Roles...)
 	}
-	permissions, err := expandRolePermissions(allRoles)
+	permissions, err := expandRolePermissions(ctx, allRoles)
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +217,8 @@ func (u *User) Permissions() ([]permission.Permission, error) {
 	}}, permissions...), nil
 }
 
-func (u *User) AddRole(roleName string, contextValue string) error {
-	_, err := permission.FindRole(roleName)
+func (u *User) AddRole(ctx context.Context, roleName string, contextValue string) error {
+	_, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return err
 	}
@@ -243,13 +243,13 @@ func (u *User) AddRole(roleName string, contextValue string) error {
 	return u.Reload()
 }
 
-func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
-	role, err := permission.FindRole(roleName)
+func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissionCtx, desc string) error {
+	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return permTypes.ErrRoleNotFound
 	}
-	if ctx != "" {
-		role.ContextType, err = permission.ParseContext(ctx)
+	if permissionCtx != "" {
+		role.ContextType, err = permission.ParseContext(permissionCtx)
 		if err != nil {
 			return err
 		}
@@ -274,7 +274,7 @@ func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
 		return err
 	}
 	for _, user := range usersWithRole {
-		errAddRole := user.AddRole(role.Name, string(role.ContextType))
+		errAddRole := user.AddRole(ctx, role.Name, string(role.ContextType))
 		if errAddRole != nil {
 			errDtr := permission.DestroyRole(role.Name)
 			if errDtr != nil {
@@ -328,13 +328,13 @@ func (u *User) RemoveRole(roleName string, contextValue string) error {
 	return u.Reload()
 }
 
-func (u *User) AddRolesForEvent(roleEvent *permTypes.RoleEvent, contextValue string) error {
-	roles, err := permission.ListRolesForEvent(roleEvent)
+func (u *User) AddRolesForEvent(ctx context.Context, roleEvent *permTypes.RoleEvent, contextValue string) error {
+	roles, err := permission.ListRolesForEvent(ctx, roleEvent)
 	if err != nil {
 		return errors.Wrap(err, "unable to list roles")
 	}
 	for _, r := range roles {
-		err = u.AddRole(r.Name, contextValue)
+		err = u.AddRole(ctx, r.Name, contextValue)
 		if err != nil {
 			return errors.Wrap(err, "unable to add role")
 		}

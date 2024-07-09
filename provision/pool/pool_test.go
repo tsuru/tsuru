@@ -9,11 +9,11 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
@@ -23,6 +23,9 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 )
@@ -32,6 +35,7 @@ func Test(t *testing.T) {
 }
 
 type S struct {
+	collection        *mongo.Collection
 	storage           *db.Storage
 	teams             []authTypes.Team
 	plans             []appTypes.Plan
@@ -51,6 +55,12 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
+	s.collection, err = storagev2.PoolCollection()
+	c.Assert(err, check.IsNil)
+
 	servicemock.SetMockService(&servicemock.MockService{})
 }
 
@@ -126,7 +136,7 @@ func (s *S) TestValidateRouters(c *check.C) {
 	config.Set("routers:router2:type", "hipache")
 	defer config.Unset("routers")
 	pool := Pool{Name: "pool1"}
-	err := SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
+	err := SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 
 	err = pool.ValidateRouters(context.TODO(), []appTypes.AppRouter{{Name: "router1"}})
@@ -168,7 +178,6 @@ func (s *S) TestAddPool(c *check.C) {
 }
 
 func (s *S) TestAddNonPublicPool(c *check.C) {
-	coll := s.storage.Pools()
 	opts := AddPoolOptions{
 		Name:    "pool1",
 		Public:  false,
@@ -177,15 +186,14 @@ func (s *S) TestAddNonPublicPool(c *check.C) {
 	err := AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	var p Pool
-	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
+	err = s.collection.FindOne(context.TODO(), mongoBSON.M{"_id": "pool1"}).Decode(&p)
 	c.Assert(err, check.IsNil)
-	constraints, err := getConstraintsForPool("pool1", "team")
+	constraints, err := getConstraintsForPool(context.TODO(), "pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints["team"].AllowsAll(), check.Equals, false)
 }
 
 func (s *S) TestAddPublicPool(c *check.C) {
-	coll := s.storage.Pools()
 	opts := AddPoolOptions{
 		Name:    "pool1",
 		Public:  true,
@@ -194,9 +202,9 @@ func (s *S) TestAddPublicPool(c *check.C) {
 	err := AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	var p Pool
-	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
+	err = s.collection.FindOne(context.TODO(), mongoBSON.M{"_id": "pool1"}).Decode(&p)
 	c.Assert(err, check.IsNil)
-	constraints, err := getConstraintsForPool("pool1", "team")
+	constraints, err := getConstraintsForPool(context.TODO(), "pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints["team"].AllowsAll(), check.Equals, true)
 }
@@ -288,14 +296,14 @@ func (s *S) TestAddPoolValidateLabels(c *check.C) {
 }
 
 func (s *S) TestAddTeamToPoolNotFound(c *check.C) {
-	err := AddTeamsToPool("notfound", []string{"ateam"})
+	err := AddTeamsToPool(context.TODO(), "notfound", []string{"ateam"})
 	c.Assert(err, check.Equals, ErrPoolNotFound)
 }
 
 func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "nonteams", Public: false, Default: true})
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool("nonteams", []string{"ateam"})
+	err = AddTeamsToPool(context.TODO(), "nonteams", []string{"ateam"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
@@ -315,7 +323,6 @@ func (s *S) TestAddPoolNameShouldBeUnique(c *check.C) {
 }
 
 func (s *S) TestForceAddDefaultPool(c *check.C) {
-	coll := s.storage.Pools()
 	opts := AddPoolOptions{
 		Name:    "pool1",
 		Public:  false,
@@ -332,40 +339,38 @@ func (s *S) TestForceAddDefaultPool(c *check.C) {
 	err = AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	var p Pool
-	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
+	err = s.collection.FindOne(context.TODO(), mongoBSON.M{"_id": "pool1"}).Decode(&p)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, false)
-	err = coll.Find(bson.M{"_id": "pool2"}).One(&p)
+	err = s.collection.FindOne(context.TODO(), mongoBSON.M{"_id": "pool2"}).Decode(&p)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestRemovePoolNotFound(c *check.C) {
-	err := RemovePool("notfound")
+	err := RemovePool(context.TODO(), "notfound")
 	c.Assert(err, check.Equals, ErrPoolNotFound)
 }
 
 func (s *S) TestRemovePool(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = RemovePool("pool1")
+	err = RemovePool(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	p, err := coll.FindId("pool1").Count()
+	count, err := s.collection.CountDocuments(context.TODO(), mongoBSON.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
-	c.Assert(p, check.Equals, 0)
+	c.Assert(count, check.Equals, int64(0))
 }
 
 func (s *S) TestAddTeamToPool(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool("pool1", []string{"ateam", "test"})
+	err = AddTeamsToPool(context.TODO(), "pool1", []string{"ateam", "test"})
 	c.Assert(err, check.IsNil)
 	var p Pool
-	err = coll.FindId(pool.Name).One(&p)
+	err = s.collection.FindOne(context.TODO(), mongoBSON.M{"_id": pool.Name}).Decode(&p)
 	c.Assert(err, check.IsNil)
 	teams, err := p.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -374,13 +379,12 @@ func (s *S) TestAddTeamToPool(c *check.C) {
 }
 
 func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
+	err = AddTeamsToPool(context.TODO(), pool.Name, []string{"test", "ateam"})
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool(pool.Name, []string{"pteam"})
+	err = AddTeamsToPool(context.TODO(), pool.Name, []string{"pteam"})
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -389,13 +393,12 @@ func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
 }
 
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
+	err = AddTeamsToPool(context.TODO(), pool.Name, []string{"test", "ateam"})
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool(pool.Name, []string{"ateam"})
+	err = AddTeamsToPool(context.TODO(), pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
 	teams, err := pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -406,43 +409,41 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "nonteams", Public: true})
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool("nonteams", []string{"ateam"})
+	err = AddTeamsToPool(context.TODO(), "nonteams", []string{"ateam"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
 
 func (s *S) TestAddTeamsToPoolWithBlacklistShouldFail(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool("pool1", []string{"otherteam"})
+	err = AddTeamsToPool(context.TODO(), "pool1", []string{"otherteam"})
 	c.Assert(err, check.NotNil)
-	constraint, err := getExactConstraintForPool("pool1", "team")
+	constraint, err := getExactConstraintForPool(context.TODO(), "pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint.Blacklist, check.Equals, true)
 	c.Assert(constraint.Values, check.DeepEquals, []string{"myteam"})
 }
 
 func (s *S) TestRemoveTeamsFromPoolNotFound(c *check.C) {
-	err := RemoveTeamsFromPool("notfound", []string{"test"})
+	err := RemoveTeamsFromPool(context.TODO(), "notfound", []string{"test"})
 	c.Assert(err, check.Equals, ErrPoolNotFound)
 }
 
 func (s *S) TestRemoveTeamsFromPool(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
+	err = AddTeamsToPool(context.TODO(), pool.Name, []string{"test", "ateam"})
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
-	err = RemoveTeamsFromPool(pool.Name, []string{"test"})
+	err = RemoveTeamsFromPool(context.TODO(), pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
 	teams, err = pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -450,15 +451,14 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsFromPoolWithBlacklistShouldFail(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	err = RemoveTeamsFromPool("pool1", []string{"myteam"})
+	err = RemoveTeamsFromPool(context.TODO(), "pool1", []string{"myteam"})
 	c.Assert(err, check.NotNil)
-	constraint, err := getExactConstraintForPool("pool1", "team")
+	constraint, err := getExactConstraintForPool(context.TODO(), "pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint.Blacklist, check.Equals, true)
 	c.Assert(constraint.Values, check.DeepEquals, []string{"myteam"})
@@ -482,7 +482,7 @@ func (s *S) TestPoolUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = PoolUpdate(context.TODO(), "pool1", UpdatePoolOptions{Public: boolPtr(true)})
 	c.Assert(err, check.IsNil)
-	constraint, err := getExactConstraintForPool("pool1", "team")
+	constraint, err := getExactConstraintForPool(context.TODO(), "pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint.AllowsAll(), check.Equals, true)
 }
@@ -582,7 +582,7 @@ func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
 	p, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, true)
-	constraint, err := getExactConstraintForPool("pool1", "team")
+	constraint, err := getExactConstraintForPool(context.TODO(), "pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint.AllowsAll(), check.Equals, true)
 }
@@ -606,13 +606,13 @@ func (s *S) TestListPoolsForTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AddPool(context.TODO(), AddPoolOptions{Name: "pool2"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    ConstraintTypeTeam,
 		Values:   []string{"team1"},
 	})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{
 		PoolExpr: "pool2",
 		Field:    ConstraintTypeTeam,
 		Values:   []string{"team2"},
@@ -632,14 +632,13 @@ func (s *S) TestListPossiblePoolsAll(c *check.C) {
 }
 
 func (s *S) TestListPoolByQuery(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Default: true}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
 	pool2 := Pool{Name: "pool2", Default: true}
-	err = coll.Insert(pool2)
+	_, err = s.collection.InsertOne(context.TODO(), pool2)
 	c.Assert(err, check.IsNil)
-	pools, err := listPools(context.TODO(), bson.M{"_id": "pool2"})
+	pools, err := listPools(context.TODO(), mongoBSON.M{"_id": "pool2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)
 	c.Assert(pools[0].Name, check.Equals, "pool2")
@@ -652,9 +651,8 @@ func (s *S) TestListPoolEmpty(c *check.C) {
 }
 
 func (s *S) TestGetPoolByName(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Default: true}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
 	p, err := GetPoolByName(context.TODO(), pool.Name)
 	c.Assert(err, check.IsNil)
@@ -670,7 +668,7 @@ func (s *S) TestGetRouters(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -688,7 +686,7 @@ func (s *S) TestGetVolumePlans(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: false})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -696,7 +694,7 @@ func (s *S) TestGetVolumePlans(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(vPlans, check.DeepEquals, []string{"test-volume-plan"})
 	pool.Name = "other"
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "other", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "other", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	_, err = pool.GetVolumePlans(context.TODO())
 	c.Assert(err, check.Equals, ErrPoolHasNoVolumePlan)
@@ -705,7 +703,7 @@ func (s *S) TestGetVolumePlans(c *check.C) {
 func (s *S) TestGetPlans(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypePlan, Values: []string{"plan1"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypePlan, Values: []string{"plan1"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -724,7 +722,7 @@ func (s *S) TestGetDefaultRouterFromConstraint(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: false})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -739,7 +737,7 @@ func (s *S) TestGetDefaultRouterNoDefault(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"*"}, Blacklist: false})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"*"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -767,7 +765,7 @@ func (s *S) TestGetDefaultAllowAllSingleAllowedValue(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router*"}, Blacklist: false})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router*"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -782,7 +780,7 @@ func (s *S) TestGetDefaultBlacklistSingleAllowedValue(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -799,17 +797,16 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	defer config.Unset("volume-plans")
 	defer config.Unset("routers")
 	s.teams = append(s.teams, authTypes.Team{Name: "pubteam"}, authTypes.Team{Name: "team1"})
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeTeam, Values: []string{"pubteam"}})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeTeam, Values: []string{"pubteam"}})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router"}, Blacklist: true})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"team1"}})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"team1"}})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeVolumePlan, Values: []string{"nfs"}})
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeVolumePlan, Values: []string{"nfs"}})
 	c.Assert(err, check.IsNil)
 	constraints, err := pool.allowedValues(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -835,21 +832,29 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 }
 
 func (s *S) TestRenamePoolTeam(c *check.C) {
-	coll := s.storage.PoolsConstraints()
 	constraints := []PoolConstraint{
 		{PoolExpr: "e1", Field: ConstraintTypeRouter, Values: []string{"t1", "t2"}},
 		{PoolExpr: "e2", Field: ConstraintTypeTeam, Values: []string{"t1", "t2"}},
 		{PoolExpr: "e3", Field: ConstraintTypeTeam, Values: []string{"t2", "t3"}},
 	}
 	for _, constraint := range constraints {
-		err := SetPoolConstraint(&constraint)
+		err := SetPoolConstraint(context.TODO(), &constraint)
 		c.Assert(err, check.IsNil)
 	}
 	err := RenamePoolTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var cs []PoolConstraint
-	err = coll.Find(nil).Sort("poolexpr").All(&cs)
+
+	collection, err := storagev2.PoolConstraintsCollection()
 	c.Assert(err, check.IsNil)
+
+	opts := options.Find().SetSort(mongoBSON.M{"poolexpr": 1})
+	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, opts)
+	c.Assert(err, check.IsNil)
+
+	err = cursor.All(context.TODO(), &cs)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(cs, check.DeepEquals, []PoolConstraint{
 		{PoolExpr: "e1", Field: ConstraintTypeRouter, Values: []string{"t1", "t2"}},
 		{PoolExpr: "e2", Field: ConstraintTypeTeam, Values: []string{"t1", "t9000"}},
@@ -858,9 +863,8 @@ func (s *S) TestRenamePoolTeam(c *check.C) {
 }
 
 func (s *S) TestGetProvisionerForPool(c *check.C) {
-	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Default: true, Provisioner: "fake"}
-	err := coll.Insert(pool)
+	_, err := s.collection.InsertOne(context.TODO(), pool)
 	c.Assert(err, check.IsNil)
 	prov, err := GetProvisionerForPool(context.TODO(), pool.Name)
 	c.Assert(err, check.IsNil)

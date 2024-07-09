@@ -95,7 +95,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
 	opts.GetKind()
-	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	canDeploy := permission.Check(ctx, t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canDeploy {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 	}
@@ -228,7 +228,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
 	opts.GetKind()
-	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	canRollback := permission.Check(ctx, t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canRollback {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
@@ -267,7 +267,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //	204: No content
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	contexts := permission.ContextsForPermission(t, permission.PermAppReadDeploy)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermAppReadDeploy)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -313,7 +313,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canGet := permission.Check(t, permission.PermAppReadDeploy, contextsForApp(dbApp)...)
+	canGet := permission.Check(ctx, t, permission.PermAppReadDeploy, contextsForApp(dbApp)...)
 	if !canGet {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 	}
@@ -359,7 +359,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
-	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	canDeploy := permission.Check(ctx, t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canDeploy {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
@@ -407,7 +407,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("App %s was not found", appName),
 		}
 	}
-	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
+	canUpdateRollback := permission.Check(ctx, t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
 	if !canUpdateRollback {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusForbidden,

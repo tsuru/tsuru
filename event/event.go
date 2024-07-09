@@ -66,8 +66,6 @@ const (
 	rejectThrottled = "throttled"
 
 	timeFormat = "2006-01-02 15:04:05 -0700"
-
-	eventsCollection = "events"
 )
 
 var (
@@ -390,7 +388,7 @@ func (f *Filter) toQuery() (mongoBSON.M, error) {
 }
 
 func GetKinds(ctx context.Context) ([]eventTypes.Kind, error) {
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +430,7 @@ func transformEvent(data eventTypes.EventData) *Event {
 }
 
 func GetRunning(ctx context.Context, target eventTypes.Target, kind string) (*Event, error) {
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +461,7 @@ func GetByHexID(ctx context.Context, hexid string) (*Event, error) {
 }
 
 func GetByID(ctx context.Context, id primitive.ObjectID) (*Event, error) {
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -585,7 +583,7 @@ func List(ctx context.Context, filter *Filter) ([]*Event, error) {
 			return nil, err
 		}
 	}
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -795,7 +793,7 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 		}
 	}
 
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -913,7 +911,7 @@ func checkLocked(ctx context.Context, evt *Event, disableLock bool) error {
 		})
 	}
 
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
 	}
@@ -946,7 +944,7 @@ func (e *Event) RawInsert(ctx context.Context, start, other, end interface{}) er
 	if err != nil {
 		return err
 	}
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
 	}
@@ -978,7 +976,7 @@ func (e *Event) GetLogWriter() io.Writer {
 }
 
 func (e *Event) SetOtherCustomData(ctx context.Context, data interface{}) error {
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
 	}
@@ -1053,7 +1051,7 @@ func (e *Event) TryCancel(ctx context.Context, reason, owner string) error {
 		return ErrNotCancelable
 	}
 
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
 	}
@@ -1087,7 +1085,7 @@ func (e *Event) AckCancel(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return false, err
 	}
@@ -1145,7 +1143,7 @@ func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, 
 	}()
 	updater.remove(e.ID)
 
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
 	}

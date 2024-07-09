@@ -5,6 +5,7 @@
 package oidc
 
 import (
+	"context"
 	"encoding/json"
 
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -71,6 +72,6 @@ func (t *jwtToken) Engine() string {
 	return "oidc"
 }
 
-func (t *jwtToken) Permissions() ([]permission.Permission, error) {
-	return auth.BaseTokenPermission(t)
+func (t *jwtToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+	return auth.BaseTokenPermission(ctx, t)
 }

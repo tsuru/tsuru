@@ -11,10 +11,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
@@ -24,6 +22,8 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	apiv1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -144,7 +144,7 @@ func (p *Pool) GetPlans(ctx context.Context) ([]string, error) {
 }
 
 func (p *Pool) GetDefaultPlan(ctx context.Context) (*appTypes.Plan, error) {
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypePlan)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypePlan)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (p *Pool) GetDefaultPlan(ctx context.Context) (*appTypes.Plan, error) {
 }
 
 func (p *Pool) GetDefaultRouter(ctx context.Context) (string, error) {
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeRouter)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeRouter)
 	if err != nil {
 		return "", err
 	}
@@ -263,7 +263,7 @@ func (p *Pool) allowedValues(ctx context.Context) (map[PoolConstraintType][]stri
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func plansNames(ctx context.Context) ([]string, error) {
 
 func (p *Pool) Info(ctx context.Context) (*PoolInfo, error) {
 
-	teams, err := getExactConstraintForPool(p.Name, ConstraintTypeTeam)
+	teams, err := getExactConstraintForPool(ctx, p.Name, ConstraintTypeTeam)
 	if err != nil {
 		return nil, err
 	}
@@ -396,54 +396,57 @@ func AddPool(ctx context.Context, opts AddPoolOptions) error {
 	if err := pool.validate(); err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	if opts.Default {
 		err = changeDefaultPool(ctx, opts.Force)
 		if err != nil {
 			return err
 		}
 	}
-	err = conn.Pools().Insert(pool)
+	_, err = collection.InsertOne(ctx, pool)
 	if err != nil {
-		if mgo.IsDup(err) {
+		if mongo.IsDuplicateKeyError(err) {
 			return ErrPoolAlreadyExists
 		}
 		return err
 	}
 	if opts.Public || opts.Default {
-		return SetPoolConstraint(&PoolConstraint{PoolExpr: opts.Name, Field: ConstraintTypeTeam, Values: []string{"*"}})
+		return SetPoolConstraint(ctx, &PoolConstraint{PoolExpr: opts.Name, Field: ConstraintTypeTeam, Values: []string{"*"}})
 	}
 	return nil
 }
 
 func RenamePoolTeam(ctx context.Context, oldName, newName string) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.PoolConstraintsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	query := bson.M{
+	query := mongoBSON.M{
 		"field":  "team",
 		"values": oldName,
 	}
-	bulk := conn.PoolsConstraints().Bulk()
-	bulk.UpdateAll(query, bson.M{"$push": bson.M{"values": newName}})
-	bulk.UpdateAll(query, bson.M{"$pull": bson.M{"values": oldName}})
-	_, err = bulk.Run()
-	return err
-}
 
-func changeDefaultPool(ctx context.Context, force bool) error {
-	conn, err := db.Conn()
+	_, err = collection.BulkWrite(ctx, []mongo.WriteModel{
+		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$push": mongoBSON.M{"values": newName}}),
+		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$pull": mongoBSON.M{"values": oldName}}),
+	})
+
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	p, err := listPools(ctx, bson.M{"default": true})
+
+	return nil
+}
+
+func changeDefaultPool(ctx context.Context, force bool) error {
+	collection, err := storagev2.PoolCollection()
+	if err != nil {
+		return err
+	}
+	p, err := listPools(ctx, mongoBSON.M{"default": true})
 	if err != nil {
 		return err
 	}
@@ -451,40 +454,48 @@ func changeDefaultPool(ctx context.Context, force bool) error {
 		if !force {
 			return ErrDefaultPoolAlreadyExists
 		}
-		return conn.Pools().UpdateId(p[0].Name, bson.M{"$set": bson.M{"default": false}})
+		_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": p[0].Name}, mongoBSON.M{"$set": mongoBSON.M{"default": false}})
+		return err
 	}
 	return nil
 }
 
-func RemovePool(poolName string) error {
-	conn, err := db.Conn()
+func RemovePool(ctx context.Context, poolName string) error {
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Pools().Remove(bson.M{"_id": poolName})
-	if err == mgo.ErrNotFound {
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": poolName})
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ErrPoolNotFound
+		}
+		return err
+
+	}
+
+	if result.DeletedCount == 0 {
 		return ErrPoolNotFound
 	}
+
 	return err
 }
 
-func AddTeamsToPool(poolName string, teams []string) error {
-	conn, err := db.Conn()
+func AddTeamsToPool(ctx context.Context, poolName string, teams []string) error {
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	var pool Pool
-	err = conn.Pools().Find(bson.M{"_id": poolName}).One(&pool)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": poolName}).Decode(&pool)
+	if err == mongo.ErrNoDocuments {
 		return ErrPoolNotFound
 	}
 	if err != nil {
 		return err
 	}
-	teamConstraint, err := getExactConstraintForPool(poolName, ConstraintTypeTeam)
-	if err != nil && err != mgo.ErrNotFound {
+	teamConstraint, err := getExactConstraintForPool(ctx, poolName, ConstraintTypeTeam)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
 	if teamConstraint != nil && teamConstraint.Blacklist {
@@ -498,35 +509,34 @@ func AddTeamsToPool(poolName string, teams []string) error {
 			return errors.New("Team already exists in pool.")
 		}
 	}
-	return appendPoolConstraint(poolName, ConstraintTypeTeam, teams...)
+	return appendPoolConstraint(ctx, poolName, ConstraintTypeTeam, teams...)
 }
 
-func RemoveTeamsFromPool(poolName string, teams []string) error {
-	conn, err := db.Conn()
+func RemoveTeamsFromPool(ctx context.Context, poolName string, teams []string) error {
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	var pool Pool
-	err = conn.Pools().Find(bson.M{"_id": poolName}).One(&pool)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": poolName}).Decode(&pool)
+	if err == mongo.ErrNoDocuments {
 		return ErrPoolNotFound
 	}
 	if err != nil {
 		return err
 	}
-	constraint, err := getExactConstraintForPool(poolName, ConstraintTypeTeam)
-	if err != nil && err != mgo.ErrNotFound {
+	constraint, err := getExactConstraintForPool(ctx, poolName, ConstraintTypeTeam)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
 	if constraint != nil && constraint.Blacklist {
 		return errors.New("Unable to remove teams from blacklist constraint")
 	}
-	return removePoolConstraint(poolName, ConstraintTypeTeam, teams...)
+	return removePoolConstraint(ctx, poolName, ConstraintTypeTeam, teams...)
 }
 
 func ListPools(ctx context.Context, names ...string) ([]Pool, error) {
-	return listPools(ctx, bson.M{"_id": bson.M{"$in": names}})
+	return listPools(ctx, mongoBSON.M{"_id": mongoBSON.M{"$in": names}})
 }
 
 func ListAllPools(ctx context.Context) ([]Pool, error) {
@@ -545,14 +555,17 @@ func ListPoolsForTeam(ctx context.Context, team string) ([]Pool, error) {
 	return getPoolsSatisfyConstraints(ctx, true, ConstraintTypeTeam, team)
 }
 
-func listPools(ctx context.Context, query bson.M) ([]Pool, error) {
-	conn, err := db.Conn()
+func listPools(ctx context.Context, query mongoBSON.M) ([]Pool, error) {
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	pools := []Pool{}
-	err = conn.Pools().Find(query).All(&pools)
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &pools)
 	if err != nil {
 		return nil, err
 	}
@@ -581,15 +594,14 @@ func GetProvisionerForPool(ctx context.Context, name string) (provision.Provisio
 
 // GetPoolByName finds a pool by name
 func GetPoolByName(ctx context.Context, name string) (*Pool, error) {
-	conn, err := db.Conn()
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var p Pool
-	err = conn.Pools().FindId(name).One(&p)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&p)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, ErrPoolNotFound
 		}
 		return nil, err
@@ -625,15 +637,14 @@ func contains(arr []string, c string) bool {
 }
 
 func GetDefaultPool(ctx context.Context) (*Pool, error) {
-	conn, err := db.Conn()
+	collection, err := storagev2.PoolCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var pool Pool
-	err = conn.Pools().Find(bson.M{"default": true}).One(&pool)
+	err = collection.FindOne(ctx, mongoBSON.M{"default": true}).Decode(&pool)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, ErrPoolNotFound
 		}
 		return nil, err
@@ -642,12 +653,7 @@ func GetDefaultPool(ctx context.Context) (*Pool, error) {
 }
 
 func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	_, err = GetPoolByName(ctx, name)
+	_, err := GetPoolByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -657,7 +663,7 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 			return err
 		}
 	}
-	query := bson.M{}
+	query := mongoBSON.M{}
 	if opts.Default != nil {
 		query["default"] = *opts.Default
 	}
@@ -670,13 +676,13 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 		query["labels"] = opts.Labels
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
-		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})
+		errConstraint := SetPoolConstraint(ctx, &PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})
 		if errConstraint != nil {
 			return err
 		}
 	}
 	if (opts.Public != nil && !*opts.Public) || (opts.Default != nil && !*opts.Default) {
-		errConstraint := removePoolConstraint(name, ConstraintTypeTeam, "*")
+		errConstraint := removePoolConstraint(ctx, name, ConstraintTypeTeam, "*")
 		if errConstraint != nil {
 			return err
 		}
@@ -684,11 +690,24 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 	if len(query) == 0 {
 		return nil
 	}
-	err = conn.Pools().UpdateId(name, bson.M{"$set": query})
-	if err == mgo.ErrNotFound {
+
+	collection, err := storagev2.PoolCollection()
+	if err != nil {
+		return err
+	}
+	result, err := collection.UpdateOne(ctx, mongoBSON.M{"_id": name}, mongoBSON.M{"$set": query})
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ErrPoolNotFound
+		}
+		return err
+	}
+
+	if result.MatchedCount == 0 {
 		return ErrPoolNotFound
 	}
-	return err
+
+	return nil
 }
 
 func exprAsGlobPattern(expr string) string {
@@ -772,7 +791,7 @@ func (p *poolService) allowedValues(ctx context.Context, pool string) (map[PoolC
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(pool, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
+	constraints, err := getConstraintsForPool(ctx, pool, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
 	if err != nil {
 		return nil, err
 	}

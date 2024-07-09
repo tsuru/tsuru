@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -35,8 +36,8 @@ func (t *APIToken) Engine() string {
 	return "apikey"
 }
 
-func (t *APIToken) Permissions() ([]permission.Permission, error) {
-	return BaseTokenPermission(t)
+func (t *APIToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+	return BaseTokenPermission(ctx, t)
 }
 
 func APIAuth(header string) (*APIToken, error) {

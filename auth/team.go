@@ -66,7 +66,7 @@ func (t *teamService) Create(ctx context.Context, name string, tags []string, us
 		return err
 	}
 	u := User(*user)
-	err = u.AddRolesForEvent(permTypes.RoleEventTeamCreate, team.Name)
+	err = u.AddRolesForEvent(ctx, permTypes.RoleEventTeamCreate, team.Name)
 	if err != nil {
 		log.Errorf("unable to add default roles during team %q creation for %q: %s", team.Name, user.Email, err)
 	}

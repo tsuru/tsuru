@@ -16,14 +16,14 @@ type MockGroupService struct {
 	OnList       func(filter []string) ([]Group, error)
 }
 
-func (m *MockGroupService) AddRole(name string, roleName, contextValue string) error {
+func (m *MockGroupService) AddRole(ctx context.Context, name string, roleName, contextValue string) error {
 	if m.OnAddRole == nil {
 		return nil
 	}
 	return m.OnAddRole(name, roleName, contextValue)
 }
 
-func (m *MockGroupService) RemoveRole(name, roleName, contextValue string) error {
+func (m *MockGroupService) RemoveRole(ctx context.Context, name, roleName, contextValue string) error {
 	if m.OnRemoveRole == nil {
 		return nil
 	}

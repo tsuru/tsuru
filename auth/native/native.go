@@ -76,7 +76,7 @@ func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 	if err := hashPassword(user); err != nil {
 		return nil, err
 	}
-	if err := user.Create(); err != nil {
+	if err := user.Create(ctx); err != nil {
 		return nil, err
 	}
 	return user, nil

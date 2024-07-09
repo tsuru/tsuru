@@ -63,7 +63,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
-	err := s.user.Create()
+	err := s.user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}

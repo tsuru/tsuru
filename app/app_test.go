@@ -290,7 +290,7 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
-	pool.SetPoolConstraint(&pool.PoolConstraint{
+	pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypeRouter,
 		Values:   []string{"fake-tls", "fake"},
@@ -314,7 +314,7 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 
 func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
 	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
-	pool.SetPoolConstraint(&pool.PoolConstraint{
+	pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
 		Values:   []string{"large", "huge"},
@@ -338,7 +338,7 @@ func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
 
 func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
 	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
-	pool.SetPoolConstraint(&pool.PoolConstraint{
+	pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
 		Values:   []string{"l*", "huge"},
@@ -362,7 +362,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
 
 func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.C) {
 	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
-	pool.SetPoolConstraint(&pool.PoolConstraint{
+	pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
 		Values:   []string{"blah*"},
@@ -383,7 +383,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.
 
 func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
 	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
-	pool.SetPoolConstraint(&pool.PoolConstraint{
+	pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
 		Values:   []string{"*"},
@@ -440,7 +440,7 @@ func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
 		Name:   "myplan",
 		Memory: 4194304,
 	}
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypePlan,
 		Values:    []string{myPlan.Name},
@@ -541,7 +541,7 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
 
 func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	u := auth.User{Email: "perpetual@yes.com"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	a := App{Name: "beyond"}
 	err = CreateApp(context.TODO(), &a, &u)
@@ -2127,14 +2127,14 @@ func (s *S) TestIsValid(c *check.C) {
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{s.defaultPlan, plan1, plan2}, nil
 	}
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypeTeam,
 		Values:    []string{teamName},
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypePlan,
 		Values:    []string{"plan1"},
@@ -4498,7 +4498,7 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 	defer func() { s.mockService.Pool.OnServices = oldOnServices }()
 
 	poolConstraint := pool.PoolConstraint{PoolExpr: s.Pool, Field: pool.ConstraintTypeService, Values: []string{serv.Name}, Blacklist: true}
-	err = pool.SetPoolConstraint(&poolConstraint)
+	err = pool.SetPoolConstraint(context.TODO(), &poolConstraint)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(context.TODO(), serv.Name)
 	c.Assert(err, check.NotNil)
@@ -4520,7 +4520,7 @@ func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 }
 
 func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
-	pool.SetPoolConstraint(&pool.PoolConstraint{
+	pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypeRouter,
 		Values:    []string{"fake-tls"},
@@ -4537,7 +4537,7 @@ func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4565,12 +4565,12 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("pool2", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "pool2", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4586,12 +4586,12 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"test"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"test"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("pool2", []string{"test"})
+	err = pool.AddTeamsToPool(context.TODO(), "pool2", []string{"test"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool3", Public: true}
 	err = pool.AddPool(context.TODO(), opts)
@@ -4606,7 +4606,7 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {
-	err := pool.RemovePool("pool1")
+	err := pool.RemovePool(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name: "test",
@@ -4620,7 +4620,7 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"nopool"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"nopool"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4652,7 +4652,7 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	opts = pool.AddPoolOptions{Name: "nonpublic"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("nonpublic", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "nonpublic", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "testapp",
@@ -4943,12 +4943,12 @@ func (s *S) TestUpdatePool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(context.TODO(), &app, s.user)
@@ -5012,7 +5012,7 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(context.TODO(), &app, s.user)
@@ -5147,7 +5147,7 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 
 func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypePlan,
 		Values:    []string{s.plan.Name},
@@ -5169,7 +5169,7 @@ func (s *S) TestUpdatePlanWithCPUBurstExceeds(c *check.C) {
 		CPUBurst: &appTypes.CPUBurst{MaxAllowed: 1.8},
 		Override: &appTypes.PlanOverride{CPUBurst: func(f float64) *float64 { return &f }(2)},
 	}
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypePlan,
 		Values:    []string{s.plan.Name},
@@ -5291,12 +5291,12 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	plan := appTypes.Plan{Name: "something", Memory: 268435456}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {

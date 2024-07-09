@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -74,7 +75,7 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com"}
-	err := s.user.Create()
+	err := s.user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "raul"}
 	servicemock.SetMockService(&s.mockService)

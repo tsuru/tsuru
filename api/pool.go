@@ -32,7 +32,7 @@ import (
 func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	poolName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermPoolRead,
+	allowed := permission.Check(ctx, t, permission.PermPoolRead,
 		permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -67,8 +67,8 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	var teams, poolNames []string
 	isGlobal := false
-	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
-	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermPoolRead)...)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermAppCreate)
+	contexts = append(contexts, permission.ContextsForPermission(ctx, t, permission.PermPoolRead)...)
 	for _, c := range contexts {
 		if c.CtxType == permTypes.CtxGlobal {
 			isGlobal = true
@@ -136,7 +136,7 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	409: Pool already exists
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermPoolCreate)
+	allowed := permission.Check(ctx, t, permission.PermPoolCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -193,7 +193,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	404: Pool not found
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermPoolDelete)
+	allowed := permission.Check(ctx, t, permission.PermPoolDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -219,7 +219,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = pool.RemovePool(poolName)
+	err = pool.RemovePool(ctx, poolName)
 	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -239,7 +239,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	poolName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd, permission.Context(permTypes.CtxPool, poolName))
+	allowed := permission.Check(ctx, t, permission.PermPoolUpdateTeamAdd, permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -256,7 +256,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	defer func() { evt.Done(ctx, err) }()
 	if teams, ok := InputValues(r, "team"); ok {
-		err := pool.AddTeamsToPool(poolName, teams)
+		err := pool.AddTeamsToPool(ctx, poolName, teams)
 		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
@@ -277,7 +277,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	poolName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove, permission.Context(permTypes.CtxPool, poolName))
+	allowed := permission.Check(ctx, t, permission.PermPoolUpdateTeamRemove, permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -294,7 +294,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	defer func() { evt.Done(ctx, err) }()
 	if teams, ok := r.URL.Query()["team"]; ok {
-		err := pool.RemoveTeamsFromPool(poolName, teams)
+		err := pool.RemoveTeamsFromPool(ctx, poolName, teams)
 		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
@@ -318,7 +318,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 //	409: Default pool already defined
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermPoolUpdate)
+	allowed := permission.Check(ctx, t, permission.PermPoolUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -363,10 +363,11 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //	204: No content
 //	401: Unauthorized
 func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermPoolReadConstraints) {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermPoolReadConstraints) {
 		return permission.ErrUnauthorized
 	}
-	constraints, err := pool.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -388,7 +389,7 @@ func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) er
 //	401: Unauthorized
 func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermPoolUpdateConstraintsSet) {
+	if !permission.Check(ctx, t, permission.PermPoolUpdateConstraintsSet) {
 		return permission.ErrUnauthorized
 	}
 	var poolConstraint pool.PoolConstraint
@@ -419,7 +420,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		append, _ = strconv.ParseBool(appendStr)
 	}
 	if append {
-		return pool.AppendPoolConstraint(&poolConstraint)
+		return pool.AppendPoolConstraint(ctx, &poolConstraint)
 	}
-	return pool.SetPoolConstraint(&poolConstraint)
+	return pool.SetPoolConstraint(ctx, &poolConstraint)
 }

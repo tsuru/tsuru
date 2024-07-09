@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
@@ -20,7 +21,7 @@ import (
 
 func (s *S) TestCreateUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	var result User
@@ -32,10 +33,10 @@ func (s *S) TestCreateUser(c *check.C) {
 
 func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	err = u.Create()
+	err = u.Create(context.TODO())
 	c.Assert(err, check.NotNil)
 }
 
@@ -45,14 +46,14 @@ func (s *S) TestCreateUserWhenMongoDbIsDown(c *check.C) {
 	defer config.Set("database:url", oldURL)
 	config.Set("database:url", "invalid")
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to connect to MongoDB \"invalid\" - no reachable servers.")
 }
 
 func (s *S) TestGetUserByEmail(c *check.C) {
 	u := User{Email: "wolmverine@xmen.com", Password: "123456"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	u2, err := GetUserByEmail(u.Email)
@@ -78,7 +79,7 @@ func (s *S) TestGetUserByEmailWithInvalidEmail(c *check.C) {
 
 func (s *S) TestUpdateUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	u.Password = "1234"
@@ -91,7 +92,7 @@ func (s *S) TestUpdateUser(c *check.C) {
 
 func (s *S) TestDeleteUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = u.Delete()
 	c.Assert(err, check.IsNil)
@@ -106,7 +107,7 @@ func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
 		Password: "123",
 		APIKey:   "1ioudh8ydb2idn1ehnpoqwjmhdjqwz12po1",
 	}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	API_Token, err := u.ShowAPIKey()
@@ -116,7 +117,7 @@ func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
 
 func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *check.C) {
 	u := User{Email: "me@tsuru.com", Password: "123"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	API_Token, err := u.ShowAPIKey()
@@ -150,17 +151,17 @@ func (s *S) TestUserAddRole(c *check.C) {
 	_, err = permission.NewRole("r2", "app", "")
 	c.Assert(err, check.IsNil)
 	u := User{Email: "me@tsuru.com", Password: "123"}
-	err = u.Create()
+	err = u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "c1")
+	err = u.AddRole(context.TODO(), "r1", "c1")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "c2")
+	err = u.AddRole(context.TODO(), "r1", "c2")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r2", "x")
+	err = u.AddRole(context.TODO(), "r2", "x")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r2", "x")
+	err = u.AddRole(context.TODO(), "r2", "x")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r3", "a")
+	err = u.AddRole(context.TODO(), "r3", "a")
 	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 	expected := []authTypes.RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
@@ -186,7 +187,7 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 			{Name: "r2", ContextValue: "x"},
 		},
 	}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = u.RemoveRole("r1", "c2")
 	c.Assert(err, check.IsNil)
@@ -215,7 +216,7 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 			{Name: "r2", ContextValue: "x"},
 		},
 	}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = RemoveRoleFromAllUsers("r1")
 	c.Assert(err, check.IsNil)
@@ -234,10 +235,10 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 func (s *S) TestUserPermissions(c *check.C) {
 
 	u := User{Email: "me@tsuru.com", Password: "123"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
-	perms, err := u.Permissions()
+	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
@@ -245,16 +246,16 @@ func (s *S) TestUserPermissions(c *check.C) {
 
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.update.env", "app.deploy")
+	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "myapp")
+	err = u.AddRole(context.TODO(), "r1", "myapp")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "myapp2")
+	err = u.AddRole(context.TODO(), "r1", "myapp2")
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AuthGroup.AddRole("g1", "r1", "myapp3")
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "g1", "r1", "myapp3")
 	c.Assert(err, check.IsNil)
 
-	perms, err = u.Permissions()
+	perms, err = u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
@@ -267,24 +268,24 @@ func (s *S) TestUserPermissions(c *check.C) {
 
 func (s *S) TestUserPermissionsIncludeGroups(c *check.C) {
 	u := User{Email: "me@tsuru.com", Password: "123", Groups: []string{"g1", "g2"}}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.update.env", "app.deploy")
+	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "myapp")
+	err = u.AddRole(context.TODO(), "r1", "myapp")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "myapp2")
-	c.Assert(err, check.IsNil)
-
-	err = servicemanager.AuthGroup.AddRole("g2", "r1", "myapp3")
-	c.Assert(err, check.IsNil)
-	err = servicemanager.AuthGroup.AddRole("g3", "r1", "myapp4")
+	err = u.AddRole(context.TODO(), "r1", "myapp2")
 	c.Assert(err, check.IsNil)
 
-	perms, err := u.Permissions()
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "g2", "r1", "myapp3")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "g3", "r1", "myapp4")
+	c.Assert(err, check.IsNil)
+
+	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
@@ -301,29 +302,29 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	u := User{Email: "me@tsuru.com", Password: "123"}
-	err = u.Create()
+	err = u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = u.AddRole(role.Name, "team")
+	err = u.AddRole(context.TODO(), role.Name, "team")
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = conn.Roles().RemoveId(role.Name)
 	c.Assert(err, check.IsNil)
-	perms, err := u.Permissions()
+	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.update.env", "app.deploy")
+	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "myapp")
+	err = u.AddRole(context.TODO(), "r1", "myapp")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("r1", "myapp2")
+	err = u.AddRole(context.TODO(), "r1", "myapp2")
 	c.Assert(err, check.IsNil)
-	perms, err = u.Permissions()
+	perms, err = u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
@@ -337,12 +338,12 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 func (s *S) TestAddRolesForEvent(c *check.C) {
 	r1, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddEvent(permTypes.RoleEventTeamCreate.String())
+	err = r1.AddEvent(context.TODO(), permTypes.RoleEventTeamCreate.String())
 	c.Assert(err, check.IsNil)
 	u1 := User{Email: "me1@tsuru.com", Password: "123"}
-	err = u1.Create()
+	err = u1.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = u1.AddRolesForEvent(permTypes.RoleEventTeamCreate, "team1")
+	err = u1.AddRolesForEvent(context.TODO(), permTypes.RoleEventTeamCreate, "team1")
 	c.Assert(err, check.IsNil)
 	u, err := GetUserByEmail(u1.Email)
 	c.Assert(err, check.IsNil)
@@ -351,48 +352,48 @@ func (s *S) TestAddRolesForEvent(c *check.C) {
 
 func (s *S) TestUpdateRoleFromAllUsers(c *check.C) {
 	u1 := User{Email: "me1@tsuru.com", Password: "123"}
-	err := u1.Create()
+	err := u1.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	u2 := User{Email: "me2@tsuru.com", Password: "123"}
-	err = u2.Create()
+	err = u2.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.update.env", "app.deploy")
+	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
-	err = u1.AddRole("r1", "myapp1")
+	err = u1.AddRole(context.TODO(), "r1", "myapp1")
 	c.Assert(err, check.IsNil)
-	err = u2.AddRole("r1", "myapp2")
+	err = u2.AddRole(context.TODO(), "r1", "myapp2")
 	c.Assert(err, check.IsNil)
-	err = UpdateRoleFromAllUsers("r1", "r2", "team", "")
+	err = UpdateRoleFromAllUsers(context.TODO(), "r1", "r2", "team", "")
 	c.Assert(err, check.IsNil)
-	r, err := permission.FindRole("r2")
+	r, err := permission.FindRole(context.TODO(), "r2")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Name, check.Equals, "r2")
 	c.Assert(string(r.ContextType), check.Equals, "team")
-	err = UpdateRoleFromAllUsers("r1", "", "app", "")
+	err = UpdateRoleFromAllUsers(context.TODO(), "r1", "", "app", "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "role not found")
 }
 
 func (s *S) TestUpdateRoleFromAllUsersWithSameNameAndDifferentDescriptions(c *check.C) {
 	u1 := User{Email: "me1@tsuru.com", Password: "123"}
-	err := u1.Create()
+	err := u1.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	u2 := User{Email: "me2@tsuru.com", Password: "123"}
-	err = u2.Create()
+	err = u2.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.update.env", "app.deploy")
+	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
-	err = u1.AddRole("r1", "myapp1")
+	err = u1.AddRole(context.TODO(), "r1", "myapp1")
 	c.Assert(err, check.IsNil)
-	err = u2.AddRole("r1", "myapp2")
+	err = u2.AddRole(context.TODO(), "r1", "myapp2")
 	c.Assert(err, check.IsNil)
-	err = UpdateRoleFromAllUsers("r1", "", "team", "some description")
+	err = UpdateRoleFromAllUsers(context.TODO(), "r1", "", "team", "some description")
 	c.Assert(err, check.IsNil)
-	r, err := permission.FindRole("r1")
+	r, err := permission.FindRole(context.TODO(), "r1")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Name, check.Equals, "r1")
 	c.Assert(string(r.ContextType), check.Equals, "team")

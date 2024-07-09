@@ -7,10 +7,11 @@ package storagetest
 import (
 	"context"
 
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
+
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 type PoolSuite struct {
@@ -19,12 +20,14 @@ type PoolSuite struct {
 }
 
 func (s *PoolSuite) TestFindAll(c *check.C) {
-	conn, err := db.Conn()
+
+	collection, err := storagev2.PoolCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Pools().Insert(
-		bson.M{"_id": "pool-A", "provisioner": "docker", "default": true},
-		bson.M{"_id": "pool-B", "provisioner": "kubernetes"},
+
+	_, err = collection.InsertMany(context.TODO(), []interface{}{
+		mongoBSON.M{"_id": "pool-A", "provisioner": "docker", "default": true},
+		mongoBSON.M{"_id": "pool-B", "provisioner": "kubernetes"},
+	},
 	)
 	c.Assert(err, check.IsNil)
 	pools, err := s.PoolStorage.FindAll(context.TODO())
@@ -36,13 +39,12 @@ func (s *PoolSuite) TestFindAll(c *check.C) {
 }
 
 func (s *PoolSuite) TestFindByName(c *check.C) {
-	conn, err := db.Conn()
+	collection, err := storagev2.PoolCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Pools().Insert(
-		bson.M{"_id": "pool-A", "provisioner": "docker", "default": true},
-		bson.M{"_id": "pool-B", "provisioner": "kubernetes"},
-	)
+	_, err = collection.InsertMany(context.TODO(), []interface{}{
+		mongoBSON.M{"_id": "pool-A", "provisioner": "docker", "default": true},
+		mongoBSON.M{"_id": "pool-B", "provisioner": "kubernetes"},
+	})
 	c.Assert(err, check.IsNil)
 	pool, err := s.PoolStorage.FindByName(context.TODO(), "pool-B")
 	c.Assert(err, check.IsNil)

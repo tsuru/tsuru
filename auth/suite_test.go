@@ -61,7 +61,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
-	s.user.Create()
+	s.user.Create(context.TODO())
 	s.hashed = s.user.Password
 	s.team = &authTypes.Team{Name: "cobrateam"}
 	u := authTypes.User(*s.user)

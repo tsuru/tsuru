@@ -102,19 +102,6 @@ func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.Collection("service_instances")
 }
 
-// Pools returns the pool collection.
-func (s *Storage) Pools() *storage.Collection {
-	return s.Collection("pool")
-}
-
-// PoolsConstraints return the pool constraints collection.
-func (s *Storage) PoolsConstraints() *storage.Collection {
-	poolConstraintIndex := mgo.Index{Key: []string{"poolexpr", "field"}, Unique: true}
-	c := s.Collection("pool_constraints")
-	c.EnsureIndex(poolConstraintIndex)
-	return c
-}
-
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *storage.Collection {
 	c := s.Collection("users")
@@ -138,50 +125,6 @@ func (s *Storage) PasswordTokens() *storage.Collection {
 
 func (s *Storage) Roles() *storage.Collection {
 	return s.Collection("roles")
-}
-
-func (s *Storage) Events() *storage.Collection {
-	ownerIndex := mgo.Index{Key: []string{"owner.name"}}
-	targetIndex := mgo.Index{Key: []string{"target.value"}}
-	extraTargetIndex := mgo.Index{Key: []string{"extratargets.target.value"}}
-	kindIndex := mgo.Index{Key: []string{"kind.name"}}
-	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}
-	uniqueIdIndex := mgo.Index{Key: []string{"uniqueid"}}
-	runningIndex := mgo.Index{Key: []string{"running"}}
-	allowedSchemeIndex := mgo.Index{Key: []string{"allowed.scheme"}}
-	latestTargetKindIndex := mgo.Index{Key: []string{"target.value", "kind.name", "-starttime"}, Background: true}
-	latestTargetIndex := mgo.Index{Key: []string{"target.value", "-starttime"}, Background: true}
-	latestExtraTargetIndex := mgo.Index{Key: []string{"extratargets.target.value", "-starttime"}, Background: true}
-
-	c := s.Collection("events")
-	c.EnsureIndex(ownerIndex)
-	c.EnsureIndex(targetIndex)
-	c.EnsureIndex(extraTargetIndex)
-	c.EnsureIndex(kindIndex)
-	c.EnsureIndex(startTimeIndex)
-	c.EnsureIndex(uniqueIdIndex)
-	c.EnsureIndex(runningIndex)
-	c.EnsureIndex(allowedSchemeIndex)
-	c.EnsureIndex(latestTargetKindIndex)
-	c.EnsureIndex(latestTargetIndex)
-	c.EnsureIndex(latestExtraTargetIndex)
-	return c
-}
-
-// EventBlocks returns the event_blocks collection from MongoDB.
-//
-// Deprecated: use storagev2 instead.
-func (s *Storage) EventBlocks() *storage.Collection {
-	index := mgo.Index{Key: []string{"ownername", "kindname", "target"}}
-	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}
-	activeIndex := mgo.Index{Key: []string{"active", "-starttime"}}
-
-	c := s.Collection("event_blocks")
-	c.EnsureIndex(index)
-	c.EnsureIndex(startTimeIndex)
-	c.EnsureIndex(activeIndex)
-
-	return c
 }
 
 func IsCollectionExistsError(err error) bool {

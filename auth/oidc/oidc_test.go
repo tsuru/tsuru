@@ -208,7 +208,7 @@ func (s *AuthSuite) TestLoginWithDisabledUser(c *check.C) {
 
 	user := &auth.User{Email: userEmail, Disabled: true}
 	user.Delete() // remove from previous crashed tests
-	err = user.Create()
+	err = user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	defer user.Delete()

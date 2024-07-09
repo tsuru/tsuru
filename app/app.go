@@ -248,7 +248,7 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 	if volumeBinds != nil {
 		result.VolumeBinds = volumeBinds
 	}
-	sis, err := service.GetServiceInstancesBoundToApp(app.Name)
+	sis, err := service.GetServiceInstancesBoundToApp(ctx, app.Name)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get service instance bound to app: %+v", err))
 	}
@@ -636,7 +636,7 @@ func processTags(tags []string) []string {
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
 func (app *App) unbind(ctx context.Context, evt *event.Event, requestID string) error {
-	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
+	instances, err := service.GetServiceInstancesBoundToApp(ctx, app.Name)
 	if err != nil {
 		return err
 	}
@@ -1130,7 +1130,7 @@ func (app *App) validatePool(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
+	instances, err := service.GetServiceInstancesBoundToApp(ctx, app.Name)
 	if err != nil {
 		return err
 	}

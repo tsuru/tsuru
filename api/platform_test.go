@@ -51,9 +51,9 @@ func createToken(c *check.C) auth.Token {
 	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole("platform-admin", string(permTypes.CtxGlobal), "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("*")
+	err = role.AddPermissions(context.TODO(), "*")
 	c.Assert(err, check.IsNil)
-	err = user.AddRole(role.Name, "")
+	err = user.AddRole(context.TODO(), role.Name, "")
 	c.Assert(err, check.IsNil)
 	return token
 }

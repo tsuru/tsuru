@@ -6,171 +6,163 @@ package mongodb
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	appImage "github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/app/image"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-const platformImageCollectionName = "platform_images"
 
 var _ image.PlatformImageStorage = &PlatformImageStorage{}
 
 type PlatformImageStorage struct{}
 
 type platformImage struct {
-	Name     string
-	Versions []image.RegistryVersion
-	Count    int
-}
-
-func (pi *platformImage) SetBSON(raw bson.Raw) error {
-	parsedRaw := map[string]bson.Raw{}
-	err := raw.Unmarshal(&parsedRaw)
-	if err != nil {
-		return err
-	}
-	if value, ok := parsedRaw["name"]; ok {
-		value.Unmarshal(&pi.Name)
-	}
-	if value, ok := parsedRaw["count"]; ok {
-		value.Unmarshal(&pi.Count)
-	}
-	if value, ok := parsedRaw["versions"]; ok {
-		value.Unmarshal(&pi.Versions)
-	}
-	if value, ok := parsedRaw["images"]; ok {
-		var legacyImages []string
-		err = value.Unmarshal(&legacyImages)
-		if err != nil {
-			return err
-		}
-
-		var legacyVersions []image.RegistryVersion
-		for _, legacyImage := range legacyImages {
-			_, _, tag := appImage.ParseImageParts(legacyImage)
-			version, _ := strconv.Atoi(strings.TrimPrefix(tag, "v"))
-			legacyVersions = append(legacyVersions, image.RegistryVersion{
-				Version: version,
-				Images:  []string{legacyImage},
-			})
-		}
-		pi.Versions = append(legacyVersions, pi.Versions...)
-	}
-	return nil
-}
-
-func platformImageCollection(conn *db.Storage) *dbStorage.Collection {
-	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := conn.Collection(platformImageCollectionName)
-	c.EnsureIndex(nameIndex)
-	return c
+	ID           primitive.ObjectID `bson:"_id,omitempty"`
+	Name         string
+	LegacyImages []string `bson:"images,omitempty"`
+	Versions     []image.RegistryVersion
+	Count        int
 }
 
 func (s *PlatformImageStorage) Upsert(ctx context.Context, name string) (*image.PlatformImage, error) {
-	query := bson.M{"name": name}
+	query := mongoBSON.M{"name": name}
 
-	span := newMongoDBSpan(ctx, mongoSpanUpsert, platformImageCollectionName)
+	collection, err := storagev2.PlatformImagesCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpsert, collection.Name())
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	update := mongoBSON.M{
+		"$inc": mongoBSON.M{"count": 1},
+	}
+	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
+
+	var p platformImage
+
+	err = collection.FindOneAndUpdate(ctx, mongoBSON.M{"name": name}, update, opts).Decode(&p)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
-	dbChange := mgo.Change{
-		Update: bson.M{
-			"$inc": bson.M{"count": 1},
-		},
-		ReturnNew: true,
-		Upsert:    true,
-	}
-	var p platformImage
-	_, err = platformImageCollection(conn).Find(query).Apply(dbChange, &p)
-	span.SetError(err)
-	pi := image.PlatformImage(p)
-	return &pi, err
+
+	return convertPlatformImage(p), nil
 }
 
 func (s *PlatformImageStorage) FindByName(ctx context.Context, name string) (*image.PlatformImage, error) {
-	query := bson.M{"name": name}
+	query := mongoBSON.M{"name": name}
 
-	span := newMongoDBSpan(ctx, mongoSpanFindOne, platformImageCollectionName)
+	var p platformImage
+	collection, err := storagev2.PlatformImagesCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFindOne, collection.Name())
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	var p platformImage
-	conn, err := db.Conn()
+	err = collection.FindOne(ctx, query).Decode(&p)
 	if err != nil {
-		span.SetError(err)
-		return nil, err
-	}
-	defer conn.Close()
-	err = platformImageCollection(conn).Find(query).One(&p)
-	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			err = image.ErrPlatformImageNotFound
 		}
 		span.SetError(err)
 		return nil, err
 	}
-	pi := image.PlatformImage(p)
-	return &pi, nil
+
+	return convertPlatformImage(p), nil
 }
 
 func (s *PlatformImageStorage) Append(ctx context.Context, name string, version int, images []string) error {
-	query := bson.M{"name": name, "versions.version": version}
-	span := newMongoDBSpan(ctx, mongoSpanUpsert, platformImageCollectionName)
+	query := mongoBSON.M{"name": name, "versions.version": version}
+
+	collection, err := storagev2.PlatformImagesCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpsert, collection.Name())
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	result, err := collection.UpdateOne(ctx, query, mongoBSON.M{"$push": mongoBSON.M{"versions.$.images": mongoBSON.M{"$each": images}}})
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
 
-	coll := platformImageCollection(conn)
-	ci, err := coll.UpdateAll(query, bson.M{"$push": bson.M{"versions.$.images": bson.M{"$each": images}}})
-	if err != nil {
-		return err
-	}
-
-	if ci.Matched == 0 {
-		err = coll.Update(bson.M{"name": name},
-			bson.M{"$push": bson.M{
+	if result.MatchedCount == 0 {
+		_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": name},
+			mongoBSON.M{"$push": mongoBSON.M{
 				"versions": image.RegistryVersion{Version: version, Images: images},
 			}},
 		)
+
+		if err != nil {
+			span.SetError(err)
+			return err
+		}
 	}
-	return err
+
+	return nil
 }
 
 func (s *PlatformImageStorage) Delete(ctx context.Context, name string) error {
-	query := bson.M{"name": name}
+	query := mongoBSON.M{"name": name}
 
-	span := newMongoDBSpan(ctx, mongoSpanDelete, platformImageCollectionName)
+	collection, err := storagev2.PlatformImagesCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanDelete, collection.Name())
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
-	if err != nil {
+	result, err := collection.DeleteOne(ctx, query)
+	if err != nil && err != mongo.ErrNoDocuments {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = platformImageCollection(conn).Remove(bson.M{"name": name})
-	if err == mgo.ErrNotFound {
+
+	if result.DeletedCount == 0 {
 		return image.ErrPlatformImageNotFound
 	}
-	span.SetError(err)
-	return err
+
+	return nil
+}
+
+func convertPlatformImage(p platformImage) *image.PlatformImage {
+	pi := image.PlatformImage{
+		Name:     p.Name,
+		Versions: p.Versions,
+		Count:    p.Count,
+	}
+
+	for _, legacyImage := range p.LegacyImages {
+		_, _, tag := appImage.ParseImageParts(legacyImage)
+		version, _ := strconv.Atoi(strings.TrimPrefix(tag, "v"))
+
+		pi.Versions = append(pi.Versions, image.RegistryVersion{
+			Version: version,
+			Images:  []string{legacyImage},
+		})
+	}
+
+	sort.Slice(pi.Versions, func(i, j int) bool {
+		return pi.Versions[i].Version < pi.Versions[j].Version
+	})
+
+	return &pi
 }

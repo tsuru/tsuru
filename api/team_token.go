@@ -66,7 +66,7 @@ func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermTeamTokenRead,
+	allowed := permission.Check(ctx, t, permission.PermTeamTokenRead,
 		permission.Context(permTypes.CtxTeam, teamToken.Team),
 	)
 	if !allowed {
@@ -99,7 +99,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 			return err
 		}
 	}
-	allowed := permission.Check(t, permission.PermTeamTokenCreate,
+	allowed := permission.Check(ctx, t, permission.PermTeamTokenCreate,
 		permission.Context(permTypes.CtxTeam, args.Team),
 	)
 	if !allowed {
@@ -161,7 +161,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		}
 		return err
 	}
-	allowed := permission.Check(t, permission.PermTeamTokenUpdate,
+	allowed := permission.Check(ctx, t, permission.PermTeamTokenUpdate,
 		permission.Context(permTypes.CtxTeam, teamToken.Team),
 	)
 	if !allowed {
@@ -215,7 +215,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	teamName := teamToken.Team
-	allowed := permission.Check(t, permission.PermTeamTokenDelete,
+	allowed := permission.Check(ctx, t, permission.PermTeamTokenDelete,
 		permission.Context(permTypes.CtxTeam, teamName),
 	)
 	if !allowed {

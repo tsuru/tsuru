@@ -4,11 +4,15 @@
 
 package auth
 
-import check "gopkg.in/check.v1"
+import (
+	"context"
+
+	check "gopkg.in/check.v1"
+)
 
 func (s *S) TestAPIAuth(c *check.C) {
 	user := User{Email: "para@xmen.com", APIKey: "Quenço"}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	APIKey, err := user.RegenerateAPIKey()
 	c.Assert(err, check.IsNil)

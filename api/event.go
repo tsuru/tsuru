@@ -40,7 +40,7 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	filter.LoadKindNames(r.Form)
 	filter.PruneUserValues()
-	filter.Permissions, err = t.Permissions()
+	filter.Permissions, err = t.Permissions(ctx)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, scheme, e.Allowed.Contexts...)
+	allowed := permission.Check(ctx, t, scheme, e.Allowed.Contexts...)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -156,7 +156,7 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, scheme, e.AllowedCancel.Contexts...)
+	allowed := permission.Check(ctx, t, scheme, e.AllowedCancel.Contexts...)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -182,7 +182,7 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermEventBlockRead) {
+	if !permission.Check(ctx, t, permission.PermEventBlockRead) {
 		return permission.ErrUnauthorized
 	}
 	var active *bool
@@ -213,7 +213,7 @@ func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //	401: Unauthorized
 func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermEventBlockAdd) {
+	if !permission.Check(ctx, t, permission.PermEventBlockAdd) {
 		return permission.ErrUnauthorized
 	}
 	var block event.Block
@@ -253,7 +253,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //	404: Active block with provided uuid not found
 func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermEventBlockRemove) {
+	if !permission.Check(ctx, t, permission.PermEventBlockRemove) {
 		return permission.ErrUnauthorized
 	}
 	uuid := r.URL.Query().Get(":uuid")

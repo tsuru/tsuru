@@ -40,7 +40,7 @@ func (t *userToken) Engine() string {
 func (t *userToken) User() (*authTypes.User, error) {
 	return ConvertOldUser(t.user, nil)
 }
-func (t *userToken) Permissions() ([]permission.Permission, error) {
+func (t *userToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
 	return t.permissions, nil
 }
 
@@ -118,7 +118,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	u, err := t.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@tsuru-team-token", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
-	perms, err := t.Permissions()
+	perms, err := t.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)
 	dbToken, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), token.TokenID)
@@ -254,7 +254,7 @@ func (s *S) Test_TeamTokenService_FindByUserToken(c *check.C) {
 func (s *S) Test_TeamTokenService_FindByUserToken_ValidatePermissions(c *check.C) {
 	r1, err := permission.NewRole("app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions(permission.PermAppDeploy.FullName())
+	err = r1.AddPermissions(context.TODO(), permission.PermAppDeploy.FullName())
 	c.Assert(err, check.IsNil)
 	userToken := &userToken{
 		user: s.user,
@@ -403,11 +403,11 @@ func (s *S) Test_TeamTokenService_Update_Expires(c *check.C) {
 func (s *S) Test_TeamToken_Permissions(c *check.C) {
 	r1, err := permission.NewRole("app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.read", "app.deploy")
+	err = r1.AddPermissions(context.TODO(), "app.read", "app.deploy")
 	c.Assert(err, check.IsNil)
 	r2, err := permission.NewRole("app-updater", "app", "")
 	c.Assert(err, check.IsNil)
-	err = r2.AddPermissions("app.update")
+	err = r2.AddPermissions(context.TODO(), "app.update")
 	c.Assert(err, check.IsNil)
 	token := &teamToken{
 		Team: s.team.Name,
@@ -416,7 +416,7 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 			{Name: "app-updater", ContextValue: "myapp"},
 		},
 	}
-	perms, err := token.Permissions()
+	perms, err := token.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 3)
 	sort.Slice(perms, func(i, j int) bool { return perms[i].Scheme.FullName() < perms[j].Scheme.FullName() })

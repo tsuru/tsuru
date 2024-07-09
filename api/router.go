@@ -38,7 +38,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 
-	allowed := permission.Check(t, permission.PermRouterCreate)
+	allowed := permission.Check(ctx, t, permission.PermRouterCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -86,7 +86,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	dynamicRouter.Name = routerName
 
-	allowed := permission.Check(t, permission.PermRouterUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name})
+	allowed := permission.Check(ctx, t, permission.PermRouterUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name})
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -125,7 +125,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	ctx := r.Context()
 	routerName := r.URL.Query().Get(":name")
 
-	allowed := permission.Check(t, permission.PermRouterDelete, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerName})
+	allowed := permission.Check(ctx, t, permission.PermRouterDelete, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerName})
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -163,7 +163,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //	204: No content
 func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermAppCreate)
 	var teams []string
 	var global bool
 contexts:
@@ -206,7 +206,7 @@ contexts:
 			}
 		}
 	}
-	isRouterCreator := permission.Check(t, permission.PermRouterCreate)
+	isRouterCreator := permission.Check(ctx, t, permission.PermRouterCreate)
 	if !isRouterCreator {
 		for i := range filteredRouters {
 			filteredRouters[i].Config = nil
@@ -248,7 +248,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		}
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRouterAdd,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateRouterAdd,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -312,7 +312,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		}
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRouterUpdate,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateRouterUpdate,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -362,7 +362,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRouterRemove,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateRouterRemove,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -402,7 +402,7 @@ func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppReadRouter,
+	canRead := permission.Check(ctx, t, permission.PermAppReadRouter,
 		contextsForApp(&a)...,
 	)
 	if !canRead {
@@ -446,7 +446,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRoutable,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateRoutable,
 		contextsForApp(&a)...,
 	)
 	if !allowed {

@@ -5,6 +5,8 @@
 package permission
 
 import (
+	"context"
+
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
@@ -61,11 +63,12 @@ type userToken struct {
 	permissions []Permission
 }
 
-func (t *userToken) Permissions() ([]Permission, error) {
+func (t *userToken) Permissions(ctx context.Context) ([]Permission, error) {
 	return t.permissions, nil
 }
 
 func (s *S) TestCheck(c *check.C) {
+	ctx := context.TODO()
 	t := &userToken{
 		permissions: []Permission{
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
@@ -73,24 +76,25 @@ func (s *S) TestCheck(c *check.C) {
 			{Scheme: PermAppUpdateEnvUnset, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppUpdateEnvSet, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, false)
-	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team3"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team2"}), check.Equals, false)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team10"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppUpdateEnvSet, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, false)
+	c.Assert(Check(ctx, t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team3"}), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team2"}), check.Equals, false)
+	c.Assert(Check(ctx, t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team10"}), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppUpdateEnvUnset), check.Equals, true)
 }
 
 func (s *S) TestCheckSuperToken(c *check.C) {
+	ctx := context.TODO()
 	t := &userToken{
 		permissions: []Permission{
 			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(ctx, t, PermAppUpdateEnvUnset), check.Equals, true)
 }
 
 func (s *S) TestGetTeamForPermission(c *check.C) {
@@ -99,7 +103,7 @@ func (s *S) TestGetTeamForPermission(c *check.C) {
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
 		},
 	}
-	team, err := TeamForPermission(t, PermAppUpdate)
+	team, err := TeamForPermission(context.TODO(), t, PermAppUpdate)
 	c.Assert(err, check.IsNil)
 	c.Assert(team, check.Equals, "team1")
 }
@@ -111,7 +115,7 @@ func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team2"}},
 		},
 	}
-	_, err := TeamForPermission(t, PermAppUpdate)
+	_, err := TeamForPermission(context.TODO(), t, PermAppUpdate)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrTooManyTeams)
 }
@@ -122,7 +126,7 @@ func (s *S) TestGetTeamForPermissionGlobalMustSpecifyTeam(c *check.C) {
 			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal, Value: ""}},
 		},
 	}
-	_, err := TeamForPermission(t, PermAppUpdate)
+	_, err := TeamForPermission(context.TODO(), t, PermAppUpdate)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrTooManyTeams)
 }

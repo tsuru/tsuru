@@ -38,7 +38,7 @@ import (
 //	409: Cluster already exists
 func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermClusterCreate)
+	allowed := permission.Check(ctx, t, permission.PermClusterCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -92,7 +92,6 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 		evt.SetLogWriter(writer)
 	}
-	provCluster.Writer = evt
 	err = servicemanager.Cluster.Create(ctx, provCluster)
 	if err != nil {
 		return errors.WithStack(err)
@@ -113,7 +112,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //	404: Cluster not found
 func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermClusterUpdate)
+	allowed := permission.Check(ctx, t, permission.PermClusterUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -171,7 +170,6 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 		evt.SetLogWriter(writer)
 	}
-	provCluster.Writer = evt
 	err = servicemanager.Cluster.Update(ctx, provCluster)
 	if err != nil {
 		return errors.WithStack(err)
@@ -190,7 +188,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //	401: Unauthorized
 func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermClusterRead)
+	allowed := permission.Check(ctx, t, permission.PermClusterRead)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -202,7 +200,7 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		}
 		return err
 	}
-	admin := permission.Check(t, permission.PermClusterAdmin)
+	admin := permission.Check(ctx, t, permission.PermClusterAdmin)
 	if !admin {
 		for i := range clusters {
 			clusters[i].CleanUpSensitive()
@@ -223,7 +221,7 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //	404: Cluster not found
 func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermClusterRead)
+	allowed := permission.Check(ctx, t, permission.PermClusterRead)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -253,7 +251,7 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //	404: Cluster not found
 func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermClusterDelete)
+	allowed := permission.Check(ctx, t, permission.PermClusterDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -279,7 +277,7 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 		evt.SetLogWriter(writer)
 	}
-	err = servicemanager.Cluster.Delete(ctx, provTypes.Cluster{Name: clusterName, Writer: evt})
+	err = servicemanager.Cluster.Delete(ctx, provTypes.Cluster{Name: clusterName})
 	if err != nil {
 		if errors.Cause(err) == provTypes.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
@@ -307,7 +305,8 @@ type provisionerInfo struct {
 //	204: No Content
 //	401: Unauthorized
 func provisionerList(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermClusterRead)
+	ctx := r.Context()
+	allowed := permission.Check(ctx, t, permission.PermClusterRead)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}

@@ -17,7 +17,8 @@ func debugHandler(h http.HandlerFunc) func(http.ResponseWriter, *http.Request, a
 
 func debugHandlerInt(h http.Handler) func(http.ResponseWriter, *http.Request, auth.Token) error {
 	return func(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-		if !permission.Check(t, permission.PermDebug) {
+		ctx := r.Context()
+		if !permission.Check(ctx, t, permission.PermDebug) {
 			return permission.ErrUnauthorized
 		}
 		h.ServeHTTP(w, r)

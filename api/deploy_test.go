@@ -95,7 +95,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
-	pool.RemovePool("pool1")
+	pool.RemovePool(context.TODO(), "pool1")
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 	s.reset()
@@ -1453,7 +1453,7 @@ func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
 
 func (s *DeploySuite) TestRollbackUpdateErrNoPerms(c *check.C) {
 	user := &auth.User{Email: "janna@zaun.com", Password: "jannazaun123"}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &fakeApp, user)

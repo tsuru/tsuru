@@ -109,7 +109,7 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdate,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdate,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -154,7 +154,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	canDelete := permission.Check(t, permission.PermAppDelete,
+	canDelete := permission.Check(ctx, t, permission.PermAppDelete,
 		contextsForApp(&a)...,
 	)
 	if !canDelete {
@@ -269,8 +269,8 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if tags, ok := r.URL.Query()["tag"]; ok {
 		filter.Tags = tags
 	}
-	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
-	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermAppReadInfo)...)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermAppRead)
+	contexts = append(contexts, permission.ContextsForPermission(ctx, t, permission.PermAppReadInfo)...)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -326,7 +326,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppReadInfo,
+	canRead := permission.Check(ctx, t, permission.PermAppReadInfo,
 		contextsForApp(&a)...,
 	)
 	if !canRead {
@@ -358,7 +358,7 @@ type inputApp struct {
 }
 
 func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.PermissionScheme) (string, error) {
-	team, err := permission.TeamForPermission(t, perm)
+	team, err := permission.TeamForPermission(ctx, t, perm)
 	if err == nil {
 		return team, nil
 	}
@@ -417,7 +417,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return err
 		}
 	}
-	canCreate := permission.Check(t, permission.PermAppCreate,
+	canCreate := permission.Check(ctx, t, permission.PermAppCreate,
 		permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	)
 	if !canCreate {
@@ -434,8 +434,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return errPlat
 		}
 		if platform.Disabled {
-			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-				permission.Check(t, permission.PermPlatformCreate)
+			canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
+				permission.Check(ctx, t, permission.PermPlatformCreate)
 			if !canUsePlat {
 				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
 			}
@@ -582,8 +582,8 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return errPlat
 		}
 		if platform.Disabled {
-			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-				permission.Check(t, permission.PermPlatformCreate)
+			canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
+				permission.Check(ctx, t, permission.PermPlatformCreate)
 			if !canUsePlat {
 				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
 			}
@@ -605,7 +605,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	for _, perm := range wantedPerms {
-		allowed := permission.Check(t, perm,
+		allowed := permission.Check(ctx, t, perm,
 			contextsForApp(&a)...,
 		)
 		if !allowed {
@@ -704,7 +704,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitAdd,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAdd,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -758,7 +758,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitRemove,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitRemove,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -813,7 +813,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	force, _ := strconv.ParseBool(InputValue(r, "force"))
-	allowed := permission.Check(t, permission.PermAppUpdateUnitKill,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitKill,
 		contextsForApp(a)...,
 	)
 	if !allowed {
@@ -863,7 +863,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateGrant,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateGrant,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -909,7 +909,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRevoke,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateRevoke,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -970,7 +970,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppRun,
+	allowed := permission.Check(ctx, t, permission.PermAppRun,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1009,6 +1009,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //	401: Unauthorized
 //	404: App not found
 func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var variables []string
 	if envs, ok := r.URL.Query()["env"]; ok {
 		variables = envs
@@ -1018,7 +1019,7 @@ func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppReadEnv,
+	allowed := permission.Check(ctx, t, permission.PermAppReadEnv,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1083,7 +1084,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateEnvSet,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateEnvSet,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1216,7 +1217,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateEnvUnset,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateEnvUnset,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1269,7 +1270,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateCnameAdd,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateCnameAdd,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1317,7 +1318,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateCnameRemove,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateCnameRemove,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1379,7 +1380,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppReadLog,
+	allowed := permission.Check(ctx, t, permission.PermAppReadLog,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1502,7 +1503,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateBind,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateBind,
 		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
 			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 			permission.Context(permTypes.CtxServiceInstance, instance.Name),
@@ -1511,7 +1512,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	allowed = permission.Check(t, permission.PermAppUpdateBind,
+	allowed = permission.Check(ctx, t, permission.PermAppUpdateBind,
 		contextsForApp(a)...,
 	)
 	if !allowed {
@@ -1592,7 +1593,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateUnbind,
 		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
 			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 			permission.Context(permTypes.CtxServiceInstance, instance.Name),
@@ -1601,7 +1602,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	allowed = permission.Check(t, permission.PermAppUpdateUnbind,
+	allowed = permission.Check(ctx, t, permission.PermAppUpdateUnbind,
 		contextsForApp(a)...,
 	)
 	if !allowed {
@@ -1612,7 +1613,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		if errGet != nil {
 			return errGet
 		}
-		allowed = permission.Check(t, permission.PermServiceUpdate,
+		allowed = permission.Check(ctx, t, permission.PermServiceUpdate,
 			contextsForServiceProvision(&s)...,
 		)
 		if !allowed {
@@ -1681,7 +1682,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRestart,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateRestart,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1727,7 +1728,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateLog,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateLog,
 		contextsForApp(a)...,
 	)
 	if !allowed {
@@ -1787,7 +1788,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateStart,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateStart,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1836,7 +1837,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateStop,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateStop,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1891,7 +1892,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppAdminRoutes,
+	allowed := permission.Check(ctx, t, permission.PermAppAdminRoutes,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1932,7 +1933,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateCertificateSet,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertificateSet,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1979,7 +1980,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateCertificateUnset,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertificateUnset,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -2023,7 +2024,7 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppReadCertificate,
+	allowed := permission.Check(ctx, t, permission.PermAppReadCertificate,
 		contextsForApp(&a)...,
 	)
 	if !allowed {

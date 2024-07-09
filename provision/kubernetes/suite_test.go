@@ -167,7 +167,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypePlan, Values: []string{"c2m1"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypePlan, Values: []string{"c2m1"}})
 	c.Assert(err, check.IsNil)
 	s.defaultSharedInformerDuration, err = time.ParseDuration("1s")
 	c.Assert(err, check.IsNil)

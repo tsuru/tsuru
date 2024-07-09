@@ -43,7 +43,7 @@ func (s *S) SetUpTest(c *check.C) {
 	storagev2.Reset()
 
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Events().Database)
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	svc, err := WebhookService()
 	c.Assert(err, check.IsNil)

@@ -26,7 +26,7 @@ import (
 //	204: No content
 func webhookList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	ctxs := permission.ContextsForPermission(t, permission.PermWebhookRead, permTypes.CtxTeam)
+	ctxs := permission.ContextsForPermission(ctx, t, permission.PermWebhookRead, permTypes.CtxTeam)
 	var teams []string
 	for _, c := range ctxs {
 		if c.CtxType == permTypes.CtxGlobal {
@@ -67,7 +67,7 @@ func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	permissionCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookRead, permissionCtx) {
+	if !permission.Check(ctx, t, permission.PermWebhookRead, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -97,7 +97,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	permCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookCreate, permCtx) {
+	if !permission.Check(ctx, t, permission.PermWebhookCreate, permCtx) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
@@ -139,7 +139,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	webhook.Name = r.URL.Query().Get(":name")
 	permissionCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookUpdate, permissionCtx) {
+	if !permission.Check(ctx, t, permission.PermWebhookUpdate, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
@@ -182,7 +182,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	permissionCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookDelete, permissionCtx) {
+	if !permission.Check(ctx, t, permission.PermWebhookDelete, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{

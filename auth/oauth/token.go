@@ -5,6 +5,8 @@
 package oauth
 
 import (
+	"context"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -40,8 +42,8 @@ func (t *tokenWrapper) Engine() string {
 	return "oauth"
 }
 
-func (t *tokenWrapper) Permissions() ([]permission.Permission, error) {
-	return auth.BaseTokenPermission(t)
+func (t *tokenWrapper) Permissions(ctx context.Context) ([]permission.Permission, error) {
+	return auth.BaseTokenPermission(ctx, t)
 }
 
 func getToken(header string) (*tokenWrapper, error) {

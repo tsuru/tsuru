@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -22,6 +23,8 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Service struct {
@@ -79,14 +82,13 @@ func Get(ctx context.Context, service string) (Service, error) {
 	if isBrokeredService(service) {
 		return getBrokeredService(ctx, service)
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return Service{}, err
 	}
-	defer conn.Close()
 	var s Service
-	if err := conn.Services().Find(bson.M{"_id": service}).One(&s); err != nil {
-		if err == mgo.ErrNotFound {
+	if err := collection.FindOne(ctx, mongoBSON.M{"_id": service}).Decode(&s); err != nil {
+		if err == mongo.ErrNoDocuments {
 			return Service{}, ErrServiceNotFound
 		}
 		return Service{}, err
@@ -147,27 +149,41 @@ func GetServices(ctx context.Context) ([]Service, error) {
 }
 
 func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
-	var filter bson.M
+	var filter mongoBSON.M
 	if teams != nil || services != nil {
-		filter = bson.M{
-			"$or": []bson.M{
-				{"teams": bson.M{"$in": teams}},
-				{"_id": bson.M{"$in": services}},
-				{"is_restricted": false},
-			},
+		orFilter := []mongoBSON.M{
+			{"is_restricted": false},
+		}
+
+		if len(teams) > 0 {
+			orFilter = append(orFilter, mongoBSON.M{"teams": mongoBSON.M{"$in": teams}})
+		}
+		if len(services) > 0 {
+			orFilter = append(orFilter, mongoBSON.M{"_id": mongoBSON.M{"$in": services}})
+		}
+
+		filter = mongoBSON.M{
+			"$or": orFilter,
 		}
 	}
 	return getServicesByFilter(ctx, filter)
 }
 
 func GetServicesByOwnerTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
-	var filter bson.M
+	var filter mongoBSON.M
 	if teams != nil || services != nil {
-		filter = bson.M{
-			"$or": []bson.M{
-				{"owner_teams": bson.M{"$in": teams}},
-				{"_id": bson.M{"$in": services}},
-			},
+
+		orFilter := []mongoBSON.M{}
+
+		if len(teams) > 0 {
+			orFilter = append(orFilter, mongoBSON.M{"owner_teams": mongoBSON.M{"$in": teams}})
+		}
+		if len(services) > 0 {
+			orFilter = append(orFilter, mongoBSON.M{"_id": mongoBSON.M{"$in": services}})
+		}
+
+		filter = mongoBSON.M{
+			"$or": orFilter,
 		}
 	}
 	return getServicesByFilter(ctx, filter)
@@ -189,14 +205,21 @@ func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
 	return err
 }
 
-func getServicesByFilter(ctx context.Context, filter bson.M) ([]Service, error) {
-	conn, err := db.Conn()
+func getServicesByFilter(ctx context.Context, filter mongoBSON.M) ([]Service, error) {
+	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	if filter == nil {
+		filter = mongoBSON.M{}
+	}
 	var services []Service
-	err = conn.Services().Find(filter).All(&services)
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &services)
 	if err != nil {
 		return nil, err
 	}

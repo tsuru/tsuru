@@ -157,7 +157,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 
 func (s *AuthSuite) TestCreateUserEmailAlreadyExists(c *check.C) {
 	u := auth.User{Email: "nobody@globo.com"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest(http.MethodPost, "/users", b)
@@ -607,23 +607,23 @@ func (s *AuthSuite) TestTeamInfoReturnsUsers(c *check.C) {
 	}
 
 	u1 := auth.User{Email: "myuser1@example.com", Roles: []authTypes.RoleInstance{{Name: "team-member", ContextValue: teamName}}}
-	err := u1.Create()
+	err := u1.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	u2 := auth.User{Email: "myuser2@example.com", Roles: []authTypes.RoleInstance{{Name: "god"}, {Name: "team-member", ContextValue: "other-team"}}}
-	err = u2.Create()
+	err = u2.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	role, err := permission.NewRole("team-member", "team", "")
 	c.Assert(err, check.IsNil)
 
-	err = role.AddPermissions("app")
+	err = role.AddPermissions(context.TODO(), "app")
 	c.Assert(err, check.IsNil)
 
 	role, err = permission.NewRole("god", "global", "")
 	c.Assert(err, check.IsNil)
 
-	err = role.AddPermissions("app")
+	err = role.AddPermissions(context.TODO(), "app")
 	c.Assert(err, check.IsNil)
 
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v", teamName), nil)
@@ -870,7 +870,7 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *check.C) {
 
 func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 	user := auth.User{Email: "uns@alanis.com", Password: "145678"}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	oldPassword := user.Password
 	err = nativeScheme.StartPasswordReset(context.TODO(), &user)
@@ -948,7 +948,7 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	r, err := permission.NewRole("myrole", "global", "")
 	c.Assert(err, check.IsNil)
-	err = r.AddPermissions("apikey.update")
+	err = r.AddPermissions(context.TODO(), "apikey.update")
 	c.Assert(err, check.IsNil)
 
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", Roles: []authTypes.RoleInstance{
@@ -1035,7 +1035,7 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoPermission(c *check.C) {
 func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 	r, err := permission.NewRole("myrole", "global", "")
 	c.Assert(err, check.IsNil)
-	err = r.AddPermissions("apikey.read")
+	err = r.AddPermissions(context.TODO(), "apikey.read")
 	c.Assert(err, check.IsNil)
 
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", Roles: []authTypes.RoleInstance{
@@ -1061,7 +1061,7 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
 	r, err := permission.NewRole("myrole", "global", "")
 	c.Assert(err, check.IsNil)
-	err = r.AddPermissions("apikey.read")
+	err = r.AddPermissions(context.TODO(), "apikey.read")
 	c.Assert(err, check.IsNil)
 
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde", Roles: []authTypes.RoleInstance{
@@ -1214,7 +1214,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	_, err = nativeScheme.Create(context.TODO(), otherUser)
 	c.Assert(err, check.IsNil)
-	otherUser.AddRole(expectedRole, s.team.Name)
+	otherUser.AddRole(context.TODO(), expectedRole, s.team.Name)
 	url := fmt.Sprintf("/users?role=%s&context=%s", expectedRole, s.team2.Name)
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
@@ -1245,7 +1245,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	_, err = nativeScheme.Create(context.TODO(), otherUser)
 	c.Assert(err, check.IsNil)
-	otherUser.AddRole(expectedRole, s.team.Name)
+	otherUser.AddRole(context.TODO(), expectedRole, s.team.Name)
 	url := fmt.Sprintf("/users?role=%s&context=%s", expectedRole, "blablabla")
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
@@ -1373,13 +1373,13 @@ func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
 	token := userWithPermission(c)
 	r, err := permission.NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
-	err = r.AddPermissions("app.create", "app.deploy")
+	err = r.AddPermissions(context.TODO(), "app.create", "app.deploy")
 	c.Assert(err, check.IsNil)
 	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("myrole", "a")
+	err = u.AddRole(context.TODO(), "myrole", "a")
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("myrole", "b")
+	err = u.AddRole(context.TODO(), "myrole", "b")
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/users/info", nil)
 	c.Assert(err, check.IsNil)
@@ -1413,16 +1413,16 @@ func (s *AuthSuite) TestUserInfoWithRolesFromGroups(c *check.C) {
 	token := userWithPermission(c)
 	r, err := permission.NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
-	err = r.AddPermissions("app.create", "app.deploy")
+	err = r.AddPermissions(context.TODO(), "app.create", "app.deploy")
 	c.Assert(err, check.IsNil)
 	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
-	err = u.AddRole("myrole", "a")
+	err = u.AddRole(context.TODO(), "myrole", "a")
 	c.Assert(err, check.IsNil)
 	u.Groups = []string{"grp1", "grp2"}
 	err = u.Update()
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AuthGroup.AddRole("grp2", "myrole", "b")
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "grp2", "myrole", "b")
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/users/info", nil)
 	c.Assert(err, check.IsNil)
@@ -1467,7 +1467,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 		_, t := permissiontest.CustomUserWithPermission(c, nativeScheme, email, perm)
 		u, err := auth.ConvertNewUser(t.User())
 		c.Assert(err, check.IsNil)
-		err = u.AddRole(u.Roles[0].Name, "someothervalue")
+		err = u.AddRole(context.TODO(), u.Roles[0].Name, "someothervalue")
 		c.Assert(err, check.IsNil)
 	}
 	request, err := http.NewRequest(http.MethodGet, "/users", nil)
@@ -1664,23 +1664,23 @@ func (s *AuthSuite) TestTeamUsersList(c *check.C) {
 	}
 
 	u1 := auth.User{Email: "myuser1@example.com", Roles: []authTypes.RoleInstance{{Name: "team-member", ContextValue: teamName}}}
-	err := u1.Create()
+	err := u1.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	u2 := auth.User{Email: "myuser2@example.com", Roles: []authTypes.RoleInstance{{Name: "god"}, {Name: "team-member", ContextValue: "other-team"}}}
-	err = u2.Create()
+	err = u2.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	role1, err := permission.NewRole("team-member", "team", "")
 	c.Assert(err, check.IsNil)
 
-	err = role1.AddPermissions("app")
+	err = role1.AddPermissions(context.TODO(), "app")
 	c.Assert(err, check.IsNil)
 
 	role2, err := permission.NewRole("god", "global", "")
 	c.Assert(err, check.IsNil)
 
-	err = role2.AddPermissions("app")
+	err = role2.AddPermissions(context.TODO(), "app")
 	c.Assert(err, check.IsNil)
 
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v/users", teamName), nil)
@@ -1737,13 +1737,13 @@ func (s *AuthSuite) TestTeamGroupsList(c *check.C) {
 
 	role1, err := permission.NewRole("team-member", "team", "")
 	c.Assert(err, check.IsNil)
-	err = role1.AddPermissions("app")
+	err = role1.AddPermissions(context.TODO(), "app")
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.AuthGroup.AddRole("group1", "team-member", teamName)
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "group1", "team-member", teamName)
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.AuthGroup.AddRole("group2", "team-member", "other-team")
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "group2", "team-member", "other-team")
 	c.Assert(err, check.IsNil)
 
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v/groups", teamName), nil)

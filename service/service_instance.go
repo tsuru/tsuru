@@ -18,11 +18,15 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -361,14 +365,14 @@ func (si *ServiceInstance) Revoke(ctx context.Context, teamName string) error {
 	return si.updateData(bson.M{"$pull": bson.M{"teams": team.Name}})
 }
 
-func genericServiceInstancesFilter(services interface{}, teams []string) bson.M {
-	query := bson.M{}
+func genericServiceInstancesFilter(services interface{}, teams []string) mongoBSON.M {
+	query := mongoBSON.M{}
 	if len(teams) != 0 {
-		query["teams"] = bson.M{"$in": teams}
+		query["teams"] = mongoBSON.M{"$in": teams}
 	}
 	if v, ok := services.([]Service); ok {
 		names := getServicesNames(v)
-		query["service_name"] = bson.M{"$in": names}
+		query["service_name"] = mongoBSON.M{"$in": names}
 	}
 	if v, ok := services.(Service); ok {
 		query["service_name"] = v.Name
@@ -377,7 +381,7 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 }
 
 func validateServiceInstance(ctx context.Context, si ServiceInstance, s *Service) error {
-	err := validateServiceInstanceName(s.Name, si.Name)
+	err := validateServiceInstanceName(ctx, s.Name, si.Name)
 	if err != nil {
 		return err
 	}
@@ -388,17 +392,16 @@ func validateServiceInstance(ctx context.Context, si ServiceInstance, s *Service
 	return validateMultiCluster(ctx, s, si)
 }
 
-func validateServiceInstanceName(service, instance string) error {
+func validateServiceInstanceName(ctx context.Context, service, instance string) error {
 	if !instanceNameRegexp.MatchString(instance) {
 		return ErrInvalidInstanceName
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return nil
 	}
-	defer conn.Close()
-	query := bson.M{"name": instance, "service_name": service}
-	length, err := conn.ServiceInstances().Find(query).Count()
+	query := mongoBSON.M{"name": instance, "service_name": service}
+	length, err := collection.CountDocuments(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -432,28 +435,42 @@ func CreateServiceInstance(ctx context.Context, instance ServiceInstance, servic
 	return pipeline.Execute(ctx, *service, &instance, evt, requestID)
 }
 
-func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
+func GetServiceInstancesByServices(ctx context.Context, services []Service) ([]ServiceInstance, error) {
 	var instances []ServiceInstance
-	conn, err := db.Conn()
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	query := genericServiceInstancesFilter(services, []string{})
-	f := bson.M{"name": 1, "service_name": 1, "tags": 1}
-	err = conn.ServiceInstances().Find(query).Select(f).All(&instances)
+	f := mongoBSON.M{"name": 1, "service_name": 1, "tags": 1}
+
+	opts := options.Find().SetProjection(f)
+	cursor, err := collection.Find(ctx, query, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &instances)
+	if err != nil {
+		return nil, err
+	}
 	return instances, err
 }
 
-func GetServicesInstancesByTeamsAndNames(teams []string, names []string, appName, serviceName string) ([]ServiceInstance, error) {
-	filter := bson.M{}
+func GetServicesInstancesByTeamsAndNames(ctx context.Context, teams []string, names []string, appName, serviceName string) ([]ServiceInstance, error) {
+	filter := mongoBSON.M{}
 	if teams != nil || names != nil {
-		filter = bson.M{
-			"$or": []bson.M{
-				{"teams": bson.M{"$in": teams}},
-				{"name": bson.M{"$in": names}},
-			},
+		orConditions := []mongoBSON.M{}
+
+		if teams != nil {
+			orConditions = append(orConditions, mongoBSON.M{"teams": bson.M{"$in": teams}})
 		}
+
+		if names != nil {
+			orConditions = append(orConditions, mongoBSON.M{"name": bson.M{"$in": names}})
+		}
+
+		filter = mongoBSON.M{"$or": orConditions}
 	}
 	if appName != "" {
 		filter["apps"] = appName
@@ -461,54 +478,69 @@ func GetServicesInstancesByTeamsAndNames(teams []string, names []string, appName
 	if serviceName != "" {
 		filter["service_name"] = serviceName
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var instances []ServiceInstance
-	err = conn.ServiceInstances().Find(filter).All(&instances)
-	return instances, err
-}
-
-func GetServiceInstance(ctx context.Context, serviceName string, instanceName string) (*ServiceInstance, error) {
-	conn, err := db.Conn()
+	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	var instance ServiceInstance
-	err = conn.ServiceInstances().Find(bson.M{"name": instanceName, "service_name": serviceName}).One(&instance)
-	if err != nil {
-		return nil, ErrServiceInstanceNotFound
-	}
-	return &instance, nil
-}
-
-func GetServiceInstancesBoundToApp(appName string) ([]ServiceInstance, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var instances []ServiceInstance
-	q := bson.M{"apps": bson.M{"$in": []string{appName}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
+	err = cursor.All(ctx, &instances)
 	if err != nil {
 		return nil, err
 	}
 	return instances, nil
 }
 
-func GetServiceInstancesBoundToJob(jobName string) ([]ServiceInstance, error) {
-	conn, err := db.Conn()
+func GetServiceInstance(ctx context.Context, serviceName string, instanceName string) (*ServiceInstance, error) {
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	var instance ServiceInstance
+	err = collection.FindOne(ctx, mongoBSON.M{"name": instanceName, "service_name": serviceName}).Decode(&instance)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, ErrServiceInstanceNotFound
+		}
+
+		return nil, err
+	}
+	return &instance, nil
+}
+
+func GetServiceInstancesBoundToApp(ctx context.Context, appName string) ([]ServiceInstance, error) {
+	collection, err := storagev2.ServiceInstancesCollection()
+	if err != nil {
+		return nil, err
+	}
 	var instances []ServiceInstance
-	q := bson.M{"jobs": bson.M{"$in": []string{jobName}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
+	q := mongoBSON.M{"apps": mongoBSON.M{"$in": []string{appName}}}
+	cursor, err := collection.Find(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &instances)
+	if err != nil {
+		return nil, err
+	}
+	return instances, nil
+}
+
+func GetServiceInstancesBoundToJob(ctx context.Context, jobName string) ([]ServiceInstance, error) {
+	collection, err := storagev2.ServiceInstancesCollection()
+	if err != nil {
+		return nil, err
+	}
+	var instances []ServiceInstance
+	q := mongoBSON.M{"jobs": mongoBSON.M{"$in": []string{jobName}}}
+	cursor, err := collection.Find(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &instances)
 	if err != nil {
 		return nil, err
 	}

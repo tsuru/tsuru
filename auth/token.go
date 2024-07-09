@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -52,10 +53,10 @@ func ParseToken(header string) (string, error) {
 	return value, ErrInvalidToken
 }
 
-func BaseTokenPermission(t Token) ([]permission.Permission, error) {
+func BaseTokenPermission(ctx context.Context, t Token) ([]permission.Permission, error) {
 	u, err := ConvertNewUser(t.User())
 	if err != nil {
 		return nil, err
 	}
-	return u.Permissions()
+	return u.Permissions(ctx)
 }
