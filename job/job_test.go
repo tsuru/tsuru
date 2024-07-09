@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
@@ -294,9 +293,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
-					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -347,10 +344,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -393,10 +388,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -444,10 +437,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -492,10 +483,9 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
+				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -537,9 +527,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command:               []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
-					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
+				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -579,10 +568,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:latest",
@@ -740,10 +727,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:v1",
@@ -791,10 +776,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:v1",
@@ -839,12 +822,9 @@ func (s *S) TestUpdateJob(c *check.C) {
 					Container: jobTypes.ContainerInfo{
 						OriginalImageSrc:      "alpine:v1",
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:v1",
@@ -882,7 +862,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
-				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
 					Image: "alpine:v1",
@@ -894,8 +873,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ConcurrencyPolicy: func() *string { s := "Forbid"; return &s }(),
-					ServiceEnvs:       []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ConcurrencyPolicy:     func() *string { s := "Forbid"; return &s }(),
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 			},

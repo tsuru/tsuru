@@ -18,6 +18,7 @@ import (
 	"github.com/cezarsa/form"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -34,6 +35,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -211,7 +213,11 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotJob jobTypes.Job
-	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
+
+	jobsCollection, err := storagev2.JobsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = jobsCollection.FindOne(context.TODO(), mongoBSON.M{"name": jobName, "teamowner": s.team.Name}).Decode(&gotJob)
 	c.Assert(err, check.IsNil)
 	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
@@ -249,9 +255,6 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:              "* * * * *",
-			Manual:                false,
-			ServiceEnvs:           []bindTypes.ServiceEnvVar{},
-			Envs:                  []bindTypes.EnvVar{},
 			ActiveDeadlineSeconds: func() *int64 { v := int64(0); return &v }(),
 			ConcurrencyPolicy:     func() *string { s := "Allow"; return &s }(),
 		},
@@ -305,7 +308,11 @@ func (s *S) TestCreateManualJob(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotJob jobTypes.Job
-	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
+
+	jobsCollection, err := storagev2.JobsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = jobsCollection.FindOne(context.TODO(), mongoBSON.M{"name": jobName, "teamowner": s.team.Name}).Decode(&gotJob)
 	c.Assert(err, check.IsNil)
 	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
@@ -318,10 +325,6 @@ func (s *S) TestCreateManualJob(c *check.C) {
 			Default: true,
 		},
 		Pool: "test1",
-		Metadata: appTypes.Metadata{
-			Labels:      []appTypes.MetadataItem{},
-			Annotations: []appTypes.MetadataItem{},
-		},
 		DeployOptions: &jobTypes.DeployOptions{
 			Kind:  provTypes.DeployImage,
 			Image: "busybox:1.28",
@@ -331,10 +334,8 @@ func (s *S) TestCreateManualJob(c *check.C) {
 				OriginalImageSrc: "busybox:1.28",
 				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule:    "* * 31 2 *",
-			Manual:      true,
-			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
+			Schedule: "* * 31 2 *",
+			Manual:   true,
 			ActiveDeadlineSeconds: func() *int64 {
 				v := int64(0)
 				return &v
@@ -424,7 +425,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{
 		OriginalImageSrc: "busybox:1.28",
-		Command:          []string{},
 	})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	ij := inputJob{
@@ -500,9 +500,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 				OriginalImageSrc: "busybox:1.28",
 				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule:    "*/15 * * * *",
-			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
+			Schedule: "*/15 * * * *",
 			ActiveDeadlineSeconds: func() *int64 {
 				v := int64(0)
 				return &v
@@ -542,7 +540,7 @@ func (s *S) TestKillJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28", Command: []string{}})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28"})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	var buffer bytes.Buffer
 	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit2", &buffer)
@@ -579,7 +577,7 @@ func (s *S) TestKillJobUnitNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28", Command: []string{}})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28"})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	var buffer bytes.Buffer
 	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit1", &buffer)
@@ -3183,7 +3181,11 @@ func (s *S) TestJobLogShouldReturnNotFoundWhenJobDoesNotExist(c *check.C) {
 
 func (s *S) TestJobLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheJob(c *check.C) {
 	j := jobTypes.Job{Name: "lost", Pool: "test1"}
-	err := s.conn.Jobs().Insert(j)
+
+	jobsCollection, err := storagev2.JobsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = jobsCollection.InsertOne(context.TODO(), j)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermJobRead,

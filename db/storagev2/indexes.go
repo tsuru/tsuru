@@ -100,6 +100,16 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "jobs",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true), //nolint
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {

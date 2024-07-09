@@ -35,3 +35,7 @@ func RolesCollection() (*mongo.Collection, error) {
 func PlatformImagesCollection() (*mongo.Collection, error) {
 	return Collection("platform_images")
 }
+
+func JobsCollection() (*mongo.Collection, error) {
+	return Collection("jobs")
+}
