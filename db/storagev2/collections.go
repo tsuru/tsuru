@@ -31,3 +31,7 @@ func ServiceInstancesCollection() (*mongo.Collection, error) {
 func RolesCollection() (*mongo.Collection, error) {
 	return Collection("roles")
 }
+
+func PlatformImagesCollection() (*mongo.Collection, error) {
+	return Collection("platform_images")
+}
