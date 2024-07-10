@@ -105,12 +105,6 @@ func (s *Storage) Users() *storage.Collection {
 	return c
 }
 
-func (s *Storage) Tokens() *storage.Collection {
-	coll := s.Collection("tokens")
-	coll.EnsureIndex(mgo.Index{Key: []string{"token"}})
-	return coll
-}
-
 func (s *Storage) PasswordTokens() *storage.Collection {
 	return s.Collection("password_tokens")
 }

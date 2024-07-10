@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/log"
@@ -38,6 +39,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -262,9 +264,13 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	c.Assert(err, check.IsNil)
 	var recorderJSON map[string]string
 	json.Unmarshal(recorder.Body.Bytes(), &recorderJSON)
-	n, err := s.conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
+
+	tokensCollection, err := storagev2.TokensCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 1)
+
+	n, err := tokensCollection.CountDocuments(context.TODO(), mongoBSON.M{"token": recorderJSON["token"]})
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(1))
 }
 
 func (s *AuthSuite) TestLoginPasswordMissing(c *check.C) {

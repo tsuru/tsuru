@@ -39,3 +39,7 @@ func PlatformImagesCollection() (*mongo.Collection, error) {
 func JobsCollection() (*mongo.Collection, error) {
 	return Collection("jobs")
 }
+
+func TokensCollection() (*mongo.Collection, error) {
+	return Collection("tokens")
+}

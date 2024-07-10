@@ -48,7 +48,7 @@ func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth
 	if err != nil {
 		return nil, err
 	}
-	token, err := createToken(user, password)
+	token, err := createToken(ctx, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -56,11 +56,11 @@ func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth
 }
 
 func (s NativeScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
-	return getToken(token)
+	return getToken(ctx, token)
 }
 
 func (s NativeScheme) Logout(ctx context.Context, token string) error {
-	return deleteToken(token)
+	return deleteToken(ctx, token)
 }
 
 func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
@@ -136,7 +136,7 @@ func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetT
 }
 
 func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
-	err := deleteAllTokens(u.Email)
+	err := deleteAllTokens(ctx, u.Email)
 	if err != nil {
 		return err
 	}

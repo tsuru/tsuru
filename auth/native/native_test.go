@@ -14,8 +14,10 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -240,21 +242,29 @@ func (s *S) TestResetPasswordEmptyToken(c *check.C) {
 }
 
 func (s *S) TestNativeRemove(c *check.C) {
+	ctx := context.TODO()
 	scheme := NativeScheme{}
 	params := make(map[string]string)
 	params["email"] = "timeredbull@globo.com"
 	params["password"] = "123456"
-	token, err := scheme.Login(context.TODO(), params)
+	token, err := scheme.Login(ctx, params)
 	c.Assert(err, check.IsNil)
 	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
-	err = scheme.Remove(context.TODO(), u)
+	err = scheme.Remove(ctx, u)
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	var tokens []Token
-	err = conn.Tokens().Find(bson.M{"useremail": "timeredbull@globo.com"}).All(&tokens)
+
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
+	cursor, err := tokensCollection.Find(ctx, mongoBSON.M{"useremail": "timeredbull@globo.com"})
+	c.Assert(err, check.IsNil)
+
+	err = cursor.All(ctx, &tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
 	_, err = auth.GetUserByEmail("timeredbull@globo.com")

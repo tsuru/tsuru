@@ -110,6 +110,15 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "tokens",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys: mongoBSON.D{{Key: "token", Value: 1}},
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {
