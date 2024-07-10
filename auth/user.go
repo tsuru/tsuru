@@ -258,16 +258,16 @@ func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissi
 		role.Description = desc
 	}
 	if (newRoleName == "") || (role.Name == newRoleName) {
-		return role.Update()
+		return role.Update(ctx)
 	}
 	role.Name = newRoleName
-	err = role.Add()
+	err = role.Add(ctx)
 	if err != nil {
 		return err
 	}
 	usersWithRole, err := ListUsersWithRole(roleName)
 	if err != nil {
-		errDtr := permission.DestroyRole(role.Name)
+		errDtr := permission.DestroyRole(ctx, role.Name)
 		if errDtr != nil {
 			return tsuruErrors.NewMultiError(err, errDtr)
 		}
@@ -276,7 +276,7 @@ func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissi
 	for _, user := range usersWithRole {
 		errAddRole := user.AddRole(ctx, role.Name, string(role.ContextType))
 		if errAddRole != nil {
-			errDtr := permission.DestroyRole(role.Name)
+			errDtr := permission.DestroyRole(ctx, role.Name)
 			if errDtr != nil {
 				return tsuruErrors.NewMultiError(errAddRole, errDtr)
 			}
@@ -287,7 +287,7 @@ func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissi
 			return errAddRole
 		}
 	}
-	err = permission.DestroyRole(roleName)
+	err = permission.DestroyRole(ctx, roleName)
 	if err != nil {
 		return err
 	}

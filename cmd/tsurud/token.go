@@ -89,7 +89,7 @@ func addSuperRole(ctx context.Context, u *auth.User) error {
 	defaultRoleName := "AllowAll"
 	r, err := permission.FindRole(ctx, defaultRoleName)
 	if err != nil {
-		r, err = permission.NewRole(defaultRoleName, string(permTypes.CtxGlobal), "")
+		r, err = permission.NewRole(ctx, defaultRoleName, string(permTypes.CtxGlobal), "")
 		if err != nil {
 			return err
 		}

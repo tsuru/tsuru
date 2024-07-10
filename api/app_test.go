@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -49,6 +50,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -777,24 +779,25 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
+	ctx := context.TODO()
 	myApp := &app.App{
 		Name:      "myapptodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	err := app.CreateApp(ctx, myApp, s.user)
 	c.Assert(err, check.IsNil)
-	myApp, err = app.GetByName(context.TODO(), myApp.Name)
+	myApp, err = app.GetByName(ctx, myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("deleter", "app", "")
+	role, err := permission.NewRole(ctx, "deleter", "app", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(context.TODO(), "app.delete")
+	err = role.AddPermissions(ctx, "app.delete")
 	c.Assert(err, check.IsNil)
-	err = s.user.AddRole(context.TODO(), "deleter", myApp.Name)
+	err = s.user.AddRole(ctx, "deleter", myApp.Name)
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -810,26 +813,27 @@ func (s *S) TestDelete(c *check.C) {
 }
 
 func (s *S) TestDeleteVersion(c *check.C) {
+	ctx := context.TODO()
 	myApp := &app.App{
 		Name:      "myversiontodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	err := app.CreateApp(ctx, myApp, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, myApp)
 	newSuccessfulAppVersion(c, myApp)
-	myApp, err = app.GetByName(context.TODO(), myApp.Name)
+	myApp, err = app.GetByName(ctx, myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"/versions/"+"2", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("deleter", "app", "")
+	role, err := permission.NewRole(ctx, "deleter", "app", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(context.TODO(), "app.delete")
+	err = role.AddPermissions(ctx, "app.delete")
 	c.Assert(err, check.IsNil)
-	err = s.user.AddRole(context.TODO(), "deleter", myApp.Name)
+	err = s.user.AddRole(ctx, "deleter", myApp.Name)
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -891,9 +895,10 @@ func (s *S) TestDeleteAdminAuthorized(c *check.C) {
 }
 
 func (s *S) TestAppInfo(c *check.C) {
+	ctx := context.TODO()
 	config.Set("host", "http://myhost.com")
 	expectedApp := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &expectedApp, s.user)
+	err := app.CreateApp(ctx, &expectedApp, s.user)
 	c.Assert(err, check.IsNil)
 	var myApp map[string]interface{}
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
@@ -901,11 +906,11 @@ func (s *S) TestAppInfo(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("reader", "app", "")
+	role, err := permission.NewRole(ctx, "reader", "app", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(context.TODO(), "app.read")
+	err = role.AddPermissions(ctx, "app.read")
 	c.Assert(err, check.IsNil)
-	s.user.AddRole(context.TODO(), "reader", expectedApp.Name)
+	s.user.AddRole(ctx, "reader", expectedApp.Name)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
@@ -943,6 +948,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestCreateAppRemoveRole(c *check.C) {
+	ctx := context.TODO()
 	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=zend"
@@ -956,17 +962,18 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("test", "team", "")
+	role, err := permission.NewRole(ctx, "test", "team", "")
 	c.Assert(err, check.IsNil)
 	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
-	err = user.AddRole(context.TODO(), role.Name, "team")
+	err = user.AddRole(ctx, role.Name, "team")
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
+
+	rolesCollection, err := storagev2.RolesCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Roles().RemoveId(role.Name)
+	_, err = rolesCollection.DeleteOne(ctx, mongoBSON.M{"_id": role.Name})
 	c.Assert(err, check.IsNil)
+
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var obtained map[string]string

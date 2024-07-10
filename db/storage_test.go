@@ -116,12 +116,3 @@ func (s *S) TestServiceInstances(c *check.C) {
 	serviceInstancesc := strg.Collection("service_instances")
 	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
 }
-
-func (s *S) TestRoles(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	roles := strg.Roles()
-	rolesc := strg.Collection("roles")
-	c.Assert(roles, check.DeepEquals, rolesc)
-}

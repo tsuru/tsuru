@@ -270,7 +270,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 		Scheme:  permission.PermServiceInstance,
 		Context: permission.Context(permTypes.CtxTeam, "anotherTeam"),
 	}
-	role, err := permission.NewRole("instance-user", string(p.Context.CtxType), "")
+	role, err := permission.NewRole(stdContext.TODO(), "instance-user", string(p.Context.CtxType), "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions(stdContext.TODO(), p.Scheme.FullName())
 	c.Assert(err, check.IsNil)

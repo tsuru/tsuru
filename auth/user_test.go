@@ -10,7 +10,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -146,9 +146,9 @@ func (l roleInstanceList) Less(i, j int) bool {
 }
 
 func (s *S) TestUserAddRole(c *check.C) {
-	_, err := permission.NewRole("r1", "app", "")
+	_, err := permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
-	_, err = permission.NewRole("r2", "app", "")
+	_, err = permission.NewRole(context.TODO(), "r2", "app", "")
 	c.Assert(err, check.IsNil)
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err = u.Create(context.TODO())
@@ -244,7 +244,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
 
-	r1, err := permission.NewRole("r1", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -271,7 +271,7 @@ func (s *S) TestUserPermissionsIncludeGroups(c *check.C) {
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
-	r1, err := permission.NewRole("r1", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -299,24 +299,23 @@ func (s *S) TestUserPermissionsIncludeGroups(c *check.C) {
 }
 
 func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
-	role, err := permission.NewRole("test", "team", "")
+	role, err := permission.NewRole(context.TODO(), "test", "team", "")
 	c.Assert(err, check.IsNil)
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err = u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = u.AddRole(context.TODO(), role.Name, "team")
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
+	rolesCollection, err := storagev2.RolesCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Roles().RemoveId(role.Name)
+	_, err = rolesCollection.DeleteOne(context.TODO(), bson.M{"_id": role.Name})
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
-	r1, err := permission.NewRole("r1", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -336,7 +335,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 }
 
 func (s *S) TestAddRolesForEvent(c *check.C) {
-	r1, err := permission.NewRole("r1", "team", "")
+	r1, err := permission.NewRole(context.TODO(), "r1", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddEvent(context.TODO(), permTypes.RoleEventTeamCreate.String())
 	c.Assert(err, check.IsNil)
@@ -357,7 +356,7 @@ func (s *S) TestUpdateRoleFromAllUsers(c *check.C) {
 	u2 := User{Email: "me2@tsuru.com", Password: "123"}
 	err = u2.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	r1, err := permission.NewRole("r1", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -383,7 +382,7 @@ func (s *S) TestUpdateRoleFromAllUsersWithSameNameAndDifferentDescriptions(c *ch
 	u2 := User{Email: "me2@tsuru.com", Password: "123"}
 	err = u2.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	r1, err := permission.NewRole("r1", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), "app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)

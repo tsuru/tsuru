@@ -31,7 +31,7 @@ func ExistingUserWithPermission(c *check.C, scheme auth.Scheme, user *auth.User,
 		if idx != -1 {
 			baseName = baseName[:idx]
 		}
-		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType), "")
+		role, err := permission.NewRole(ctx, baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType), "")
 		c.Assert(err, check.IsNil)
 		name := p.Scheme.FullName()
 		if name == "" {

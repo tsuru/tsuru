@@ -257,6 +257,8 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Schedule:              "* * * * *",
 			ActiveDeadlineSeconds: func() *int64 { v := int64(0); return &v }(),
 			ConcurrencyPolicy:     func() *string { s := "Allow"; return &s }(),
+			ServiceEnvs:           []bindTypes.ServiceEnvVar{},
+			Envs:                  []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -329,6 +331,10 @@ func (s *S) TestCreateManualJob(c *check.C) {
 			Kind:  provTypes.DeployImage,
 			Image: "busybox:1.28",
 		},
+		Metadata: appTypes.Metadata{
+			Labels:      []appTypes.MetadataItem{},
+			Annotations: []appTypes.MetadataItem{},
+		},
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				OriginalImageSrc: "busybox:1.28",
@@ -340,6 +346,9 @@ func (s *S) TestCreateManualJob(c *check.C) {
 				v := int64(0)
 				return &v
 			}(),
+
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -425,6 +434,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{
 		OriginalImageSrc: "busybox:1.28",
+		Command:          []string{},
 	})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	ij := inputJob{
@@ -505,6 +515,8 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 				v := int64(0)
 				return &v
 			}(),
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
 		},
 		DeployOptions: &jobTypes.DeployOptions{
 			Kind:  provTypes.DeployImage,
@@ -540,7 +552,7 @@ func (s *S) TestKillJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28"})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28", Command: []string{}})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	var buffer bytes.Buffer
 	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit2", &buffer)
@@ -577,7 +589,7 @@ func (s *S) TestKillJobUnitNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28"})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28", Command: []string{}})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	var buffer bytes.Buffer
 	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit1", &buffer)

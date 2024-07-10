@@ -59,7 +59,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	_, err = permission.NewRole(roleName, InputValue(r, "context"), InputValue(r, "description"))
+	_, err = permission.NewRole(ctx, roleName, InputValue(r, "context"), InputValue(r, "description"))
 	if err == permTypes.ErrInvalidRoleName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -112,7 +112,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if len(usersWithRole) != 0 {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: permTypes.ErrRemoveRoleWithUsers.Error()}
 	}
-	err = permission.DestroyRole(roleName)
+	err = permission.DestroyRole(ctx, roleName)
 	if err == permTypes.ErrRoleNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
