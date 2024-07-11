@@ -2314,7 +2314,7 @@ func (app *App) SetCertificate(ctx context.Context, name, certificate, key strin
 		if err != nil {
 			return err
 		}
-		tlsRouter, ok := r.(router.TLSRouter)
+		tlsRouter, ok := r.(router.DefaultTLSRouter)
 		if !ok {
 			continue
 		}
@@ -2327,6 +2327,36 @@ func (app *App) SetCertificate(ctx context.Context, name, certificate, key strin
 	if !addedAny {
 		return errors.New("no router with tls support")
 	}
+	return nil
+}
+
+func (app *App) SetCertificateWithIssuer(ctx context.Context, name, issuer string) error {
+	err := app.validateNameForCert(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	addedAny := false
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(ctx, appRouter.Name)
+		if err != nil {
+			return err
+		}
+		cmRouter, ok := r.(router.CertmanagerTLSRouter)
+		if !ok {
+			continue
+		}
+		addedAny = true
+		err = cmRouter.IssueCertificate(ctx, app, name, issuer)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !addedAny {
+		return errors.New("no router with cert-manager support")
+	}
+
 	return nil
 }
 

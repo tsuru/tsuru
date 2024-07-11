@@ -161,12 +161,24 @@ type EnsureBackendOpts struct {
 	Healthcheck router.HealthcheckData `json:"healthcheck"`
 }
 
-// TLSRouter is a router that supports adding and removing
-// certificates for a given cname
+// TLSRouter is the base interface for routers that support TLS certificates
 type TLSRouter interface {
-	AddCertificate(ctx context.Context, app App, cname, certificate, key string) error
 	RemoveCertificate(ctx context.Context, app App, cname string) error
 	GetCertificate(ctx context.Context, app App, cname string) (string, error)
+}
+
+// DefaultTLSRouter is a router that supports adding certificates manually
+// by providing the certificate and key for a given cname
+type DefaultTLSRouter interface {
+	TLSRouter
+	AddCertificate(ctx context.Context, app App, cname, certificate, key string) error
+}
+
+// CertmanagerTLSRouter is a router that supports issuing certificates automatically
+// for a given cname using cert-manager issuer
+type CertmanagerTLSRouter interface {
+	TLSRouter
+	IssueCertificate(ctx context.Context, app App, cname, issuer string) error
 }
 
 type BackendStatus string

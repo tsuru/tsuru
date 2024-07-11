@@ -26,8 +26,9 @@ import (
 const routerType = "api"
 
 var (
-	_ router.Router    = &apiRouter{}
-	_ router.TLSRouter = &apiRouterWithTLSSupport{}
+	_ router.Router               = &apiRouter{}
+	_ router.DefaultTLSRouter     = &apiRouterWithTLSSupport{}
+	_ router.CertmanagerTLSRouter = &apiRouterWithCertManagerSupport{}
 )
 
 type apiRouter struct {
@@ -42,6 +43,8 @@ type apiRouter struct {
 }
 
 type apiRouterWithTLSSupport struct{ *apiRouter }
+
+type apiRouterWithCertManagerSupport struct{ *apiRouter }
 
 type routesReq struct {
 	Prefix    string            `json:"prefix"`
@@ -66,6 +69,10 @@ type cnamesResp struct {
 type certData struct {
 	Certificate string `json:"certificate"`
 	Key         string `json:"key"`
+}
+
+type certManagerData struct {
+	Issuer string `json:"issuer"`
 }
 
 type backendResp struct {
@@ -271,6 +278,52 @@ func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router
 		return "", err
 	}
 	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, nil)
+	switch code {
+	case http.StatusNotFound:
+		return "", router.ErrCertificateNotFound
+	case http.StatusOK:
+		var cert certData
+		errJSON := json.Unmarshal(data, &cert)
+		if errJSON != nil {
+			return "", errJSON
+		}
+		return cert.Certificate, nil
+	}
+	return "", err
+}
+
+func (r *apiRouterWithCertManagerSupport) IssueCertificate(ctx context.Context, app router.App, cname, issuer string) error {
+	cert := certManagerData{Issuer: issuer}
+	b, err := json.Marshal(&cert)
+	if err != nil {
+		return err
+	}
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	_, _, err = r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/cert-manager/%s", app.GetName(), cname), headers, bytes.NewReader(b))
+	return err
+}
+
+func (r *apiRouterWithCertManagerSupport) RemoveCertificate(ctx context.Context, app router.App, cname string) error {
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/cert-manager/%s", app.GetName(), cname), headers, nil)
+	if code == http.StatusNotFound {
+		return router.ErrCertificateNotFound
+	}
+	return err
+}
+
+func (r *apiRouterWithCertManagerSupport) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return "", err
+	}
+	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/cert-manager/%s", app.GetName(), cname), headers, nil)
 	switch code {
 	case http.StatusNotFound:
 		return "", router.ErrCertificateNotFound
