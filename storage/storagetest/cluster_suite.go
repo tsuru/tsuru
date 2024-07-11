@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
+	clientcmdAPI "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type ClusterSuite struct {
@@ -26,6 +27,36 @@ func (s *ClusterSuite) TestUpsertNewCluster(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cl.Name, check.Equals, cluster.Name)
 	c.Assert(cl.Addresses, check.DeepEquals, cluster.Addresses)
+}
+
+func (s *ClusterSuite) TestUpsertNewClusterWithKubeConfig(c *check.C) {
+	cluster := provision.Cluster{
+		Name:      "clustername",
+		Addresses: []string{"1.2.3.4", "5.6.7.8"},
+		KubeConfig: &provision.KubeConfig{
+			Cluster: clientcmdAPI.Cluster{
+				Server: "https://1.2.3.4",
+			},
+			AuthInfo: clientcmdAPI.AuthInfo{
+				ClientCertificateData: []byte("cert"),
+				Exec: &clientcmdAPI.ExecConfig{
+					Command: "cmd",
+					Args:    []string{"arg1", "arg2"},
+				},
+			},
+		},
+	}
+	err := s.ClusterStorage.Upsert(context.TODO(), cluster)
+	c.Assert(err, check.IsNil)
+
+	cl, err := s.ClusterStorage.FindByName(context.TODO(), cluster.Name)
+	c.Assert(err, check.IsNil)
+
+	c.Assert(cl.Name, check.Equals, cluster.Name)
+	c.Assert(cl.KubeConfig.Cluster.Server, check.Equals, "https://1.2.3.4")
+	c.Assert(cl.KubeConfig.AuthInfo.ClientCertificateData, check.DeepEquals, []byte("cert"))
+	c.Assert(cl.KubeConfig.AuthInfo.Exec.Command, check.Equals, "cmd")
+	c.Assert(cl.KubeConfig.AuthInfo.Exec.Args, check.DeepEquals, []string{"arg1", "arg2"})
 }
 
 func (s *ClusterSuite) TestUpsertNewDefaultCluster(c *check.C) {

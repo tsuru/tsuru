@@ -7,13 +7,19 @@ package storagev2
 import (
 	"context"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsoncodec"
+	"go.mongodb.org/mongo-driver/bson/bsonrw"
 	"go.mongodb.org/mongo-driver/mongo"
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -26,6 +32,25 @@ var (
 	client          atomic.Pointer[mongo.Client]
 	databaseNamePtr atomic.Pointer[string]
 )
+
+func init() {
+	var mapRuntimeObject map[string]runtime.Object
+	var runtimeObject runtime.Object
+
+	var ignoreEncode bsoncodec.ValueEncoderFunc = func(ec bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
+		return nil
+	}
+
+	var ignoreDecode bsoncodec.ValueDecoderFunc = func(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val reflect.Value) error {
+		vr.Skip()
+		return nil
+	}
+
+	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreEncode)
+	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreEncode)
+	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreDecode)
+	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreDecode)
+}
 
 func Reset() {
 	client.Store(nil)
