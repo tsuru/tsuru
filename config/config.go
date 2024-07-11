@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ConvertEntries(initial interface{}) interface{} {
@@ -37,6 +38,18 @@ func UnconvertEntries(initial interface{}) interface{} {
 			initialType[i] = UnconvertEntries(initialType[i])
 		}
 		return initialType
+	case primitive.A:
+		output := make([]interface{}, len(initialType))
+		for k, v := range initialType {
+			output[k] = UnconvertEntries(v)
+		}
+		return output
+	case primitive.M:
+		output := make(map[interface{}]interface{}, len(initialType))
+		for k, v := range initialType {
+			output[k] = UnconvertEntries(v)
+		}
+		return output
 	case map[string]interface{}:
 		output := make(map[interface{}]interface{}, len(initialType))
 		for k, v := range initialType {

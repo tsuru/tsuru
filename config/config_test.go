@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
 
@@ -39,6 +40,45 @@ func (s *S) TestConvertEntries(c *check.C) {
 	}
 	for _, tt := range tests {
 		c.Assert(ConvertEntries(tt.input), check.DeepEquals, tt.expected)
+	}
+}
+
+func (s *S) TestUnconvertEntries(c *check.C) {
+	tests := []struct {
+		input    interface{}
+		expected interface{}
+	}{
+		{
+			input: map[string]interface{}{
+				"headers": primitive.A{
+					"test1=a",
+					"test2=b",
+				},
+			},
+			expected: map[interface{}]interface{}{
+				"headers": []interface{}{
+					"test1=a",
+					"test2=b",
+				},
+			},
+		},
+		{
+			input: map[string]interface{}{
+				"headers": primitive.M{
+					"test1": "a",
+					"test2": "b",
+				},
+			},
+			expected: map[interface{}]interface{}{
+				"headers": map[interface{}]interface{}{
+					"test1": "a",
+					"test2": "b",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		c.Assert(UnconvertEntries(tt.input), check.DeepEquals, tt.expected)
 	}
 }
 
