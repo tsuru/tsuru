@@ -43,3 +43,7 @@ func JobsCollection() (*mongo.Collection, error) {
 func TokensCollection() (*mongo.Collection, error) {
 	return Collection("tokens")
 }
+
+func PasswordTokensCollection() (*mongo.Collection, error) {
+	return Collection("password_tokens")
+}

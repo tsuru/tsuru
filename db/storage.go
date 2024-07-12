@@ -105,10 +105,6 @@ func (s *Storage) Users() *storage.Collection {
 	return c
 }
 
-func (s *Storage) PasswordTokens() *storage.Collection {
-	return s.Collection("password_tokens")
-}
-
 func IsCollectionExistsError(err error) bool {
 	if err == nil {
 		return false

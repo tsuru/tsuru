@@ -80,15 +80,6 @@ func (s *S) TestUsers(c *check.C) {
 	c.Assert(users, HasUniqueIndex, []string{"email"})
 }
 
-func (s *S) TestPasswordTokens(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	tokens := strg.PasswordTokens()
-	tokensc := strg.Collection("password_tokens")
-	c.Assert(tokens, check.DeepEquals, tokensc)
-}
-
 func (s *S) TestApps(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)

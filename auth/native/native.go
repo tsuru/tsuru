@@ -8,10 +8,11 @@ import (
 	"context"
 
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -99,7 +100,7 @@ func (s NativeScheme) ChangePassword(ctx context.Context, token auth.Token, oldP
 }
 
 func (s NativeScheme) StartPasswordReset(ctx context.Context, user *auth.User) error {
-	passToken, err := createPasswordToken(user)
+	passToken, err := createPasswordToken(ctx, user)
 	if err != nil {
 		return err
 	}
@@ -114,12 +115,11 @@ func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetT
 	if resetToken == "" {
 		return auth.ErrInvalidToken
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.PasswordTokensCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	passToken, err := getPasswordToken(resetToken)
+	passToken, err := getPasswordToken(ctx, resetToken)
 	if err != nil {
 		return err
 	}
@@ -130,8 +130,11 @@ func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetT
 	user.Password = password
 	hashPassword(user)
 	go sendNewPassword(user, password)
-	passToken.Used = true
-	conn.PasswordTokens().UpdateId(passToken.Token, passToken)
+
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": passToken.Token}, mongoBSON.M{"$set": mongoBSON.M{"used": true}})
+	if err != nil {
+		return err
+	}
 	return user.Update()
 }
 

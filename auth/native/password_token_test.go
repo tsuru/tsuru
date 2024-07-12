@@ -8,19 +8,23 @@ import (
 	"context"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCreatePasswordToken(c *check.C) {
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
 	u := auth.User{Email: "pure@alanis.com"}
-	t, err := createPasswordToken(&u)
+	t, err := createPasswordToken(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.UserEmail, check.Equals, u.Email)
 	c.Assert(t.Used, check.Equals, false)
 	var dbToken passwordToken
-	err = s.conn.PasswordTokens().Find(bson.M{"_id": t.Token}).One(&dbToken)
+	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"_id": t.Token}).Decode(&dbToken)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbToken.Token, check.Equals, t.Token)
 	c.Assert(dbToken.UserEmail, check.Equals, t.UserEmail)
@@ -36,7 +40,7 @@ func (s *S) TestCreatePasswordTokenErrors(c *check.C) {
 		{&auth.User{}, "User email is empty"},
 	}
 	for _, t := range tests {
-		token, err := createPasswordToken(t.input)
+		token, err := createPasswordToken(context.TODO(), t.input)
 		c.Check(token, check.IsNil)
 		c.Check(err, check.NotNil)
 		c.Check(err.Error(), check.Equals, t.want)
@@ -48,7 +52,7 @@ func (s *S) TestPasswordTokenUser(c *check.C) {
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	t, err := createPasswordToken(&u)
+	t, err := createPasswordToken(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	u2, err := t.user()
 	c.Assert(err, check.IsNil)
@@ -57,40 +61,46 @@ func (s *S) TestPasswordTokenUser(c *check.C) {
 
 func (s *S) TestGetPasswordToken(c *check.C) {
 	u := auth.User{Email: "porcelain@opeth.com"}
-	t, err := createPasswordToken(&u)
+	t, err := createPasswordToken(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	t2, err := getPasswordToken(t.Token)
+	t2, err := getPasswordToken(context.TODO(), t.Token)
 	t2.Creation = t.Creation
 	c.Assert(err, check.IsNil)
 	c.Assert(t2, check.DeepEquals, t)
 }
 
 func (s *S) TestGetPasswordTokenUnknown(c *check.C) {
-	t, err := getPasswordToken("what??")
+	t, err := getPasswordToken(context.TODO(), "what??")
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetPasswordUsedToken(c *check.C) {
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
 	u := auth.User{Email: "porcelain@opeth.com"}
-	t, err := createPasswordToken(&u)
+	t, err := createPasswordToken(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	t.Used = true
-	err = s.conn.PasswordTokens().UpdateId(t.Token, t)
+	_, err = passwordTokensCollection.ReplaceOne(context.TODO(), mongoBSON.M{"_id": t.Token}, t)
 	c.Assert(err, check.IsNil)
-	t2, err := getPasswordToken(t.Token)
+	t2, err := getPasswordToken(context.TODO(), t.Token)
 	c.Assert(t2, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestPasswordTokensAreValidFor24Hours(c *check.C) {
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
 	u := auth.User{Email: "porcelain@opeth.com"}
-	t, err := createPasswordToken(&u)
+	t, err := createPasswordToken(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	t.Creation = time.Now().Add(-24 * time.Hour)
-	err = s.conn.PasswordTokens().UpdateId(t.Token, t)
+	_, err = passwordTokensCollection.ReplaceOne(context.TODO(), mongoBSON.M{"_id": t.Token}, t)
 	c.Assert(err, check.IsNil)
-	t2, err := getPasswordToken(t.Token)
+	t2, err := getPasswordToken(context.TODO(), t.Token)
 	c.Assert(t2, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Invalid token")

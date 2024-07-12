@@ -76,6 +76,8 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	s.testServer = RunServer(true)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
@@ -823,15 +825,18 @@ func (s *AuthSuite) TestChangePasswordInvalidPasswords(c *check.C) {
 }
 
 func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
 	defer s.server.Reset()
 	oldPassword := s.user.Password
 	url := fmt.Sprintf("/users/%s/password?:email=%s", s.user.Email, s.user.Email)
 	request, _ := http.NewRequest(http.MethodPost, url, nil)
 	recorder := httptest.NewRecorder()
-	err := resetPassword(recorder, request)
+	err = resetPassword(recorder, request)
 	c.Assert(err, check.IsNil)
 	var m map[string]interface{}
-	err = s.conn.PasswordTokens().Find(bson.M{"useremail": s.user.Email}).One(&m)
+	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": s.user.Email}).Decode(&m)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(time.Second, func() bool {
 		s.server.RLock()
@@ -876,14 +881,17 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *check.C) {
 }
 
 func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
 	user := auth.User{Email: "uns@alanis.com", Password: "145678"}
-	err := user.Create(context.TODO())
+	err = user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	oldPassword := user.Password
 	err = nativeScheme.StartPasswordReset(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	var t map[string]interface{}
-	err = s.conn.PasswordTokens().Find(bson.M{"useremail": user.Email}).One(&t)
+	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": user.Email}).Decode(&t)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/users/%s/password?:email=%s&token=%s", user.Email, user.Email, t["_id"])
 	request, _ := http.NewRequest(http.MethodPost, url, nil)

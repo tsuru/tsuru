@@ -5,13 +5,14 @@
 package native
 
 import (
+	"context"
 	"crypto"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 type passwordToken struct {
@@ -21,7 +22,7 @@ type passwordToken struct {
 	Used      bool
 }
 
-func createPasswordToken(u *auth.User) (*passwordToken, error) {
+func createPasswordToken(ctx context.Context, u *auth.User) (*passwordToken, error) {
 	if u == nil {
 		return nil, errors.New("User is nil")
 	}
@@ -33,12 +34,12 @@ func createPasswordToken(u *auth.User) (*passwordToken, error) {
 		UserEmail: u.Email,
 		Creation:  time.Now(),
 	}
-	conn, err := db.Conn()
+
+	collection, err := storagev2.PasswordTokensCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	err = conn.PasswordTokens().Insert(t)
+	_, err = collection.InsertOne(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -49,14 +50,13 @@ func (t *passwordToken) user() (*auth.User, error) {
 	return auth.GetUserByEmail(t.UserEmail)
 }
 
-func getPasswordToken(token string) (*passwordToken, error) {
-	conn, err := db.Conn()
+func getPasswordToken(ctx context.Context, token string) (*passwordToken, error) {
+	collection, err := storagev2.PasswordTokensCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var t passwordToken
-	err = conn.PasswordTokens().Find(bson.M{"_id": token, "used": false}).One(&t)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": token, "used": mongoBSON.M{"$ne": true}}).Decode(&t)
 	if err != nil {
 		return nil, auth.ErrInvalidToken
 	}

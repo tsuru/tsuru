@@ -23,7 +23,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn   *db.Storage
 	user   *auth.User
 	team   *authTypes.Team
 	server *authtest.SMTPServer
@@ -51,7 +50,6 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	s.conn, _ = db.Conn()
 	s.user = &auth.User{Email: "timeredbull@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
@@ -61,9 +59,8 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.conn.Users().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
-	s.conn.Close()
 	cost = 0
 	tokenExpire = 0
 }
