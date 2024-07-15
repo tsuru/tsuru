@@ -63,3 +63,7 @@ func TeamsCollection() (*mongo.Collection, error) {
 func PlansCollection() (*mongo.Collection, error) {
 	return Collection("plans")
 }
+
+func WebhookCollection() (*mongo.Collection, error) {
+	return Collection("webhook")
+}

@@ -38,19 +38,19 @@ type Webhook struct {
 }
 
 type WebhookService interface {
-	Notify(evtID string)
-	Create(Webhook) error
-	Update(Webhook) error
-	Delete(string) error
+	Notify(ctx context.Context, evtID string)
+	Create(context.Context, Webhook) error
+	Update(context.Context, Webhook) error
+	Delete(context.Context, string) error
 	Find(context.Context, string) (Webhook, error)
 	List(context.Context, []string) ([]Webhook, error)
 }
 
 type WebhookStorage interface {
-	Insert(Webhook) error
-	Update(Webhook) error
+	Insert(context.Context, Webhook) error
+	Update(context.Context, Webhook) error
 	FindAllByTeams(context.Context, []string) ([]Webhook, error)
 	FindByName(context.Context, string) (*Webhook, error)
 	FindByEvent(ctx context.Context, f WebhookEventFilter, isSuccess bool) ([]Webhook, error)
-	Delete(string) error
+	Delete(context.Context, string) error
 }

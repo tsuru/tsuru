@@ -117,7 +117,7 @@ func (s *webhookService) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (s *webhookService) Notify(evtID string) {
+func (s *webhookService) Notify(ctx context.Context, evtID string) {
 	select {
 	case s.evtCh <- evtID:
 	case <-s.quitCh:
@@ -267,7 +267,7 @@ func validateURLs(w eventTypes.Webhook) error {
 	return nil
 }
 
-func (s *webhookService) Create(w eventTypes.Webhook) error {
+func (s *webhookService) Create(ctx context.Context, w eventTypes.Webhook) error {
 	if w.Name == "" {
 		return &tsuruErrors.ValidationError{Message: "webhook name must not be empty"}
 	}
@@ -280,19 +280,19 @@ func (s *webhookService) Create(w eventTypes.Webhook) error {
 	if err != nil {
 		return err
 	}
-	return s.storage.Insert(w)
+	return s.storage.Insert(ctx, w)
 }
 
-func (s *webhookService) Update(w eventTypes.Webhook) error {
+func (s *webhookService) Update(ctx context.Context, w eventTypes.Webhook) error {
 	err := validateURLs(w)
 	if err != nil {
 		return err
 	}
-	return s.storage.Update(w)
+	return s.storage.Update(ctx, w)
 }
 
-func (s *webhookService) Delete(name string) error {
-	return s.storage.Delete(name)
+func (s *webhookService) Delete(ctx context.Context, name string) error {
+	return s.storage.Delete(ctx, name)
 }
 
 func (s *webhookService) Find(ctx context.Context, name string) (eventTypes.Webhook, error) {

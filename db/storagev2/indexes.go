@@ -167,6 +167,16 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "webhook",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {

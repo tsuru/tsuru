@@ -8,59 +8,52 @@ import (
 	"context"
 	"strings"
 
-	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/event"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-const webhookCollectionName = "webhook"
-
 type webhookStorage struct{}
-
-func webhookCollection(conn *db.Storage) *dbStorage.Collection {
-	coll := conn.Collection(webhookCollectionName)
-	coll.EnsureIndex(mgo.Index{
-		Key:    []string{"name"},
-		Unique: true,
-	})
-	return coll
-}
 
 var _ event.WebhookStorage = &webhookStorage{}
 
-func (s *webhookStorage) Insert(w event.Webhook) error {
-	conn, err := db.Conn()
+func (s *webhookStorage) Insert(ctx context.Context, w event.Webhook) error {
+	collection, err := storagev2.WebhookCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = webhookCollection(conn).Insert(w)
-	if err != nil && mgo.IsDup(err) {
+	_, err = collection.InsertOne(ctx, w)
+	if err != nil && mongo.IsDuplicateKeyError(err) {
 		err = event.ErrWebhookAlreadyExists
 	}
 	return err
 }
 
-func (s *webhookStorage) Update(w event.Webhook) error {
-	conn, err := db.Conn()
+func (s *webhookStorage) Update(ctx context.Context, w event.Webhook) error {
+	collection, err := storagev2.WebhookCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = webhookCollection(conn).Update(bson.M{"name": w.Name}, w)
-	if err == mgo.ErrNotFound {
-		err = event.ErrWebhookNotFound
+	result, err := collection.ReplaceOne(ctx, mongoBSON.M{"name": w.Name}, w)
+	if err == mongo.ErrNoDocuments {
+		return event.ErrWebhookNotFound
 	}
+
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return event.ErrWebhookNotFound
+	}
+
 	return err
 }
 
 func (s *webhookStorage) findQuery(ctx context.Context, query mongoBSON.M) ([]event.Webhook, error) {
-	collection, err := storagev2.Collection(webhookCollectionName)
+	collection, err := storagev2.WebhookCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +103,7 @@ func (s *webhookStorage) FindByEvent(ctx context.Context, f event.WebhookEventFi
 }
 
 func (s *webhookStorage) FindByName(ctx context.Context, name string) (*event.Webhook, error) {
-	collection, err := storagev2.Collection(webhookCollectionName)
+	collection, err := storagev2.WebhookCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -128,15 +121,22 @@ func (s *webhookStorage) FindByName(ctx context.Context, name string) (*event.We
 	return &result, nil
 }
 
-func (s *webhookStorage) Delete(name string) error {
-	conn, err := db.Conn()
+func (s *webhookStorage) Delete(ctx context.Context, name string) error {
+	collection, err := storagev2.WebhookCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = webhookCollection(conn).Remove(bson.M{"name": name})
-	if err == mgo.ErrNotFound {
-		err = event.ErrWebhookNotFound
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"name": name})
+	if err == mongo.ErrNoDocuments {
+		return event.ErrWebhookNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return event.ErrWebhookNotFound
+	}
+
+	return nil
 }

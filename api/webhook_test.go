@@ -33,9 +33,9 @@ func (s *S) TestWebhookList(c *check.C) {
 		Name:      "wh2",
 		URL:       "http://me",
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Webhook.Create(webhook2)
+	err = servicemanager.Webhook.Create(context.TODO(), webhook2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.6/events/webhooks", nil)
 	c.Assert(err, check.IsNil)
@@ -101,9 +101,9 @@ func (s *S) TestWebhookListByTeam(c *check.C) {
 		Name:      "wh2",
 		URL:       "http://me",
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Webhook.Create(webhook2)
+	err = servicemanager.Webhook.Create(context.TODO(), webhook2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.6/events/webhooks", nil)
 	c.Assert(err, check.IsNil)
@@ -206,7 +206,7 @@ func (s *S) TestWebhookCreateConflict(c *check.C) {
 			KindNames: []string{"app.deploy"},
 		},
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
 	bodyData, err := form.EncodeToString(webhook1)
 	c.Assert(err, check.IsNil)
@@ -247,7 +247,7 @@ func (s *S) TestWebhookUpdate(c *check.C) {
 			KindNames: []string{"app.deploy"},
 		},
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
 	webhook1.Name = "---ignored---"
 	webhook1.URL += "/xyz"
@@ -305,7 +305,7 @@ func (s *S) TestWebhookUpdateInvalid(c *check.C) {
 			KindNames: []string{"app.deploy"},
 		},
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
 	webhook1.URL = ""
 	bodyData, err := form.EncodeToString(webhook1)
@@ -328,7 +328,7 @@ func (s *S) TestWebhookDelete(c *check.C) {
 			KindNames: []string{"app.deploy"},
 		},
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/1.6/events/webhooks/wh1", nil)
 	c.Assert(err, check.IsNil)
@@ -360,7 +360,7 @@ func (s *S) TestWebhookInfo(c *check.C) {
 			KindNames: []string{"app.deploy"},
 		},
 	}
-	err := servicemanager.Webhook.Create(webhook1)
+	err := servicemanager.Webhook.Create(context.TODO(), webhook1)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.6/events/webhooks/wh1", nil)
 	c.Assert(err, check.IsNil)
