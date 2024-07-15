@@ -218,11 +218,13 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	}
 	resp, err := r.client.Do(req)
 	if r.debug {
-		bodyData, _ := io.ReadAll(body)
-		if err == nil {
-			code = resp.StatusCode
+		if body != nil {
+			bodyData, _ := io.ReadAll(body)
+			if err == nil {
+				code = resp.StatusCode
+			}
+			log.Debugf("%s %s %s %s: %d", r.routerName, method, url, string(bodyData), code)
 		}
-		log.Debugf("%s %s %s %s: %d", r.routerName, method, url, string(bodyData), code)
 	}
 	if err != nil {
 		return nil, 0, err

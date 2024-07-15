@@ -2,11 +2,15 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-SHELL = /bin/bash -o pipefail
-BUILD_DIR = build
-TSR_BIN = $(BUILD_DIR)/tsurud
-TSR_SRC = ./cmd/tsurud
-K8S_VERSION=v1.20.0
+SHELL       = /bin/bash -o pipefail
+BUILD_DIR   = build
+TSR_BIN     = $(BUILD_DIR)/tsurud
+TSR_SRC     = ./cmd/tsurud
+K8S_VERSION = v1.26.15
+
+# Docker binary. If you are using podman, you can change this to podman when
+# running make commands. Example: make local DOCKER=podman
+DOCKER ?= docker
 
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
@@ -139,13 +143,19 @@ generate-test-certs:
 local-mac:
 	minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION)
 	minikube addons enable registry
-	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
+	$(DOCKER) run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
 	@make local-api
 
-local-mac-m1:
-	minikube start --driver=docker --alsologtostderr --kubernetes-version=$(K8S_VERSION)
-	minikube addons enable registry
-	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
+# For Apple Silicon (M series) Macs, you can use the qemu2 driver with minikube.
+# It is recommended to use the socket_vmnet network to avoid issues with the default bridge network.
+# Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
+local-mac-mseries:
+	./misc/setup-docker-compose.sh && source .env
+	minikube start \
+		--insecure-registry="$(TSURU_HOST_IP):5000" \
+		--driver=qemu2 \
+		--network=socket_vmnet \
+		--kubernetes-version=$(K8S_VERSION)
 	@make local-api
 
 local:
@@ -153,9 +163,9 @@ local:
 	@make local-api
 
 local-api:
-	docker-compose up -d
+	$(DOCKER) compose up -d
 	go build -o $(TSR_BIN) $(TSR_SRC)
-	$(TSR_BIN) api -c ./etc/tsuru-local.conf
+	$(TSR_BIN) api -c ./etc/tsurud.conf
 
 .PHONY: install-swagger
 install-swagger:
