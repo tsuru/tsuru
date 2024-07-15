@@ -105,7 +105,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	usersWithRole, err := auth.ListUsersWithRole(roleName)
+	usersWithRole, err := auth.ListUsersWithRole(ctx, roleName)
 	if err != nil {
 		return err
 	}
@@ -346,7 +346,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	defer func() { evt.Done(ctx, err) }()
 	email := InputValue(r, "email")
 	contextValue := InputValue(r, "context")
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer func() { evt.Done(ctx, err) }()
 	email := r.URL.Query().Get(":email")
 	contextValue := r.URL.Query().Get("context")
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
@@ -410,7 +410,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 
-	return user.RemoveRole(roleName, contextValue)
+	return user.RemoveRole(ctx, roleName, contextValue)
 }
 
 type permissionSchemeData struct {
@@ -658,7 +658,7 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxUser:
-		if _, err := auth.GetUserByEmail(contextValue); err != nil {
+		if _, err := auth.GetUserByEmail(ctx, contextValue); err != nil {
 			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxPool:

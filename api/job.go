@@ -334,7 +334,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
-	user, err := t.User()
+	user, err := t.User(ctx)
 	if err != nil {
 		return err
 	}
@@ -446,7 +446,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canCreate {
 		return permission.ErrUnauthorized
 	}
-	u, err := t.User()
+	u, err := t.User(ctx)
 	if err != nil {
 		return err
 	}

@@ -108,7 +108,7 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	config.Set("docker:router", "fake")
 	servicemock.SetMockService(&s.mockService)

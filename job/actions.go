@@ -232,7 +232,7 @@ var reserveUserCronjob = action.Action{
 		if !found {
 			return
 		}
-		if user, err := auth.GetUserByEmail(email); err == nil {
+		if user, err := auth.GetUserByEmail(ctx.Context, email); err == nil {
 			servicemanager.UserQuota.Inc(ctx.Context, user, -1)
 		}
 	},

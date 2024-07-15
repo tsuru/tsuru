@@ -14,16 +14,16 @@ func (s *S) TestAPIAuth(c *check.C) {
 	user := User{Email: "para@xmen.com", APIKey: "Quenço"}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	APIKey, err := user.RegenerateAPIKey()
+	APIKey, err := user.RegenerateAPIKey(context.TODO())
 	c.Assert(err, check.IsNil)
-	t, err := APIAuth("bearer " + APIKey)
+	t, err := APIAuth(context.TODO(), "bearer "+APIKey)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Token, check.Equals, APIKey)
 	c.Assert(t.UserEmail, check.Equals, user.Email)
 
 	c.Assert(user.APIKeyUsageCounter, check.Equals, int64(0))
 
-	err = user.Reload()
+	err = user.reload(context.TODO())
 	c.Assert(err, check.IsNil)
 
 	c.Assert(user.APIKeyLastAccess.IsZero(), check.Equals, false)
@@ -32,7 +32,7 @@ func (s *S) TestAPIAuth(c *check.C) {
 }
 
 func (s *S) TestAPIAuthNotFound(c *check.C) {
-	t, err := APIAuth("bearer invalid")
+	t, err := APIAuth(context.TODO(), "bearer invalid")
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, ErrInvalidToken)
 }

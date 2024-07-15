@@ -43,7 +43,7 @@ func (s *S) TestNativeLogin(c *check.C) {
 	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Not(check.Equals), "")
-	u, err := token.User()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "timeredbull@globo.com")
 }
@@ -104,7 +104,7 @@ func (s *S) TestNativeCreate(c *check.C) {
 	retUser, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	c.Assert(retUser, check.Equals, user)
-	dbUser, err := auth.GetUserByEmail(user.Email)
+	dbUser, err := auth.GetUserByEmail(context.TODO(), user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
 	c.Assert(dbUser.Password, check.Not(check.Equals), "123456")
@@ -174,7 +174,7 @@ func (s *S) TestResetPassword(c *check.C) {
 	u := auth.User{Email: "blues@rush.com"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	p := u.Password
 	err = scheme.StartPasswordReset(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
@@ -193,7 +193,7 @@ func (s *S) TestResetPassword(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = scheme.ResetPassword(context.TODO(), &u, token.Token)
 	c.Assert(err, check.IsNil)
-	u2, err := auth.GetUserByEmail(u.Email)
+	u2, err := auth.GetUserByEmail(context.TODO(), u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u2.Password, check.Not(check.Equals), p)
 	var m authtest.Mail
@@ -230,7 +230,7 @@ func (s *S) TestResetPasswordThirdToken(c *check.C) {
 	u := auth.User{Email: "profecia@raul.com"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	t, err := createPasswordToken(ctx, &u)
 	c.Assert(err, check.IsNil)
 
@@ -258,7 +258,7 @@ func (s *S) TestNativeRemove(c *check.C) {
 	params["password"] = "123456"
 	token, err := scheme.Login(ctx, params)
 	c.Assert(err, check.IsNil)
-	u, err := auth.ConvertNewUser(token.User())
+	u, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(ctx, u)
 	c.Assert(err, check.IsNil)
@@ -276,6 +276,6 @@ func (s *S) TestNativeRemove(c *check.C) {
 	err = cursor.All(ctx, &tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
-	_, err = auth.GetUserByEmail("timeredbull@globo.com")
+	_, err = auth.GetUserByEmail(context.TODO(), "timeredbull@globo.com")
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }

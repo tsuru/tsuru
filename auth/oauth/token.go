@@ -30,8 +30,8 @@ func (t *tokenWrapper) GetValue() string {
 	return t.AccessToken
 }
 
-func (t *tokenWrapper) User() (*authTypes.User, error) {
-	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
+func (t *tokenWrapper) User(ctx context.Context) (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(ctx, t.UserEmail))
 }
 
 func (t *tokenWrapper) GetUserName() string {

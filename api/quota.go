@@ -36,7 +36,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err == authTypes.ErrUserNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
@@ -68,7 +68,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err == authTypes.ErrUserNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,

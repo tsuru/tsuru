@@ -119,6 +119,19 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "users",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "email", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+			{
+				Keys: mongoBSON.D{{Key: "apikey", Value: 1}},
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {

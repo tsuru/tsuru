@@ -92,7 +92,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		Scheme:  permission.PermServiceRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(stdContext.TODO()))
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	s.provisioner = provisiontest.ProvisionerInstance

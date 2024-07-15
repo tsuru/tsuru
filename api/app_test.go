@@ -138,7 +138,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(ctx))
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -174,7 +174,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(context.TODO()))
 	app1 := app.App{Name: "app1", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -710,7 +710,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(context.TODO()))
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -744,7 +744,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermissionAppInf
 		Scheme:  permission.PermAppReadInfo,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(context.TODO()))
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -964,7 +964,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	recorder := httptest.NewRecorder()
 	role, err := permission.NewRole(ctx, "test", "team", "")
 	c.Assert(err, check.IsNil)
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = user.AddRole(ctx, role.Name, "team")
 	c.Assert(err, check.IsNil)
@@ -1541,11 +1541,13 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, token.GetUserName())
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	u, _ := token.User()
-	conn, err := db.Conn()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Users().Update(bson.M{"email": u.Email}, bson.M{"$set": bson.M{"quota": quota.Quota{Limit: 1, InUse: 1}}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": u.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota": quota.Quota{Limit: 1, InUse: 1}}})
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader("name=someapp&platform=zend")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -1667,7 +1669,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
+	u, _ := token.User(context.TODO())
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("someapp"),
 		Owner:  u.Email,
@@ -2392,7 +2394,7 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(context.TODO(), &a, user)
 	c.Assert(err, check.IsNil)
@@ -2441,7 +2443,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(context.TODO(), &a, user)
 	c.Assert(err, check.IsNil)

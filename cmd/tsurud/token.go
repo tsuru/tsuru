@@ -35,7 +35,7 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 		return err
 	}
 	email := context.Args[0]
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err == nil {
 		err = addSuperRole(ctx, user)
 		if err != nil {

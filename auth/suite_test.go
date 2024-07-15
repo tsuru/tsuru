@@ -78,7 +78,7 @@ func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
-		err := s.user.Update()
+		err := s.user.Update(context.TODO())
 		c.Assert(err, check.IsNil)
 	}
 }

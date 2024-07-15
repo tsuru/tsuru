@@ -46,8 +46,8 @@ func createPasswordToken(ctx context.Context, u *auth.User) (*passwordToken, err
 	return &t, nil
 }
 
-func (t *passwordToken) user() (*auth.User, error) {
-	return auth.GetUserByEmail(t.UserEmail)
+func (t *passwordToken) user(ctx context.Context) (*auth.User, error) {
+	return auth.GetUserByEmail(ctx, t.UserEmail)
 }
 
 func getPasswordToken(ctx context.Context, token string) (*passwordToken, error) {

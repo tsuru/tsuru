@@ -94,17 +94,6 @@ func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.Collection("service_instances")
 }
 
-// Users returns the users collection from MongoDB.
-func (s *Storage) Users() *storage.Collection {
-	c := s.Collection("users")
-	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-	c.EnsureIndex(emailIndex)
-
-	apikeyIndex := mgo.Index{Key: []string{"apikey"}}
-	c.EnsureIndex(apikeyIndex)
-	return c
-}
-
 func IsCollectionExistsError(err error) bool {
 	if err == nil {
 		return false

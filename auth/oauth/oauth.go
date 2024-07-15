@@ -155,7 +155,7 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 	if user.Email == "" {
 		return nil, ErrEmptyUserEmail
 	}
-	dbUser, err := auth.GetUserByEmail(user.Email)
+	dbUser, err := auth.GetUserByEmail(ctx, user.Email)
 	if err != nil {
 		if err != authTypes.ErrUserNotFound {
 			return nil, err
@@ -171,7 +171,7 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 		providerGroups := set.FromSlice(user.Groups)
 		if !dbGroups.Equal(providerGroups) {
 			dbUser.Groups = user.Groups
-			err = dbUser.Update()
+			err = dbUser.Update(ctx)
 		}
 	}
 	if err != nil {
@@ -250,5 +250,5 @@ func (s *oAuthScheme) Remove(ctx context.Context, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return u.Delete()
+	return u.Delete(ctx)
 }

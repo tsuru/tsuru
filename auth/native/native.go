@@ -45,7 +45,7 @@ func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth
 	if !ok {
 		return nil, ErrMissingPasswordError
 	}
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 	if !validation.ValidateLength(user.Password, passwordMinLen, passwordMaxLen) {
 		return nil, ErrInvalidPassword
 	}
-	if _, err := auth.GetUserByEmail(user.Email); err == nil {
+	if _, err := auth.GetUserByEmail(ctx, user.Email); err == nil {
 		return nil, ErrEmailRegistered
 	}
 	if err := hashPassword(user); err != nil {
@@ -84,7 +84,7 @@ func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 }
 
 func (s NativeScheme) ChangePassword(ctx context.Context, token auth.Token, oldPassword string, newPassword string) error {
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(ctx))
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (s NativeScheme) ChangePassword(ctx context.Context, token auth.Token, oldP
 	}
 	user.Password = newPassword
 	hashPassword(user)
-	return user.Update()
+	return user.Update(ctx)
 }
 
 func (s NativeScheme) StartPasswordReset(ctx context.Context, user *auth.User) error {
@@ -135,7 +135,7 @@ func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetT
 	if err != nil {
 		return err
 	}
-	return user.Update()
+	return user.Update(ctx)
 }
 
 func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
@@ -143,7 +143,7 @@ func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return u.Delete()
+	return u.Delete(ctx)
 }
 
 func (s NativeScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {

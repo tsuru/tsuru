@@ -41,8 +41,9 @@ func (s *UserQuotaSuite) TestGetNotFound(c *check.C) {
 
 func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: quota.Quota{Limit: 5}}
-	s.UserStorage.Create(user)
-	err := s.UserQuotaStorage.SetLimit(context.TODO(), "example@example.com", 1)
+	err := s.UserStorage.Create(user)
+	c.Assert(err, check.IsNil)
+	err = s.UserQuotaStorage.SetLimit(context.TODO(), "example@example.com", 1)
 	c.Assert(err, check.IsNil)
 	quota, err := s.UserQuotaStorage.Get(context.TODO(), "example@example.com")
 	c.Assert(err, check.IsNil)

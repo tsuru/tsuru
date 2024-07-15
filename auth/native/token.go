@@ -50,8 +50,8 @@ func (t *Token) GetValue() string {
 	return t.Token
 }
 
-func (t *Token) User() (*authTypes.User, error) {
-	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
+func (t *Token) User(ctx context.Context) (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(ctx, t.UserEmail))
 }
 
 func (t *Token) GetUserName() string {

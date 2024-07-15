@@ -627,7 +627,7 @@ func (t fakeToken) GetValue() string {
 	return string(t)
 }
 
-func (t fakeToken) User() (*authTypes.User, error) {
+func (t fakeToken) User(ctx context.Context) (*authTypes.User, error) {
 	return &authTypes.User{}, nil
 }
 

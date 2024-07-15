@@ -220,7 +220,7 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *check.C) {
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
 	_, err = nativeScheme.Create(ctx, &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	_, err = createToken(ctx, &u, "123456")
 	c.Assert(err, check.IsNil)
 	var result Token
@@ -238,7 +238,7 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
 	u := auth.User{Email: "para@xmen.com", Password: "123456"}
 	_, err = nativeScheme.Create(ctx, &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	defer tokensCollection.DeleteMany(ctx, mongoBSON.M{"useremail": u.Email})
 	t1, err := newUserToken(&u)
 	c.Assert(err, check.IsNil)
@@ -275,7 +275,7 @@ func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *check.C) {
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
 	_, err = nativeScheme.Create(ctx, &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	cost = 0
 	tokenExpire = 0
 	_, err = createToken(ctx, &u, "123456")
@@ -295,7 +295,7 @@ func (s *S) TestCreateTokenShouldValidateThePassword(c *check.C) {
 	u := auth.User{Email: "me@gmail.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	_, err = createToken(ctx, &u, "123")
 	c.Assert(err, check.NotNil)
 }
@@ -386,14 +386,14 @@ func (s *S) TestDeleteToken(c *check.C) {
 }
 
 func (s *S) TestTokenGetUser(c *check.C) {
-	u, err := s.token.User()
+	u, err := s.token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, s.user.Email)
 }
 
 func (s *S) TestTokenGetUserUnknownEmail(c *check.C) {
 	t := Token{UserEmail: "something@something.com"}
-	u, err := t.User()
+	u, err := t.User(context.TODO())
 	c.Assert(u, check.IsNil)
 	c.Assert(err, check.NotNil)
 }

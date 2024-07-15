@@ -51,10 +51,10 @@ func (s *S) TestPasswordTokenUser(c *check.C) {
 	u := auth.User{Email: "need@who.com", Password: "123456"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	t, err := createPasswordToken(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	u2, err := t.user()
+	u2, err := t.user(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(*u2, check.DeepEquals, u)
 }

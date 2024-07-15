@@ -265,7 +265,7 @@ func migrateRoles() error {
 	if err != nil {
 		return err
 	}
-	users, err := auth.ListUsers()
+	users, err := auth.ListUsers(ctx)
 	if err != nil {
 		return err
 	}

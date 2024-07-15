@@ -39,7 +39,7 @@ func (t *Token) GetValue() string {
 	return t.Token
 }
 
-func (t *Token) User() (*authTypes.User, error) {
+func (t *Token) User(ctx context.Context) (*authTypes.User, error) {
 	return nil, errors.New("no token user")
 }
 

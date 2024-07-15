@@ -70,16 +70,6 @@ func (s *S) TestHealthCheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestUsers(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	users := strg.Users()
-	usersc := strg.Collection("users")
-	c.Assert(users, check.DeepEquals, usersc)
-	c.Assert(users, HasUniqueIndex, []string{"email"})
-}
-
 func (s *S) TestApps(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)

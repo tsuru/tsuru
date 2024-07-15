@@ -37,7 +37,7 @@ func (t *userToken) Engine() string {
 	return "user"
 }
 
-func (t *userToken) User() (*authTypes.User, error) {
+func (t *userToken) User(ctx context.Context) (*authTypes.User, error) {
 	return ConvertOldUser(t.user, nil)
 }
 func (t *userToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
@@ -115,7 +115,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	namedToken, ok := t.(authTypes.NamedToken)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
-	u, err := t.User()
+	u, err := t.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@tsuru-team-token", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
 	perms, err := t.Permissions(context.TODO())

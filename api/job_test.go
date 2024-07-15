@@ -1030,7 +1030,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := token.User()
+	u, _ := token.User(context.TODO())
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "jobProv"

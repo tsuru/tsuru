@@ -106,7 +106,7 @@ func (*jobService) RemoveJob(ctx context.Context, job *jobTypes.Job) error {
 
 	servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: job.TeamOwner}, -1)
 	var user *auth.User
-	if user, err = auth.GetUserByEmail(job.Owner); err == nil {
+	if user, err = auth.GetUserByEmail(ctx, job.Owner); err == nil {
 		servicemanager.UserQuota.Inc(ctx, user, -1)
 	}
 	return nil

@@ -63,7 +63,10 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &authTypes.Team{Name: "raul"}
-	err := s.conn.Users().Insert(s.user)
+
+	usersCollection, err := storagev2.UsersCollection()
+
+	_, err = usersCollection.InsertOne(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
 
 	servicemock.SetMockService(&s.mockService)
@@ -962,7 +965,11 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 
 func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	err := s.conn.Users().Insert(user)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.InsertOne(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test2"}
 	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
@@ -986,7 +993,11 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 
 func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	err := s.conn.Users().Insert(user)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.InsertOne(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test2"}
 	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
@@ -1014,7 +1025,11 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 
 func (s *InstanceSuite) TestRevokeTeamOwner(c *check.C) {
 	user := &auth.User{Email: "user@tsuru.io", Password: "12345"}
-	err := s.conn.Users().Insert(user)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.InsertOne(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team-one"}
 	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {

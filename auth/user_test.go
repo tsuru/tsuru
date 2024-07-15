@@ -9,13 +9,13 @@ import (
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -23,10 +23,11 @@ func (s *S) TestCreateUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	var result User
-	collection := s.conn.Users()
-	err = collection.Find(bson.M{"email": u.Email}).One(&result)
+	collection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"email": u.Email}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Email, check.Equals, u.Email)
 }
@@ -35,41 +36,30 @@ func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	err = u.Create(context.TODO())
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestCreateUserWhenMongoDbIsDown(c *check.C) {
-	oldURL, _ := config.Get("database:url")
-	config.Unset("database:url")
-	defer config.Set("database:url", oldURL)
-	config.Set("database:url", "invalid")
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create(context.TODO())
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Failed to connect to MongoDB \"invalid\" - no reachable servers.")
 }
 
 func (s *S) TestGetUserByEmail(c *check.C) {
 	u := User{Email: "wolmverine@xmen.com", Password: "123456"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	u2, err := GetUserByEmail(u.Email)
+	defer u.Delete(context.TODO())
+	u2, err := GetUserByEmail(context.TODO(), u.Email)
 	c.Assert(err, check.IsNil)
 	c.Check(u2.Email, check.Equals, u.Email)
 	c.Check(u2.Password, check.Equals, u.Password)
 }
 
 func (s *S) TestGetUserByEmailReturnsErrorWhenNoUserIsFound(c *check.C) {
-	u, err := GetUserByEmail("unknown@globo.com")
+	u, err := GetUserByEmail(context.TODO(), "unknown@globo.com")
 	c.Assert(u, check.IsNil)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestGetUserByEmailWithInvalidEmail(c *check.C) {
-	u, err := GetUserByEmail("unknown")
+	u, err := GetUserByEmail(context.TODO(), "unknown")
 	c.Assert(u, check.IsNil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.ValidationError)
@@ -81,11 +71,11 @@ func (s *S) TestUpdateUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	u.Password = "1234"
-	err = u.Update()
+	err = u.Update(context.TODO())
 	c.Assert(err, check.IsNil)
-	u2, err := GetUserByEmail("wolverine@xmen.com")
+	u2, err := GetUserByEmail(context.TODO(), "wolverine@xmen.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(u2.Password, check.Equals, "1234")
 }
@@ -94,9 +84,9 @@ func (s *S) TestDeleteUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = u.Delete()
+	err = u.Delete(context.TODO())
 	c.Assert(err, check.IsNil)
-	user, err := GetUserByEmail(u.Email)
+	user, err := GetUserByEmail(context.TODO(), u.Email)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 	c.Assert(user, check.IsNil)
 }
@@ -109,8 +99,8 @@ func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
 	}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	API_Token, err := u.ShowAPIKey()
+	defer u.Delete(context.TODO())
+	API_Token, err := u.ShowAPIKey(context.TODO())
 	c.Assert(API_Token, check.Equals, u.APIKey)
 	c.Assert(err, check.IsNil)
 }
@@ -119,14 +109,14 @@ func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *check.C) {
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	API_Token, err := u.ShowAPIKey()
+	defer u.Delete(context.TODO())
+	API_Token, err := u.ShowAPIKey(context.TODO())
 	c.Assert(API_Token, check.Equals, u.APIKey)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestListAllUsers(c *check.C) {
-	users, err := ListUsers()
+	users, err := ListUsers(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(users, check.HasLen, 1)
 }
@@ -171,7 +161,7 @@ func (s *S) TestUserAddRole(c *check.C) {
 	sort.Sort(roleInstanceList(expected))
 	sort.Sort(roleInstanceList(u.Roles))
 	c.Assert(u.Roles, check.DeepEquals, expected)
-	uDB, err := GetUserByEmail("me@tsuru.com")
+	uDB, err := GetUserByEmail(context.TODO(), "me@tsuru.com")
 	c.Assert(err, check.IsNil)
 	sort.Sort(roleInstanceList(uDB.Roles))
 	c.Assert(uDB.Roles, check.DeepEquals, expected)
@@ -189,9 +179,9 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = u.RemoveRole("r1", "c2")
+	err = u.RemoveRole(context.TODO(), "r1", "c2")
 	c.Assert(err, check.IsNil)
-	err = u.RemoveRole("r1", "c2")
+	err = u.RemoveRole(context.TODO(), "r1", "c2")
 	c.Assert(err, check.IsNil)
 	expected := []authTypes.RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
@@ -200,7 +190,7 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	sort.Sort(roleInstanceList(expected))
 	sort.Sort(roleInstanceList(u.Roles))
 	c.Assert(u.Roles, check.DeepEquals, expected)
-	uDB, err := GetUserByEmail("me@tsuru.com")
+	uDB, err := GetUserByEmail(context.TODO(), "me@tsuru.com")
 	c.Assert(err, check.IsNil)
 	sort.Sort(roleInstanceList(uDB.Roles))
 	c.Assert(uDB.Roles, check.DeepEquals, expected)
@@ -218,13 +208,13 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 	}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = RemoveRoleFromAllUsers("r1")
+	err = RemoveRoleFromAllUsers(context.TODO(), "r1")
 	c.Assert(err, check.IsNil)
 	expected := []authTypes.RoleInstance{
 		{Name: "r2", ContextValue: "x"},
 	}
 	sort.Sort(roleInstanceList(expected))
-	uDB, err := GetUserByEmail("me@tsuru.com")
+	uDB, err := GetUserByEmail(context.TODO(), "me@tsuru.com")
 	c.Assert(err, check.IsNil)
 	sort.Sort(roleInstanceList(u.Roles))
 	c.Assert(uDB.Roles, check.DeepEquals, expected)
@@ -344,7 +334,7 @@ func (s *S) TestAddRolesForEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = u1.AddRolesForEvent(context.TODO(), permTypes.RoleEventTeamCreate, "team1")
 	c.Assert(err, check.IsNil)
-	u, err := GetUserByEmail(u1.Email)
+	u, err := GetUserByEmail(context.TODO(), u1.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Roles, check.DeepEquals, []authTypes.RoleInstance{{Name: "r1", ContextValue: "team1"}})
 }

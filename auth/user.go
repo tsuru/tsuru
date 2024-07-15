@@ -15,7 +15,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
@@ -24,6 +24,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 type User struct {
@@ -40,14 +41,20 @@ type User struct {
 	APIKeyUsageCounter int64     `bson:"apikey_usage_counter"`
 }
 
-func listUsers(filter bson.M) ([]User, error) {
-	conn, err := db.Conn()
+func listUsers(ctx context.Context, filter mongoBSON.M) ([]User, error) {
+	if filter == nil {
+		filter = mongoBSON.M{}
+	}
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var users []User
-	err = conn.Users().Find(filter).All(&users)
+	cursor, err := usersCollection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &users)
 	if err != nil {
 		return nil, err
 	}
@@ -55,29 +62,28 @@ func listUsers(filter bson.M) ([]User, error) {
 }
 
 // ListUsers list all users registred in tsuru
-func ListUsers() ([]User, error) {
-	return listUsers(nil)
+func ListUsers(ctx context.Context) ([]User, error) {
+	return listUsers(ctx, nil)
 }
 
-func ListUsersWithRole(role string) ([]User, error) {
-	return listUsers(bson.M{"roles.name": role})
+func ListUsersWithRole(ctx context.Context, role string) ([]User, error) {
+	return listUsers(ctx, mongoBSON.M{"roles.name": role})
 }
 
-func ListUsersWithRolesAndContext(roles []string, context string) ([]User, error) {
-	return listUsers(bson.M{"roles": bson.M{"$elemMatch": bson.M{"contextvalue": context, "name": bson.M{"$in": roles}}}})
+func ListUsersWithRolesAndContext(ctx context.Context, roles []string, context string) ([]User, error) {
+	return listUsers(ctx, mongoBSON.M{"roles": mongoBSON.M{"$elemMatch": mongoBSON.M{"contextvalue": context, "name": mongoBSON.M{"$in": roles}}}})
 }
 
-func GetUserByEmail(email string) (*User, error) {
+func GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
 		return nil, &tsuruErrors.ValidationError{Message: "invalid email"}
 	}
 	var u User
-	conn, err := db.Conn()
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	err = conn.Users().Find(bson.M{"email": email}).One(&u)
+	err = usersCollection.FindOne(ctx, mongoBSON.M{"email": email}).Decode(&u)
 	if err != nil {
 		return nil, authTypes.ErrUserNotFound
 	}
@@ -85,12 +91,10 @@ func GetUserByEmail(email string) (*User, error) {
 }
 
 func (u *User) Create(ctx context.Context) error {
-	conn, err := db.Conn()
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
-		addr, _ := db.DbConfig("")
-		return errors.New(fmt.Sprintf("Failed to connect to MongoDB %q - %s.", addr, err.Error()))
+		return err
 	}
-	defer conn.Close()
 	if u.Quota.Limit == 0 {
 		u.Quota = quota.UnlimitedQuota
 		var limit int
@@ -98,7 +102,7 @@ func (u *User) Create(ctx context.Context) error {
 			u.Quota.Limit = limit
 		}
 	}
-	err = conn.Users().Insert(u)
+	_, err = usersCollection.InsertOne(ctx, u)
 	if err != nil {
 		return err
 	}
@@ -109,13 +113,12 @@ func (u *User) Create(ctx context.Context) error {
 	return nil
 }
 
-func (u *User) Delete() error {
-	conn, err := db.Conn()
+func (u *User) Delete(ctx context.Context) error {
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Users().Remove(bson.M{"email": u.Email})
+	_, err = usersCollection.DeleteOne(ctx, mongoBSON.M{"email": u.Email})
 	if err != nil {
 		log.Errorf("failed to remove user %q from the database: %s", u.Email, err)
 	}
@@ -123,20 +126,20 @@ func (u *User) Delete() error {
 	return nil
 }
 
-func (u *User) Update() error {
-	conn, err := db.Conn()
+func (u *User) Update(ctx context.Context) error {
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.Users().Update(bson.M{"email": u.Email}, u)
+	_, err = usersCollection.ReplaceOne(ctx, bson.M{"email": u.Email}, u)
+	return err
 }
 
-func (u *User) ShowAPIKey() (string, error) {
+func (u *User) ShowAPIKey(ctx context.Context) (string, error) {
 	if u.APIKey == "" {
-		u.RegenerateAPIKey()
+		u.RegenerateAPIKey(ctx)
 	}
-	return u.APIKey, u.Update()
+	return u.APIKey, u.Update(ctx)
 }
 
 const keySize = 32
@@ -154,18 +157,17 @@ func generateToken(data string, hash crypto.Hash) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (u *User) RegenerateAPIKey() (string, error) {
+func (u *User) RegenerateAPIKey(ctx context.Context) (string, error) {
 	u.APIKey = generateToken(u.Email, crypto.SHA256)
-	return u.APIKey, u.Update()
+	return u.APIKey, u.Update(ctx)
 }
 
-func (u *User) Reload() error {
-	conn, err := db.Conn()
+func (u *User) reload(ctx context.Context) error {
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.Users().Find(bson.M{"email": u.Email}).One(u)
+	return usersCollection.FindOne(ctx, mongoBSON.M{"email": u.Email}).Decode(u)
 }
 
 func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permission.Permission, error) {
@@ -222,25 +224,24 @@ func (u *User) AddRole(ctx context.Context, roleName string, contextValue string
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Users().Update(bson.M{"email": u.Email}, bson.M{
-		"$addToSet": bson.M{
+	_, err = usersCollection.UpdateOne(ctx, mongoBSON.M{"email": u.Email}, mongoBSON.M{
+		"$addToSet": mongoBSON.M{
 			// Order matters in $addToSet, that's why bson.D is used instead
 			// of bson.M.
-			"roles": bson.D([]bson.DocElem{
-				{Name: "name", Value: roleName},
-				{Name: "contextvalue", Value: contextValue},
+			"roles": mongoBSON.D([]mongoBSON.E{
+				{Key: "name", Value: roleName},
+				{Key: "contextvalue", Value: contextValue},
 			}),
 		},
 	})
 	if err != nil {
 		return err
 	}
-	return u.Reload()
+	return u.reload(ctx)
 }
 
 func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissionCtx, desc string) error {
@@ -265,7 +266,7 @@ func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissi
 	if err != nil {
 		return err
 	}
-	usersWithRole, err := ListUsersWithRole(roleName)
+	usersWithRole, err := ListUsersWithRole(ctx, roleName)
 	if err != nil {
 		errDtr := permission.DestroyRole(ctx, role.Name)
 		if errDtr != nil {
@@ -280,7 +281,7 @@ func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissi
 			if errDtr != nil {
 				return tsuruErrors.NewMultiError(errAddRole, errDtr)
 			}
-			errRmv := RemoveRoleFromAllUsers(roleName)
+			errRmv := RemoveRoleFromAllUsers(ctx, roleName)
 			if errRmv != nil {
 				return tsuruErrors.NewMultiError(errAddRole, errRmv)
 			}
@@ -291,41 +292,39 @@ func UpdateRoleFromAllUsers(ctx context.Context, roleName, newRoleName, permissi
 	if err != nil {
 		return err
 	}
-	return RemoveRoleFromAllUsers(roleName)
+	return RemoveRoleFromAllUsers(ctx, roleName)
 }
 
-func RemoveRoleFromAllUsers(roleName string) error {
-	conn, err := db.Conn()
+func RemoveRoleFromAllUsers(ctx context.Context, roleName string) error {
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Users().UpdateAll(bson.M{"roles.name": roleName}, bson.M{
-		"$pull": bson.M{
-			"roles": bson.M{"name": roleName},
+	_, err = usersCollection.UpdateMany(ctx, mongoBSON.M{"roles.name": roleName}, mongoBSON.M{
+		"$pull": mongoBSON.M{
+			"roles": mongoBSON.M{"name": roleName},
 		},
 	})
 	return err
 }
 
-func (u *User) RemoveRole(roleName string, contextValue string) error {
-	conn, err := db.Conn()
+func (u *User) RemoveRole(ctx context.Context, roleName string, contextValue string) error {
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Users().Update(bson.M{"email": u.Email}, bson.M{
-		"$pull": bson.M{
-			"roles": bson.D([]bson.DocElem{
-				{Name: "name", Value: roleName},
-				{Name: "contextvalue", Value: contextValue},
+	_, err = usersCollection.UpdateOne(ctx, mongoBSON.M{"email": u.Email}, mongoBSON.M{
+		"$pull": mongoBSON.M{
+			"roles": mongoBSON.D([]mongoBSON.E{
+				{Key: "name", Value: roleName},
+				{Key: "contextvalue", Value: contextValue},
 			}),
 		},
 	})
 	if err != nil {
 		return err
 	}
-	return u.Reload()
+	return u.reload(ctx)
 }
 
 func (u *User) AddRolesForEvent(ctx context.Context, roleEvent *permTypes.RoleEvent, contextValue string) error {

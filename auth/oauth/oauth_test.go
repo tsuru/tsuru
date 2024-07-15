@@ -47,7 +47,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Equals, "my_token")
 	c.Assert(token.GetUserName(), check.Equals, "rand@althor.com")
-	u, err := token.User()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "rand@althor.com")
 	c.Assert(s.reqs, check.HasLen, 2)
@@ -186,7 +186,7 @@ func (s *S) TestOAuthCreate(c *check.C) {
 	user := auth.User{Email: "x@x.com", Password: "something"}
 	_, err := scheme.Create(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
-	dbUser, err := auth.GetUserByEmail(user.Email)
+	dbUser, err := auth.GetUserByEmail(context.TODO(), user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
 	c.Assert(dbUser.Password, check.Equals, "")
@@ -201,7 +201,7 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	params["redirectUrl"] = "http://localhost"
 	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
-	u, err := auth.ConvertNewUser(token.User())
+	u, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(context.TODO(), u)
 	c.Assert(err, check.IsNil)
@@ -214,6 +214,6 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	err = coll.Find(bson.M{"useremail": "rand@althor.com"}).All(&tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
-	_, err = auth.GetUserByEmail("rand@althor.com")
+	_, err = auth.GetUserByEmail(context.TODO(), "rand@althor.com")
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }

@@ -173,7 +173,7 @@ func (s *S) TestRemoveRoleWithUsers(c *check.C) {
 		Scheme:  permission.PermRoleDelete,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = user.AddRole(ctx, "test", "app")
 	c.Assert(err, check.IsNil)
@@ -187,7 +187,7 @@ func (s *S) TestRemoveRoleWithUsers(c *check.C) {
 	roles, err := permission.ListRoles(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 2)
-	user, err = auth.ConvertNewUser(token.User())
+	user, err = auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Roles, check.HasLen, 2)
 }
@@ -438,7 +438,7 @@ func (s *S) TestAssignRole(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	emptyUser, err := emptyToken.User()
+	emptyUser, err := emptyToken.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(emptyUser.Roles, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
@@ -879,7 +879,7 @@ func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "User not authorized to use permission app.create(team myteam)\n")
-	emptyUser, err := emptyToken.User()
+	emptyUser, err := emptyToken.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(emptyUser.Roles, check.HasLen, 0)
 }
@@ -910,7 +910,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 	err = role.AddPermissions(context.TODO(), "app.create")
 	c.Assert(err, check.IsNil)
 	_, otherToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
-	otherUser, err := auth.ConvertNewUser(otherToken.User())
+	otherUser, err := auth.ConvertNewUser(otherToken.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = otherUser.AddRole(context.TODO(), role.Name, "myteam")
 	c.Assert(err, check.IsNil)
@@ -930,7 +930,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	otherUser, err = auth.ConvertNewUser(otherToken.User())
+	otherUser, err = auth.ConvertNewUser(otherToken.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Roles, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
@@ -950,7 +950,7 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	err = role.AddPermissions(context.TODO(), "app.create")
 	c.Assert(err, check.IsNil)
 	_, otherToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
-	otherUser, err := auth.ConvertNewUser(otherToken.User())
+	otherUser, err := auth.ConvertNewUser(otherToken.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = otherUser.AddRole(context.TODO(), role.Name, "myteam")
 	c.Assert(err, check.IsNil)
@@ -971,7 +971,7 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "User not authorized to use permission app.create(team myteam)\n")
-	otherUser, err = auth.ConvertNewUser(otherToken.User())
+	otherUser, err = auth.ConvertNewUser(otherToken.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Roles, check.HasLen, 1)
 }
@@ -1130,7 +1130,7 @@ func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
@@ -1160,7 +1160,7 @@ func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(string(r.ContextType), check.Equals, "team")
 	c.Assert(string(r.Description), check.Equals, "new desc")
-	users, err := auth.ListUsersWithRole("r2")
+	users, err := auth.ListUsersWithRole(context.TODO(), "r2")
 	c.Assert(err, check.IsNil)
 	c.Assert(users, check.HasLen, 1)
 }
@@ -1199,7 +1199,7 @@ func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole(context.TODO(), "r1", "app", "")
 	c.Assert(err, check.IsNil)
@@ -1222,7 +1222,7 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole(context.TODO(), "r1", "app", "Syncopy")
 	c.Assert(err, check.IsNil)
@@ -1252,7 +1252,7 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(string(r.ContextType), check.Equals, "team")
 	c.Assert(string(r.Description), check.Equals, "Syncopy")
-	users, err := auth.ListUsersWithRole("r1")
+	users, err := auth.ListUsersWithRole(context.TODO(), "r1")
 	c.Assert(err, check.IsNil)
 	c.Assert(users, check.HasLen, 1)
 }

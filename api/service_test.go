@@ -96,7 +96,7 @@ func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	var err error
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 }
 

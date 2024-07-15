@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	stdcontext "context"
 	"net/http"
 	"os"
@@ -92,7 +93,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 }

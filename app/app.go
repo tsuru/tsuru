@@ -741,7 +741,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
-	owner, err := auth.GetUserByEmail(app.Owner)
+	owner, err := auth.GetUserByEmail(ctx, app.Owner)
 	if err == nil {
 		err = servicemanager.UserQuota.Inc(ctx, owner, -1)
 	}

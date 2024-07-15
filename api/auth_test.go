@@ -15,14 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -51,7 +48,6 @@ type AuthSuite struct {
 	token           auth.Token
 	server          *authtest.SMTPServer
 	testServer      http.Handler
-	conn            *db.Storage
 	mockTeamService *authTypes.MockTeamService
 }
 
@@ -74,16 +70,13 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 	s.testServer = RunServer(true)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
-	defer s.conn.Close()
 	s.server.Stop()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
@@ -94,7 +87,7 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUser(c)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.team2 = &authTypes.Team{Name: "tsuruteam2"}
@@ -109,7 +102,7 @@ func (s *AuthSuite) createUser(c *check.C) {
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 }
 
@@ -121,7 +114,7 @@ func (s *AuthSuite) TestCreateUser(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	user, err := auth.GetUserByEmail("nobody@globo.com")
+	user, err := auth.GetUserByEmail(context.TODO(), "nobody@globo.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget("nobody@globo.com"),
@@ -141,7 +134,7 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	user, err := auth.GetUserByEmail("nobody@globo.com")
+	user, err := auth.GetUserByEmail(context.TODO(), "nobody@globo.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Quota, check.DeepEquals, quota.Quota{Limit: 1, InUse: 0})
 }
@@ -154,7 +147,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	user, err := auth.GetUserByEmail("nobody@globo.com")
+	user, err := auth.GetUserByEmail(context.TODO(), "nobody@globo.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Quota, check.DeepEquals, quota.UnlimitedQuota)
 }
@@ -262,7 +255,11 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var user auth.User
-	err = s.conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	err = usersCollection.FindOne(context.TODO(), mongoBSON.M{"email": "nobody@globo.com"}).Decode(&user)
 	c.Assert(err, check.IsNil)
 	var recorderJSON map[string]string
 	json.Unmarshal(recorder.Body.Bytes(), &recorderJSON)
@@ -662,9 +659,13 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUser(recorder, request, token)
 	c.Assert(err, check.IsNil)
-	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
+
+	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+
+	n, err := usersCollection.CountDocuments(context.TODO(), mongoBSON.M{"email": u.Email})
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(0))
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(token.GetUserName()),
 		Owner:  token.GetUserName(),
@@ -683,9 +684,13 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUser(recorder, request, token)
 	c.Assert(err, check.IsNil)
-	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
+
+	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+
+	n, err := usersCollection.CountDocuments(context.TODO(), mongoBSON.M{"email": u.Email})
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(0))
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(u.Email),
 		Owner:  token.GetUserName(),
@@ -707,9 +712,12 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
+	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+
+	n, err := usersCollection.CountDocuments(context.TODO(), mongoBSON.M{"email": u.Email})
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(0))
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(u.Email),
 		Owner:  s.token.GetUserName(),
@@ -750,7 +758,7 @@ func (s *AuthSuite) TestChangePassword(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	otherUser, err := auth.GetUserByEmail(s.user.Email)
+	otherUser, err := auth.GetUserByEmail(context.TODO(), s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Password, check.Not(check.Equals), oldPassword)
 	c.Assert(eventtest.EventDesc{
@@ -844,7 +852,7 @@ func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
 		return len(s.server.MailBox) == 1
 	})
 	c.Assert(err, check.IsNil)
-	u, err := auth.GetUserByEmail(s.user.Email)
+	u, err := auth.GetUserByEmail(context.TODO(), s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Password, check.Equals, oldPassword)
 	c.Assert(eventtest.EventDesc{
@@ -898,7 +906,7 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = resetPassword(recorder, request)
 	c.Assert(err, check.IsNil)
-	u2, err := auth.GetUserByEmail(user.Email)
+	u2, err := auth.GetUserByEmail(context.TODO(), user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u2.Password, check.Not(check.Equals), oldPassword)
 	c.Assert(eventtest.EventDesc{
@@ -984,9 +992,13 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	var got string
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Users().Find(bson.M{"apikey": got}).Count()
+
+	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
+
+	count, err := usersCollection.CountDocuments(context.TODO(), mongoBSON.M{"apikey": got})
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, int64(1))
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(u.Email),
 		Owner:  u.Email,
@@ -1008,9 +1020,13 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 	var got string
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Users().Find(bson.M{"apikey": got}).Count()
+
+	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
+
+	count, err := usersCollection.CountDocuments(context.TODO(), mongoBSON.M{"apikey": got})
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, int64(1))
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget("leto@arrakis.com"),
 		Owner:  token.GetUserName(),
@@ -1070,9 +1086,13 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 	var got string
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Users().Find(bson.M{"apikey": got}).Count()
+
+	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
+
+	count, err := usersCollection.CountDocuments(context.TODO(), mongoBSON.M{"apikey": got})
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, int64(1))
 }
 
 func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
@@ -1199,7 +1219,7 @@ func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	expectedUser, err := token.User()
+	expectedUser, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[0].Name
@@ -1226,7 +1246,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team2.Name),
 	})
-	expectedUser, err := token.User()
+	expectedUser, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
@@ -1257,7 +1277,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team2.Name),
 	})
-	expectedUser, err := token.User()
+	expectedUser, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
@@ -1359,7 +1379,7 @@ func (s *AuthSuite) TestUserInfo(c *check.C) {
 
 func (s *AuthSuite) TestUserInfoWithoutRoles(c *check.C) {
 	token := userWithPermission(c)
-	u, err := token.User()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/users/info", nil)
 	c.Assert(err, check.IsNil)
@@ -1395,7 +1415,7 @@ func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions(ctx, "app.create", "app.deploy")
 	c.Assert(err, check.IsNil)
-	u, err := auth.ConvertNewUser(token.User())
+	u, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = u.AddRole(ctx, "myrole", "a")
 	c.Assert(err, check.IsNil)
@@ -1436,12 +1456,12 @@ func (s *AuthSuite) TestUserInfoWithRolesFromGroups(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions(ctx, "app.create", "app.deploy")
 	c.Assert(err, check.IsNil)
-	u, err := auth.ConvertNewUser(token.User())
+	u, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = u.AddRole(ctx, "myrole", "a")
 	c.Assert(err, check.IsNil)
 	u.Groups = []string{"grp1", "grp2"}
-	err = u.Update()
+	err = u.Update(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = servicemanager.AuthGroup.AddRole(ctx, "grp2", "myrole", "b")
 	c.Assert(err, check.IsNil)
@@ -1486,7 +1506,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 		email := fmt.Sprintf("user-%d", i)
 		expectedNames = append(expectedNames, email+"@groundcontrol.com")
 		_, t := permissiontest.CustomUserWithPermission(c, nativeScheme, email, perm)
-		u, err := auth.ConvertNewUser(t.User())
+		u, err := auth.ConvertNewUser(t.User(context.TODO()))
 		c.Assert(err, check.IsNil)
 		err = u.AddRole(context.TODO(), u.Roles[0].Name, "someothervalue")
 		c.Assert(err, check.IsNil)
