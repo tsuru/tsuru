@@ -147,6 +147,26 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "cache",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "expireat", Value: 1}},
+				Options: options.Index().SetExpireAfterSeconds(1),
+			},
+		},
+	},
+
+	{
+		Collection: "service_broker_catalog_cache",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "expireat", Value: 1}},
+				Options: options.Index().SetExpireAfterSeconds(1),
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {

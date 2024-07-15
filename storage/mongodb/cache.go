@@ -8,14 +8,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/cache"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type cacheStorage struct {
@@ -28,28 +25,12 @@ type mongoCacheEntry struct {
 	ExpireAt time.Time `bson:",omitempty"`
 }
 
-func (s *cacheStorage) cacheCollection(conn *db.Storage) *dbStorage.Collection {
-	c := conn.Collection(s.collection)
-	// Ideally ExpireAfter would be 0, but due to mgo bug this needs to be at
-	// least a second.
-	c.EnsureIndex(mgo.Index{Key: []string{"expireat"}, ExpireAfter: time.Second})
-	return c
-}
-
 func (s *cacheStorage) cacheCollectionV2() (*mongo.Collection, error) {
-	collection, err := storagev2.Collection(s.collection)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: ensure indexes
-	return collection, nil
-
+	return storagev2.Collection(s.collection)
 }
 
 func (s *cacheStorage) GetAll(ctx context.Context, keys ...string) ([]cache.CacheEntry, error) {
-	query := mongoBSON.M{"_id": bson.M{"$in": keys}}
+	query := mongoBSON.M{"_id": mongoBSON.M{"$in": keys}}
 
 	span := newMongoDBSpan(ctx, mongoSpanFind, s.collection)
 	span.SetQueryStatement(query)
@@ -106,13 +87,20 @@ func (s *cacheStorage) Put(ctx context.Context, entry cache.CacheEntry) error {
 	span.SetMongoID(entry.Key)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := s.cacheCollectionV2()
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	_, err = s.cacheCollection(conn).UpsertId(entry.Key, mongoCacheEntry(entry))
-	span.SetError(err)
-	return err
+
+	opts := options.Update().SetUpsert(true)
+
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": entry.Key}, mongoBSON.M{"$set": mongoCacheEntry(entry)}, opts)
+
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+
+	return nil
 }
