@@ -132,6 +132,21 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "team_tokens",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "token", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+
+			{
+				Keys:    mongoBSON.D{{Key: "token_id", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {

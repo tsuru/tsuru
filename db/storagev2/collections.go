@@ -51,3 +51,7 @@ func PasswordTokensCollection() (*mongo.Collection, error) {
 func UsersCollection() (*mongo.Collection, error) {
 	return Collection("users")
 }
+
+func TeamTokensCollection() (*mongo.Collection, error) {
+	return Collection("team_tokens")
+}
