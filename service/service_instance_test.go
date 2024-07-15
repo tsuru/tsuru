@@ -65,6 +65,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "raul"}
 
 	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
 
 	_, err = usersCollection.InsertOne(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
