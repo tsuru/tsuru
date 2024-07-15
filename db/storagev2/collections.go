@@ -59,3 +59,7 @@ func TeamTokensCollection() (*mongo.Collection, error) {
 func TeamsCollection() (*mongo.Collection, error) {
 	return Collection("teams")
 }
+
+func PlansCollection() (*mongo.Collection, error) {
+	return Collection("plans")
+}
