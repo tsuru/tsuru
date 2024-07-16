@@ -355,9 +355,8 @@ func (s *S) TestWebhookServiceUpdate(c *check.C) {
 	w, err := s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.IsNil)
 	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
-		Name:    "xyz",
-		URL:     "http://b",
-		Headers: http.Header{},
+		Name: "xyz",
+		URL:  "http://b",
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},
