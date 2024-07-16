@@ -214,6 +214,11 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 		return err
 	}
 	req.Header = hook.Headers
+
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
+
 	if req.UserAgent() == "" {
 		req.Header.Set("User-Agent", defaultUserAgent)
 	}
