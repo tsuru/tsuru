@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
@@ -19,7 +18,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn   *db.Storage
 	server *httptest.Server
 	reqs   []*http.Request
 	bodies []string
@@ -49,7 +47,6 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	s.conn, _ = db.Conn()
 	s.reqs = make([]*http.Request, 0)
 	s.bodies = make([]string, 0)
 	s.rsps = make(map[string]string)
@@ -58,7 +55,6 @@ func (s *S) SetUpTest(c *check.C) {
 func (s *S) TearDownTest(c *check.C) {
 	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
-	s.conn.Close()
 }
 
 func (s *S) TearDownSuite(c *check.C) {

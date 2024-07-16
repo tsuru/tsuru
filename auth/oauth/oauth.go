@@ -178,7 +178,7 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 		return nil, err
 	}
 	token := tokenWrapper{Token: *t, UserEmail: user.Email}
-	err = token.save()
+	err = token.save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +186,11 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 }
 
 func (s *oAuthScheme) Logout(ctx context.Context, token string) error {
-	return deleteToken(token)
+	return deleteToken(ctx, token)
 }
 
 func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, error) {
-	token, err := getToken(header)
+	token, err := getToken(ctx, header)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (s *oAuthScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 }
 
 func (s *oAuthScheme) Remove(ctx context.Context, u *auth.User) error {
-	err := deleteAllTokens(u.Email)
+	err := deleteAllTokens(ctx, u.Email)
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,11 @@ package storagev2
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -14,8 +18,9 @@ import (
 )
 
 type EnsureIndex struct {
-	Collection string
-	Indexes    []mongo.IndexModel
+	Collection        string
+	GetCollectionName func() string
+	Indexes           []mongo.IndexModel
 }
 
 var EnsureIndexes = []EnsureIndex{
@@ -177,13 +182,47 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		GetCollectionName: getOAuthTokensCollectionName,
+		Indexes: []mongo.IndexModel{
+			{
+				Keys: mongoBSON.D{{Key: "token.accesstoken", Value: 1}},
+			},
+			{
+				Keys: mongoBSON.D{{Key: "useremail", Value: 1}},
+			},
+		},
+	},
+}
+
+var notifyDefaultAuthToken sync.Once
+
+func getOAuthTokensCollectionName() string {
+	name, _ := config.GetString("auth:oauth:collection")
+	if name == "" {
+		notifyDefaultAuthToken.Do(func() {
+			log.Debugf("auth:oauth:collection not found using default value: %s.", name)
+		})
+		return "oauth_tokens"
+	}
+
+	return name
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {
+	for i, index := range EnsureIndexes {
+		collectionName := index.Collection
 
-	for _, index := range EnsureIndexes {
+		if collectionName == "" && index.GetCollectionName != nil {
+			collectionName = index.GetCollectionName()
+		}
 
-		collection := db.Collection(index.Collection)
+		if collectionName == "" {
+			return fmt.Errorf("CollectionName or GetCollectionName must be defined on index %d", i)
+		}
+
+		collection := db.Collection(collectionName)
 
 		_, err := collection.Indexes().CreateMany(context.TODO(), index.Indexes)
 		if err != nil {

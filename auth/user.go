@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -131,7 +130,7 @@ func (u *User) Update(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = usersCollection.ReplaceOne(ctx, bson.M{"email": u.Email}, u)
+	_, err = usersCollection.ReplaceOne(ctx, mongoBSON.M{"email": u.Email}, u)
 	return err
 }
 

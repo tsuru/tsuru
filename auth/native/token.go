@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -144,7 +143,7 @@ func removeOldTokens(ctx context.Context, userEmail string) error {
 	}
 	var tokens []map[string]interface{}
 
-	opts := options.Find().SetSort(bson.M{"creation": 1}).SetLimit(int64(diff)).SetProjection(bson.M{"_id": 1})
+	opts := options.Find().SetSort(mongoBSON.M{"creation": 1}).SetLimit(int64(diff)).SetProjection(mongoBSON.M{"_id": 1})
 	cursor, err := collection.Find(ctx, mongoBSON.M{"useremail": userEmail}, opts)
 	if err != nil {
 		return nil

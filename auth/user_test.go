@@ -8,7 +8,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
@@ -298,7 +297,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	rolesCollection, err := storagev2.RolesCollection()
 	c.Assert(err, check.IsNil)
-	_, err = rolesCollection.DeleteOne(context.TODO(), bson.M{"_id": role.Name})
+	_, err = rolesCollection.DeleteOne(context.TODO(), mongoBSON.M{"_id": role.Name})
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
