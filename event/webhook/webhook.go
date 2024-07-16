@@ -186,6 +186,9 @@ func webhookBody(hook *eventTypes.Webhook, evt *event.Event) (io.Reader, error) 
 		hook.Method != http.MethodPatch {
 		return nil, nil
 	}
+	if hook.Headers == nil {
+		hook.Headers = make(http.Header)
+	}
 	hook.Headers.Set("Content-Type", "application/json")
 	data, err := json.Marshal(evt)
 	if err != nil {
