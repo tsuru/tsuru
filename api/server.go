@@ -511,10 +511,6 @@ func RunServer(dry bool) http.Handler {
 }
 
 func setupDatabase() error {
-	connString, err := config.GetString("database:url")
-	if err != nil {
-		connString = db.DefaultDatabaseURL
-	}
 	dbName, err := config.GetString("database:name")
 	if err != nil {
 		dbName = db.DefaultDatabaseName
@@ -524,7 +520,7 @@ func setupDatabase() error {
 		dbDriverName = storage.DefaultDbDriverName
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a database driver, using default driver.")
 	}
-	fmt.Fprintf(os.Stderr, "Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
+	fmt.Fprintf(os.Stderr, "Using %q database %q from the server.\n", dbDriverName, dbName)
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
 		return err
@@ -574,7 +570,7 @@ func startServer(handler http.Handler) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Registered router %q", routerDesc.Name)
+		fmt.Printf("Registered router %q\n", routerDesc.Name)
 	}
 	rebuild.Initialize(appFinder)
 	scheme, err := getAuthScheme()
