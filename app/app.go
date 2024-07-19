@@ -1670,11 +1670,7 @@ func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
-	if err != nil {
-		return err
-	}
-	err = prov.Restart(ctx, app, "", version, w)
+	err = prov.Restart(ctx, app, "", nil, w)
 	if err != nil {
 		return newErrorWithLog(ctx, err, app, "restart")
 	}
@@ -2546,6 +2542,9 @@ func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVer
 }
 
 func (app *App) getVersionAllowNil(ctx context.Context, version string) (appTypes.AppVersion, error) {
+	if version == "" {
+		return nil, nil
+	}
 	_, v, err := app.explicitVersion(ctx, version)
 	return v, err
 }

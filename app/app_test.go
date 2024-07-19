@@ -1242,6 +1242,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	delete(newAppEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(newAppEnvs, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(&a, ""), check.Equals, 1)
 }
 
 func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
@@ -1751,6 +1752,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 		Public:    false,
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(a, ""), check.Equals, 1)
 }
 
 func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
@@ -2083,6 +2085,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(a, ""), check.Equals, 1)
 }
 
 func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
@@ -2193,8 +2196,30 @@ func (s *S) TestRestart(c *check.C) {
 	err = a.Restart(context.TODO(), "", "", &b)
 	c.Assert(err, check.IsNil)
 	c.Assert(b.String(), check.Matches, `(?s).*---- Restarting the app "someapp" ----.*`)
-	restarts := s.provisioner.Restarts(&a, "")
-	c.Assert(restarts, check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(&a, ""), check.Equals, 1)
+}
+
+func (s *S) TestRestartWithVersion(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("not yaml")) // loadConf
+	a := App{
+		Name:      "someapp",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Routers:   []appTypes.AppRouter{{Name: "fake"}},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
+	versionString := strconv.Itoa(version.Version())
+	var b bytes.Buffer
+	err = a.Restart(context.TODO(), "", versionString, &b)
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Matches, `(?s).*---- Restarting the app "someapp" ----.*`)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(&a, ""), check.Equals, 0)
+	c.Assert(s.provisioner.RestartsByVersion(&a, versionString), check.Equals, 1)
 }
 
 func (s *S) TestStop(c *check.C) {
@@ -4961,6 +4986,7 @@ func (s *S) TestUpdatePool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePoolOtherProv(c *check.C) {
@@ -5143,6 +5169,7 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
@@ -5197,6 +5224,7 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePlanNotFound(c *check.C) {
@@ -5322,6 +5350,7 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 	c.Assert(dbApp.Pool, check.Equals, "test2")
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.RestartsByVersion(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdateMetadataWhenEmpty(c *check.C) {

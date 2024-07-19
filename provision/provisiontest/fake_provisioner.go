@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -397,6 +398,13 @@ func (p *FakeProvisioner) Restarts(a provision.App, process string) int {
 	return p.apps[a.GetName()].restarts[process]
 }
 
+// Restarts returns the number of restarts for a given app.
+func (p *FakeProvisioner) RestartsByVersion(a provision.App, version string) int {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[a.GetName()].restartsByVersion[version]
+}
+
 // Starts returns the number of starts for a given app.
 func (p *FakeProvisioner) Starts(app provision.App, process string) int {
 	p.mut.RLock()
@@ -572,6 +580,8 @@ func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) erro
 		restarts: make(map[string]int),
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
+
+		restartsByVersion: make(map[string]int),
 	}
 	return nil
 }
@@ -587,6 +597,14 @@ func (p *FakeProvisioner) Restart(ctx context.Context, app provision.App, proces
 		return errNotProvisioned
 	}
 	pApp.restarts[process]++
+
+	if version == nil {
+		pApp.restartsByVersion[""]++
+	} else {
+		key := strconv.Itoa(version.Version())
+		pApp.restartsByVersion[key]++
+	}
+
 	p.apps[app.GetName()] = pApp
 	if w != nil {
 		fmt.Fprintf(w, "restarting app")
@@ -898,6 +916,7 @@ func (p *FakeProvisioner) UpdateApp(ctx context.Context, old, new provision.App,
 	provApp.app = new
 	if new.GetPool() != old.GetPool() {
 		provApp.restarts[""]++
+		provApp.restartsByVersion[""]++
 	}
 	p.apps[old.GetName()] = provApp
 	return nil
@@ -1016,6 +1035,8 @@ type provisionedApp struct {
 	lastData  map[string]interface{}
 	image     string
 	mockAddrs []appTypes.RoutableAddresses
+
+	restartsByVersion map[string]int
 }
 
 type provisionedJob struct {
