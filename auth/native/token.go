@@ -186,7 +186,7 @@ func createToken(ctx context.Context, u *auth.User, password string) (*Token, er
 		return nil, err
 	}
 	_, err = collection.InsertOne(ctx, token)
-	go removeOldTokens(ctx, u.Email)
+	go removeOldTokens(context.WithoutCancel(ctx), u.Email)
 	return token, err
 }
 
