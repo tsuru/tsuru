@@ -873,22 +873,28 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	svcInformer, err := controller.getServiceInformer()
-	if err != nil {
-		return nil, err
-	}
+
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
 
-	svcs, err := allServicesForAppInformer(ctx, svcInformer, ns, a)
+	list, err := client.CoreV1().Services(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", a.GetName()),
+	})
+
 	if err != nil {
 		return nil, err
+	}
+
+	svcs := make([]apiv1.Service, 0, len(list.Items))
+
+	for _, svc := range list.Items {
+		if svc.ObjectMeta.DeletionTimestamp != nil {
+			continue
+		}
+
+		svcs = append(svcs, svc)
 	}
 
 	processSet := set.Set{}
