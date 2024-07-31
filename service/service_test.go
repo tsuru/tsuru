@@ -556,6 +556,64 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 	c.Assert(names, check.DeepEquals, []string{"mongodb", "mysql"})
 }
 
+func (s *S) TestGetServicesByOwnerTeamsAndServicesWithEmptyServices(c *check.C) {
+	srvc := Service{
+		Name:       "mongodb",
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "url"},
+		Teams:      []string{},
+		Password:   "abcde",
+	}
+	err := Create(context.TODO(), srvc)
+	c.Assert(err, check.IsNil)
+	srvc2 := Service{
+		Name:       "mysql",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+	}
+	err = Create(context.TODO(), srvc2)
+	c.Assert(err, check.IsNil)
+	services, err := GetServicesByOwnerTeamsAndServices(context.TODO(), nil, []string{})
+	c.Assert(err, check.IsNil)
+	names := []string{}
+	for _, s := range services {
+		names = append(names, s.Name)
+	}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{})
+}
+
+func (s *S) TestGetServicesByOwnerTeamsAndServicesWithEmptyTeams(c *check.C) {
+	srvc := Service{
+		Name:       "mongodb",
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "url"},
+		Teams:      []string{},
+		Password:   "abcde",
+	}
+	err := Create(context.TODO(), srvc)
+	c.Assert(err, check.IsNil)
+	srvc2 := Service{
+		Name:       "mysql",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+	}
+	err = Create(context.TODO(), srvc2)
+	c.Assert(err, check.IsNil)
+	services, err := GetServicesByOwnerTeamsAndServices(context.TODO(), []string{}, nil)
+	c.Assert(err, check.IsNil)
+	names := []string{}
+	for _, s := range services {
+		names = append(names, s.Name)
+	}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{})
+}
+
 func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedServices(c *check.C) {
 	service := Service{
 		Name:       "mysql",
