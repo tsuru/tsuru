@@ -150,7 +150,7 @@ func GetServices(ctx context.Context) ([]Service, error) {
 
 func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
 	var filter mongoBSON.M
-	if teams != nil || services != nil {
+	if len(teams) > 0 || len(services) > 0 {
 		orFilter := []mongoBSON.M{
 			{"is_restricted": false},
 		}
@@ -171,7 +171,7 @@ func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services
 
 func GetServicesByOwnerTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
 	var filter mongoBSON.M
-	if teams != nil || services != nil {
+	if len(teams) > 0 || len(services) > 0 {
 
 		orFilter := []mongoBSON.M{}
 
