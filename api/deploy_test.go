@@ -582,7 +582,7 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
-	c.Assert(recorder.Body.String(), check.Matches, "(?s).*can't deploy app without platform, if it's not an image or rollback.*")
+	c.Assert(recorder.Body.String(), check.Matches, "(?s).*can't deploy app without platform, if it's not an image, dockerfile or rollback.*")
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {

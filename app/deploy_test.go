@@ -482,7 +482,7 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 		Event:        evt,
 		OutputStream: io.Discard,
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*can't deploy app without platform, if it's not an image or rollback.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*can't deploy app without platform, if it's not an image, dockerfile or rollback.*")
 }
 
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {

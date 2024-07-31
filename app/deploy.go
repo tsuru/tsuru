@@ -376,8 +376,8 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		opts.GetKind()
 	}
 
-	if opts.App.GetPlatform() == "" && opts.Kind != provisionTypes.DeployImage && opts.Kind != provisionTypes.DeployRollback {
-		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
+	if opts.App.GetPlatform() == "" && opts.Kind != provisionTypes.DeployImage && opts.Kind != provisionTypes.DeployRollback && opts.Kind != provisionTypes.DeployDockerfile {
+		return "", errors.Errorf("can't deploy app without platform, if it's not an image, dockerfile or rollback")
 	}
 
 	deployer, ok := prov.(provision.BuilderDeploy)
