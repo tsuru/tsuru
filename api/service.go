@@ -27,7 +27,12 @@ func serviceTarget(name string) eventTypes.Target {
 }
 
 func provisionReadableServices(ctx context.Context, contexts []permTypes.PermissionContext) ([]service.Service, error) {
-	teams, serviceNames := filtersForServiceList(contexts)
+	teams, serviceNames, global := filtersForServiceList(contexts)
+
+	if global {
+		return service.GetServices(ctx)
+	}
+
 	return service.GetServicesByOwnerTeamsAndServices(ctx, teams, serviceNames)
 }
 

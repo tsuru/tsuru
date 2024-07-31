@@ -150,7 +150,7 @@ func GetServices(ctx context.Context) ([]Service, error) {
 
 func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
 	var filter mongoBSON.M
-	if len(teams) > 0 || len(services) > 0 {
+	if teams != nil || services != nil {
 		orFilter := []mongoBSON.M{
 			{"is_restricted": false},
 		}
@@ -162,8 +162,12 @@ func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services
 			orFilter = append(orFilter, mongoBSON.M{"_id": mongoBSON.M{"$in": services}})
 		}
 
-		filter = mongoBSON.M{
-			"$or": orFilter,
+		if len(orFilter) > 1 {
+			filter = mongoBSON.M{
+				"$or": orFilter,
+			}
+		} else {
+			filter = orFilter[0]
 		}
 	}
 	return getServicesByFilter(ctx, filter)
@@ -171,8 +175,7 @@ func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services
 
 func GetServicesByOwnerTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
 	var filter mongoBSON.M
-	if len(teams) > 0 || len(services) > 0 {
-
+	if teams != nil || services != nil {
 		orFilter := []mongoBSON.M{}
 
 		if len(teams) > 0 {
@@ -182,8 +185,12 @@ func GetServicesByOwnerTeamsAndServices(ctx context.Context, teams []string, ser
 			orFilter = append(orFilter, mongoBSON.M{"_id": mongoBSON.M{"$in": services}})
 		}
 
-		filter = mongoBSON.M{
-			"$or": orFilter,
+		if len(orFilter) > 1 {
+			filter = mongoBSON.M{
+				"$or": orFilter,
+			}
+		} else {
+			filter = orFilter[0]
 		}
 	}
 	return getServicesByFilter(ctx, filter)

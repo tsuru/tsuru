@@ -346,14 +346,12 @@ func readableInstances(ctx stdContext.Context, contexts []permTypes.PermissionCo
 	return service.GetServicesInstancesByTeamsAndNames(ctx, teams, instanceNames, appName, serviceName)
 }
 
-func filtersForServiceList(contexts []permTypes.PermissionContext) ([]string, []string) {
-	teams := []string{}
-	serviceNames := []string{}
+func filtersForServiceList(contexts []permTypes.PermissionContext) (teams []string, serviceNames []string, global bool) {
+	teams = []string{}
+	serviceNames = []string{}
 	for _, c := range contexts {
 		if c.CtxType == permTypes.CtxGlobal {
-			teams = nil
-			serviceNames = nil
-			break
+			return nil, nil, true
 		}
 		switch c.CtxType {
 		case permTypes.CtxService:
@@ -362,11 +360,16 @@ func filtersForServiceList(contexts []permTypes.PermissionContext) ([]string, []
 			teams = append(teams, c.Value)
 		}
 	}
-	return teams, serviceNames
+	return teams, serviceNames, false
 }
 
 func readableServices(ctx stdContext.Context, contexts []permTypes.PermissionContext) ([]service.Service, error) {
-	teams, serviceNames := filtersForServiceList(contexts)
+	teams, serviceNames, global := filtersForServiceList(contexts)
+
+	if global {
+		return service.GetServices(ctx)
+	}
+
 	return service.GetServicesByTeamsAndServices(ctx, teams, serviceNames)
 }
 
