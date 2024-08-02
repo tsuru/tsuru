@@ -2346,6 +2346,9 @@ func (s *S) TestGetTeams(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
+	config.Set("apps:dashboard-url:template", "http://mydashboard.com/pools/{{ .Pool }}/apps/{{ .Name }}")
+	defer config.Unset("apps:dashboard-url:template")
+
 	s.plan = appTypes.Plan{Name: "myplan", Memory: 64}
 	team := authTypes.Team{Name: "myteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
@@ -2520,6 +2523,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"limit": float64(-1),
 		},
 		"serviceInstanceBinds": []interface{}{},
+		"dashboardURL":         "http://mydashboard.com/pools/test/apps/name",
 	}
 	appInfo, err := AppInfo(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
