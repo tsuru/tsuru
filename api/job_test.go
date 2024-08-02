@@ -17,6 +17,7 @@ import (
 
 	"github.com/cezarsa/form"
 	"github.com/globalsign/mgo/bson"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -1151,6 +1152,9 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 }
 
 func (s *S) TestJobInfo(c *check.C) {
+	config.Set("jobs:dashboard-url:template", "http://mydashboard.com/jobs/{{.Job.Name}}")
+	defer config.Unset("jobs:dashboard-url:template")
+
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 	oldProvisioner := provision.DefaultProvisioner
@@ -1213,6 +1217,7 @@ func (s *S) TestJobInfo(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Cluster, check.Equals, "cluster1")
+	c.Assert(result.DashboardURL, check.Equals, "http://mydashboard.com/jobs/j1")
 	c.Assert(s.team.Name, check.DeepEquals, result.Job.TeamOwner)
 	c.Assert(j1.Pool, check.DeepEquals, result.Job.Pool)
 	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
