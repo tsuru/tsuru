@@ -27,6 +27,7 @@ import (
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -73,7 +74,7 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	servicemock.SetMockService(&s.mockService)
@@ -97,7 +98,11 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	}
 	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	defer usersCollection.DeleteOne(context.TODO(), mongoBSON.M{"email": user.Email})
 	request, err := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -141,9 +146,6 @@ func (s *QuotaSuite) TestGetUserQuotaUserNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
@@ -154,9 +156,13 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
-	_, err = nativeScheme.Create(context.TODO(), user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	defer usersCollection.DeleteOne(context.TODO(), mongoBSON.M{"email": user.Email})
 	body := bytes.NewBufferString("limit=40")
 	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -229,9 +235,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
+
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
@@ -242,9 +246,13 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
 	}
-	_, err = nativeScheme.Create(context.TODO(), user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	defer usersCollection.DeleteOne(context.TODO(), mongoBSON.M{"email": user.Email})
 	body := bytes.NewBufferString("limit=3")
 	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -515,7 +523,11 @@ func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	}
 	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	defer usersCollection.DeleteOne(context.TODO(), mongoBSON.M{"email": user.Email})
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "qwe123"})
 	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("GET", "/apps/shangrila/quota", nil)

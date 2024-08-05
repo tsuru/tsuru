@@ -97,7 +97,7 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 		return nil, errMissingEmailClaim
 	}
 
-	user, err := auth.GetUserByEmail(identity.Email)
+	user, err := auth.GetUserByEmail(ctx, identity.Email)
 	if err == authTypes.ErrUserNotFound {
 		if s.registrationEnabled {
 			user = &auth.User{Email: identity.Email, Groups: identity.Groups}
@@ -121,7 +121,7 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 		providerGroups := set.FromSlice(identity.Groups)
 		if !dbGroups.Equal(providerGroups) {
 			user.Groups = identity.Groups
-			err = user.Update()
+			err = user.Update(ctx)
 			if err != nil {
 				return nil, err
 			}

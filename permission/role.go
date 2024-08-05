@@ -9,11 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -28,8 +25,8 @@ type Role struct {
 	Events      []string `json:"events,omitempty"`
 }
 
-func NewRole(name string, ctx string, description string) (Role, error) {
-	ctxType, err := parseContext(ctx)
+func NewRole(ctx context.Context, name string, permissionCtx string, description string) (Role, error) {
+	ctxType, err := parseContext(permissionCtx)
 	if err != nil {
 		return Role{}, err
 	}
@@ -37,14 +34,14 @@ func NewRole(name string, ctx string, description string) (Role, error) {
 	if len(name) == 0 {
 		return Role{}, permTypes.ErrInvalidRoleName
 	}
-	coll, err := rolesCollection()
+
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return Role{}, err
 	}
-	defer coll.Close()
 	role := Role{Name: name, ContextType: ctxType, Description: description}
-	err = coll.Insert(role)
-	if mgo.IsDup(err) {
+	_, err = collection.InsertOne(ctx, role)
+	if mongo.IsDuplicateKeyError(err) {
 		return Role{}, permTypes.ErrRoleAlreadyExists
 	}
 	return role, err
@@ -164,17 +161,27 @@ func FindRole(ctx context.Context, name string) (Role, error) {
 	return role, nil
 }
 
-func DestroyRole(name string) error {
-	coll, err := rolesCollection()
+func DestroyRole(ctx context.Context, name string) error {
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	err = coll.RemoveId(name)
-	if err == mgo.ErrNotFound {
+
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": name})
+
+	if err == mongo.ErrNoDocuments {
 		return permTypes.ErrRoleNotFound
 	}
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return permTypes.ErrRoleNotFound
+	}
+
+	return nil
 }
 
 func (r *Role) AddPermissions(ctx context.Context, permNames ...string) error {
@@ -203,12 +210,11 @@ func (r *Role) AddPermissions(ctx context.Context, permNames ...string) error {
 			}
 		}
 	}
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	err = coll.UpdateId(r.Name, bson.M{"$addToSet": bson.M{"schemenames": bson.M{"$each": permNames}}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$addToSet": mongoBSON.M{"schemenames": mongoBSON.M{"$each": permNames}}})
 	if err != nil {
 		return err
 	}
@@ -221,12 +227,11 @@ func (r *Role) AddPermissions(ctx context.Context, permNames ...string) error {
 }
 
 func (r *Role) RemovePermissions(ctx context.Context, permNames ...string) error {
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	err = coll.UpdateId(r.Name, bson.M{"$pullAll": bson.M{"schemenames": permNames}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$pullAll": mongoBSON.M{"schemenames": permNames}})
 	if err != nil {
 		return err
 	}
@@ -282,12 +287,11 @@ func (r *Role) AddEvent(ctx context.Context, eventName string) error {
 	if r.ContextType != roleEvent.Context {
 		return permTypes.ErrRoleEventWrongContext{Expected: string(roleEvent.Context), Role: string(r.ContextType)}
 	}
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	err = coll.UpdateId(r.Name, bson.M{"$addToSet": bson.M{"events": eventName}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$addToSet": mongoBSON.M{"events": eventName}})
 	if err != nil {
 		return err
 	}
@@ -300,12 +304,11 @@ func (r *Role) AddEvent(ctx context.Context, eventName string) error {
 }
 
 func (r *Role) RemoveEvent(ctx context.Context, eventName string) error {
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	err = coll.UpdateId(r.Name, bson.M{"$pull": bson.M{"events": eventName}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$pull": mongoBSON.M{"events": eventName}})
 	if err != nil {
 		return err
 	}
@@ -317,36 +320,32 @@ func (r *Role) RemoveEvent(ctx context.Context, eventName string) error {
 	return nil
 }
 
-func rolesCollection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return conn.Roles(), nil
-}
-
-func (r *Role) Update() error {
-	coll, err := rolesCollection()
+func (r *Role) Update(ctx context.Context) error {
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	return coll.Update(bson.M{"_id": r.Name}, bson.M{"$set": bson.M{"contexttype": r.ContextType, "description": r.Description}})
+	err = collection.FindOneAndUpdate(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$set": mongoBSON.M{"contexttype": r.ContextType, "description": r.Description}}).Err()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *Role) Add() error {
+func (r *Role) Add(ctx context.Context) error {
 	name := strings.TrimSpace(r.Name)
 	if len(name) == 0 {
 		return permTypes.ErrInvalidRoleName
 	}
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
 	insertRole := Role{Name: name, ContextType: r.ContextType, Description: r.Description, SchemeNames: r.SchemeNames, Events: r.Events}
-	err = coll.Insert(insertRole)
-	if mgo.IsDup(err) {
+	_, err = collection.InsertOne(ctx, insertRole)
+	if mongo.IsDuplicateKeyError(err) {
 		return permTypes.ErrRoleAlreadyExists
 	}
 	return nil

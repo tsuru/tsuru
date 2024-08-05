@@ -8,11 +8,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type APIToken struct {
@@ -24,8 +24,8 @@ func (t *APIToken) GetValue() string {
 	return t.Token
 }
 
-func (t *APIToken) User() (*authTypes.User, error) {
-	return ConvertOldUser(GetUserByEmail(t.UserEmail))
+func (t *APIToken) User(ctx context.Context) (*authTypes.User, error) {
+	return ConvertOldUser(GetUserByEmail(ctx, t.UserEmail))
 }
 
 func (t *APIToken) GetUserName() string {
@@ -40,30 +40,29 @@ func (t *APIToken) Permissions(ctx context.Context) ([]permission.Permission, er
 	return BaseTokenPermission(ctx, t)
 }
 
-func APIAuth(header string) (*APIToken, error) {
-	conn, err := db.Conn()
+func APIAuth(ctx context.Context, header string) (*APIToken, error) {
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var t APIToken
 	token, err := ParseToken(header)
 	if err != nil {
 		return nil, err
 	}
-	err = conn.Users().Find(bson.M{"apikey": token}).One(&t)
+	err = usersCollection.FindOne(ctx, mongoBSON.M{"apikey": token}).Decode(&t)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, ErrInvalidToken
 		}
 		return nil, err
 	}
 
-	err = conn.Users().Update(bson.M{
+	_, err = usersCollection.UpdateOne(ctx, mongoBSON.M{
 		"apikey": token,
-	}, bson.M{
-		"$set": bson.M{"apikey_last_access": time.Now().UTC()},
-		"$inc": bson.M{"apikey_usage_counter": 1},
+	}, mongoBSON.M{
+		"$set": mongoBSON.M{"apikey_last_access": time.Now().UTC()},
+		"$inc": mongoBSON.M{"apikey_usage_counter": 1},
 	})
 
 	if err != nil {

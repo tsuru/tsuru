@@ -218,7 +218,7 @@ func setPoolToApps() error {
 }
 
 func createRole(ctx context.Context, name, contextType string) (permission.Role, error) {
-	role, err := permission.NewRole(name, contextType, "")
+	role, err := permission.NewRole(ctx, name, contextType, "")
 	if err == permTypes.ErrRoleAlreadyExists {
 		role, err = permission.FindRole(ctx, name)
 	}
@@ -265,7 +265,7 @@ func migrateRoles() error {
 	if err != nil {
 		return err
 	}
-	users, err := auth.ListUsers()
+	users, err := auth.ListUsers(ctx)
 	if err != nil {
 		return err
 	}

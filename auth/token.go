@@ -54,7 +54,7 @@ func ParseToken(header string) (string, error) {
 }
 
 func BaseTokenPermission(ctx context.Context, t Token) ([]permission.Permission, error) {
-	u, err := ConvertNewUser(t.User())
+	u, err := ConvertNewUser(t.User(ctx))
 	if err != nil {
 		return nil, err
 	}

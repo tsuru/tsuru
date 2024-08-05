@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -257,7 +258,11 @@ func (s *S) TestAuthTokenMiddlewareWithToken(c *check.C) {
 
 func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 	user := auth.User{Email: "para@xmen.com", APIKey: "347r3487rh3489hr34897rh487hr0377rg308rg32"}
-	err := s.conn.Users().Insert(&user)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.InsertOne(stdContext.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
@@ -314,7 +319,11 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *check.C) {
 
 func (s *S) TestAuthTokenMiddlewareWithInvalidAPIToken(c *check.C) {
 	user := auth.User{Email: "para@xmen.com", APIKey: "347r3487rh3489hr34897rh487hr0377rg308rg32"}
-	err := s.conn.Users().Insert(&user)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.InsertOne(stdContext.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)

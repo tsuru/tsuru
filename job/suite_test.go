@@ -13,8 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -36,7 +35,6 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	conn        *db.Storage
 	team        authTypes.Team
 	user        *authTypes.User
 	plan        *appTypes.Plan
@@ -68,8 +66,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	provision.Unregister("jobProv")
-	defer s.conn.Close()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func setupMocks(s *S) {
@@ -129,8 +126,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+	storagev2.Reset()
 	s.provisioner = &provisiontest.JobProvisioner{
 		FakeProvisioner: provisiontest.ProvisionerInstance,
 	}
@@ -146,7 +142,7 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUserAndTeam(c)
 	s.plans = []appTypes.Plan{
 		{

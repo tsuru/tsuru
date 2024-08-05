@@ -10,12 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -42,7 +43,7 @@ func (s *S) TestNativeLogin(c *check.C) {
 	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Not(check.Equals), "")
-	u, err := token.User()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "timeredbull@globo.com")
 }
@@ -103,7 +104,7 @@ func (s *S) TestNativeCreate(c *check.C) {
 	retUser, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	c.Assert(retUser, check.Equals, user)
-	dbUser, err := auth.GetUserByEmail(user.Email)
+	dbUser, err := auth.GetUserByEmail(context.TODO(), user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
 	c.Assert(dbUser.Password, check.Not(check.Equals), "123456")
@@ -136,15 +137,14 @@ func (s *S) TestChangePassword(c *check.C) {
 
 func (s *S) TestStartPasswordReset(c *check.C) {
 	scheme := NativeScheme{}
-	conn, err := db.Conn()
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	defer s.server.Reset()
 	u := auth.User{Email: "thank@alanis.com"}
 	err = scheme.StartPasswordReset(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	var token passwordToken
-	err = conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": u.Email}).Decode(&token)
 	c.Assert(err, check.IsNil)
 	var m authtest.Mail
 	err = tsurutest.WaitCondition(time.Second, func() bool {
@@ -174,7 +174,7 @@ func (s *S) TestResetPassword(c *check.C) {
 	u := auth.User{Email: "blues@rush.com"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	p := u.Password
 	err = scheme.StartPasswordReset(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
@@ -184,12 +184,17 @@ func (s *S) TestResetPassword(c *check.C) {
 		return len(s.server.MailBox) == 1
 	})
 	c.Assert(err, check.IsNil)
+
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
 	var token passwordToken
-	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": u.Email}).Decode(&token)
 	c.Assert(err, check.IsNil)
 	err = scheme.ResetPassword(context.TODO(), &u, token.Token)
 	c.Assert(err, check.IsNil)
-	u2, _ := auth.GetUserByEmail(u.Email)
+	u2, err := auth.GetUserByEmail(context.TODO(), u.Email)
+	c.Assert(err, check.IsNil)
 	c.Assert(u2.Password, check.Not(check.Equals), p)
 	var m authtest.Mail
 	err = tsurutest.WaitCondition(time.Second, func() bool {
@@ -213,22 +218,28 @@ func (s *S) TestResetPassword(c *check.C) {
 	lines := strings.Split(string(m.Data), "\r\n")
 	lines[len(lines)-4] = ""
 	c.Assert(strings.Join(lines, "\r\n"), check.Equals, expected)
-	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+
+	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": u.Email}).Decode(&token)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.Used, check.Equals, true)
 }
 
 func (s *S) TestResetPasswordThirdToken(c *check.C) {
+	ctx := context.TODO()
 	scheme := NativeScheme{}
 	u := auth.User{Email: "profecia@raul.com"}
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	t, err := createPasswordToken(&u)
+	defer u.Delete(context.TODO())
+	t, err := createPasswordToken(ctx, &u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.PasswordTokens().Remove(bson.M{"_id": t.Token})
+
+	passwordTokensCollection, err := storagev2.PasswordTokensCollection()
+	c.Assert(err, check.IsNil)
+
+	defer passwordTokensCollection.DeleteOne(ctx, mongoBSON.M{"_id": t.Token})
 	u2 := auth.User{Email: "tsuru@globo.com"}
-	err = scheme.ResetPassword(context.TODO(), &u2, t.Token)
+	err = scheme.ResetPassword(ctx, &u2, t.Token)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
@@ -240,23 +251,31 @@ func (s *S) TestResetPasswordEmptyToken(c *check.C) {
 }
 
 func (s *S) TestNativeRemove(c *check.C) {
+	ctx := context.TODO()
 	scheme := NativeScheme{}
 	params := make(map[string]string)
 	params["email"] = "timeredbull@globo.com"
 	params["password"] = "123456"
-	token, err := scheme.Login(context.TODO(), params)
+	token, err := scheme.Login(ctx, params)
 	c.Assert(err, check.IsNil)
-	u, err := auth.ConvertNewUser(token.User())
+	u, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
-	err = scheme.Remove(context.TODO(), u)
+	err = scheme.Remove(ctx, u)
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	var tokens []Token
-	err = conn.Tokens().Find(bson.M{"useremail": "timeredbull@globo.com"}).All(&tokens)
+
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
+	cursor, err := tokensCollection.Find(ctx, mongoBSON.M{"useremail": "timeredbull@globo.com"})
+	c.Assert(err, check.IsNil)
+
+	err = cursor.All(ctx, &tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
-	_, err = auth.GetUserByEmail("timeredbull@globo.com")
+	_, err = auth.GetUserByEmail(context.TODO(), "timeredbull@globo.com")
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }

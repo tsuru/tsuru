@@ -8,38 +8,43 @@ import (
 	"context"
 	"sort"
 
+	"github.com/tsuru/tsuru/db/storagev2"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestNewRole(c *check.C) {
-	r, err := NewRole("myrole", "app", "")
+	ctx := context.TODO()
+	r, err := NewRole(ctx, "myrole", "app", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Name, check.Equals, "myrole")
 	c.Assert(r.ContextType, check.Equals, permTypes.CtxApp)
-	_, err = NewRole("myrole", "global", "")
+	_, err = NewRole(ctx, "myrole", "global", "")
 	c.Assert(err, check.Equals, permTypes.ErrRoleAlreadyExists)
-	_, err = NewRole("  ", "app", "")
+	_, err = NewRole(ctx, "  ", "app", "")
 	c.Assert(err, check.ErrorMatches, "invalid role name")
-	_, err = NewRole("myrole2", "invalid", "")
+	_, err = NewRole(ctx, "myrole2", "invalid", "")
 	c.Assert(err, check.ErrorMatches, `invalid context type "invalid"`)
 }
 
 func (s *S) TestListRoles(c *check.C) {
-	r, err := NewRole("test", "app", "")
+	ctx := context.TODO()
+	r, err := NewRole(ctx, "test", "app", "")
 	c.Assert(err, check.IsNil)
-	roles, err := ListRoles(context.TODO())
+	roles, err := ListRoles(ctx)
 	c.Assert(err, check.IsNil)
 	expected := []Role{{Name: "test", ContextType: "app", SchemeNames: []string{}, Events: []string{}}}
 	c.Assert(roles, check.DeepEquals, expected)
-	err = r.AddPermissions(context.TODO(), "app.deploy", "app.update")
+	err = r.AddPermissions(ctx, "app.deploy", "app.update")
 	c.Assert(err, check.IsNil)
 	r.SchemeNames = append(r.SchemeNames, "invalid")
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	err = coll.UpdateId(r.Name, r)
+
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"_id": r.Name}, r)
 	c.Assert(err, check.IsNil)
+
 	roles, err = ListRoles(context.TODO())
 	c.Assert(err, check.IsNil)
 	expected = []Role{{Name: "test", ContextType: "app", Events: []string{}, SchemeNames: []string{
@@ -49,7 +54,7 @@ func (s *S) TestListRoles(c *check.C) {
 }
 
 func (s *S) TestFindRole(c *check.C) {
-	_, err := NewRole("myrole", "team", "")
+	_, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	r, err := FindRole(context.TODO(), "myrole")
 	c.Assert(err, check.IsNil)
@@ -60,7 +65,7 @@ func (s *S) TestFindRole(c *check.C) {
 }
 
 func (s *S) TestRoleAddPermissions(c *check.C) {
-	r, err := NewRole("myrole", "team", "")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions(context.TODO(), "app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
@@ -77,7 +82,7 @@ func (s *S) TestRoleAddPermissions(c *check.C) {
 }
 
 func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
-	r, err := NewRole("myrole", "global", "")
+	r, err := NewRole(context.TODO(), "myrole", "global", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions(context.TODO(), "")
 	c.Assert(err, check.ErrorMatches, "invalid permission name")
@@ -95,7 +100,7 @@ func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
 }
 
 func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {
-	r, err := NewRole("myrole", "team", "")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions(context.TODO(), "app.update.env.set.nih")
 	c.Assert(err, check.ErrorMatches, `permission named "app.update.env.set.nih" not found`)
@@ -104,7 +109,7 @@ func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {
 }
 
 func (s *S) TestRemovePermissions(c *check.C) {
-	r, err := NewRole("myrole", "team", "")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions(context.TODO(), "app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
@@ -118,16 +123,16 @@ func (s *S) TestRemovePermissions(c *check.C) {
 }
 
 func (s *S) TestDestroyRole(c *check.C) {
-	_, err := NewRole("myrole", "team", "")
+	_, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
-	err = DestroyRole("myrole")
+	err = DestroyRole(context.TODO(), "myrole")
 	c.Assert(err, check.IsNil)
-	err = DestroyRole("myrole")
+	err = DestroyRole(context.TODO(), "myrole")
 	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 }
 
 func (s *S) TestPermissionsFor(c *check.C) {
-	r, err := NewRole("myrole", "team", "")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	perms := r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, []Permission{})
@@ -145,7 +150,7 @@ func (s *S) TestPermissionsFor(c *check.C) {
 }
 
 func (s *S) TestRoleAddEvent(c *check.C) {
-	r, err := NewRole("myrole", "team", "")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddEvent(context.TODO(), "team-create")
 	c.Assert(err, check.IsNil)
@@ -159,7 +164,7 @@ func (s *S) TestRoleAddEvent(c *check.C) {
 }
 
 func (s *S) TestRoleRemoveEvent(c *check.C) {
-	r, err := NewRole("myrole", "team", "")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddEvent(context.TODO(), "team-create")
 	c.Assert(err, check.IsNil)
@@ -174,11 +179,11 @@ func (s *S) TestRoleRemoveEvent(c *check.C) {
 }
 
 func (s *S) TestListRolesWithEvents(c *check.C) {
-	_, err := NewRole("myrole1", "team", "")
+	_, err := NewRole(context.TODO(), "myrole1", "team", "")
 	c.Assert(err, check.IsNil)
-	r2, err := NewRole("myrole2", "team", "")
+	r2, err := NewRole(context.TODO(), "myrole2", "team", "")
 	c.Assert(err, check.IsNil)
-	r3, err := NewRole("myrole3", "team", "")
+	r3, err := NewRole(context.TODO(), "myrole3", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r2.AddEvent(context.TODO(), "team-create")
 	c.Assert(err, check.IsNil)
@@ -195,11 +200,11 @@ func (s *S) TestListRolesWithEvents(c *check.C) {
 }
 
 func (s *S) TestListRolesForEvent(c *check.C) {
-	_, err := NewRole("myrole1", "team", "")
+	_, err := NewRole(context.TODO(), "myrole1", "team", "")
 	c.Assert(err, check.IsNil)
-	r2, err := NewRole("myrole2", "team", "")
+	r2, err := NewRole(context.TODO(), "myrole2", "team", "")
 	c.Assert(err, check.IsNil)
-	r3, err := NewRole("myrole3", "global", "")
+	r3, err := NewRole(context.TODO(), "myrole3", "global", "")
 	c.Assert(err, check.IsNil)
 	err = r2.AddEvent(context.TODO(), "team-create")
 	c.Assert(err, check.IsNil)
@@ -212,13 +217,13 @@ func (s *S) TestListRolesForEvent(c *check.C) {
 }
 
 func (s *S) TestListRolesWithPermissionWithContextMap(c *check.C) {
-	_, err := NewRole("myrole1", "global", "") // no permissions for teamCtx
+	_, err := NewRole(context.TODO(), "myrole1", "global", "") // no permissions for teamCtx
 	c.Assert(err, check.IsNil)
-	r2, err := NewRole("myrole2", "global", "") // with permissions for teamCtx
+	r2, err := NewRole(context.TODO(), "myrole2", "global", "") // with permissions for teamCtx
 	c.Assert(err, check.IsNil)
-	r3, err := NewRole("myrole3", "global", "") // with permissions NOT for teamCtx
+	r3, err := NewRole(context.TODO(), "myrole3", "global", "") // with permissions NOT for teamCtx
 	c.Assert(err, check.IsNil)
-	_, err = NewRole("myrole4", "team", "") // with roleCtx for teamCtx
+	_, err = NewRole(context.TODO(), "myrole4", "team", "") // with roleCtx for teamCtx
 	c.Assert(err, check.IsNil)
 
 	r2.AddPermissions(context.TODO(), "app.update", "app.update.env.set")
@@ -231,23 +236,23 @@ func (s *S) TestListRolesWithPermissionWithContextMap(c *check.C) {
 }
 
 func (s *S) TestUpdate(c *check.C) {
-	_, err := NewRole("myrole", "team", "")
+	_, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	newRole := Role{Name: "myrole", ContextType: "app"}
-	err = newRole.Update()
+	err = newRole.Update(context.TODO())
 	c.Assert(err, check.IsNil)
 	inexistentRole := Role{Name: "notaRole", ContextType: "app"}
-	err = inexistentRole.Update()
+	err = inexistentRole.Update(context.TODO())
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestAdd(c *check.C) {
 	r := Role{Name: " ", ContextType: "app", Description: "an app"}
-	err := r.Add()
+	err := r.Add(context.TODO())
 	c.Assert(err, check.ErrorMatches, "invalid role name")
 	r2 := Role{Name: "app-owner", ContextType: "app", Description: "an app"}
-	err = r2.Add()
+	err = r2.Add(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = r2.Add()
+	err = r2.Add(context.TODO())
 	c.Assert(err, check.Equals, permTypes.ErrRoleAlreadyExists)
 }

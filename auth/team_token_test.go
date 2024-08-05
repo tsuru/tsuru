@@ -37,7 +37,7 @@ func (t *userToken) Engine() string {
 	return "user"
 }
 
-func (t *userToken) User() (*authTypes.User, error) {
+func (t *userToken) User(ctx context.Context) (*authTypes.User, error) {
 	return ConvertOldUser(t.user, nil)
 }
 func (t *userToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
@@ -115,7 +115,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	namedToken, ok := t.(authTypes.NamedToken)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
-	u, err := t.User()
+	u, err := t.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@tsuru-team-token", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
 	perms, err := t.Permissions(context.TODO())
@@ -139,7 +139,7 @@ func (s *S) Test_TeamTokenService_Authenticate_Expired(c *check.C) {
 }
 
 func (s *S) Test_TeamTokenService_AddRole(c *check.C) {
-	_, err := permission.NewRole("app-deployer", "app", "")
+	_, err := permission.NewRole(context.TODO(), "app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
@@ -156,7 +156,7 @@ func (s *S) Test_TeamTokenService_AddRole(c *check.C) {
 }
 
 func (s *S) Test_TeamTokenService_AddRoleTwice(c *check.C) {
-	_, err := permission.NewRole("app-deployer", "app", "")
+	_, err := permission.NewRole(context.TODO(), "app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
@@ -172,7 +172,7 @@ func (s *S) Test_TeamTokenService_AddRoleTwice(c *check.C) {
 }
 
 func (s *S) Test_TeamTokenService_AddRole_TokenNotFound(c *check.C) {
-	_, err := permission.NewRole("app-deployer", "app", "")
+	_, err := permission.NewRole(context.TODO(), "app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	err = servicemanager.TeamToken.AddRole(context.TODO(), "invalid-token", "app-deployer", "myapp")
 	c.Assert(err, check.Equals, authTypes.ErrTeamTokenNotFound)
@@ -186,7 +186,7 @@ func (s *S) Test_TeamTokenService_AddRole_RoleNotFound(c *check.C) {
 }
 
 func (s *S) Test_TeamTokenService_RemoveRole(c *check.C) {
-	_, err := permission.NewRole("app-deployer", "app", "")
+	_, err := permission.NewRole(context.TODO(), "app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
@@ -252,7 +252,7 @@ func (s *S) Test_TeamTokenService_FindByUserToken(c *check.C) {
 }
 
 func (s *S) Test_TeamTokenService_FindByUserToken_ValidatePermissions(c *check.C) {
-	r1, err := permission.NewRole("app-deployer", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), permission.PermAppDeploy.FullName())
 	c.Assert(err, check.IsNil)
@@ -401,11 +401,11 @@ func (s *S) Test_TeamTokenService_Update_Expires(c *check.C) {
 }
 
 func (s *S) Test_TeamToken_Permissions(c *check.C) {
-	r1, err := permission.NewRole("app-deployer", "app", "")
+	r1, err := permission.NewRole(context.TODO(), "app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions(context.TODO(), "app.read", "app.deploy")
 	c.Assert(err, check.IsNil)
-	r2, err := permission.NewRole("app-updater", "app", "")
+	r2, err := permission.NewRole(context.TODO(), "app-updater", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r2.AddPermissions(context.TODO(), "app.update")
 	c.Assert(err, check.IsNil)

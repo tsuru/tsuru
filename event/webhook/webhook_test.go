@@ -83,7 +83,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	err = s.service.storage.Insert(eventTypes.Webhook{
+	err = s.service.storage.Insert(context.TODO(), eventTypes.Webhook{
 		Name:   "xyz",
 		URL:    srv.URL + "/a/b/c?a=b&c=d",
 		Method: "PUT",
@@ -93,7 +93,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	s.service.Notify(evt.UniqueID.Hex())
+	s.service.Notify(context.TODO(), evt.UniqueID.Hex())
 	<-called
 	c.Assert(string(receivedBody), check.Equals, "ahoy {{ --")
 	c.Assert(receivedReq.Method, check.Equals, "PUT")
@@ -141,12 +141,12 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	err = s.service.storage.Insert(eventTypes.Webhook{
+	err = s.service.storage.Insert(context.TODO(), eventTypes.Webhook{
 		Name: "xyz",
 		URL:  srv.URL,
 	})
 	c.Assert(err, check.IsNil)
-	s.service.Notify(evt.UniqueID.Hex())
+	s.service.Notify(context.TODO(), evt.UniqueID.Hex())
 	<-called
 	c.Assert(string(receivedBody), check.Equals, string(evtData))
 	c.Assert(receivedReq.Method, check.Equals, "POST")
@@ -181,7 +181,7 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	err = s.service.storage.Insert(eventTypes.Webhook{
+	err = s.service.storage.Insert(context.TODO(), eventTypes.Webhook{
 		Name:   "xyz",
 		URL:    srv.URL + "/a/b/c?a=b&c=d",
 		Method: "PUT",
@@ -191,7 +191,7 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	s.service.Notify(evt.UniqueID.Hex())
+	s.service.Notify(context.TODO(), evt.UniqueID.Hex())
 	<-called
 	c.Assert(string(receivedBody), check.Equals, "app.update.env.set event for app named myapp")
 	c.Assert(receivedReq.Method, check.Equals, "PUT")
@@ -239,13 +239,13 @@ func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	err = s.service.storage.Insert(eventTypes.Webhook{
+	err = s.service.storage.Insert(context.TODO(), eventTypes.Webhook{
 		Name:     "xyz",
 		URL:      "http://xyz/",
 		ProxyURL: srv.URL,
 	})
 	c.Assert(err, check.IsNil)
-	s.service.Notify(evt.UniqueID.Hex())
+	s.service.Notify(context.TODO(), evt.UniqueID.Hex())
 	<-called
 	c.Assert(string(receivedBody), check.Equals, string(evtData))
 	c.Assert(receivedReq.Method, check.Equals, "POST")
@@ -254,7 +254,7 @@ func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceCreate(c *check.C) {
-	err := s.service.Create(eventTypes.Webhook{
+	err := s.service.Create(context.TODO(), eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 		Body: "ahoy",
@@ -328,7 +328,7 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 	}
 
 	for _, test := range tests {
-		err := s.service.Create(eventTypes.Webhook{
+		err := s.service.Create(context.TODO(), eventTypes.Webhook{
 			Name:     test.name,
 			URL:      test.url,
 			ProxyURL: test.proxyURL,
@@ -342,12 +342,12 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceUpdate(c *check.C) {
-	err := s.service.Create(eventTypes.Webhook{
+	err := s.service.Create(context.TODO(), eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Update(eventTypes.Webhook{
+	err = s.service.Update(context.TODO(), eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://b",
 	})
@@ -355,9 +355,8 @@ func (s *S) TestWebhookServiceUpdate(c *check.C) {
 	w, err := s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.IsNil)
 	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
-		Name:    "xyz",
-		URL:     "http://b",
-		Headers: http.Header{},
+		Name: "xyz",
+		URL:  "http://b",
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},
@@ -368,7 +367,7 @@ func (s *S) TestWebhookServiceUpdate(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceUpdateInvalid(c *check.C) {
-	err := s.service.Update(eventTypes.Webhook{
+	err := s.service.Update(context.TODO(), eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://b",
 	})
@@ -376,18 +375,18 @@ func (s *S) TestWebhookServiceUpdateInvalid(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceDelete(c *check.C) {
-	err := s.service.Create(eventTypes.Webhook{
+	err := s.service.Create(context.TODO(), eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Delete("xyz")
+	err = s.service.Delete(context.TODO(), "xyz")
 	c.Assert(err, check.IsNil)
 	_, err = s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 
 func (s *S) TestWebhookServiceDeleteNotFound(c *check.C) {
-	err := s.service.Delete("xyz")
+	err := s.service.Delete(context.TODO(), "xyz")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }

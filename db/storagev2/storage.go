@@ -69,7 +69,10 @@ func connect() (*mongo.Client, *string, error) {
 		ctx,
 		options.Client().
 			ApplyURI(uri).
-			SetAppName("tsurud"),
+			SetAppName("tsurud").
+			SetBSONOptions(&options.BSONOptions{
+				NilSliceAsEmpty: true,
+			}),
 	)
 	if err != nil {
 		return nil, nil, err

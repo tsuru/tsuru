@@ -7,15 +7,12 @@ package oauth
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/oauth2"
 )
 
@@ -30,8 +27,8 @@ func (t *tokenWrapper) GetValue() string {
 	return t.AccessToken
 }
 
-func (t *tokenWrapper) User() (*authTypes.User, error) {
-	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
+func (t *tokenWrapper) User(ctx context.Context) (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(ctx, t.UserEmail))
 }
 
 func (t *tokenWrapper) GetUserName() string {
@@ -46,17 +43,21 @@ func (t *tokenWrapper) Permissions(ctx context.Context) ([]permission.Permission
 	return auth.BaseTokenPermission(ctx, t)
 }
 
-func getToken(header string) (*tokenWrapper, error) {
+func getToken(ctx context.Context, header string) (*tokenWrapper, error) {
 	var t tokenWrapper
 	token, err := auth.ParseToken(header)
 	if err != nil {
 		return nil, err
 	}
-	coll := collection()
-	defer coll.Close()
-	err = coll.Find(bson.M{"token.accesstoken": token}).One(&t)
+
+	collection, err := storagev2.OAuth2TokensCollection()
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		return nil, err
+	}
+
+	err = collection.FindOne(ctx, mongoBSON.M{"token.accesstoken": token}).Decode(&t)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
 			return nil, auth.ErrInvalidToken
 		}
 		return nil, err
@@ -64,36 +65,33 @@ func getToken(header string) (*tokenWrapper, error) {
 	return &t, nil
 }
 
-func deleteToken(token string) error {
-	coll := collection()
-	defer coll.Close()
-	return coll.Remove(bson.M{"token.accesstoken": token})
+func deleteToken(ctx context.Context, token string) error {
+	collection, err := storagev2.OAuth2TokensCollection()
+	if err != nil {
+		return err
+	}
+	_, err = collection.DeleteOne(ctx, mongoBSON.M{"token.accesstoken": token})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func deleteAllTokens(email string) error {
-	coll := collection()
-	defer coll.Close()
-	_, err := coll.RemoveAll(bson.M{"useremail": email})
+func deleteAllTokens(ctx context.Context, email string) error {
+	collection, err := storagev2.OAuth2TokensCollection()
+	if err != nil {
+		return err
+	}
+	_, err = collection.DeleteMany(ctx, mongoBSON.M{"useremail": email})
 	return err
 }
 
-func (t *tokenWrapper) save() error {
-	coll := collection()
-	defer coll.Close()
-	return coll.Insert(t)
-}
-
-func collection() *storage.Collection {
-	name, err := config.GetString("auth:oauth:collection")
+func (t *tokenWrapper) save(ctx context.Context) error {
+	collection, err := storagev2.OAuth2TokensCollection()
 	if err != nil {
-		name = "oauth_tokens"
-		log.Debugf("auth:oauth:collection not found using default value: %s.", name)
+		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		log.Errorf("Failed to connect to the database: %s", err)
-	}
-	coll := conn.Collection(name)
-	coll.EnsureIndex(mgo.Index{Key: []string{"token.accesstoken"}})
-	return coll
+	_, err = collection.InsertOne(ctx, t)
+	return err
 }

@@ -33,7 +33,7 @@ func (s *S) TestCreateRootUserCmdRun(c *check.C) {
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "Password: \nConfirm: \nRoot user successfully created.\n")
-	u, err := auth.GetUserByEmail("my@user.com")
+	u, err := auth.GetUserByEmail(stdContext.TODO(), "my@user.com")
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions(stdContext.TODO())
 	c.Assert(err, check.IsNil)

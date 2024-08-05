@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -49,6 +50,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -136,7 +138,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(ctx))
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -172,7 +174,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(context.TODO()))
 	app1 := app.App{Name: "app1", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -708,7 +710,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(context.TODO()))
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -742,7 +744,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermissionAppInf
 		Scheme:  permission.PermAppReadInfo,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := auth.ConvertNewUser(token.User(context.TODO()))
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err := app.CreateApp(context.TODO(), &app1, u)
 	c.Assert(err, check.IsNil)
@@ -777,24 +779,25 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
+	ctx := context.TODO()
 	myApp := &app.App{
 		Name:      "myapptodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	err := app.CreateApp(ctx, myApp, s.user)
 	c.Assert(err, check.IsNil)
-	myApp, err = app.GetByName(context.TODO(), myApp.Name)
+	myApp, err = app.GetByName(ctx, myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("deleter", "app", "")
+	role, err := permission.NewRole(ctx, "deleter", "app", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(context.TODO(), "app.delete")
+	err = role.AddPermissions(ctx, "app.delete")
 	c.Assert(err, check.IsNil)
-	err = s.user.AddRole(context.TODO(), "deleter", myApp.Name)
+	err = s.user.AddRole(ctx, "deleter", myApp.Name)
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -810,26 +813,27 @@ func (s *S) TestDelete(c *check.C) {
 }
 
 func (s *S) TestDeleteVersion(c *check.C) {
+	ctx := context.TODO()
 	myApp := &app.App{
 		Name:      "myversiontodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	err := app.CreateApp(ctx, myApp, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, myApp)
 	newSuccessfulAppVersion(c, myApp)
-	myApp, err = app.GetByName(context.TODO(), myApp.Name)
+	myApp, err = app.GetByName(ctx, myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"/versions/"+"2", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("deleter", "app", "")
+	role, err := permission.NewRole(ctx, "deleter", "app", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(context.TODO(), "app.delete")
+	err = role.AddPermissions(ctx, "app.delete")
 	c.Assert(err, check.IsNil)
-	err = s.user.AddRole(context.TODO(), "deleter", myApp.Name)
+	err = s.user.AddRole(ctx, "deleter", myApp.Name)
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -891,9 +895,10 @@ func (s *S) TestDeleteAdminAuthorized(c *check.C) {
 }
 
 func (s *S) TestAppInfo(c *check.C) {
+	ctx := context.TODO()
 	config.Set("host", "http://myhost.com")
 	expectedApp := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &expectedApp, s.user)
+	err := app.CreateApp(ctx, &expectedApp, s.user)
 	c.Assert(err, check.IsNil)
 	var myApp map[string]interface{}
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
@@ -901,11 +906,11 @@ func (s *S) TestAppInfo(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("reader", "app", "")
+	role, err := permission.NewRole(ctx, "reader", "app", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(context.TODO(), "app.read")
+	err = role.AddPermissions(ctx, "app.read")
 	c.Assert(err, check.IsNil)
-	s.user.AddRole(context.TODO(), "reader", expectedApp.Name)
+	s.user.AddRole(ctx, "reader", expectedApp.Name)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
@@ -943,6 +948,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestCreateAppRemoveRole(c *check.C) {
+	ctx := context.TODO()
 	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=zend"
@@ -956,17 +962,18 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("test", "team", "")
+	role, err := permission.NewRole(ctx, "test", "team", "")
 	c.Assert(err, check.IsNil)
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
-	err = user.AddRole(context.TODO(), role.Name, "team")
+	err = user.AddRole(ctx, role.Name, "team")
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
+
+	rolesCollection, err := storagev2.RolesCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Roles().RemoveId(role.Name)
+	_, err = rolesCollection.DeleteOne(ctx, mongoBSON.M{"_id": role.Name})
 	c.Assert(err, check.IsNil)
+
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var obtained map[string]string
@@ -1534,11 +1541,13 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, token.GetUserName())
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	u, _ := token.User()
-	conn, err := db.Conn()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Users().Update(bson.M{"email": u.Email}, bson.M{"$set": bson.M{"quota": quota.Quota{Limit: 1, InUse: 1}}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": u.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota": quota.Quota{Limit: 1, InUse: 1}}})
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader("name=someapp&platform=zend")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -1660,7 +1669,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
+	u, _ := token.User(context.TODO())
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("someapp"),
 		Owner:  u.Email,
@@ -2385,7 +2394,7 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(context.TODO(), &a, user)
 	c.Assert(err, check.IsNil)
@@ -2434,7 +2443,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	})
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(context.TODO(), &a, user)
 	c.Assert(err, check.IsNil)

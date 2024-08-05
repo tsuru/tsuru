@@ -42,7 +42,7 @@ func (t *teamToken) GetValue() string {
 	return t.Token
 }
 
-func (t *teamToken) User() (*authTypes.User, error) {
+func (t *teamToken) User(ctx context.Context) (*authTypes.User, error) {
 	return &authTypes.User{
 		Email:     fmt.Sprintf("%s@%s", t.TokenID, TsuruTokenEmailDomain),
 		Quota:     quota.UnlimitedQuota,
@@ -114,7 +114,7 @@ func (s *teamTokenService) Delete(ctx context.Context, tokenID string) error {
 		return err
 	}
 	tt := teamToken(*token)
-	u, err := tt.User()
+	u, err := tt.User(ctx)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (s *teamTokenService) Delete(ctx context.Context, tokenID string) error {
 }
 
 func (s *teamTokenService) Create(ctx context.Context, args authTypes.TeamTokenCreateArgs, token authTypes.Token) (authTypes.TeamToken, error) {
-	u, err := token.User()
+	u, err := token.User(ctx)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}

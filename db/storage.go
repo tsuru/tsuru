@@ -84,14 +84,6 @@ func (s *Storage) Apps() *storage.Collection {
 	return c
 }
 
-// Jobs returns the jobs collection from MongoDB.
-func (s *Storage) Jobs() *storage.Collection {
-	jobNameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := s.Collection("jobs")
-	c.EnsureIndex(jobNameIndex)
-	return c
-}
-
 // Services returns the services collection from MongoDB.
 func (s *Storage) Services() *storage.Collection {
 	return s.Collection("services")
@@ -100,31 +92,6 @@ func (s *Storage) Services() *storage.Collection {
 // ServiceInstances returns the services_instances collection from MongoDB.
 func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.Collection("service_instances")
-}
-
-// Users returns the users collection from MongoDB.
-func (s *Storage) Users() *storage.Collection {
-	c := s.Collection("users")
-	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-	c.EnsureIndex(emailIndex)
-
-	apikeyIndex := mgo.Index{Key: []string{"apikey"}}
-	c.EnsureIndex(apikeyIndex)
-	return c
-}
-
-func (s *Storage) Tokens() *storage.Collection {
-	coll := s.Collection("tokens")
-	coll.EnsureIndex(mgo.Index{Key: []string{"token"}})
-	return coll
-}
-
-func (s *Storage) PasswordTokens() *storage.Collection {
-	return s.Collection("password_tokens")
-}
-
-func (s *Storage) Roles() *storage.Collection {
-	return s.Collection("roles")
 }
 
 func IsCollectionExistsError(err error) bool {

@@ -11,11 +11,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/oauth2"
 	check "gopkg.in/check.v1"
 )
@@ -47,7 +48,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Equals, "my_token")
 	c.Assert(token.GetUserName(), check.Equals, "rand@althor.com")
-	u, err := token.User()
+	u, err := token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "rand@althor.com")
 	c.Assert(s.reqs, check.HasLen, 2)
@@ -55,7 +56,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(s.bodies[0], check.Equals, "code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost")
 	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
 	c.Assert(s.reqs[1].Header.Get("Authorization"), check.Equals, "Bearer my_token")
-	dbToken, err := getToken("my_token")
+	dbToken, err := getToken(context.TODO(), "my_token")
 	c.Assert(err, check.IsNil)
 	c.Assert(dbToken.AccessToken, check.Equals, "my_token")
 	c.Assert(dbToken.UserEmail, check.Equals, "rand@althor.com")
@@ -156,7 +157,7 @@ func (s *S) TestOAuthParseInvalidStatus(c *check.C) {
 
 func (s *S) TestOAuthAuth(c *check.C) {
 	existing := tokenWrapper{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
-	err := existing.save()
+	err := existing.save(context.TODO())
 	c.Assert(err, check.IsNil)
 	scheme := oAuthScheme{}
 	token, err := scheme.Auth(context.TODO(), "bearer myvalidtoken")
@@ -173,7 +174,7 @@ func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
 		},
 		UserEmail: "x@x.com",
 	}
-	err := token.save()
+	err := token.save(context.TODO())
 	c.Assert(err, check.IsNil)
 	scheme := oAuthScheme{}
 	_, err = scheme.Auth(context.TODO(), "bearer myexpiredtoken")
@@ -186,7 +187,7 @@ func (s *S) TestOAuthCreate(c *check.C) {
 	user := auth.User{Email: "x@x.com", Password: "something"}
 	_, err := scheme.Create(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
-	dbUser, err := auth.GetUserByEmail(user.Email)
+	dbUser, err := auth.GetUserByEmail(context.TODO(), user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
 	c.Assert(dbUser.Password, check.Equals, "")
@@ -201,7 +202,7 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	params["redirectUrl"] = "http://localhost"
 	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
-	u, err := auth.ConvertNewUser(token.User())
+	u, err := auth.ConvertNewUser(token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(context.TODO(), u)
 	c.Assert(err, check.IsNil)
@@ -209,11 +210,15 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	var tokens []tokenWrapper
-	coll := collection()
-	defer coll.Close()
-	err = coll.Find(bson.M{"useremail": "rand@althor.com"}).All(&tokens)
+	collection, err := storagev2.OAuth2TokensCollection()
+	c.Assert(err, check.IsNil)
+
+	cursor, err := collection.Find(context.TODO(), mongoBSON.M{"useremail": "rand@althor.com"})
+	c.Assert(err, check.IsNil)
+
+	err = cursor.All(context.TODO(), &tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
-	_, err = auth.GetUserByEmail("rand@althor.com")
+	_, err = auth.GetUserByEmail(context.TODO(), "rand@althor.com")
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }

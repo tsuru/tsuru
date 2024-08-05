@@ -8,10 +8,11 @@ import (
 	"context"
 
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -44,11 +45,11 @@ func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth
 	if !ok {
 		return nil, ErrMissingPasswordError
 	}
-	user, err := auth.GetUserByEmail(email)
+	user, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
-	token, err := createToken(user, password)
+	token, err := createToken(ctx, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -56,11 +57,11 @@ func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth
 }
 
 func (s NativeScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
-	return getToken(token)
+	return getToken(ctx, token)
 }
 
 func (s NativeScheme) Logout(ctx context.Context, token string) error {
-	return deleteToken(token)
+	return deleteToken(ctx, token)
 }
 
 func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
@@ -70,7 +71,7 @@ func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 	if !validation.ValidateLength(user.Password, passwordMinLen, passwordMaxLen) {
 		return nil, ErrInvalidPassword
 	}
-	if _, err := auth.GetUserByEmail(user.Email); err == nil {
+	if _, err := auth.GetUserByEmail(ctx, user.Email); err == nil {
 		return nil, ErrEmailRegistered
 	}
 	if err := hashPassword(user); err != nil {
@@ -83,7 +84,7 @@ func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 }
 
 func (s NativeScheme) ChangePassword(ctx context.Context, token auth.Token, oldPassword string, newPassword string) error {
-	user, err := auth.ConvertNewUser(token.User())
+	user, err := auth.ConvertNewUser(token.User(ctx))
 	if err != nil {
 		return err
 	}
@@ -95,11 +96,11 @@ func (s NativeScheme) ChangePassword(ctx context.Context, token auth.Token, oldP
 	}
 	user.Password = newPassword
 	hashPassword(user)
-	return user.Update()
+	return user.Update(ctx)
 }
 
 func (s NativeScheme) StartPasswordReset(ctx context.Context, user *auth.User) error {
-	passToken, err := createPasswordToken(user)
+	passToken, err := createPasswordToken(ctx, user)
 	if err != nil {
 		return err
 	}
@@ -114,12 +115,11 @@ func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetT
 	if resetToken == "" {
 		return auth.ErrInvalidToken
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.PasswordTokensCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	passToken, err := getPasswordToken(resetToken)
+	passToken, err := getPasswordToken(ctx, resetToken)
 	if err != nil {
 		return err
 	}
@@ -130,17 +130,20 @@ func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetT
 	user.Password = password
 	hashPassword(user)
 	go sendNewPassword(user, password)
-	passToken.Used = true
-	conn.PasswordTokens().UpdateId(passToken.Token, passToken)
-	return user.Update()
-}
 
-func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
-	err := deleteAllTokens(u.Email)
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": passToken.Token}, mongoBSON.M{"$set": mongoBSON.M{"used": true}})
 	if err != nil {
 		return err
 	}
-	return u.Delete()
+	return user.Update(ctx)
+}
+
+func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
+	err := deleteAllTokens(ctx, u.Email)
+	if err != nil {
+		return err
+	}
+	return u.Delete(ctx)
 }
 
 func (s NativeScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {

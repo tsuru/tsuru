@@ -246,7 +246,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	u, err := auth.GetUserByEmail(email)
+	u, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		if err == authTypes.ErrUserNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -318,7 +318,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if changeRequest.NewName == "" {
 		return servicemanager.Team.Update(ctx, name, changeRequest.Tags)
 	}
-	u, err := t.User()
+	u, err := t.User(ctx)
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	u, err := t.User()
+	u, err := t.User(ctx)
 	if err != nil {
 		return err
 	}
@@ -530,7 +530,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	users, err := auth.ListUsers()
+	users, err := auth.ListUsers(ctx)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -604,7 +604,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	u, err := auth.GetUserByEmail(email)
+	u, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -693,11 +693,11 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	u, err := auth.GetUserByEmail(email)
+	u, err := auth.GetUserByEmail(ctx, email)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	apiKey, err := u.RegenerateAPIKey()
+	apiKey, err := u.RegenerateAPIKey(ctx)
 	if err != nil {
 		return err
 	}
@@ -716,7 +716,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 //	404: User not found
 func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	u, err := auth.ConvertNewUser(t.User())
+	u, err := auth.ConvertNewUser(t.User(ctx))
 	if err != nil {
 		return err
 	}
@@ -733,12 +733,12 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 
 	if email != "" {
-		u, err = auth.GetUserByEmail(email)
+		u, err = auth.GetUserByEmail(ctx, email)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	}
-	apiKey, err := u.ShowAPIKey()
+	apiKey, err := u.ShowAPIKey(ctx)
 	if err != nil {
 		return err
 	}
@@ -858,7 +858,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	userEmail := r.URL.Query().Get("userEmail")
 	roleName := r.URL.Query().Get("role")
 	contextValue := r.URL.Query().Get("context")
-	users, err := auth.ListUsers()
+	users, err := auth.ListUsers(ctx)
 	if err != nil {
 		return err
 	}
@@ -902,7 +902,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if contextValue != "" {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: "Wrong context being passed."}
 		}
-		user, err := auth.ConvertNewUser(t.User())
+		user, err := auth.ConvertNewUser(t.User(ctx))
 		if err != nil {
 			return err
 		}
@@ -930,7 +930,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	user, err := auth.ConvertNewUser(t.User())
+	user, err := auth.ConvertNewUser(t.User(ctx))
 	if err != nil {
 		return err
 	}
@@ -987,7 +987,7 @@ func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 
-	users, err := auth.ListUsersWithRolesAndContext(teamRoles, teamName)
+	users, err := auth.ListUsersWithRolesAndContext(ctx, teamRoles, teamName)
 	if err != nil {
 		return err
 	}

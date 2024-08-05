@@ -70,34 +70,6 @@ func (s *S) TestHealthCheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestUsers(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	users := strg.Users()
-	usersc := strg.Collection("users")
-	c.Assert(users, check.DeepEquals, usersc)
-	c.Assert(users, HasUniqueIndex, []string{"email"})
-}
-
-func (s *S) TestTokens(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	tokens := strg.Tokens()
-	tokensc := strg.Collection("tokens")
-	c.Assert(tokens, check.DeepEquals, tokensc)
-}
-
-func (s *S) TestPasswordTokens(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	tokens := strg.PasswordTokens()
-	tokensc := strg.Collection("password_tokens")
-	c.Assert(tokens, check.DeepEquals, tokensc)
-}
-
 func (s *S) TestApps(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
@@ -124,13 +96,4 @@ func (s *S) TestServiceInstances(c *check.C) {
 	serviceInstances := strg.ServiceInstances()
 	serviceInstancesc := strg.Collection("service_instances")
 	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
-}
-
-func (s *S) TestRoles(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	roles := strg.Roles()
-	rolesc := strg.Collection("roles")
-	c.Assert(roles, check.DeepEquals, rolesc)
 }

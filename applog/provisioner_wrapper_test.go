@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -30,14 +30,13 @@ type ProvisionerWrapperSuite struct {
 func newFakeJob(c *check.C) {
 	_, err := servicemanager.Job.GetByName(context.TODO(), "j1")
 	if err == jobTypes.ErrJobNotFound {
-		conn, err := db.Conn()
+		collection, err := storagev2.JobsCollection()
 		c.Assert(err, check.IsNil)
-		defer conn.Close()
 		fakeJob := jobTypes.Job{
 			Name: "j1",
 			Pool: "mypool",
 		}
-		err = conn.Jobs().Insert(fakeJob)
+		_, err = collection.InsertOne(context.TODO(), fakeJob)
 		c.Assert(err, check.IsNil)
 	}
 }

@@ -5,31 +5,33 @@
 package mongodb
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/storage/storagetest"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
 type userStorage struct{}
 
 func (s *userStorage) Create(user *auth.User) error {
-	conn, err := db.Conn()
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Users().Insert(user)
+	_, err = usersCollection.InsertOne(context.TODO(), user)
 	return err
 }
 
 func (s *userStorage) Remove(user *auth.User) error {
-	conn, err := db.Conn()
+	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Users().Remove(user)
+
+	_, err = usersCollection.DeleteOne(context.TODO(), mongoBSON.M{"email": user.Email})
 	return err
 }
 

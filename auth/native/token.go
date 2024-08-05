@@ -11,16 +11,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -48,8 +49,8 @@ func (t *Token) GetValue() string {
 	return t.Token
 }
 
-func (t *Token) User() (*authTypes.User, error) {
-	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
+func (t *Token) User(ctx context.Context) (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(ctx, t.UserEmail))
 }
 
 func (t *Token) GetUserName() string {
@@ -123,27 +124,31 @@ func newUserToken(u *auth.User) (*Token, error) {
 	return &t, nil
 }
 
-func removeOldTokens(userEmail string) error {
-	conn, err := db.Conn()
+func removeOldTokens(ctx context.Context, userEmail string) error {
+	collection, err := storagev2.TokensCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	var limit int
 	if limit, err = config.GetInt("auth:max-simultaneous-sessions"); err != nil {
 		return err
 	}
-	count, err := conn.Tokens().Find(bson.M{"useremail": userEmail}).Count()
+	count, err := collection.CountDocuments(ctx, mongoBSON.M{"useremail": userEmail})
 	if err != nil {
 		return err
 	}
-	diff := count - limit
+	diff := count - int64(limit)
 	if diff < 1 {
 		return nil
 	}
 	var tokens []map[string]interface{}
-	err = conn.Tokens().Find(bson.M{"useremail": userEmail}).
-		Select(bson.M{"_id": 1}).Sort("creation").Limit(diff).All(&tokens)
+
+	opts := options.Find().SetSort(mongoBSON.M{"creation": 1}).SetLimit(int64(diff)).SetProjection(mongoBSON.M{"_id": 1})
+	cursor, err := collection.Find(ctx, mongoBSON.M{"useremail": userEmail}, opts)
+	if err != nil {
+		return nil
+	}
+	err = cursor.All(ctx, &tokens)
 	if err != nil {
 		return nil
 	}
@@ -151,7 +156,7 @@ func removeOldTokens(userEmail string) error {
 	for _, token := range tokens {
 		ids = append(ids, token["_id"])
 	}
-	_, err = conn.Tokens().RemoveAll(bson.M{"_id": bson.M{"$in": ids}})
+	_, err = collection.DeleteMany(ctx, mongoBSON.M{"_id": mongoBSON.M{"$in": ids}})
 	return err
 }
 
@@ -165,41 +170,39 @@ func checkPassword(passwordHash string, password string) error {
 	return auth.AuthenticationFailure{Message: "Authentication failed, wrong password."}
 }
 
-func createToken(u *auth.User, password string) (*Token, error) {
+func createToken(ctx context.Context, u *auth.User, password string) (*Token, error) {
 	if u.Email == "" {
 		return nil, errors.New("User does not have an email")
 	}
 	if err := checkPassword(u.Password, password); err != nil {
 		return nil, err
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.TokensCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	token, err := newUserToken(u)
 	if err != nil {
 		return nil, err
 	}
-	err = conn.Tokens().Insert(token)
-	go removeOldTokens(u.Email)
+	_, err = collection.InsertOne(ctx, token)
+	go removeOldTokens(context.WithoutCancel(ctx), u.Email)
 	return token, err
 }
 
-func getToken(header string) (*Token, error) {
-	conn, err := db.Conn()
+func getToken(ctx context.Context, header string) (*Token, error) {
+	collection, err := storagev2.TokensCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var t Token
 	token, err := auth.ParseToken(header)
 	if err != nil {
 		return nil, err
 	}
-	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
+	err = collection.FindOne(ctx, mongoBSON.M{"token": token}).Decode(&t)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, auth.ErrInvalidToken
 		}
 		return nil, err
@@ -210,21 +213,23 @@ func getToken(header string) (*Token, error) {
 	return &t, nil
 }
 
-func deleteToken(token string) error {
-	conn, err := db.Conn()
+func deleteToken(ctx context.Context, token string) error {
+	collection, err := storagev2.TokensCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.Tokens().Remove(bson.M{"token": token})
+	_, err = collection.DeleteOne(ctx, mongoBSON.M{"token": token})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func deleteAllTokens(email string) error {
-	conn, err := db.Conn()
+func deleteAllTokens(ctx context.Context, email string) error {
+	collection, err := storagev2.TokensCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Tokens().RemoveAll(bson.M{"useremail": email})
+	_, err = collection.DeleteMany(ctx, mongoBSON.M{"useremail": email})
 	return err
 }

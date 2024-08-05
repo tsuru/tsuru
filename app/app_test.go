@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -48,6 +49,7 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -229,10 +231,16 @@ func (s *S) TestCreateApp(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(teamQuotaIncCalled, check.Equals, true)
 	c.Assert(userQuotaIncCalled, check.Equals, true)
@@ -261,10 +269,15 @@ func (s *S) TestCreateAppAlreadyExists(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	ra := App{Name: "appname", Platform: "python", TeamOwner: s.team.Name, Pool: "invalid"}
 	err = CreateApp(context.TODO(), &ra, s.user)
@@ -279,10 +292,15 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -302,10 +320,15 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -326,10 +349,16 @@ func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -350,10 +379,15 @@ func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -374,10 +408,15 @@ func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err.Error(), check.Equals, "no plan found for pool")
 }
 
@@ -395,10 +434,14 @@ func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -425,10 +468,15 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1}})
+	c.Assert(err, check.IsNil)
+
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -474,15 +522,17 @@ func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 	app := App{Name: "america", Platform: "python", TeamOwner: s.team.Name}
-	s.conn.Users().Update(
-		bson.M{"email": s.user.Email},
-		bson.M{"$set": bson.M{"quota.limit": 1, "quota.inuse": 1}},
-	)
+
+	usersCollection, err := storagev2.UsersCollection()
+	c.Assert(err, check.IsNil)
+	_, err = usersCollection.UpdateOne(context.TODO(), mongoBSON.M{"email": s.user.Email}, mongoBSON.M{"$set": mongoBSON.M{"quota.limit": 1, "quota.inuse": 1}})
+	c.Assert(err, check.IsNil)
+
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
 		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	err := CreateApp(context.TODO(), &app, s.user)
+	err = CreateApp(context.TODO(), &app, s.user)
 	e, ok := err.(*appTypes.AppCreationError)
 	c.Assert(ok, check.Equals, true)
 	qe, ok := e.Err.(*quota.QuotaExceededError)

@@ -93,7 +93,7 @@ func tokenByAllAuthEngines(ctx stdContext.Context, token string) (auth.Token, er
 		return t, nil
 	}
 
-	t, err = auth.APIAuth(token)
+	t, err = auth.APIAuth(ctx, token)
 	if err == nil {
 		return t, nil
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
@@ -34,13 +35,15 @@ func (s *HandlerSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_handler_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
+
+	storagev2.Reset()
 }
 
 func (s *HandlerSuite) SetUpTest(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)

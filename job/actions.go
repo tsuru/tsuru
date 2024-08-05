@@ -6,17 +6,16 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	"gopkg.in/mgo.v2/bson"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 var provisionJob = action.Action{
@@ -135,14 +134,14 @@ var insertJob = action.Action{
 }
 
 func insertJobDB(ctx context.Context, job *jobTypes.Job) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.JobsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	_, err = servicemanager.Job.GetByName(ctx, job.Name)
 	if err == jobTypes.ErrJobNotFound {
-		return conn.Jobs().Insert(job)
+		_, err = collection.InsertOne(ctx, job)
+		return err
 	} else if err == nil {
 		return jobTypes.ErrJobAlreadyExists
 	}
@@ -150,19 +149,22 @@ func insertJobDB(ctx context.Context, job *jobTypes.Job) error {
 }
 
 func updateJobDB(ctx context.Context, job *jobTypes.Job) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.JobsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+
 	oldJob, err := servicemanager.Job.GetByName(ctx, job.Name)
 	if err != nil {
 		return err
 	}
 	if reflect.DeepEqual(*oldJob, *job) {
-		return errors.New(fmt.Sprintf("no new values to be patched into job %s", job.Name))
+		return nil
 	}
-	return conn.Jobs().Update(bson.M{"name": job.Name}, job)
+
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"name": job.Name}, job)
+
+	return err
 }
 
 var reserveTeamCronjob = action.Action{
@@ -230,7 +232,7 @@ var reserveUserCronjob = action.Action{
 		if !found {
 			return
 		}
-		if user, err := auth.GetUserByEmail(email); err == nil {
+		if user, err := auth.GetUserByEmail(ctx.Context, email); err == nil {
 			servicemanager.UserQuota.Inc(ctx.Context, user, -1)
 		}
 	},

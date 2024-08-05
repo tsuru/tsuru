@@ -13,7 +13,7 @@ import (
 type Token interface {
 	GetValue() string
 	GetUserName() string
-	User() (*User, error)
+	User(ctx context.Context) (*User, error)
 	Engine() string
 	Permissions(ctx context.Context) ([]permission.Permission, error)
 }

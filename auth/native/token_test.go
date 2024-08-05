@@ -13,10 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -141,10 +142,14 @@ func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *check.C) {
 }
 
 func (s *S) TestRemoveOld(c *check.C) {
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
 	config.Set("auth:max-simultaneous-sessions", 6)
 	defer config.Unset("auth:max-simultaneous-sessions")
 	user := "removeme@tsuru.io"
-	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": user})
+	defer tokensCollection.DeleteMany(ctx, mongoBSON.M{"useremail": user})
 	initial := time.Now().Add(-48 * time.Hour)
 	for i := 0; i < 30; i++ {
 		token := Token{
@@ -153,14 +158,19 @@ func (s *S) TestRemoveOld(c *check.C) {
 			Creation:  initial.Add(time.Duration(i) * time.Hour),
 			UserEmail: user,
 		}
-		err := s.conn.Tokens().Insert(token)
+		_, err = tokensCollection.InsertOne(ctx, token)
 		c.Check(err, check.IsNil)
 	}
-	err := removeOldTokens(user)
+	err = removeOldTokens(ctx, user)
 	c.Assert(err, check.IsNil)
 	var tokens []Token
-	err = s.conn.Tokens().Find(bson.M{"useremail": user}).All(&tokens)
+
+	cursor, err := tokensCollection.Find(ctx, mongoBSON.M{"useremail": user})
 	c.Assert(err, check.IsNil)
+
+	err = cursor.All(ctx, &tokens)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(tokens, check.HasLen, 6)
 	names := make([]string, len(tokens))
 	for i := range tokens {
@@ -174,64 +184,76 @@ func (s *S) TestRemoveOld(c *check.C) {
 }
 
 func (s *S) TestRemoveOldNothingToRemove(c *check.C) {
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
 	config.Set("auth:max-simultaneous-sessions", 6)
 	defer config.Unset("auth:max-simultaneous-sessions")
 	user := "removeme@tsuru.io"
-	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": user})
+	defer tokensCollection.DeleteMany(ctx, mongoBSON.M{"useremail": user})
 	t := Token{
 		Token:     "blablabla",
 		UserEmail: user,
 		Creation:  time.Now(),
 		Expires:   time.Hour,
 	}
-	err := s.conn.Tokens().Insert(t)
+	_, err = tokensCollection.InsertOne(ctx, t)
 	c.Assert(err, check.IsNil)
-	err = removeOldTokens(user)
+	err = removeOldTokens(ctx, user)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Tokens().Find(bson.M{"useremail": user}).Count()
+	count, err := tokensCollection.CountDocuments(ctx, mongoBSON.M{"useremail": user})
 	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
+	c.Assert(count, check.Equals, int64(1))
 }
 
 func (s *S) TestRemoveOldWithoutSetting(c *check.C) {
-	err := removeOldTokens("something@tsuru.io")
+	err := removeOldTokens(context.TODO(), "something@tsuru.io")
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *check.C) {
-	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
-	_, err := nativeScheme.Create(context.TODO(), &u)
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	_, err = createToken(&u, "123456")
+
+	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	_, err = nativeScheme.Create(ctx, &u)
+	c.Assert(err, check.IsNil)
+	defer u.Delete(context.TODO())
+	_, err = createToken(ctx, &u, "123456")
 	c.Assert(err, check.IsNil)
 	var result Token
-	err = s.conn.Tokens().Find(bson.M{"useremail": u.Email}).One(&result)
+	err = tokensCollection.FindOne(ctx, mongoBSON.M{"useremail": u.Email}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Token, check.NotNil)
 }
 
 func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
 	config.Set("auth:max-simultaneous-sessions", 2)
 	u := auth.User{Email: "para@xmen.com", Password: "123456"}
-	_, err := nativeScheme.Create(context.TODO(), &u)
+	_, err = nativeScheme.Create(ctx, &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
+	defer u.Delete(context.TODO())
+	defer tokensCollection.DeleteMany(ctx, mongoBSON.M{"useremail": u.Email})
 	t1, err := newUserToken(&u)
 	c.Assert(err, check.IsNil)
 	t2 := t1
 	t2.Token += "aa"
-	err = s.conn.Tokens().Insert(t1, t2)
+	_, err = tokensCollection.InsertMany(ctx, []any{t1, t2})
 	c.Assert(err, check.IsNil)
-	_, err = createToken(&u, "123456")
+	_, err = createToken(ctx, &u, "123456")
 	c.Assert(err, check.IsNil)
 	ok := make(chan bool, 1)
 	go func() {
 		for {
-			ct, err := s.conn.Tokens().Find(bson.M{"useremail": u.Email}).Count()
+			ct, err := tokensCollection.CountDocuments(ctx, mongoBSON.M{"useremail": u.Email})
 			c.Assert(err, check.IsNil)
-			if ct == 2 {
+			if ct == int64(2) {
 				ok <- true
 				return
 			}
@@ -246,60 +268,66 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
 }
 
 func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *check.C) {
+	ctx := context.TODO()
 	err := config.Unset("auth:hash-cost")
 	c.Assert(err, check.IsNil)
 	defer config.Set("auth:hash-cost", bcrypt.MinCost)
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
-	_, err = nativeScheme.Create(context.TODO(), &u)
+	_, err = nativeScheme.Create(ctx, &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
+	defer u.Delete(context.TODO())
 	cost = 0
 	tokenExpire = 0
-	_, err = createToken(&u, "123456")
+	_, err = createToken(ctx, &u, "123456")
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDefined(c *check.C) {
+	ctx := context.TODO()
 	u := auth.User{Password: "123"}
-	_, err := createToken(&u, "123")
+	_, err := createToken(ctx, &u, "123")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^User does not have an email$")
 }
 
 func (s *S) TestCreateTokenShouldValidateThePassword(c *check.C) {
+	ctx := context.TODO()
 	u := auth.User{Email: "me@gmail.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	_, err = createToken(&u, "123")
+	defer u.Delete(context.TODO())
+	_, err = createToken(ctx, &u, "123")
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestGetToken(c *check.C) {
-	t, err := getToken("bearer " + s.token.GetValue())
+	t, err := getToken(context.TODO(), "bearer "+s.token.GetValue())
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Token, check.Equals, s.token.GetValue())
 }
 
 func (s *S) TestGetTokenEmptyToken(c *check.C) {
-	u, err := getToken("bearer tokenthatdoesnotexist")
+	u, err := getToken(context.TODO(), "bearer tokenthatdoesnotexist")
 	c.Assert(u, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenNotFound(c *check.C) {
-	t, err := getToken("bearer invalid")
+	t, err := getToken(context.TODO(), "bearer invalid")
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenInvalid(c *check.C) {
-	t, err := getToken("invalid")
+	t, err := getToken(context.TODO(), "invalid")
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetExpiredToken(c *check.C) {
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
 
 	t := Token{
 		Token:    "tsuru-healer",
@@ -307,55 +335,65 @@ func (s *S) TestGetExpiredToken(c *check.C) {
 		Expires:  0,
 	}
 
-	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	defer tokensCollection.DeleteOne(ctx, mongoBSON.M{"token": t.Token})
 	t.Creation = time.Now().Add(-24 * time.Hour)
 	t.Expires = time.Hour
-	s.conn.Tokens().Insert(t)
-	t2, err := getToken(t.Token)
+	_, err = tokensCollection.InsertOne(ctx, t)
+	c.Assert(err, check.IsNil)
+
+	t2, err := getToken(ctx, t.Token)
 	c.Assert(t2, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenNoExpiration(c *check.C) {
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
 	t := Token{
 		Token:    "tsuru-healer",
 		Creation: time.Now(),
 		Expires:  0,
 	}
-	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	defer tokensCollection.DeleteOne(ctx, mongoBSON.M{"token": t.Token})
 	t.Creation = time.Now().Add(-24 * time.Hour)
-	err := s.conn.Tokens().Insert(t)
+	_, err = tokensCollection.InsertOne(ctx, t)
 	c.Assert(err, check.IsNil)
 
-	t2, err := getToken(t.Token)
+	t2, err := getToken(ctx, t.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t2.GetValue(), check.DeepEquals, t.GetValue())
 }
 
 func (s *S) TestDeleteToken(c *check.C) {
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
+	c.Assert(err, check.IsNil)
+
 	t := Token{
 		Token:    "tsuru-healer",
 		Creation: time.Now(),
 		Expires:  0,
 	}
 
-	err := s.conn.Tokens().Insert(t)
+	_, err = tokensCollection.InsertOne(ctx, t)
 	c.Assert(err, check.IsNil)
-	err = deleteToken(t.Token)
+	err = deleteToken(ctx, t.Token)
 	c.Assert(err, check.IsNil)
-	_, err = getToken("bearer " + t.Token)
+	_, err = getToken(ctx, "bearer "+t.Token)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestTokenGetUser(c *check.C) {
-	u, err := s.token.User()
+	u, err := s.token.User(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, s.user.Email)
 }
 
 func (s *S) TestTokenGetUserUnknownEmail(c *check.C) {
 	t := Token{UserEmail: "something@something.com"}
-	u, err := t.User()
+	u, err := t.User(context.TODO())
 	c.Assert(u, check.IsNil)
 	c.Assert(err, check.NotNil)
 }
@@ -429,24 +467,26 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *check.C) {
 }
 
 func (s *S) TestDeleteAllTokens(c *check.C) {
-	tokens := []Token{
-		{Token: "t1", UserEmail: "x@x.com", Creation: time.Now(), Expires: time.Hour},
-		{Token: "t2", UserEmail: "x@x.com", Creation: time.Now(), Expires: time.Hour},
-		{Token: "t3", UserEmail: "y@y.com", Creation: time.Now(), Expires: time.Hour},
+	tokens := []any{
+		Token{Token: "t1", UserEmail: "x@x.com", Creation: time.Now(), Expires: time.Hour},
+		Token{Token: "t2", UserEmail: "x@x.com", Creation: time.Now(), Expires: time.Hour},
+		Token{Token: "t3", UserEmail: "y@y.com", Creation: time.Now(), Expires: time.Hour},
 	}
-	err := s.conn.Tokens().Insert(tokens[0])
+
+	ctx := context.TODO()
+	tokensCollection, err := storagev2.TokensCollection()
 	c.Assert(err, check.IsNil)
-	err = s.conn.Tokens().Insert(tokens[1])
+
+	result, err := tokensCollection.InsertMany(ctx, tokens)
 	c.Assert(err, check.IsNil)
-	err = s.conn.Tokens().Insert(tokens[2])
+	c.Assert(result.InsertedIDs, check.HasLen, 3)
+
+	err = deleteAllTokens(ctx, "x@x.com")
 	c.Assert(err, check.IsNil)
-	err = deleteAllTokens("x@x.com")
+	count, err := tokensCollection.CountDocuments(ctx, mongoBSON.M{"useremail": "x@x.com"})
 	c.Assert(err, check.IsNil)
-	var tokensDB []Token
-	err = s.conn.Tokens().Find(bson.M{"useremail": "x@x.com"}).All(&tokensDB)
+	c.Assert(count, check.Equals, int64(0))
+	count, err = tokensCollection.CountDocuments(ctx, mongoBSON.M{"useremail": "y@y.com"})
 	c.Assert(err, check.IsNil)
-	c.Assert(tokensDB, check.HasLen, 0)
-	err = s.conn.Tokens().Find(bson.M{"useremail": "y@y.com"}).All(&tokensDB)
-	c.Assert(err, check.IsNil)
-	c.Assert(tokensDB, check.HasLen, 1)
+	c.Assert(count, check.Equals, int64(1))
 }

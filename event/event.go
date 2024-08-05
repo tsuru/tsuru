@@ -1137,7 +1137,7 @@ func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, 
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
 		} else {
 			if !abort && servicemanager.Webhook != nil {
-				servicemanager.Webhook.Notify(e.ID.Hex())
+				servicemanager.Webhook.Notify(ctx, e.ID.Hex())
 			}
 		}
 	}()

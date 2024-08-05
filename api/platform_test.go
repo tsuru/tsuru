@@ -49,7 +49,7 @@ func createToken(c *check.C) auth.Token {
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("platform-admin", string(permTypes.CtxGlobal), "")
+	role, err := permission.NewRole(context.TODO(), "platform-admin", string(permTypes.CtxGlobal), "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions(context.TODO(), "*")
 	c.Assert(err, check.IsNil)

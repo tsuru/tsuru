@@ -200,7 +200,7 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 	}
 	err := newUser.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	defer newUser.Delete()
+	defer newUser.Delete(context.TODO())
 	a := app.App{
 		Name:      "test",
 		Platform:  "python",

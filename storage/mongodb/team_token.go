@@ -8,17 +8,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/auth"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-const teamsTokensCollectionName = "team_tokens"
 
 type teamTokenStorage struct{}
 
@@ -36,25 +30,16 @@ type teamToken struct {
 
 var _ auth.TeamTokenStorage = &teamTokenStorage{}
 
-func teamTokensCollection(conn *db.Storage) *dbStorage.Collection {
-	c := conn.Collection(teamsTokensCollectionName)
-	c.EnsureIndex(mgo.Index{Key: []string{"token"}, Unique: true})
-	c.EnsureIndex(mgo.Index{Key: []string{"token_id"}, Unique: true})
-	return c
-}
-
 func (s *teamTokenStorage) Insert(ctx context.Context, t auth.TeamToken) error {
-	span := newMongoDBSpan(ctx, mongoSpanInsert, teamsTokensCollectionName)
-	defer span.Finish()
-
-	conn, err := db.Conn()
+	collection, err := storagev2.TeamTokensCollection()
 	if err != nil {
-		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = teamTokensCollection(conn).Insert(teamToken(t))
-	if mgo.IsDup(err) {
+	span := newMongoDBSpan(ctx, mongoSpanInsert, collection.Name())
+	defer span.Finish()
+
+	_, err = collection.InsertOne(ctx, teamToken(t))
+	if mongo.IsDuplicateKeyError(err) {
 		err = auth.ErrTeamTokenAlreadyExists
 	}
 	span.SetError(err)
@@ -86,20 +71,21 @@ func (s *teamTokenStorage) FindByTokenID(ctx context.Context, tokenID string) (*
 func (s *teamTokenStorage) FindByTeams(ctx context.Context, teamNames []string) ([]auth.TeamToken, error) {
 	query := mongoBSON.M{}
 	if teamNames != nil {
-		query["team"] = bson.M{"$in": teamNames}
+		query["team"] = mongoBSON.M{"$in": teamNames}
 	}
 	return s.findByQuery(ctx, query)
 }
 
 func (s *teamTokenStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]auth.TeamToken, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, teamsTokensCollectionName)
-	defer span.Finish()
 
-	collection, err := storagev2.Collection(teamsTokensCollectionName)
+	collection, err := storagev2.TeamTokensCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	defer span.Finish()
+
 	cursor, err := collection.Find(ctx, query)
 	if err != nil {
 		span.SetError(err)
@@ -120,59 +106,79 @@ func (s *teamTokenStorage) findByQuery(ctx context.Context, query mongoBSON.M) (
 }
 
 func (s *teamTokenStorage) UpdateLastAccess(ctx context.Context, token string) error {
-	span := newMongoDBSpan(ctx, mongoSpanUpdate, teamsTokensCollectionName)
+	collection, err := storagev2.TeamTokensCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, collection.Name())
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	result, err := collection.UpdateOne(ctx, mongoBSON.M{
+		"token": token,
+	}, mongoBSON.M{
+		"$set": mongoBSON.M{"last_access": time.Now().UTC()},
+	})
+	if err == mongo.ErrNoDocuments {
+		err = auth.ErrTeamTokenNotFound
+	}
+
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = teamTokensCollection(conn).Update(bson.M{
-		"token": token,
-	}, bson.M{
-		"$set": bson.M{"last_access": time.Now().UTC()},
-	})
-	if err == mgo.ErrNotFound {
-		err = auth.ErrTeamTokenNotFound
+
+	if result.MatchedCount == 0 {
+		return auth.ErrTeamTokenNotFound
 	}
-	span.SetError(err)
-	return err
+
+	return nil
 }
 
 func (s *teamTokenStorage) Update(ctx context.Context, token auth.TeamToken) error {
-	span := newMongoDBSpan(ctx, mongoSpanUpdate, teamsTokensCollectionName)
+	collection, err := storagev2.TeamTokensCollection()
+	if err != nil {
+		return err
+	}
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, collection.Name())
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	result, err := collection.ReplaceOne(ctx, mongoBSON.M{"token_id": token.TokenID}, teamToken(token))
+	if err == mongo.ErrNoDocuments {
+		err = auth.ErrTeamTokenNotFound
+	}
+
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = teamTokensCollection(conn).Update(bson.M{"token_id": token.TokenID}, teamToken(token))
-	if err == mgo.ErrNotFound {
-		err = auth.ErrTeamTokenNotFound
+
+	if result.MatchedCount == 0 {
+		return auth.ErrTeamTokenNotFound
 	}
-	span.SetError(err)
-	return err
+
+	return nil
 }
 
 func (s *teamTokenStorage) Delete(ctx context.Context, token string) error {
-	span := newMongoDBSpan(ctx, mongoSpanDelete, teamsTokensCollectionName)
+	collection, err := storagev2.TeamTokensCollection()
+	if err != nil {
+		return err
+	}
+	span := newMongoDBSpan(ctx, mongoSpanDelete, collection.Name())
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"token_id": token})
+	if err == mongo.ErrNoDocuments {
+		err = auth.ErrTeamTokenNotFound
+	}
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = teamTokensCollection(conn).Remove(bson.M{"token_id": token})
-	if err == mgo.ErrNotFound {
-		err = auth.ErrTeamTokenNotFound
+
+	if result.DeletedCount == 0 {
+		return auth.ErrTeamTokenNotFound
 	}
-	span.SetError(err)
-	return err
+	return nil
 }

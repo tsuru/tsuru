@@ -91,7 +91,7 @@ func (s *AuthSuite) TestLoginWithRSAKey(c *check.C) {
 	c.Assert(tsuruToken, check.Not(check.IsNil))
 	c.Assert(tsuruToken.GetUserName(), check.Equals, userEmail)
 
-	authUser, err := auth.GetUserByEmail(userEmail)
+	authUser, err := auth.GetUserByEmail(context.TODO(), userEmail)
 	c.Assert(err, check.IsNil)
 	c.Assert(authUser.Email, check.Equals, userEmail)
 }
@@ -114,7 +114,7 @@ func (s *AuthSuite) TestLoginWithRSAKeyWithBearer(c *check.C) {
 	c.Assert(tsuruToken, check.Not(check.IsNil))
 	c.Assert(tsuruToken.GetUserName(), check.Equals, userEmail)
 
-	authUser, err := auth.GetUserByEmail(userEmail)
+	authUser, err := auth.GetUserByEmail(context.TODO(), userEmail)
 	c.Assert(err, check.IsNil)
 	c.Assert(authUser.Email, check.Equals, userEmail)
 }
@@ -142,7 +142,7 @@ func (s *AuthSuite) TestLoginWithGroupsRSAKey(c *check.C) {
 	c.Assert(tsuruToken, check.Not(check.IsNil))
 	c.Assert(tsuruToken.GetUserName(), check.Equals, userEmail)
 
-	authUser, err := auth.GetUserByEmail(userEmail)
+	authUser, err := auth.GetUserByEmail(context.TODO(), userEmail)
 	c.Assert(err, check.IsNil)
 	c.Assert(authUser.Email, check.Equals, userEmail)
 	c.Assert(authUser.Groups, check.DeepEquals, []string{"group1", "group2"})
@@ -207,11 +207,11 @@ func (s *AuthSuite) TestLoginWithDisabledUser(c *check.C) {
 	userEmail := "disabled-user-test@company.com"
 
 	user := &auth.User{Email: userEmail, Disabled: true}
-	user.Delete() // remove from previous crashed tests
+	user.Delete(context.TODO()) // remove from previous crashed tests
 	err = user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
-	defer user.Delete()
+	defer user.Delete(context.TODO())
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"email": userEmail,

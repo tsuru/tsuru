@@ -35,3 +35,40 @@ func RolesCollection() (*mongo.Collection, error) {
 func PlatformImagesCollection() (*mongo.Collection, error) {
 	return Collection("platform_images")
 }
+
+func JobsCollection() (*mongo.Collection, error) {
+	return Collection("jobs")
+}
+
+func TokensCollection() (*mongo.Collection, error) {
+	return Collection("tokens")
+}
+
+func PasswordTokensCollection() (*mongo.Collection, error) {
+	return Collection("password_tokens")
+}
+
+func UsersCollection() (*mongo.Collection, error) {
+	return Collection("users")
+}
+
+func TeamTokensCollection() (*mongo.Collection, error) {
+	return Collection("team_tokens")
+}
+
+func TeamsCollection() (*mongo.Collection, error) {
+	return Collection("teams")
+}
+
+func PlansCollection() (*mongo.Collection, error) {
+	return Collection("plans")
+}
+
+func WebhookCollection() (*mongo.Collection, error) {
+	return Collection("webhook")
+}
+
+func OAuth2TokensCollection() (*mongo.Collection, error) {
+	collectionName := getOAuthTokensCollectionName()
+	return Collection(collectionName)
+}

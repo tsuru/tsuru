@@ -60,7 +60,7 @@ func (t *jwtToken) GetValue() string {
 	return t.Raw
 }
 
-func (t *jwtToken) User() (*authTypes.User, error) {
+func (t *jwtToken) User(ctx context.Context) (*authTypes.User, error) {
 	return t.AuthUser, nil
 }
 

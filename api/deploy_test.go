@@ -70,7 +70,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	s.user, err = auth.ConvertNewUser(s.token.User())
+	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
 	c.Assert(err, check.IsNil)
 }
 
