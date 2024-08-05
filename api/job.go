@@ -5,13 +5,17 @@
 package api
 
 import (
+	"bytes"
 	stdContext "context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -228,6 +232,21 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Job:                  j,
 		Units:                units,
 		ServiceInstanceBinds: binds,
+	}
+
+	dashboardURLTemplate, _ := config.GetString("jobs:dashboard-url:template")
+	if dashboardURLTemplate != "" {
+		tpl, tplErr := template.New("dashboardURL").Parse(dashboardURLTemplate)
+		if tplErr != nil {
+			return fmt.Errorf("could not parse dashboard template: %w", tplErr)
+		}
+
+		var buf bytes.Buffer
+		tplErr = tpl.Execute(&buf, result)
+		if tplErr != nil {
+			return fmt.Errorf("could not execute dashboard template: %w", tplErr)
+		}
+		result.DashboardURL = strings.TrimSpace(buf.String())
 	}
 
 	cluster, err := servicemanager.Cluster.FindByPool(ctx, provision.DefaultProvisioner, j.Pool)

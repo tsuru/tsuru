@@ -108,4 +108,5 @@ type JobInfo struct {
 	Job                  *Job                       `json:"job,omitempty"`
 	Units                []provision.Unit           `json:"units,omitempty"`
 	ServiceInstanceBinds []bind.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
+	DashboardURL         string                     `json:"dashboardURL,omitempty"`
 }
