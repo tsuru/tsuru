@@ -7,10 +7,6 @@ package mongodb
 import (
 	"context"
 
-	mgo "github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/service"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -21,58 +17,60 @@ type serviceBrokerStorage struct{}
 
 var _ service.ServiceBrokerStorage = &serviceBrokerStorage{}
 
-const serviceBrokerCollectionName = "service_broker"
-
-func serviceBrokerCollection(conn *db.Storage) *dbStorage.Collection {
-	coll := conn.Collection(serviceBrokerCollectionName)
-	coll.EnsureIndex(mgo.Index{
-		Key:    []string{"name"},
-		Unique: true,
-	})
-	return coll
-}
-
-func (s *serviceBrokerStorage) Insert(b service.Broker) error {
-	conn, err := db.Conn()
+func (s *serviceBrokerStorage) Insert(ctx context.Context, b service.Broker) error {
+	collection, err := storagev2.ServiceBrokerCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = serviceBrokerCollection(conn).Insert(b)
-	if err != nil && mgo.IsDup(err) {
+	_, err = collection.InsertOne(ctx, b)
+	if err != nil && mongo.IsDuplicateKeyError(err) {
 		err = service.ErrServiceBrokerAlreadyExists
 	}
 	return err
 }
 
 func (s *serviceBrokerStorage) Update(ctx context.Context, name string, b service.Broker) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.ServiceBrokerCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = serviceBrokerCollection(conn).Update(bson.M{"name": name}, b)
-	if err == mgo.ErrNotFound {
+	result, err := collection.ReplaceOne(ctx, mongoBSON.M{"name": name}, b)
+	if err == mongo.ErrNoDocuments {
 		err = service.ErrServiceBrokerNotFound
 	}
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		err = service.ErrServiceBrokerNotFound
+	}
+
 	return err
 }
 
-func (s *serviceBrokerStorage) Delete(name string) error {
-	conn, err := db.Conn()
+func (s *serviceBrokerStorage) Delete(ctx context.Context, name string) error {
+	collection, err := storagev2.ServiceBrokerCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = serviceBrokerCollection(conn).Remove(bson.M{"name": name})
-	if err == mgo.ErrNotFound {
-		err = service.ErrServiceBrokerNotFound
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"name": name})
+	if err == mongo.ErrNoDocuments {
+		return service.ErrServiceBrokerNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return service.ErrServiceBrokerNotFound
+	}
+
+	return nil
 }
 
 func (s *serviceBrokerStorage) FindAll(ctx context.Context) ([]service.Broker, error) {
-	collection, err := storagev2.Collection(serviceBrokerCollectionName)
+	collection, err := storagev2.ServiceBrokerCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +87,7 @@ func (s *serviceBrokerStorage) FindAll(ctx context.Context) ([]service.Broker, e
 }
 
 func (s *serviceBrokerStorage) Find(ctx context.Context, name string) (service.Broker, error) {
-	collection, err := storagev2.Collection(serviceBrokerCollectionName)
+	collection, err := storagev2.ServiceBrokerCollection()
 	if err != nil {
 		return service.Broker{}, err
 	}

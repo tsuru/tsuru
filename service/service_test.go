@@ -130,7 +130,7 @@ func (s *S) TestGetServiceBrokeredServiceNotFound(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	sb, err := BrokerService()
 	c.Assert(err, check.IsNil)
-	err = sb.Create(serviceTypes.Broker{Name: "aws"})
+	err = sb.Create(context.TODO(), serviceTypes.Broker{Name: "aws"})
 	c.Assert(err, check.IsNil)
 	serv, err := Get(context.TODO(), "aws::service")
 	c.Assert(err, check.DeepEquals, ErrServiceNotFound)
@@ -428,7 +428,7 @@ func (s *S) TestGetServicesNoCache(c *check.C) {
 	s.createService(c)
 	sb, err := BrokerService()
 	c.Assert(err, check.IsNil)
-	err = sb.Create(serviceTypes.Broker{Name: "aws"})
+	err = sb.Create(context.TODO(), serviceTypes.Broker{Name: "aws"})
 	c.Assert(err, check.IsNil)
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
@@ -481,7 +481,7 @@ func (s *S) TestGetServicesFromCache(c *check.C) {
 	s.createService(c)
 	sb, err := BrokerService()
 	c.Assert(err, check.IsNil)
-	err = sb.Create(serviceTypes.Broker{Name: "aws"})
+	err = sb.Create(context.TODO(), serviceTypes.Broker{Name: "aws"})
 	c.Assert(err, check.IsNil)
 	services, err := GetServices(context.TODO())
 	c.Assert(err, check.IsNil)

@@ -84,6 +84,10 @@ func DynamicRoutersCollection() (*mongo.Collection, error) {
 	return Collection("dynamic_routers")
 }
 
+func ServiceBrokerCollection() (*mongo.Collection, error) {
+	return Collection("service_broker")
+}
+
 func OAuth2TokensCollection() (*mongo.Collection, error) {
 	collectionName := getOAuthTokensCollectionName()
 	return Collection(collectionName)

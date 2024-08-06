@@ -184,6 +184,16 @@ var EnsureIndexes = []EnsureIndex{
 	},
 
 	{
+		Collection: "service_broker",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
 		GetCollectionName: getOAuthTokensCollectionName,
 		Indexes: []mongo.IndexModel{
 			{

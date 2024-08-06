@@ -66,17 +66,17 @@ type BearerConfig struct {
 }
 
 type ServiceBrokerStorage interface {
-	Insert(Broker) error
+	Insert(context.Context, Broker) error
 	Update(context.Context, string, Broker) error
-	Delete(string) error
+	Delete(context.Context, string) error
 	FindAll(ctx context.Context) ([]Broker, error)
 	Find(ctx context.Context, name string) (Broker, error)
 }
 
 type ServiceBrokerService interface {
-	Create(Broker) error
+	Create(context.Context, Broker) error
 	Update(context.Context, string, Broker) error
-	Delete(string) error
+	Delete(context.Context, string) error
 	Find(context.Context, string) (Broker, error)
 	List(context.Context) ([]Broker, error)
 }
