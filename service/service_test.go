@@ -731,9 +731,9 @@ func (s *S) TestRenameServiceTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	services := []Service{
-		{Name: "s1", Teams: []string{"team1", "team2", "team3"}, OwnerTeams: []string{"team1", "teamx"}},
-		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team2"}},
-		{Name: "s3", Teams: []string{"team2", "team3"}, OwnerTeams: []string{"team3"}},
+		{Name: "s1", Teams: []string{"team1", "team2", "team3"}, OwnerTeams: []string{"team1", "teamx"}, Endpoint: map[string]string{}},
+		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team2"}, Endpoint: map[string]string{}},
+		{Name: "s3", Teams: []string{"team2", "team3"}, OwnerTeams: []string{"team3"}, Endpoint: map[string]string{}},
 	}
 	for _, si := range services {
 		_, err = servicesCollection.InsertOne(context.TODO(), &si)
@@ -751,8 +751,8 @@ func (s *S) TestRenameServiceTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	c.Assert(dbServices, check.DeepEquals, []Service{
-		{Name: "s1", Teams: []string{"team1", "team3", "team9000"}, OwnerTeams: []string{"team1", "teamx"}},
-		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team9000"}},
-		{Name: "s3", Teams: []string{"team3", "team9000"}, OwnerTeams: []string{"team3"}},
+		{Name: "s1", Teams: []string{"team1", "team3", "team9000"}, OwnerTeams: []string{"team1", "teamx"}, Endpoint: map[string]string{}},
+		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team9000"}, Endpoint: map[string]string{}},
+		{Name: "s3", Teams: []string{"team3", "team9000"}, OwnerTeams: []string{"team3"}, Endpoint: map[string]string{}},
 	})
 }

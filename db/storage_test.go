@@ -79,12 +79,3 @@ func (s *S) TestApps(c *check.C) {
 	c.Assert(apps, check.DeepEquals, appsc)
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
-
-func (s *S) TestServiceInstances(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	serviceInstances := strg.ServiceInstances()
-	serviceInstancesc := strg.Collection("service_instances")
-	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
-}

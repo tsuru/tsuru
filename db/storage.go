@@ -84,11 +84,6 @@ func (s *Storage) Apps() *storage.Collection {
 	return c
 }
 
-// ServiceInstances returns the services_instances collection from MongoDB.
-func (s *Storage) ServiceInstances() *storage.Collection {
-	return s.Collection("service_instances")
-}
-
 func IsCollectionExistsError(err error) bool {
 	if err == nil {
 		return false

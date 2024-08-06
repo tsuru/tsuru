@@ -12,10 +12,12 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -32,7 +34,11 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
-	err = s.conn.ServiceInstances().Insert(instance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "whichapp",
@@ -55,7 +61,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	err = Delete(context.TODO(), app, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\.`+"\n$")
-	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
+	n, err := serviceInstancesCollection.CountDocuments(context.TODO(), mongoBSON.M{"apps": bson.M{"$in": []string{a.Name}}})
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	c.Assert(n, check.Equals, int64(0))
 }
