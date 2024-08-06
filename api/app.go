@@ -1942,6 +1942,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	cname := InputValue(r, "cname")
 	certificate := InputValue(r, "certificate")
 	key := InputValue(r, "key")
+	issuer := InputValue(r, "issuer")
 	if cname == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
 	}
@@ -1957,7 +1958,13 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = a.SetCertificate(ctx, cname, certificate, key)
+
+	if issuer != "" {
+		err = a.SetCertificateWithIssuer(ctx, cname, issuer)
+	} else {
+		err = a.SetCertificate(ctx, cname, certificate, key)
+	}
+
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
