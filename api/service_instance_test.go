@@ -1153,9 +1153,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 			Apps:        []string{},
 		},
 	}
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
 	for _, instance := range si {
-		serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
-		c.Assert(err, check.IsNil)
 		_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 		c.Assert(err, check.IsNil)
 	}
