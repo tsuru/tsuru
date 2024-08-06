@@ -9,7 +9,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
@@ -44,7 +43,7 @@ func (t *mongodbBaseTest) SetUpTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Storage.Database(t.dbName()))
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 
@@ -52,7 +51,7 @@ func (t *mongodbBaseTest) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Storage.Database(t.dbName()))
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 

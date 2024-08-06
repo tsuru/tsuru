@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/app"
@@ -758,7 +758,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 func (s *S) TestCreateJobEvent(c *check.C) {
 	boolTrue := true
 	cleanup := func() {
-		err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+		err := storagev2.ClearAllCollections(nil)
 		c.Assert(err, check.IsNil)
 	}
 	tests := []struct {

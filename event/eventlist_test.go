@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -52,7 +51,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	user := &auth.User{Email: "me@me.com", Password: "123456"}

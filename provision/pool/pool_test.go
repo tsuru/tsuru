@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/config"
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -65,13 +64,13 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.storage.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.storage.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
-	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.teams = []authTypes.Team{{Name: "ateam"}, {Name: "test"}, {Name: "pteam"}}
 	s.plans = []appTypes.Plan{{Name: "plan1"}, {Name: "plan2"}}

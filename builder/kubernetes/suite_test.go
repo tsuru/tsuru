@@ -16,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
@@ -97,7 +97,7 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	clus := &provTypes.Cluster{
 		Name:        "c1",

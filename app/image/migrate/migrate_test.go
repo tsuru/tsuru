@@ -9,8 +9,8 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -29,12 +29,12 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.coll.Database)
+	storagev2.ClearAllCollections(nil)
 	s.coll.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	dbtest.ClearAllCollections(s.coll.Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 var _ = check.Suite(&S{})

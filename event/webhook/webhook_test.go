@@ -15,7 +15,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -43,7 +42,7 @@ func (s *S) SetUpTest(c *check.C) {
 	storagev2.Reset()
 
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	svc, err := WebhookService()
 	c.Assert(err, check.IsNil)

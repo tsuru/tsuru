@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -57,7 +56,7 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 
 	storagev2.Reset()
 
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUserAndTeam(c)
 	s.testServer = RunServer(true)
 	s.mockTeamService = &authTypes.MockTeamService{}
@@ -82,7 +81,7 @@ func (s *ProvisionSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.ResponseRecorder, *http.Request) {

@@ -8,7 +8,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	check "gopkg.in/check.v1"
@@ -25,7 +25,7 @@ func (s *S) SetUpTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)

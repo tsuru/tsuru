@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -107,12 +106,12 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.storage.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.storage.Close()
 }
 

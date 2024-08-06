@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -90,7 +89,7 @@ func (s *BuildSuite) SetUpSuite(c *check.C) {
 func (s *BuildSuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool(context.TODO(), "pool1")
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.conn.Close()
 	s.reset()
 }
@@ -102,7 +101,7 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	s.reset()
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}

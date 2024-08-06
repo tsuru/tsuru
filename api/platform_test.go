@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
@@ -71,7 +70,7 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	provision.DefaultProvisioner = "fake-extensible"
 	servicemock.SetMockService(&s.mockService)
 }
@@ -84,7 +83,7 @@ func (s *PlatformSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {

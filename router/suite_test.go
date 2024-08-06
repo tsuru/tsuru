@@ -9,7 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	check "gopkg.in/check.v1"
@@ -40,7 +40,7 @@ func (s *S) SetUpTest(c *check.C) {
 	for k, v := range routers {
 		s.routers[k] = v
 	}
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -48,6 +48,6 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.conn.Close()
 }

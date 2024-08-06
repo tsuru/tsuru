@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -40,7 +40,7 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 

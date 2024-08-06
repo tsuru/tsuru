@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -57,7 +57,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.conn.Close()
 }
 
@@ -71,7 +71,7 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	routertest.FakeRouter.Reset()
 	provisiontest.ProvisionerInstance.Reset()
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})

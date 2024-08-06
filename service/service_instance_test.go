@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -60,7 +59,7 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 
 func (s *InstanceSuite) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &authTypes.Team{Name: "raul"}
 

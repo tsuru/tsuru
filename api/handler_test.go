@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -60,7 +59,7 @@ func (s *HandlerSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {

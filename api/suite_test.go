@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
@@ -123,7 +122,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 	storagev2.Reset()
 
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.ProvisionerInstance
 	s.provisioner.Reset()
@@ -210,7 +209,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
