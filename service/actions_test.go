@@ -11,12 +11,13 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -36,7 +37,9 @@ func (s *S) TestNotifyCreateServiceInstanceForward(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
@@ -59,7 +62,9 @@ func (s *S) TestNotifyCreateServiceInstanceForwardInvalidParams(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{"", "", ""}}
 	_, err = notifyCreateServiceInstance.Forward(ctx)
@@ -84,7 +89,9 @@ func (s *S) TestNotifyCreateServiceInstanceBackward(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
@@ -101,7 +108,9 @@ func (s *S) TestNotifyCreateServiceInstanceBackwardParams(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{srv, ""}}
 	notifyCreateServiceInstance.Backward(ctx)
@@ -127,7 +136,11 @@ func (s *S) TestCreateServiceInstanceForward(c *check.C) {
 	}
 	_, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 }
 
@@ -141,25 +154,29 @@ func (s *S) TestCreateServiceInstanceForwardParams(c *check.C) {
 func (s *S) TestCreateServiceInstanceBackward(c *check.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "mysql"}
-	err := s.conn.ServiceInstances().Insert(&instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params: []interface{}{srv, &instance},
 	}
 	createServiceInstance.Backward(ctx)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestCreateServiceInstanceBackwardParams(c *check.C) {
 	instance := ServiceInstance{Name: "mysql"}
-	err := s.conn.ServiceInstances().Insert(&instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params: []interface{}{"", ""},
 	}
 	createServiceInstance.Backward(ctx)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 }
 
@@ -174,7 +191,9 @@ func (s *S) TestUpdateServiceInstanceMinParams(c *check.C) {
 func (s *S) TestUpdateServiceInstanceForward(c *check.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "dbname"}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	updatedInstance := ServiceInstance{Description: "new description", Tags: []string{"tag-a", "tag-b"}, TeamOwner: "new-owner"}
 	ctx := action.FWContext{
@@ -183,7 +202,7 @@ func (s *S) TestUpdateServiceInstanceForward(c *check.C) {
 	_, err = updateServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&si)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Description, check.Equals, updatedInstance.Description)
 	c.Assert(si.Tags, check.DeepEquals, updatedInstance.Tags)
@@ -206,14 +225,16 @@ func (s *S) TestUpdateServiceInstanceBackward(c *check.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "dbname", ServiceName: srv.Name, Description: "old description"}
 	updatedInstance := ServiceInstance{Name: instance.Name, ServiceName: instance.ServiceName, Description: "new description"}
-	err := s.conn.ServiceInstances().Insert(&updatedInstance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &updatedInstance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params: []interface{}{srv, instance, updatedInstance},
 	}
 	updateServiceInstance.Backward(ctx)
 	var si ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&si)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Description, check.Equals, instance.Description)
 }
@@ -222,14 +243,16 @@ func (s *S) TestUpdateServiceInstanceBackwardParams(c *check.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "dbname", ServiceName: srv.Name, Description: "old description"}
 	updatedInstance := ServiceInstance{Name: instance.Name, ServiceName: instance.ServiceName, Description: "new description"}
-	err := s.conn.ServiceInstances().Insert(&updatedInstance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &updatedInstance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params: []interface{}{"", "", ""},
 	}
 	updateServiceInstance.Backward(ctx)
 	var si ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&si)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Description, check.Equals, updatedInstance.Description)
 }
@@ -250,7 +273,9 @@ func (s *S) TestNotifyUpdateServiceInstanceForward(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
@@ -271,7 +296,9 @@ func (s *S) TestNotifyUpdateServiceInstanceForwardParams(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{""}}
 	_, err = notifyUpdateServiceInstance.Forward(ctx)
@@ -294,7 +321,9 @@ func (s *S) TestNotifyUpdateServiceInstanceForwardParams(c *check.C) {
 
 func (s *S) TestBindAppDBActionForward(c *check.C) {
 	si := ServiceInstance{Name: "mysql"}
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
@@ -303,14 +332,16 @@ func (s *S) TestBindAppDBActionForward(c *check.C) {
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": si.Name}).Decode(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Apps, check.HasLen, 1)
 }
 
 func (s *S) TestBindAppDBActionForwardInvalidParam(c *check.C) {
 	si := ServiceInstance{Name: "mysql"}
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{
 		Params: []interface{}{"wrong parameter"},
@@ -322,7 +353,9 @@ func (s *S) TestBindAppDBActionForwardInvalidParam(c *check.C) {
 
 func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 	si := ServiceInstance{Name: "mysql"}
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
@@ -338,7 +371,9 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	si := ServiceInstance{Name: "mysql", Apps: []string{a.GetName()}}
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	ctx := action.BWContext{
@@ -346,7 +381,7 @@ func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 	}
 	bindAppDBAction.Backward(ctx)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": si.Name}).Decode(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Apps, check.HasLen, 0)
 }
@@ -364,7 +399,9 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
@@ -394,7 +431,9 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
@@ -461,10 +500,14 @@ func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 func (s *S) TestUnbindAppDBForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, Apps: []string{a.GetName()}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
@@ -485,10 +528,14 @@ func (s *S) TestUnbindAppDBForward(c *check.C) {
 func (s *S) TestUnbindAppDBBackward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
@@ -514,10 +561,14 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
@@ -544,10 +595,14 @@ func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
@@ -574,10 +629,14 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
@@ -597,10 +656,14 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
@@ -630,7 +693,9 @@ func (s *S) TestBindJobDBActionForwardInvalidParam(c *check.C) {
 		Name: "mysql",
 	}
 
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	ctx := action.FWContext{
@@ -645,7 +710,9 @@ func (s *S) TestBindJobDBActionJobAlreadyBound(c *check.C) {
 	si := ServiceInstance{
 		Name: "mysql",
 	}
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
@@ -665,7 +732,9 @@ func (s *S) TestBindJobDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 		Name: "mysql",
 		Jobs: []string{job.Name},
 	}
-	err := s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	evt := createEvt(c)
@@ -674,7 +743,7 @@ func (s *S) TestBindJobDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 	}
 	bindJobDBAction.Backward(ctx)
 
-	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": si.Name}).Decode(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Apps, check.HasLen, 0)
 }
@@ -699,7 +768,9 @@ func (s *S) TestBindJobEndpointActionForwardReturnsEnvVars(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
@@ -737,7 +808,9 @@ func (s *S) TestBindJobEndpointActionBackward(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
@@ -812,7 +885,9 @@ func (s *S) TestUnbindJobDBForward(c *check.C) {
 	srv := Service{
 		Name: "mysql",
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{
@@ -821,7 +896,9 @@ func (s *S) TestUnbindJobDBForward(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{job.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	buf := bytes.NewBuffer(nil)
@@ -846,7 +923,9 @@ func (s *S) TestUnbindJobDBBackward(c *check.C) {
 	srv := Service{
 		Name: "mysql",
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{
@@ -854,7 +933,9 @@ func (s *S) TestUnbindJobDBBackward(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	buf := bytes.NewBuffer(nil)
@@ -886,11 +967,15 @@ func (s *S) TestUnbindJobEndpointForward(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 		Password: "s3cr3t",
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	buf := bytes.NewBuffer(nil)
@@ -923,7 +1008,9 @@ func (s *S) TestUnbindJobEndpointForwardNotFound(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 		Password: "s3cr3t",
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{
@@ -931,7 +1018,9 @@ func (s *S) TestUnbindJobEndpointForwardNotFound(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	buf := bytes.NewBuffer(nil)
@@ -964,7 +1053,9 @@ func (s *S) TestUnbindJobEndpointBackward(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 		Password: "s3cr3t",
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{
@@ -972,7 +1063,9 @@ func (s *S) TestUnbindJobEndpointBackward(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	buf := bytes.NewBuffer(nil)
@@ -1005,7 +1098,9 @@ func (s *S) TestRemoveJobBoundEnvsForward(c *check.C) {
 	srv := Service{
 		Name: "mysql",
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{
@@ -1013,7 +1108,9 @@ func (s *S) TestRemoveJobBoundEnvsForward(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(&si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
@@ -1041,7 +1138,11 @@ func (s *S) TestReloadJobProvisionerForwardForCronJob(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err := s.conn.ServiceInstances().Insert(&si)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
