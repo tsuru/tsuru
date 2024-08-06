@@ -9,8 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -26,9 +25,7 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "provision_tests_2_s")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 

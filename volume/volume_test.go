@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -97,7 +97,7 @@ func (s *S) SetUpTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	provisiontest.ProvisionerInstance.Reset()
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "mypool",
@@ -131,7 +131,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.DefaultDatabase())
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 

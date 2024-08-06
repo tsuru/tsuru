@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -61,7 +60,7 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 func (s *BindSuite) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	err := s.user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -99,7 +98,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.conn.Close()
 }
 

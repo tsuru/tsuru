@@ -11,7 +11,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -53,12 +52,12 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.conn.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create(context.TODO())

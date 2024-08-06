@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/router"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -40,12 +40,12 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.conn.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 var _ = check.Suite(&S{})

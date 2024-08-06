@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -55,7 +54,7 @@ func (s *QuotaSuite) SetUpSuite(c *check.C) {
 func (s *QuotaSuite) SetUpTest(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.team = &authTypes.Team{Name: "superteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
@@ -84,7 +83,7 @@ func (s *QuotaSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *QuotaSuite) TestGetUserQuota(c *check.C) {

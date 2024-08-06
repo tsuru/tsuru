@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -37,14 +37,14 @@ func (s *PlatformSuite) SetUpSuite(c *check.C) {
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *PlatformSuite) SetUpTest(c *check.C) {
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.PlatformImage.OnNewVersion = func(name string) (int, error) {
 		return 1, nil
