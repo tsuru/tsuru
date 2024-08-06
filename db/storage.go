@@ -14,7 +14,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
@@ -82,14 +81,4 @@ func (s *Storage) Apps() *storage.Collection {
 	c := s.Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
-}
-
-func IsCollectionExistsError(err error) bool {
-	if err == nil {
-		return false
-	}
-	if queryErr, ok := err.(*mgo.QueryError); ok && queryErr.Code == 48 {
-		return true
-	}
-	return strings.Contains(err.Error(), "already exists")
 }
