@@ -13,12 +13,14 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/globalsign/mgo/bson"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
 )
 
@@ -205,11 +207,15 @@ func (s *S) TestCreateServiceValidation(c *check.C) {
 
 func (s *S) TestDeleteService(c *check.C) {
 	s.createService(c)
-	err := Delete(*s.service)
+	err := Delete(context.TODO(), *s.service)
 	c.Assert(err, check.IsNil)
-	l, err := s.conn.Services().Find(bson.M{"_id": s.service.Name}).Count()
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(l, check.Equals, 0)
+
+	l, err := servicesCollection.CountDocuments(context.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+	c.Assert(l, check.Equals, int64(0))
 }
 
 func (s *S) TestGetClient(c *check.C) {
@@ -391,7 +397,11 @@ func (s *S) TestUpdateService(c *check.C) {
 	service.Doc = "doc"
 	err = Update(context.TODO(), service)
 	c.Assert(err, check.IsNil)
-	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
+
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), mongoBSON.M{"_id": service.Name}).Decode(&service)
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Doc, check.Equals, "doc")
 }
@@ -632,7 +642,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 	}
 	err = Create(context.TODO(), deletedService)
 	c.Assert(err, check.IsNil)
-	err = Delete(deletedService)
+	err = Delete(context.TODO(), deletedService)
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices(context.TODO(), []string{s.team.Name}, nil)
 	c.Assert(err, check.IsNil)
@@ -702,7 +712,10 @@ func (s *S) TestProxy(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 		Password: "abcde",
 	}
-	err := s.conn.Services().Insert(service)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = servicesCollection.InsertOne(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/something", nil)
 	c.Assert(err, check.IsNil)
@@ -714,23 +727,32 @@ func (s *S) TestProxy(c *check.C) {
 }
 
 func (s *S) TestRenameServiceTeam(c *check.C) {
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
 	services := []Service{
 		{Name: "s1", Teams: []string{"team1", "team2", "team3"}, OwnerTeams: []string{"team1", "teamx"}},
 		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team2"}},
 		{Name: "s3", Teams: []string{"team2", "team3"}, OwnerTeams: []string{"team3"}},
 	}
 	for _, si := range services {
-		err := s.conn.Services().Insert(&si)
+		_, err = servicesCollection.InsertOne(context.TODO(), &si)
 		c.Assert(err, check.IsNil)
 	}
-	err := RenameServiceTeam(context.TODO(), "team2", "team9000")
+	err = RenameServiceTeam(context.TODO(), "team2", "team9000")
 	c.Assert(err, check.IsNil)
+
 	var dbServices []Service
-	err = s.conn.Services().Find(nil).Sort("_id").All(&dbServices)
+	cursor, err := servicesCollection.Find(context.TODO(), mongoBSON.M{}, &options.FindOptions{
+		Sort: mongoBSON.M{"_id": 1},
+	})
 	c.Assert(err, check.IsNil)
+	err = cursor.All(context.TODO(), &dbServices)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(dbServices, check.DeepEquals, []Service{
-		{Name: "s1", Teams: []string{"team1", "team3", "team9000"}, OwnerTeams: []string{"team1", "teamx"}, Endpoint: map[string]string{}},
-		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team9000"}, Endpoint: map[string]string{}},
-		{Name: "s3", Teams: []string{"team3", "team9000"}, OwnerTeams: []string{"team3"}, Endpoint: map[string]string{}},
+		{Name: "s1", Teams: []string{"team1", "team3", "team9000"}, OwnerTeams: []string{"team1", "teamx"}},
+		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team9000"}},
+		{Name: "s3", Teams: []string{"team3", "team9000"}, OwnerTeams: []string{"team3"}},
 	})
 }

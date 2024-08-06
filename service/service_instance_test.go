@@ -35,6 +35,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
 )
 
@@ -208,7 +209,9 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 
 func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{
 		Name:        "t3sql",
@@ -244,7 +247,9 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 
 func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{
 		Name:        "j3sql",
@@ -280,7 +285,9 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 
 func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
@@ -296,7 +303,9 @@ func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 
 func (s *InstanceSuite) TestGetServiceInstancesByServicesWithoutAnyExistingServiceInstances(c *check.C) {
 	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc})
 	c.Assert(err, check.IsNil)
@@ -305,10 +314,13 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithoutAnyExistingServi
 
 func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	srvc2 := Service{Name: "mongodb"}
-	err = s.conn.Services().Insert(&srvc2)
+
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc2)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
@@ -357,7 +369,9 @@ func (s *InstanceSuite) TestAdditionalInfo(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	info, err := si.Info(context.TODO(), "")
@@ -375,7 +389,9 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	info, err := si.ToInfo(context.TODO())
@@ -402,7 +418,9 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 
 func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	info, err := si.ToInfo(context.TODO())
@@ -429,7 +447,9 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C
 
 func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *check.C) {
 	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	info, err := si.ToInfo(context.TODO())
@@ -459,7 +479,9 @@ func (s *InstanceSuite) TestDeleteInstance(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(&si)
@@ -494,7 +516,9 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	evt := createEvt(c)
@@ -515,7 +539,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTeamOwner(c *check.C) 
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: "unknown", Tags: []string{"tag1", "tag2"}}
 	evt := createEvt(c)
@@ -538,7 +564,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name}
 	evt := createEvt(c)
 	for _, service := range srv {
-		err := s.conn.Services().Insert(&service)
+		servicesCollection, err := storagev2.ServicesCollection()
+		c.Assert(err, check.IsNil)
+		_, err = servicesCollection.InsertOne(context.TODO(), &service)
 		c.Assert(err, check.IsNil)
 		err = CreateServiceInstance(context.TODO(), instance, &service, evt, "")
 		c.Assert(err, check.IsNil)
@@ -568,7 +596,9 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 		return &team, nil
 	}
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: team.Name}
 	evt := createEvt(c)
@@ -586,7 +616,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small"}
 	evt := createEvt(c)
@@ -600,7 +632,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *check.C) 
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", TeamOwner: s.team.Name}
 	evt := createEvt(c)
@@ -616,7 +650,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance"}
 	evt := createEvt(c)
@@ -646,7 +682,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	for _, t := range tests {
@@ -664,7 +702,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"", "  tag1 ", "tag1", "  "}}
 	evt := createEvt(c)
@@ -688,7 +728,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterInstanceWithoutPool
 		Password:       "password",
 		IsMultiCluster: true,
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
 		Name:      "instance",
@@ -714,7 +756,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenPoolDoesNotExis
 		Password:       "password",
 		IsMultiCluster: true,
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
 		Name:      "instance",
@@ -758,7 +802,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenNoClusterFound(
 		Password:       "password",
 		IsMultiCluster: true,
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
@@ -807,7 +853,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 		Password:       "password",
 		IsMultiCluster: true,
 	}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
 		Name:      "instance",
@@ -831,7 +879,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceRegularServiceWithPool(c *check
 		Password:       "password",
 		IsMultiCluster: false,
 	}
-	err := s.conn.Services().Insert(srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	err = CreateServiceInstance(context.TODO(), ServiceInstance{
 		Name:        "my-instance",
@@ -848,7 +898,9 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}, Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -882,7 +934,9 @@ func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) 
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
 	evt := createEvt(c)
@@ -904,7 +958,9 @@ func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}, Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -926,7 +982,9 @@ func (s *InstanceSuite) TestStatus(c *check.C) {
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
-	err := s.conn.Services().Insert(&srv)
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	status, err := si.Status(context.TODO(), "")
@@ -970,6 +1028,9 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
 
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
 	_, err = usersCollection.InsertOne(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test2"}
@@ -978,7 +1039,7 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 		return &team, nil
 	}
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
-	err = s.conn.Services().Insert(&srvc)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{
 		Name:        "j4sql",
@@ -998,6 +1059,9 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
 
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
 	_, err = usersCollection.InsertOne(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test2"}
@@ -1006,7 +1070,7 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 		return &team, nil
 	}
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
-	err = s.conn.Services().Insert(&srvc)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{
 		Name:        "j4sql",
@@ -1030,6 +1094,9 @@ func (s *InstanceSuite) TestRevokeTeamOwner(c *check.C) {
 	usersCollection, err := storagev2.UsersCollection()
 	c.Assert(err, check.IsNil)
 
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
 	_, err = usersCollection.InsertOne(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team-one"}
@@ -1037,7 +1104,7 @@ func (s *InstanceSuite) TestRevokeTeamOwner(c *check.C) {
 		return nil, fmt.Errorf("should not pass here")
 	}
 	srvc := Service{Name: "service-one", Teams: []string{team.Name}}
-	err = s.conn.Services().Insert(&srvc)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(&ServiceInstance{
 		Name:        "instance-one",
@@ -1407,24 +1474,35 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 }
 
 func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
-	sInstances := []ServiceInstance{
-		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team2", "team3"}, TeamOwner: "team1"},
-		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team2"},
-		{Name: "si3", ServiceName: "mysql", Teams: []string{"team2", "team3"}, TeamOwner: "team3"},
+	sInstances := []any{
+		ServiceInstance{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team2", "team3"}, TeamOwner: "team1"},
+		ServiceInstance{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team2"},
+		ServiceInstance{Name: "si3", ServiceName: "mysql", Teams: []string{"team2", "team3"}, TeamOwner: "team3"},
 	}
-	for _, si := range sInstances {
-		err := s.conn.ServiceInstances().Insert(&si)
-		c.Assert(err, check.IsNil)
-	}
-	err := RenameServiceInstanceTeam(context.TODO(), "team2", "team9000")
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertMany(context.TODO(), sInstances)
+
+	c.Assert(err, check.IsNil)
+
+	err = RenameServiceInstanceTeam(context.TODO(), "team2", "team9000")
 	c.Assert(err, check.IsNil)
 	var dbInstances []ServiceInstance
-	err = s.conn.ServiceInstances().Find(nil).Sort("name").All(&dbInstances)
+
+	cursor, err := serviceInstancesCollection.Find(context.TODO(), mongoBSON.M{}, &options.FindOptions{
+		Sort: mongoBSON.M{"name": 1},
+	})
 	c.Assert(err, check.IsNil)
+
+	err = cursor.All(context.TODO(), &dbInstances)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(dbInstances, check.DeepEquals, []ServiceInstance{
-		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, Tags: []string{}},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, Tags: []string{}},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, Tags: []string{}},
 	})
 }
 
@@ -1444,7 +1522,11 @@ func (s *S) TestProxyInstance(c *check.C) {
 	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{Name: "noflow", ServiceName: "tensorflow", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(&sInstance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance)
 	c.Assert(err, check.IsNil)
 	tests := []struct {
 		method       string

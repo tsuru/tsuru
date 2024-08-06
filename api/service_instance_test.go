@@ -45,6 +45,7 @@ import (
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -165,7 +166,13 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TearDownTest(c *check.C) {
-	s.conn.Services().RemoveId(s.service.Name)
+
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	s.conn.Close()
 	s.ts.Close()
 }
@@ -356,7 +363,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithInvalidPoolConstraint(c *ch
 	c.Assert(err, check.IsNil)
 
 	defer func() {
-		deleteErr := service.Delete(*multiCluterservice)
+		deleteErr := service.Delete(stdContext.TODO(), *multiCluterservice)
 		c.Assert(deleteErr, check.IsNil)
 	}()
 
@@ -1375,8 +1382,11 @@ func (l ServiceModelList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l ServiceModelList) Less(i, j int) bool { return l[i].Service < l[j].Service }
 
 func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	srv := service.Service{
 		Name:       "redis",
 		Teams:      []string{s.team.Name},
@@ -1448,8 +1458,11 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	srv := service.Service{
 		Name:       "redis",
 		Teams:      []string{s.team.Name},
@@ -1511,13 +1524,16 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestListServiceInstancesReturnsOnlyServicesThatTheUserHasAccess(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
 	_, err = nativeScheme.Create(stdContext.TODO(), u)
 	c.Assert(err, check.IsNil)
 	srv := service.Service{Name: "redis", IsRestricted: true, Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err = s.conn.Services().Insert(srv)
+	_, err = servicesCollection.InsertOne(stdContext.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "redis-globo",
@@ -2163,8 +2179,11 @@ func (s *ServiceInstanceSuite) TestServiceDocReturns404WhenServiceDoesNotExists(
 }
 
 func (s *ServiceInstanceSuite) TestGetServiceInstanceOrError(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	si := service.ServiceInstance{Name: "foo", ServiceName: "foo-service", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
