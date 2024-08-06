@@ -76,6 +76,10 @@ func VolumeBindsCollection() (*mongo.Collection, error) {
 	return Collection("volume_binds")
 }
 
+func TrackerCollection() (*mongo.Collection, error) {
+	return Collection("tracker")
+}
+
 func OAuth2TokensCollection() (*mongo.Collection, error) {
 	collectionName := getOAuthTokensCollectionName()
 	return Collection(collectionName)
