@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
@@ -38,20 +37,12 @@ func (t *mongodbBaseTest) SetUpSuite(c *check.C) {
 }
 
 func (t *mongodbBaseTest) SetUpTest(c *check.C) {
-	// TODO: clear all collections with storagev2
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = storagev2.ClearAllCollections(nil)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 
 func (t *mongodbBaseTest) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = storagev2.ClearAllCollections(nil)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 
