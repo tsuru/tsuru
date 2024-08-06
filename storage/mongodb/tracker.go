@@ -8,20 +8,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/tracker"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const trackerCollectionName = "tracker"
-
 type instanceTrackerStorage struct{}
-
-func trackerCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection(trackerCollectionName)
-}
 
 type trackedInstance struct {
 	Name       string    `bson:"_id"`
@@ -35,19 +28,22 @@ func (s *instanceTrackerStorage) Notify(ctx context.Context, instance tracker.Tr
 	instance.LastUpdate = time.Now().UTC()
 	dbInstance := trackedInstance(instance)
 
-	span := newMongoDBSpan(ctx, mongoSpanUpsertID, trackerCollectionName)
+	collection, err := storagev2.TrackerCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpsertID, collection.Name())
 	span.SetMongoID(dbInstance.Name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"_id": dbInstance.Name}, dbInstance, options.Replace().SetUpsert(true))
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	_, err = trackerCollection(conn).UpsertId(dbInstance.Name, dbInstance)
-	span.SetError(err)
-	return err
+
+	return nil
 }
 
 func (s *instanceTrackerStorage) List(ctx context.Context, maxStale time.Duration) ([]tracker.TrackedInstance, error) {
@@ -55,15 +51,14 @@ func (s *instanceTrackerStorage) List(ctx context.Context, maxStale time.Duratio
 		"lastupdate": mongoBSON.M{"$gt": time.Now().UTC().Add(-maxStale)},
 	}
 
-	span := newMongoDBSpan(ctx, mongoSpanFind, trackerCollectionName)
-	span.SetQueryStatement(query)
-	defer span.Finish()
-
-	collection, err := storagev2.Collection(trackerCollectionName)
+	collection, err := storagev2.TrackerCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	span.SetQueryStatement(query)
+	defer span.Finish()
 
 	cursor, err := collection.Find(ctx, query)
 	if err != nil {
