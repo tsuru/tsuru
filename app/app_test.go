@@ -899,7 +899,9 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{app.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
@@ -3053,7 +3055,9 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 		Teams:       []string{"team-one"},
 		Apps:        []string{app.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance1)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance1)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		ServiceName: service1.Name,
@@ -3062,7 +3066,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 		Apps:        []string{app.Name},
 		PlanName:    "some-example",
 	}
-	err = s.conn.ServiceInstances().Insert(instance2)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance2)
 	c.Assert(err, check.IsNil)
 	service2 := service.Service{
 		Name:       "service-2",
@@ -3080,7 +3084,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 		Apps:        []string{app.Name},
 		PlanName:    "another-plan",
 	}
-	err = s.conn.ServiceInstances().Insert(instance3)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance3)
 	c.Assert(err, check.IsNil)
 	appInfo, err := AppInfo(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
@@ -5896,7 +5900,9 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 		ServiceName: svc.Name,
 		Apps:        []string{app.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si1)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si1)
 	c.Assert(err, check.IsNil)
 
 	optsPool2 := pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name, Public: true}

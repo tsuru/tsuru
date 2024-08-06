@@ -72,6 +72,7 @@ func connect() (*mongo.Client, *string, error) {
 			SetAppName("tsurud").
 			SetBSONOptions(&options.BSONOptions{
 				NilSliceAsEmpty: true,
+				NilMapAsEmpty:   true,
 			}),
 	)
 	if err != nil {

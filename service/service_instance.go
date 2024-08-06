@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -115,12 +114,13 @@ func DeleteInstance(ctx context.Context, si *ServiceInstance, evt *event.Event, 
 		}
 		fmt.Fprintf(evt, "could not delete the service instance on service api: %v. ignoring this error due to force removal...\n", err)
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.ServiceInstances().Remove(bson.M{"name": si.Name, "service_name": si.ServiceName})
+
+	_, err = collection.DeleteOne(ctx, mongoBSON.M{"name": si.Name, "service_name": si.ServiceName})
+	return err
 }
 
 func (si *ServiceInstance) GetIdentifier() string {
@@ -224,13 +224,13 @@ func (si *ServiceInstance) Update(ctx context.Context, service Service, updateDa
 	return pipeline.Execute(ctx, service, *si, updateData, evt, requestID)
 }
 
-func (si *ServiceInstance) updateData(update bson.M) error {
-	conn, err := db.Conn()
+func (si *ServiceInstance) updateData(ctx context.Context, update mongoBSON.M) error {
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, update)
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": si.Name, "service_name": si.ServiceName}, update)
+	return err
 }
 
 // BindApp makes the bind between the service instance and an app.
@@ -351,7 +351,7 @@ func (si *ServiceInstance) Grant(ctx context.Context, teamName string) error {
 	if err != nil {
 		return err
 	}
-	return si.updateData(bson.M{"$push": bson.M{"teams": team.Name}})
+	return si.updateData(ctx, mongoBSON.M{"$push": mongoBSON.M{"teams": team.Name}})
 }
 
 func (si *ServiceInstance) Revoke(ctx context.Context, teamName string) error {
@@ -362,7 +362,7 @@ func (si *ServiceInstance) Revoke(ctx context.Context, teamName string) error {
 	if err != nil {
 		return err
 	}
-	return si.updateData(bson.M{"$pull": bson.M{"teams": team.Name}})
+	return si.updateData(ctx, mongoBSON.M{"$pull": mongoBSON.M{"teams": team.Name}})
 }
 
 func genericServiceInstancesFilter(services interface{}, teams []string) mongoBSON.M {
@@ -463,11 +463,11 @@ func GetServicesInstancesByTeamsAndNames(ctx context.Context, teams []string, na
 		orConditions := []mongoBSON.M{}
 
 		if teams != nil {
-			orConditions = append(orConditions, mongoBSON.M{"teams": bson.M{"$in": teams}})
+			orConditions = append(orConditions, mongoBSON.M{"teams": mongoBSON.M{"$in": teams}})
 		}
 
 		if names != nil {
-			orConditions = append(orConditions, mongoBSON.M{"name": bson.M{"$in": names}})
+			orConditions = append(orConditions, mongoBSON.M{"name": mongoBSON.M{"$in": names}})
 		}
 
 		filter = mongoBSON.M{"$or": orConditions}
@@ -564,16 +564,26 @@ func processTags(tags []string) []string {
 }
 
 func RenameServiceInstanceTeam(ctx context.Context, oldName, newName string) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	bulk := conn.ServiceInstances().Bulk()
-	bulk.UpdateAll(bson.M{"teamowner": oldName}, bson.M{"$set": bson.M{"teamowner": newName}})
-	bulk.UpdateAll(bson.M{"teams": oldName}, bson.M{"$push": bson.M{"teams": newName}})
-	bulk.UpdateAll(bson.M{"teams": oldName}, bson.M{"$pull": bson.M{"teams": oldName}})
-	_, err = bulk.Run()
+
+	updates := []mongo.WriteModel{
+		mongo.NewUpdateManyModel().
+			SetFilter(mongoBSON.M{"teamowner": oldName}).
+			SetUpdate(mongoBSON.M{"$set": mongoBSON.M{"teamowner": newName}}),
+
+		mongo.NewUpdateManyModel().
+			SetFilter(mongoBSON.M{"teams": oldName}).
+			SetUpdate(mongoBSON.M{"$push": mongoBSON.M{"teams": newName}}),
+
+		mongo.NewUpdateManyModel().
+			SetFilter(mongoBSON.M{"teams": oldName}).
+			SetUpdate(mongoBSON.M{"$pull": mongoBSON.M{"teams": oldName}}),
+	}
+
+	_, err = collection.BulkWrite(ctx, updates)
 	return err
 }
 
