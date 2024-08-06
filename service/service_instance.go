@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -208,11 +207,6 @@ func (si *ServiceInstance) Update(ctx context.Context, service Service, updateDa
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 	tags := processTags(updateData.Tags)
 	if tags == nil {
 		updateData.Tags = si.Tags
