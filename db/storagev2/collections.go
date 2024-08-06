@@ -80,6 +80,10 @@ func TrackerCollection() (*mongo.Collection, error) {
 	return Collection("tracker")
 }
 
+func DynamicRoutersCollection() (*mongo.Collection, error) {
+	return Collection("dynamic_routers")
+}
+
 func OAuth2TokensCollection() (*mongo.Collection, error) {
 	collectionName := getOAuthTokensCollectionName()
 	return Collection(collectionName)
