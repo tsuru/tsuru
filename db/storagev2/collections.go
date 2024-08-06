@@ -68,6 +68,14 @@ func WebhookCollection() (*mongo.Collection, error) {
 	return Collection("webhook")
 }
 
+func VolumesCollection() (*mongo.Collection, error) {
+	return Collection("volumes")
+}
+
+func VolumeBindsCollection() (*mongo.Collection, error) {
+	return Collection("volume_binds")
+}
+
 func OAuth2TokensCollection() (*mongo.Collection, error) {
 	collectionName := getOAuthTokensCollectionName()
 	return Collection(collectionName)
