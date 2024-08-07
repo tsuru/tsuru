@@ -11,7 +11,6 @@ import (
 
 	"github.com/tsuru/config"
 	internalConfig "github.com/tsuru/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -35,7 +34,6 @@ func Test(t *testing.T) {
 
 type S struct {
 	collection        *mongo.Collection
-	storage           *db.Storage
 	teams             []authTypes.Team
 	plans             []appTypes.Plan
 	volumePlans       map[string][]volumeTypes.VolumePlan
@@ -52,8 +50,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "pool_tests_s")
 	var err error
-	s.storage, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -65,7 +61,6 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
-	s.storage.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
