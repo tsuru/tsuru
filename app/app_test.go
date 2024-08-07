@@ -5511,7 +5511,7 @@ func (s *S) TestRenameTeam(c *check.C) {
 		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
 	for _, a := range apps {
-		err := s.conn.Apps().Insert(a)
+		err = s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
 	err = RenameTeam(context.TODO(), "t2", "t9000")
@@ -5540,7 +5540,7 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
 	for _, a := range apps {
-		err := s.conn.Apps().Insert(a)
+		err = s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -5579,7 +5579,7 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 		{Name: "test3", TeamOwner: "t3", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
 	for _, a := range apps {
-		err := s.conn.Apps().Insert(a)
+		err = s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
 	evt, err := event.New(context.TODO(), &event.Opts{
