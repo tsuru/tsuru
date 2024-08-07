@@ -18,7 +18,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
@@ -58,9 +57,6 @@ func init() {
 	suite.TearDownTestFunc = func(c *check.C) {
 		r.stop()
 		config.Unset("routers:apirouter")
-		conn, err := db.Conn()
-		c.Assert(err, check.IsNil)
-		defer conn.Close()
 		storagev2.ClearAllCollections(nil)
 	}
 	check.Suite(suite)
@@ -88,9 +84,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	config.Unset("routers:apirouter")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
+
 	storagev2.ClearAllCollections(nil)
 	s.apiRouter.stop()
 }

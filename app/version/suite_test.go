@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	check "gopkg.in/check.v1"
@@ -17,7 +16,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	storage *db.Storage
 }
 
 var _ = check.Suite(&S{})
@@ -28,9 +26,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "app_version_tests")
 	config.Set("docker:collection", "docker")
 	config.Set("docker:repository-namespace", "tsuru")
-	var err error
-	s.storage, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -38,5 +35,4 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.storage.Close()
 }

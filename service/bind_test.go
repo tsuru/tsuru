@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -35,7 +34,6 @@ import (
 )
 
 type BindSuite struct {
-	conn        *db.Storage
 	user        auth.User
 	team        authTypes.Team
 	mockService servicemock.MockService
@@ -44,13 +42,10 @@ type BindSuite struct {
 var _ = check.Suite(&BindSuite{})
 
 func (s *BindSuite) SetUpSuite(c *check.C) {
-	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_service_bind_test")
 	config.Set("routers:fake:type", "fake")
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -99,7 +94,6 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 
 func (s *BindSuite) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
-	s.conn.Close()
 }
 
 func createEvt(c *check.C) *event.Event {

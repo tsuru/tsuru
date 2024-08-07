@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
@@ -51,7 +50,6 @@ type testProv interface {
 
 type S struct {
 	b             *kubernetesBuilder
-	conn          *db.Storage
 	user          *auth.User
 	team          *authTypes.Team
 	token         auth.Token
@@ -80,13 +78,11 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "builder_kubernetes_tests_s")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *S) TearDownTest(c *check.C) {
