@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
@@ -34,7 +33,6 @@ import (
 )
 
 type PlatformSuite struct {
-	conn        *db.Storage
 	testServer  http.Handler
 	mockService servicemock.MockService
 }
@@ -66,23 +64,16 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_platform_test")
 	storagev2.Reset()
-	var err error
 	app.AuthScheme = nativeScheme
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 	storagev2.ClearAllCollections(nil)
 	provision.DefaultProvisioner = "fake-extensible"
 	servicemock.SetMockService(&s.mockService)
 }
 
 func (s *PlatformSuite) TearDownTest(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 

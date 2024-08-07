@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -18,7 +17,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn    *db.Storage
 	routers map[string]routerFactory
 }
 
@@ -29,8 +27,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_tests")
 	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+	storagev2.Reset()
 	servicemanager.DynamicRouter, err = DynamicRouterService()
 	c.Assert(err, check.IsNil)
 
@@ -49,5 +46,4 @@ func (s *S) TearDownTest(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
-	s.conn.Close()
 }

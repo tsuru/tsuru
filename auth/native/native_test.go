@@ -12,7 +12,6 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/authtest"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -262,9 +261,6 @@ func (s *S) TestNativeRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(ctx, u)
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	var tokens []Token
 
 	tokensCollection, err := storagev2.TokensCollection()

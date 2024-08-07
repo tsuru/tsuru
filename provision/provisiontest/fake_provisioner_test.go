@@ -41,10 +41,7 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	servicemock.SetMockService(&servicemock.MockService{})
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = storagev2.ClearAllCollections(nil)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -38,7 +37,6 @@ import (
 )
 
 type InstanceSuite struct {
-	conn        *db.Storage
 	team        *authTypes.Team
 	user        *auth.User
 	mockService servicemock.MockService
@@ -47,12 +45,9 @@ type InstanceSuite struct {
 var _ = check.Suite(&InstanceSuite{})
 
 func (s *InstanceSuite) SetUpSuite(c *check.C) {
-	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_service_instance_test")
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 }
@@ -83,7 +78,6 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
-	s.conn.Close()
 }
 
 func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {

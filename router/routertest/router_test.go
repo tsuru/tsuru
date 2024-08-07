@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/router"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -20,7 +19,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn      *db.Storage
 	localhost *url.URL
 }
 
@@ -53,18 +51,16 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "router_fake_tests")
 	config.Set("routers:fake:type", "fake")
 	s.localhost, _ = url.Parse("http://127.0.0.1")
+
+	storagev2.Reset()
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 	storagev2.ClearAllCollections(nil)
 	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *S) TestEnsureBackend(c *check.C) {

@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -34,7 +33,6 @@ import (
 )
 
 type ProvisionSuite struct {
-	conn            *db.Storage
 	team            *authTypes.Team
 	user            *auth.User
 	token           auth.Token
@@ -46,13 +44,10 @@ var _ = check.Suite(&ProvisionSuite{})
 
 func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
-	var err error
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_service_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -74,13 +69,9 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 }
 
 func (s *ProvisionSuite) TearDownTest(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *ProvisionSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 

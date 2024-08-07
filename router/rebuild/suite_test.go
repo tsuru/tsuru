@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -33,7 +32,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
 	user        *auth.User
 	team        *authTypes.Team
 	mockService servicemock.MockService
@@ -50,15 +48,12 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:router", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	provision.DefaultProvisioner = "fake"
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
+	storagev2.Reset()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
-	s.conn.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {

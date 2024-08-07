@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -50,7 +49,6 @@ import (
 )
 
 type ServiceInstanceSuite struct {
-	conn        *db.Storage
 	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
@@ -78,8 +76,6 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	config.Set("routers:fake:default", true)
 	config.Set("routers:fake:type", "fake")
 	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -172,14 +168,10 @@ func (s *ServiceInstanceSuite) TearDownTest(c *check.C) {
 	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
 	c.Assert(err, check.IsNil)
 
-	s.conn.Close()
 	s.ts.Close()
 }
 
 func (s *ServiceInstanceSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 

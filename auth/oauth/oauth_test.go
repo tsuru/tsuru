@@ -13,7 +13,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -206,9 +205,6 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(context.TODO(), u)
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	var tokens []tokenWrapper
 	collection, err := storagev2.OAuth2TokensCollection()
 	c.Assert(err, check.IsNil)
