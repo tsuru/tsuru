@@ -38,6 +38,7 @@ func init() {
 	var runtimeObject runtime.Object
 
 	var ignoreEncode bsoncodec.ValueEncoderFunc = func(ec bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
+		vw.WriteUndefined()
 		return nil
 	}
 
