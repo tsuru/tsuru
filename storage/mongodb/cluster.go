@@ -8,17 +8,13 @@ import (
 	"context"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-const clusterCollection = "provisioner_clusters"
 
 type clusterStorage struct{}
 
@@ -39,43 +35,37 @@ type cluster struct {
 	HTTPProxy   string                `json:"httpProxy,omitempty"`
 }
 
-func clustersCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection(clusterCollection)
-}
-
 func (s *clusterStorage) Upsert(ctx context.Context, c provision.Cluster) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.ProvisionerClustersCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	coll := clustersCollection(conn)
-	updates := bson.M{}
+	updates := mongoBSON.M{}
 	if len(c.Pools) > 0 {
-		updates["$pullAll"] = bson.M{"pools": c.Pools}
+		updates["$pullAll"] = mongoBSON.M{"pools": c.Pools}
 	}
 	if c.Default {
-		updates["$set"] = bson.M{"default": false}
+		updates["$set"] = mongoBSON.M{"default": false}
 	}
 	if len(updates) > 0 {
-		query := bson.M{"provisioner": c.Provisioner}
+		query := mongoBSON.M{"provisioner": c.Provisioner}
 
-		span := newMongoDBSpan(ctx, mongoSpanUpdateAll, clusterCollection)
+		span := newMongoDBSpan(ctx, mongoSpanUpdateAll, collection.Name())
 		span.SetQueryStatement(query)
 		defer span.Finish()
 
-		_, err = coll.UpdateAll(query, updates)
+		_, err = collection.UpdateMany(ctx, query, updates)
 		if err != nil {
 			span.SetError(err)
 			return errors.WithStack(err)
 		}
 	}
 
-	span := newMongoDBSpan(ctx, mongoSpanUpsert, clusterCollection)
+	span := newMongoDBSpan(ctx, mongoSpanUpsert, collection.Name())
 	span.SetMongoID(c.Name)
 	defer span.Finish()
 
-	_, err = coll.UpsertId(c.Name, cluster(c))
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"_id": c.Name}, cluster(c), options.Replace().SetUpsert(true))
 	if err != nil {
 		span.SetError(err)
 		return errors.WithStack(err)
@@ -89,13 +79,13 @@ func (s *clusterStorage) FindAll(ctx context.Context) ([]provision.Cluster, erro
 }
 
 func (s *clusterStorage) FindByName(ctx context.Context, name string) (*provision.Cluster, error) {
-	collection, err := storagev2.Collection(clusterCollection)
+	collection, err := storagev2.ProvisionerClustersCollection()
 	if err != nil {
 		return nil, err
 	}
 	var c cluster
 
-	span := newMongoDBSpan(ctx, mongoSpanFindID, clusterCollection)
+	span := newMongoDBSpan(ctx, mongoSpanFindID, collection.Name())
 	span.SetMongoID(name)
 	defer span.Finish()
 
@@ -117,7 +107,7 @@ func (s *clusterStorage) FindByProvisioner(ctx context.Context, provisioner stri
 }
 
 func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool string) (*provision.Cluster, error) {
-	collection, err := storagev2.Collection(clusterCollection)
+	collection, err := storagev2.ProvisionerClustersCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +115,7 @@ func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool strin
 	if pool != "" {
 		query := mongoBSON.M{"provisioner": provisioner, "pools": pool}
 
-		span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
+		span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
 		span.SetQueryStatement(query)
 
 		err = collection.FindOne(ctx, query).Decode(&c)
@@ -137,7 +127,7 @@ func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool strin
 	if pool == "" || err == mongo.ErrNoDocuments {
 		query := mongoBSON.M{"provisioner": provisioner, "default": true}
 
-		span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
+		span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
 		span.SetQueryStatement(query)
 
 		err = collection.FindOne(ctx, query).Decode(&c)
@@ -157,15 +147,16 @@ func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool strin
 }
 
 func (s *clusterStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]provision.Cluster, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
+
+	collection, err := storagev2.ProvisionerClustersCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	collection, err := storagev2.Collection(clusterCollection)
-	if err != nil {
-		span.SetError(err)
-		return nil, err
-	}
 	var clusters []cluster
 
 	cursor, err := collection.Find(ctx, query)
@@ -189,20 +180,23 @@ func (s *clusterStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]
 }
 
 func (s *clusterStorage) Delete(ctx context.Context, c provision.Cluster) error {
-	span := newMongoDBSpan(ctx, mongoSpanDelete, clusterCollection)
+	collection, err := storagev2.ProvisionerClustersCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanDelete, collection.Name())
 	span.SetMongoID(c.Name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
-	if err != nil {
-		span.SetError(err)
-		return err
-	}
-	defer conn.Close()
-	err = clustersCollection(conn).RemoveId(c.Name)
-	span.SetError(err)
+	_, err = collection.DeleteOne(ctx, mongoBSON.M{"_id": c.Name})
 	if err == mgo.ErrNotFound {
 		return provision.ErrClusterNotFound
 	}
-	return err
+	if err != nil {
+		span.SetError(err)
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
