@@ -214,6 +214,16 @@ var EnsureIndexes = []EnsureIndex{
 	},
 
 	{
+		Collection: "app_versions",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "appname", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
 		GetCollectionName: getOAuthTokensCollectionName,
 		Indexes: []mongo.IndexModel{
 			{

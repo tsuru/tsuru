@@ -186,7 +186,7 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
 	defer span.Finish()
 
-	collection, err := storagev2.Collection(appVersionsCollectionName)
+	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {
 		span.SetError(err)
 		return nil, err
@@ -218,7 +218,7 @@ func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.AppInt
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	collection, err := storagev2.Collection(appVersionsCollectionName)
+	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {
 		span.SetError(err)
 		return appTypes.AppVersions{}, err
