@@ -8,6 +8,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+func AppsCollection() (*mongo.Collection, error) {
+	return Collection("apps")
+}
+
 func PoolCollection() (*mongo.Collection, error) {
 	return Collection("pool")
 }

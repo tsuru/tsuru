@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -26,6 +27,8 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -502,24 +505,23 @@ var validateNewCNames = action.Action{
 		app := ctx.Params[0].(*App)
 		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 		cnames := ctx.Params[1].([]string)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		appRouters := app.GetRouters()
 		for _, cname := range cnames {
 			if !cnameRegexp.MatchString(cname) {
 				return nil, errors.New("Invalid cname")
 			}
-			cs, err := conn.Apps().Find(bson.M{"cname": cname}).Count()
+			cs, err := collection.CountDocuments(ctx.Context, mongoBSON.M{"cname": cname})
 			if err != nil {
 				return nil, err
 			}
 			if cs == 0 {
 				continue
 			}
-			cs, err = conn.Apps().Find(bson.M{"name": app.Name, "cname": cname}).Count()
+			cs, err = collection.CountDocuments(ctx.Context, mongoBSON.M{"name": app.Name, "cname": cname})
 			if err != nil {
 				return nil, err
 			}
@@ -528,16 +530,16 @@ var validateNewCNames = action.Action{
 			}
 
 			appCName := App{}
-			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "routers": bson.M{"$in": appRouters}}).One(&appCName)
-			if err != nil && err != mgo.ErrNotFound {
+			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "routers": mongoBSON.M{"$in": appRouters}}).Decode(&appCName)
+			if err != nil && err != mongo.ErrNoDocuments {
 				return nil, err
 			}
 			if appCName.Name != "" {
 				return nil, errors.New(fmt.Sprintf("cname %s already exists for app %s using same router", cname, appCName.Name))
 			}
-			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "teamowner": bson.M{"$ne": app.GetTeamOwner()}}).One(&appCName)
+			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "teamowner": mongoBSON.M{"$ne": app.GetTeamOwner()}}).Decode(&appCName)
 			if err != nil {
-				if err == mgo.ErrNotFound {
+				if err == mongo.ErrNoDocuments {
 					continue
 				}
 				return nil, err
@@ -612,13 +614,12 @@ var checkCNameExists = action.Action{
 	Name: "cname-exists",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		cnames := ctx.Params[1].([]string)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		for _, cname := range cnames {
-			cs, err := conn.Apps().Find(bson.M{"cname": cname}).Count()
+			cs, err := collection.CountDocuments(ctx.Context, mongoBSON.M{"cname": cname})
 			if err != nil {
 				return nil, err
 			}

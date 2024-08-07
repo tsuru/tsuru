@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -39,6 +38,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -640,7 +640,13 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(a.Deploys, check.Equals, uint(1))
 }
 
