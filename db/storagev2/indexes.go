@@ -194,6 +194,16 @@ var EnsureIndexes = []EnsureIndex{
 	},
 
 	{
+		Collection: "auth_groups",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
 		GetCollectionName: getOAuthTokensCollectionName,
 		Indexes: []mongo.IndexModel{
 			{

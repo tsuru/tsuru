@@ -7,39 +7,20 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/auth"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
-)
-
-const (
-	authGroupCollection = "auth_groups"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var errAuthGroupNameEmpty = errors.New("group name cannot be empty")
 
 type authGroupStorage struct{}
 
-func (s *authGroupStorage) collection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	coll := conn.Collection(authGroupCollection)
-	err = coll.EnsureIndex(mgo.Index{
-		Key:    []string{"name"},
-		Unique: true,
-	})
-	return coll, err
-}
-
 func (s *authGroupStorage) List(ctx context.Context, filter []string) ([]auth.Group, error) {
-	collection, err := storagev2.Collection(authGroupCollection)
+	collection, err := storagev2.AuthGroupsCollection()
 	if err != nil {
 		return nil, err
 	}
@@ -67,16 +48,15 @@ func (s *authGroupStorage) AddRole(ctx context.Context, name, roleName, contextV
 	if name == "" {
 		return errAuthGroupNameEmpty
 	}
-	coll, err := s.collection()
+	collection, err := storagev2.AuthGroupsCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	_, err = coll.Upsert(bson.M{"name": name}, bson.M{
-		"$addToSet": bson.M{
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": name}, mongoBSON.M{
+		"$addToSet": mongoBSON.M{
 			"roles": roleToBson(auth.RoleInstance{Name: roleName, ContextValue: contextValue}),
 		},
-	})
+	}, options.Update().SetUpsert(true))
 	return err
 }
 
@@ -84,24 +64,23 @@ func (s *authGroupStorage) RemoveRole(ctx context.Context, name, roleName, conte
 	if name == "" {
 		return errAuthGroupNameEmpty
 	}
-	coll, err := s.collection()
+	collection, err := storagev2.AuthGroupsCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	_, err = coll.Upsert(bson.M{"name": name}, bson.M{
-		"$pullAll": bson.M{
-			"roles": []bson.D{roleToBson(auth.RoleInstance{Name: roleName, ContextValue: contextValue})},
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": name}, mongoBSON.M{
+		"$pullAll": mongoBSON.M{
+			"roles": []mongoBSON.D{roleToBson(auth.RoleInstance{Name: roleName, ContextValue: contextValue})},
 		},
 	})
 	return err
 }
 
-func roleToBson(ri auth.RoleInstance) bson.D {
+func roleToBson(ri auth.RoleInstance) mongoBSON.D {
 	// Order matters in $addToSet, that's why bson.D is used instead
 	// of bson.M.
-	return bson.D([]bson.DocElem{
-		{Name: "name", Value: ri.Name},
-		{Name: "contextvalue", Value: ri.ContextValue},
+	return mongoBSON.D([]primitive.E{
+		{Key: "name", Value: ri.Name},
+		{Key: "contextvalue", Value: ri.ContextValue},
 	})
 }

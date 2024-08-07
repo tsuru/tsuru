@@ -92,6 +92,10 @@ func ProvisionerClustersCollection() (*mongo.Collection, error) {
 	return Collection("provisioner_clusters")
 }
 
+func AuthGroupsCollection() (*mongo.Collection, error) {
+	return Collection("auth_groups")
+}
+
 func OAuth2TokensCollection() (*mongo.Collection, error) {
 	collectionName := getOAuthTokensCollectionName()
 	return Collection(collectionName)

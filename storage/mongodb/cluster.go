@@ -7,7 +7,6 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/provision"
@@ -189,8 +188,8 @@ func (s *clusterStorage) Delete(ctx context.Context, c provision.Cluster) error 
 	span.SetMongoID(c.Name)
 	defer span.Finish()
 
-	_, err = collection.DeleteOne(ctx, mongoBSON.M{"_id": c.Name})
-	if err == mgo.ErrNotFound {
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": c.Name})
+	if err == mongo.ErrNoDocuments {
 		return provision.ErrClusterNotFound
 	}
 	if err != nil {
@@ -198,5 +197,8 @@ func (s *clusterStorage) Delete(ctx context.Context, c provision.Cluster) error 
 		return errors.WithStack(err)
 	}
 
+	if result.DeletedCount == 0 {
+		return provision.ErrClusterNotFound
+	}
 	return nil
 }
