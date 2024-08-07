@@ -12,6 +12,10 @@ func AppsCollection() (*mongo.Collection, error) {
 	return Collection("apps")
 }
 
+func AppVersionsCollection() (*mongo.Collection, error) {
+	return Collection("app_versions")
+}
+
 func PoolCollection() (*mongo.Collection, error) {
 	return Collection("pool")
 }
