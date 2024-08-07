@@ -52,8 +52,6 @@ func (s *QuotaSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *QuotaSuite) SetUpTest(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 	s.team = &authTypes.Team{Name: "superteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
@@ -80,22 +78,16 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 }
 
 func (s *QuotaSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 
 func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	_, err = nativeScheme.Create(context.TODO(), user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 
 	usersCollection, err := storagev2.UsersCollection()
@@ -116,14 +108,11 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetUserQuotaRequiresPermission(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
 	}
-	_, err = nativeScheme.Create(context.TODO(), user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	request, _ := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
@@ -286,9 +275,6 @@ func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetTeamQuota(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	team := &authTypes.Team{
 		Name:         "avengers",
 		CreatingUser: "radio@gaga.com",
@@ -335,9 +321,6 @@ func (s *QuotaSuite) TestGetTeamQuotaTeamNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeTeamQuota(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	team := &authTypes.Team{
 		Name:         "avengers",
 		CreatingUser: "radio@gaga.com",
@@ -361,7 +344,6 @@ func (s *QuotaSuite) TestChangeTeamQuota(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 		Owner:  s.token.GetUserName(),
@@ -419,9 +401,6 @@ func (s *QuotaSuite) TestChangeTeamQuotaInvalidLimitValue(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeTeamQuotaLimitLowerThanAllocated(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	team := &authTypes.Team{
 		Name:         "avengers",
 		CreatingUser: "radio@gaga.com",
@@ -445,7 +424,6 @@ func (s *QuotaSuite) TestChangeTeamQuotaLimitLowerThanAllocated(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 		Owner:  s.token.GetUserName(),
