@@ -7,7 +7,6 @@ package auth
 import (
 	"context"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -151,7 +150,10 @@ func (s *S) TestTeamServiceRemoveWithApps(c *check.C) {
 		},
 	}
 
-	err := s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{teamName}})
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), mongoBSON.M{"name": "leto", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
 	err = ts.Remove(context.TODO(), teamName)
 	c.Assert(err, check.ErrorMatches, "Apps: leto")

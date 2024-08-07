@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
@@ -22,15 +21,9 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_permission_test")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
