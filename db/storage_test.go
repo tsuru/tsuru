@@ -54,12 +54,11 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_db_storage_test")
+
+	storagev2.Reset()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
 	config.Unset("database:url")
 	config.Unset("database:name")
 	storagev2.ClearAllCollections(nil)

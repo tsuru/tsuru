@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -45,13 +44,10 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_events_list_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	conn, err := db.Conn()
 
 	storagev2.Reset()
 
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = storagev2.ClearAllCollections(nil)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	user := &auth.User{Email: "me@me.com", Password: "123456"}
