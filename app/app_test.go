@@ -50,6 +50,7 @@ import (
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
 )
 
@@ -2275,8 +2276,11 @@ func (s *S) TestRestartWithVersion(c *check.C) {
 }
 
 func (s *S) TestStop(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{Name: "app", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	newSuccessfulAppVersion(c, &a)
@@ -2284,7 +2288,7 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.Stop(context.TODO(), &buf, "", "")
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": a.GetName()}).Decode(&a)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -5503,6 +5507,9 @@ func (s *S) TestUpdateMetadataAnnotationValidation(c *check.C) {
 }
 
 func (s *S) TestRenameTeam(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	apps := []App{
 		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
 		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
@@ -5511,11 +5518,16 @@ func (s *S) TestRenameTeam(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	err := RenameTeam(context.TODO(), "t2", "t9000")
+	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var dbApps []App
-	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
+
+	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, options.Find().SetSort(mongoBSON.M{"name": 1}))
 	c.Assert(err, check.IsNil)
+
+	err = cursor.All(context.TODO(), &dbApps)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(dbApps, check.HasLen, 2)
 	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
@@ -5524,6 +5536,9 @@ func (s *S) TestRenameTeam(c *check.C) {
 }
 
 func (s *S) TestRenameTeamLockedApp(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	apps := []App{
 		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
 		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
@@ -5543,8 +5558,13 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.ErrorMatches, `unable to create event: event locked: app\(test2\).*`)
 	var dbApps []App
-	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
+
+	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, options.Find().SetSort(mongoBSON.M{"name": 1}))
 	c.Assert(err, check.IsNil)
+
+	err = cursor.All(context.TODO(), &dbApps)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(dbApps, check.HasLen, 2)
 	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t2")
@@ -5553,6 +5573,10 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 }
 
 func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
+
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	apps := []App{
 		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
 		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
@@ -5573,8 +5597,13 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var dbApps []App
-	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
+
+	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, options.Find().SetSort(mongoBSON.M{"name": 1}))
 	c.Assert(err, check.IsNil)
+
+	err = cursor.All(context.TODO(), &dbApps)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(dbApps, check.HasLen, 3)
 	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
@@ -5926,8 +5955,11 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 }
 
 func (s *S) TestGetUUID(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
-	err := CreateApp(context.TODO(), &app, s.user)
+	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.UUID, check.DeepEquals, "")
 	uuid, err := app.GetUUID()
@@ -5935,7 +5967,7 @@ func (s *S) TestGetUUID(c *check.C) {
 	c.Assert(uuid, check.Not(check.DeepEquals), "")
 	c.Assert(uuid, check.DeepEquals, app.UUID)
 	var storedApp App
-	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&storedApp)
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": app.Name}).Decode(&storedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(storedApp.UUID, check.Not(check.DeepEquals), "")
 	c.Assert(storedApp.UUID, check.DeepEquals, uuid)

@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tablecli"
-	appMigrate "github.com/tsuru/tsuru/app/migrate"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/migration"
 	"github.com/tsuru/tsuru/provision"
@@ -26,18 +25,6 @@ const (
 
 func init() {
 	err := migration.Register("migrate-docker-images", migrateImages)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-plan-router-to-app-router", appMigrate.MigrateAppPlanRouterToRouter)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-service-envs", appMigrate.MigrateAppTsuruServicesVarToServiceEnvs)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-plan-id-to-plan-name", appMigrate.MigrateAppPlanIDToPlanName)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}

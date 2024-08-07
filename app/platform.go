@@ -8,10 +8,9 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/registry"
@@ -19,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 var _ appTypes.PlatformService = &platformService{}
@@ -113,13 +113,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		return appTypes.ErrPlatformNameMissing
 	}
 
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-	_, err = s.FindByName(ctx, opts.Name)
+	_, err := s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
@@ -152,7 +146,17 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		}
 
 		var apps []App
-		err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
+
+		appsCollection, err := storagev2.AppsCollection()
+		if err != nil {
+			return err
+		}
+
+		cursor, err := appsCollection.Find(ctx, mongoBSON.M{"framework": opts.Name})
+		if err != nil {
+			return err
+		}
+		err = cursor.All(ctx, &apps)
 		if err != nil {
 			return err
 		}
@@ -175,12 +179,14 @@ func (s *platformService) Remove(ctx context.Context, name string) error {
 	if name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	apps, _ := conn.Apps().Find(bson.M{"framework": name}).Count()
+	apps, err := appsCollection.CountDocuments(ctx, mongoBSON.M{"framework": name})
+	if err != nil {
+		return err
+	}
 	if apps > 0 {
 		return appTypes.ErrDeletePlatformWithApps
 	}
@@ -231,13 +237,17 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 	if multiErr.Len() > 0 {
 		return multiErr.ToError()
 	}
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	var apps []App
-	err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
+	cursor, err := appsCollection.Find(ctx, mongoBSON.M{"framework": opts.Name})
+	if err != nil {
+		return err
+	}
+
+	err = cursor.All(ctx, &apps)
 	if err != nil {
 		return err
 	}

@@ -9,10 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
@@ -98,17 +96,24 @@ func (t *teamService) FindByNames(ctx context.Context, names []string) ([]authTy
 }
 
 func (t *teamService) Remove(ctx context.Context, teamName string) error {
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	var apps []string
-	err = conn.Apps().Find(bson.M{"teams": teamName}).Distinct("name", &apps)
+	result, err := appsCollection.Distinct(ctx, "name", mongoBSON.M{"teams": teamName})
 	if err != nil {
 		return err
 	}
-	if len(apps) > 0 {
+	if len(result) > 0 {
+		var apps []string
+
+		for _, app := range result {
+			appStr, ok := app.(string)
+			if ok {
+				apps = append(apps, appStr)
+			}
+		}
+
 		return &authTypes.ErrTeamStillUsed{Apps: apps}
 	}
 
