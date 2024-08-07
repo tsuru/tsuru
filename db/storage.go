@@ -18,7 +18,9 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/hc"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
@@ -35,12 +37,12 @@ func init() {
 }
 
 func healthCheck(ctx context.Context) error {
-	conn, err := Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.Apps().Database.Session.Ping()
+
+	return appsCollection.Database().Client().Ping(ctx, readpref.Primary())
 }
 
 func DbConfig(prefix string) (string, string) {
