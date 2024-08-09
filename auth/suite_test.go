@@ -10,8 +10,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth/authtest"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -23,7 +21,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn   *db.Storage
 	hashed string
 	user   *User
 	team   *authTypes.Team
@@ -38,7 +35,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_auth_test")
-	s.conn, _ = db.Conn()
 	config.Set("smtp:user", "root")
 	var err error
 
@@ -53,12 +49,11 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create(context.TODO())

@@ -18,8 +18,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -29,12 +27,12 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
 
 type ProvisionSuite struct {
-	conn            *db.Storage
 	team            *authTypes.Team
 	user            *auth.User
 	token           auth.Token
@@ -46,17 +44,14 @@ var _ = check.Suite(&ProvisionSuite{})
 
 func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
-	var err error
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_service_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUserAndTeam(c)
 	s.testServer = RunServer(true)
 	s.mockTeamService = &authTypes.MockTeamService{}
@@ -74,14 +69,10 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 }
 
 func (s *ProvisionSuite) TearDownTest(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *ProvisionSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -110,7 +101,9 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 	err := service.Create(context.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}, Tags: []string{"tag 1"}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -163,8 +156,13 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	query := bson.M{"_id": "some-service"}
 	var rService service.Service
-	err := s.conn.Services().Find(query).One(&rService)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), query).Decode(&rService)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(rService.Name, check.Equals, "some-service")
 	c.Assert(rService.Endpoint["production"], check.Equals, "someservice.com")
 	c.Assert(rService.Password, check.Equals, "xxxx")
@@ -198,8 +196,13 @@ func (s *ProvisionSuite) TestServiceCreateMultipleEndpoints(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	query := bson.M{"_id": "some-service"}
 	var rService service.Service
-	err := s.conn.Services().Find(query).One(&rService)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), query).Decode(&rService)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(rService.Name, check.Equals, "some-service")
 	c.Assert(rService.Endpoint["cluster1"], check.Equals, "cluster1.com")
 	c.Assert(rService.Endpoint["cluster2"], check.Equals, "cluster2.com")
@@ -241,10 +244,15 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeam(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	query := bson.M{"_id": "some-service"}
+	query := mongoBSON.M{"_id": "some-service"}
 	var rService service.Service
-	err := s.conn.Services().Find(query).One(&rService)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), query).Decode(&rService)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(rService.Endpoint["production"], check.Equals, "someservices.com")
 	c.Assert(rService.Password, check.Equals, "xxxx")
 	c.Assert(rService.Username, check.Equals, "test")
@@ -322,7 +330,11 @@ func (s *ProvisionSuite) TestServiceCreateWithMultiClusterEnabled(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	query := bson.M{"_id": "multi-cluster-service"}
 	var rService service.Service
-	err := s.conn.Services().Find(query).One(&rService)
+
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), query).Decode(&rService)
 	c.Assert(err, check.IsNil)
 	c.Assert(rService.Endpoint["production"], check.Equals, "http://multicluster.service.example.com")
 	c.Assert(rService.Username, check.Equals, "user")
@@ -349,8 +361,13 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	err = s.conn.Services().Find(bson.M{"_id": srv.Name}).One(&srv)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), mongoBSON.M{"_id": srv.Name}).Decode(&srv)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(srv.Endpoint["production"], check.Equals, "mysqlapi.com")
 	c.Assert(srv.Password, check.Equals, "yyyy")
 	c.Assert(srv.Username, check.Equals, "mysqltest")
@@ -383,8 +400,13 @@ func (s *ProvisionSuite) TestServiceUpdateWithoutTeamIgnoresOwnerTeams(c *check.
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	err = s.conn.Services().Find(bson.M{"_id": srv.Name}).One(&srv)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), mongoBSON.M{"_id": srv.Name}).Decode(&srv)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(srv.Endpoint["production"], check.Equals, "mysqlapi.com")
 	c.Assert(srv.Password, check.Equals, "yyyy")
 	c.Assert(srv.Username, check.Equals, "mysqltest")
@@ -486,9 +508,13 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": se.Name}
-	count, err := s.conn.Services().Find(query).Count()
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
+
+	count, err := servicesCollection.CountDocuments(context.TODO(), query)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, int64(0))
 	c.Assert(eventtest.EventDesc{
 		Target: serviceTarget("mysql"),
 		Owner:  s.token.GetUserName(),
@@ -534,7 +560,9 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	err := service.Create(context.TODO(), se)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: se.Name}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
@@ -561,7 +589,9 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	err := service.Create(context.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	request, err := http.NewRequest(http.MethodGet, url, nil)
@@ -602,7 +632,9 @@ func (s *ProvisionSuite) TestServiceAuthenticatedResources(c *check.C) {
 	err := service.Create(context.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/authenticated-resources/mypath", se.Name)
 	request, err := http.NewRequest(http.MethodGet, url, nil)
@@ -649,7 +681,9 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	err := service.Create(context.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	body := strings.NewReader("my=awesome&body=1")
@@ -708,7 +742,9 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	err := service.Create(context.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	body := strings.NewReader("something-something")
@@ -815,7 +851,9 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	err := service.Create(context.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	request, err := http.NewRequest(http.MethodGet, url, nil)
@@ -1042,10 +1080,15 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	query := bson.M{"_id": "some-service"}
+	query := mongoBSON.M{"_id": "some-service"}
 	var serv service.Service
-	err = s.conn.Services().Find(query).One(&serv)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), query).Decode(&serv)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(serv.Doc, check.Equals, "doc")
 	c.Assert(eventtest.EventDesc{
 		Target: serviceTarget("some-service"),

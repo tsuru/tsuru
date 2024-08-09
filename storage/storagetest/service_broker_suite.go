@@ -32,7 +32,7 @@ func (s *ServiceBrokerSuite) TestInsert(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Insert(broker)
+	err := s.ServiceBrokerStorage.Insert(context.TODO(), broker)
 	c.Assert(err, check.IsNil)
 	b, err := s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.IsNil)
@@ -52,9 +52,9 @@ func (s *ServiceBrokerSuite) TestInsertDuplicate(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Insert(broker)
+	err := s.ServiceBrokerStorage.Insert(context.TODO(), broker)
 	c.Assert(err, check.IsNil)
-	err = s.ServiceBrokerStorage.Insert(broker)
+	err = s.ServiceBrokerStorage.Insert(context.TODO(), broker)
 	c.Assert(err, check.Equals, service.ErrServiceBrokerAlreadyExists)
 }
 
@@ -71,7 +71,7 @@ func (s *ServiceBrokerSuite) TestUpdate(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Insert(broker)
+	err := s.ServiceBrokerStorage.Insert(context.TODO(), broker)
 	c.Assert(err, check.IsNil)
 	broker.Config.AuthConfig.BasicAuthConfig.Password = "new-password"
 	err = s.ServiceBrokerStorage.Update(context.TODO(), "broker", broker)
@@ -111,25 +111,25 @@ func (s *ServiceBrokerSuite) TestDelete(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Insert(broker)
+	err := s.ServiceBrokerStorage.Insert(context.TODO(), broker)
 	c.Assert(err, check.IsNil)
-	err = s.ServiceBrokerStorage.Delete("broker")
+	err = s.ServiceBrokerStorage.Delete(context.TODO(), "broker")
 	c.Assert(err, check.IsNil)
 	_, err = s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.DeepEquals, service.ErrServiceBrokerNotFound)
 }
 
 func (s *ServiceBrokerSuite) TestDeleteNotFound(c *check.C) {
-	err := s.ServiceBrokerStorage.Delete("not-found")
+	err := s.ServiceBrokerStorage.Delete(context.TODO(), "not-found")
 	c.Assert(err, check.DeepEquals, service.ErrServiceBrokerNotFound)
 }
 
 func (s *ServiceBrokerSuite) TestFindAll(c *check.C) {
-	err := s.ServiceBrokerStorage.Insert(service.Broker{
+	err := s.ServiceBrokerStorage.Insert(context.TODO(), service.Broker{
 		Name: "broker",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.ServiceBrokerStorage.Insert(service.Broker{
+	err = s.ServiceBrokerStorage.Insert(context.TODO(), service.Broker{
 		Name: "broker-2",
 	})
 	c.Assert(err, check.IsNil)
@@ -154,7 +154,7 @@ func (s *ServiceBrokerSuite) TestFind(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Insert(broker)
+	err := s.ServiceBrokerStorage.Insert(context.TODO(), broker)
 	c.Assert(err, check.IsNil)
 	b, err := s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.IsNil)

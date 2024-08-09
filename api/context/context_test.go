@@ -17,8 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -40,12 +39,9 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	_, err = nativeScheme.Create(context.TODO(), user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -53,10 +49,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) TestClear(c *check.C) {

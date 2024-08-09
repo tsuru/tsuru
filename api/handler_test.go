@@ -13,8 +13,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -23,7 +21,6 @@ import (
 )
 
 type HandlerSuite struct {
-	conn  *db.Storage
 	token auth.Token
 }
 
@@ -41,8 +38,6 @@ func (s *HandlerSuite) SetUpSuite(c *check.C) {
 
 func (s *HandlerSuite) SetUpTest(c *check.C) {
 	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 	storagev2.ClearAllCollections(nil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err = nativeScheme.Create(context.TODO(), user)
@@ -53,14 +48,10 @@ func (s *HandlerSuite) SetUpTest(c *check.C) {
 }
 
 func (s *HandlerSuite) TearDownTest(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *HandlerSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {

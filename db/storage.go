@@ -14,12 +14,13 @@ package db
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/hc"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
@@ -36,12 +37,12 @@ func init() {
 }
 
 func healthCheck(ctx context.Context) error {
-	conn, err := Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.Apps().Database.Session.Ping()
+
+	return appsCollection.Database().Client().Ping(ctx, readpref.Primary())
 }
 
 func DbConfig(prefix string) (string, string) {
@@ -82,24 +83,4 @@ func (s *Storage) Apps() *storage.Collection {
 	c := s.Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
-}
-
-// Services returns the services collection from MongoDB.
-func (s *Storage) Services() *storage.Collection {
-	return s.Collection("services")
-}
-
-// ServiceInstances returns the services_instances collection from MongoDB.
-func (s *Storage) ServiceInstances() *storage.Collection {
-	return s.Collection("service_instances")
-}
-
-func IsCollectionExistsError(err error) bool {
-	if err == nil {
-		return false
-	}
-	if queryErr, ok := err.(*mgo.QueryError); ok && queryErr.Code == 48 {
-		return true
-	}
-	return strings.Contains(err.Error(), "already exists")
 }

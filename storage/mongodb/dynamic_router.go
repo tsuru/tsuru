@@ -7,16 +7,12 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/router"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-const dynamicRouterCollectionName = "dynamic_routers"
 
 type dynamicRouter struct {
 	Name           string `bson:"_id"`
@@ -27,22 +23,17 @@ type dynamicRouter struct {
 
 type dynamicRouterStorage struct{}
 
-func (s *dynamicRouterStorage) coll(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection(dynamicRouterCollectionName)
-}
-
 func (s *dynamicRouterStorage) Save(ctx context.Context, dr router.DynamicRouter) error {
-	span := newMongoDBSpan(ctx, mongoSpanUpsertID, dynamicRouterCollectionName)
+	collection, err := storagev2.DynamicRoutersCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpsertID, collection.Name())
 	span.SetMongoID(dr.Name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
-	if err != nil {
-		span.SetError(err)
-		return err
-	}
-	defer conn.Close()
-	_, err = s.coll(conn).UpsertId(dr.Name, dynamicRouter(dr))
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"_id": dr.Name}, dynamicRouter(dr), options.Replace().SetUpsert(true))
 	if err != nil {
 		span.SetError(err)
 		return err
@@ -51,15 +42,16 @@ func (s *dynamicRouterStorage) Save(ctx context.Context, dr router.DynamicRouter
 }
 
 func (s *dynamicRouterStorage) Get(ctx context.Context, name string) (*router.DynamicRouter, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFindID, dynamicRouterCollectionName)
+
+	collection, err := storagev2.DynamicRoutersCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFindID, collection.Name())
 	span.SetMongoID(name)
 	defer span.Finish()
 
-	collection, err := storagev2.Collection(dynamicRouterCollectionName)
-	if err != nil {
-		span.SetError(err)
-		return nil, err
-	}
 	var dr dynamicRouter
 	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&dr)
 	if err != nil {
@@ -74,14 +66,14 @@ func (s *dynamicRouterStorage) Get(ctx context.Context, name string) (*router.Dy
 }
 
 func (s *dynamicRouterStorage) List(ctx context.Context) ([]router.DynamicRouter, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, dynamicRouterCollectionName)
-	defer span.Finish()
-
-	collection, err := storagev2.Collection(dynamicRouterCollectionName)
+	collection, err := storagev2.DynamicRoutersCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	defer span.Finish()
+
 	var drs []dynamicRouter
 	cursor, err := collection.Find(ctx, mongoBSON.M{})
 	if err != nil {
@@ -102,23 +94,28 @@ func (s *dynamicRouterStorage) List(ctx context.Context) ([]router.DynamicRouter
 }
 
 func (s *dynamicRouterStorage) Remove(ctx context.Context, name string) error {
-	span := newMongoDBSpan(ctx, mongoSpanDeleteID, dynamicRouterCollectionName)
+
+	collection, err := storagev2.DynamicRoutersCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanDeleteID, collection.Name())
 	span.SetMongoID(name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": name})
 	if err != nil {
 		span.SetError(err)
-		return err
-	}
-	defer conn.Close()
-	err = s.coll(conn).RemoveId(name)
-	if err != nil {
-		span.SetError(err)
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return router.ErrDynamicRouterNotFound
 		}
 		return err
 	}
+
+	if result.DeletedCount == 0 {
+		return router.ErrDynamicRouterNotFound
+	}
+
 	return nil
 }

@@ -22,8 +22,6 @@ import (
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -47,7 +45,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	storage     *db.Storage
 	user        *auth.User
 	team        string
 	mockService servicemock.MockService
@@ -63,9 +60,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("routers:fake:type", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	var err error
-	s.storage, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -107,13 +101,12 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.storage.Apps().Database)
-	s.storage.Close()
+	storagev2.ClearAllCollections(nil)
 }
 
 func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int) {

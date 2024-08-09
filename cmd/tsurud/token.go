@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	stdContext "context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -23,9 +22,9 @@ import (
 
 type createRootUserCmd struct{}
 
-func (createRootUserCmd) Run(context *cmd.Context) error {
-	ctx := stdContext.Background()
-	context.RawOutput()
+func (createRootUserCmd) Run(c *cmd.Context) error {
+	ctx := context.Background()
+	c.RawOutput()
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
 		scheme = nativeSchemeName
@@ -34,35 +33,35 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 	if err != nil {
 		return err
 	}
-	email := context.Args[0]
+	email := c.Args[0]
 	user, err := auth.GetUserByEmail(ctx, email)
 	if err == nil {
 		err = addSuperRole(ctx, user)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(context.Stdout, "Root user successfully updated.")
+		fmt.Fprintln(c.Stdout, "Root user successfully updated.")
 	}
 	var confirm, password string
 	if scheme == nativeSchemeName {
-		fmt.Fprint(context.Stdout, "Password: ")
-		password, err = cmd.PasswordFromReader(context.Stdin)
+		fmt.Fprint(c.Stdout, "Password: ")
+		password, err = cmd.PasswordFromReader(c.Stdin)
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(context.Stdout, "\nConfirm: ")
-		confirm, err = cmd.PasswordFromReader(context.Stdin)
+		fmt.Fprint(c.Stdout, "\nConfirm: ")
+		confirm, err = cmd.PasswordFromReader(c.Stdin)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(context.Stdout)
+		fmt.Fprintln(c.Stdout)
 		if password != confirm {
 			return errors.New("Passwords didn't match.")
 		}
 	}
 
 	if userScheme, ok := app.AuthScheme.(auth.UserScheme); ok {
-		user, err = userScheme.Create(stdContext.Background(), &auth.User{
+		user, err = userScheme.Create(ctx, &auth.User{
 			Email:    email,
 			Password: password,
 		})
@@ -70,7 +69,7 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 			return err
 		}
 	} else {
-		err = user.Create(stdContext.Background())
+		err = user.Create(ctx)
 		if err != nil {
 			return err
 		}
@@ -80,7 +79,7 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, "Root user successfully created.")
+	fmt.Fprintln(c.Stdout, "Root user successfully created.")
 
 	return nil
 }

@@ -21,8 +21,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
@@ -57,10 +55,7 @@ func (s *S) SetUpTest(c *check.C) {
 	defaultAppRetryTimeout = 200 * time.Millisecond
 	setBaseConfig()
 	throttlingInfo = map[string]ThrottlingSpec{}
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	user := &auth.User{Email: "me@me.com", Password: "123456"}

@@ -5,7 +5,6 @@
 package api
 
 import (
-	"context"
 	stdcontext "context"
 	"net/http"
 	"os"
@@ -19,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
@@ -93,7 +91,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
-	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
+	s.user, err = auth.ConvertNewUser(s.token.User(stdcontext.TODO()))
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 }
@@ -124,7 +122,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 	storagev2.Reset()
 
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.ProvisionerInstance
 	s.provisioner.Reset()
@@ -211,7 +209,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {

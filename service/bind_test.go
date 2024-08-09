@@ -10,14 +10,11 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -32,11 +29,11 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
 type BindSuite struct {
-	conn        *db.Storage
 	user        auth.User
 	team        authTypes.Team
 	mockService servicemock.MockService
@@ -45,13 +42,10 @@ type BindSuite struct {
 var _ = check.Suite(&BindSuite{})
 
 func (s *BindSuite) SetUpSuite(c *check.C) {
-	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_service_bind_test")
 	config.Set("routers:fake:type", "fake")
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -61,7 +55,7 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 func (s *BindSuite) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	err := s.user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -99,8 +93,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
+	storagev2.ClearAllCollections(nil)
 }
 
 func createEvt(c *check.C) *event.Event {
@@ -119,7 +112,9 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
@@ -141,7 +136,9 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
@@ -152,7 +149,9 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	evt := createEvt(c)
 	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
-	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.GetName()})
 }
 
@@ -177,14 +176,17 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance1)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance1)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "my-db",
 		ServiceName: "postgres",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance2)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance2)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
@@ -238,7 +240,9 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
@@ -260,7 +264,9 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
@@ -297,7 +303,9 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
@@ -316,7 +324,9 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 		Event:   evt,
 	})
 	c.Assert(err, check.IsNil)
-	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 }
 
@@ -329,7 +339,9 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)

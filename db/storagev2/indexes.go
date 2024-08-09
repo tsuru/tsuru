@@ -184,6 +184,46 @@ var EnsureIndexes = []EnsureIndex{
 	},
 
 	{
+		Collection: "service_broker",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
+		Collection: "auth_groups",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
+		Collection: "apps",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
+		Collection: "app_versions",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "appname", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
+
+	{
 		GetCollectionName: getOAuthTokensCollectionName,
 		Indexes: []mongo.IndexModel{
 			{

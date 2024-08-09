@@ -14,8 +14,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -37,13 +35,10 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=150")
 	config.Set("database:name", "tsuru_event_webhook_tests")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
-	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	svc, err := WebhookService()
 	c.Assert(err, check.IsNil)
@@ -355,8 +350,9 @@ func (s *S) TestWebhookServiceUpdate(c *check.C) {
 	w, err := s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.IsNil)
 	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
-		Name: "xyz",
-		URL:  "http://b",
+		Name:    "xyz",
+		URL:     "http://b",
+		Headers: http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},

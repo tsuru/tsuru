@@ -8,6 +8,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+func AppsCollection() (*mongo.Collection, error) {
+	return Collection("apps")
+}
+
+func AppVersionsCollection() (*mongo.Collection, error) {
+	return Collection("app_versions")
+}
+
 func PoolCollection() (*mongo.Collection, error) {
 	return Collection("pool")
 }
@@ -66,6 +74,34 @@ func PlansCollection() (*mongo.Collection, error) {
 
 func WebhookCollection() (*mongo.Collection, error) {
 	return Collection("webhook")
+}
+
+func VolumesCollection() (*mongo.Collection, error) {
+	return Collection("volumes")
+}
+
+func VolumeBindsCollection() (*mongo.Collection, error) {
+	return Collection("volume_binds")
+}
+
+func TrackerCollection() (*mongo.Collection, error) {
+	return Collection("tracker")
+}
+
+func DynamicRoutersCollection() (*mongo.Collection, error) {
+	return Collection("dynamic_routers")
+}
+
+func ServiceBrokerCollection() (*mongo.Collection, error) {
+	return Collection("service_broker")
+}
+
+func ProvisionerClustersCollection() (*mongo.Collection, error) {
+	return Collection("provisioner_clusters")
+}
+
+func AuthGroupsCollection() (*mongo.Collection, error) {
+	return Collection("auth_groups")
 }
 
 func OAuth2TokensCollection() (*mongo.Collection, error) {

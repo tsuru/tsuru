@@ -31,13 +31,13 @@ func (s *BrokerSuite) SetUpTest(c *check.C) {
 	brokers, err := s.service.List(context.TODO())
 	c.Assert(err, check.IsNil)
 	for _, b := range brokers {
-		errDel := s.service.Delete(b.Name)
+		errDel := s.service.Delete(context.TODO(), b.Name)
 		c.Assert(errDel, check.IsNil)
 	}
 }
 
 func (s *BrokerSuite) TestServiceBrokerCreate(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 	})
@@ -48,7 +48,7 @@ func (s *BrokerSuite) TestServiceBrokerCreate(c *check.C) {
 }
 
 func (s *BrokerSuite) TestServiceBrokerUpdateWithCache(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 	})
@@ -68,7 +68,7 @@ func (s *BrokerSuite) TestServiceBrokerUpdateWithCache(c *check.C) {
 }
 
 func (s *BrokerSuite) TestServiceBrokerUpdateWithoutCache(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 		Config: service.BrokerConfig{
@@ -88,7 +88,7 @@ func (s *BrokerSuite) TestServiceBrokerUpdateWithoutCache(c *check.C) {
 }
 
 func (s *BrokerSuite) TestServiceBrokerUpdateDefaultCache(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 		Config: service.BrokerConfig{
@@ -111,12 +111,12 @@ func (s *BrokerSuite) TestServiceBrokerUpdateDefaultCache(c *check.C) {
 }
 
 func (s *BrokerSuite) TestServiceBrokerDelete(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Delete("broker-name")
+	err = s.service.Delete(context.TODO(), "broker-name")
 	c.Assert(err, check.IsNil)
 	brokers, err := s.service.List(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -124,12 +124,12 @@ func (s *BrokerSuite) TestServiceBrokerDelete(c *check.C) {
 }
 
 func (s *BrokerSuite) TestServiceBrokerFind(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Create(service.Broker{
+	err = s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-2",
 		URL:  "https://localhost:9090",
 	})
@@ -140,12 +140,12 @@ func (s *BrokerSuite) TestServiceBrokerFind(c *check.C) {
 }
 
 func (s *BrokerSuite) TestServiceBrokerList(c *check.C) {
-	err := s.service.Create(service.Broker{
+	err := s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Create(service.Broker{
+	err = s.service.Create(context.TODO(), service.Broker{
 		Name: "broker-2",
 		URL:  "https://localhost:9090",
 	})

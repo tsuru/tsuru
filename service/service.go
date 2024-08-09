@@ -10,11 +10,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -100,48 +97,55 @@ func Create(ctx context.Context, s Service) error {
 	if err := s.validate(ctx, false); err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	n, err := conn.Services().Find(bson.M{"_id": s.Name}).Count()
+	n, err := collection.CountDocuments(ctx, mongoBSON.M{"_id": s.Name})
 	if err != nil {
 		return err
 	}
 	if n != 0 {
 		return ErrServiceAlreadyExists
 	}
-	return conn.Services().Insert(s)
+	_, err = collection.InsertOne(ctx, s)
+
+	return err
 }
 
 func Update(ctx context.Context, s Service) error {
 	if err := s.validate(ctx, true); err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Services().Update(bson.M{"_id": s.Name}, s)
-	if err == mgo.ErrNotFound {
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"_id": s.Name}, s)
+	if err == mongo.ErrNoDocuments {
 		return ErrServiceNotFound
 	}
 	return err
 }
 
-func Delete(s Service) error {
-	conn, err := db.Conn()
+func Delete(ctx context.Context, s Service) error {
+	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Services().RemoveAll(bson.M{"_id": s.Name})
-	if err == mgo.ErrNotFound {
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": s.Name})
+	if err == mongo.ErrNoDocuments {
 		return ErrServiceNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return ErrServiceNotFound
+	}
+
+	return nil
 }
 
 func GetServices(ctx context.Context) ([]Service, error) {
@@ -197,19 +201,31 @@ func GetServicesByOwnerTeamsAndServices(ctx context.Context, teams []string, ser
 }
 
 func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	fields := []string{"owner_teams", "teams"}
-	bulk := conn.Services().Bulk()
-	for _, f := range fields {
-		bulk.UpdateAll(bson.M{f: oldName}, bson.M{"$push": bson.M{f: newName}})
-		bulk.UpdateAll(bson.M{f: oldName}, bson.M{"$pull": bson.M{f: oldName}})
+
+	models := []mongo.WriteModel{}
+
+	for _, field := range []string{"owner_teams", "teams"} {
+		models = append(models,
+			mongo.NewUpdateManyModel().
+				SetFilter(mongoBSON.M{field: oldName}).
+				SetUpdate(mongoBSON.M{"$push": mongoBSON.M{field: newName}}),
+
+			mongo.NewUpdateManyModel().
+				SetFilter(mongoBSON.M{field: oldName}).
+				SetUpdate(mongoBSON.M{"$pull": mongoBSON.M{field: oldName}}),
+		)
 	}
-	_, err = bulk.Run()
-	return err
+
+	_, err = collection.BulkWrite(ctx, models)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getServicesByFilter(ctx context.Context, filter mongoBSON.M) ([]Service, error) {

@@ -986,7 +986,11 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(ctx, mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1031,7 +1035,11 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1071,7 +1079,11 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1117,7 +1129,11 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	var appIP string
 	appIP, err = s.provisioner.Addr(&gotApp)
@@ -1157,8 +1173,13 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&gotApp)
+	c.Assert(err, check.IsNil)
+
 	var appIP string
 	appIP, err = s.provisioner.Addr(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -1212,7 +1233,11 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1255,7 +1280,10 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1296,7 +1324,10 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2"})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1374,7 +1405,11 @@ func (s *S) TestCreateAppWithMetadata(c *check.C) {
 	c.Assert(obtained, check.DeepEquals, expected)
 
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{
 		{Name: "a", Value: "b", Delete: false},
@@ -1420,7 +1455,11 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": appName}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": appName}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(gotApp.Pool, check.Equals, "mypool1")
@@ -1462,7 +1501,11 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Routers, check.DeepEquals, []appTypes.AppRouter{{
 		Name: "fake",
@@ -1495,7 +1538,11 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Routers, check.DeepEquals, []appTypes.AppRouter{{
 		Name: "fake",
@@ -1665,7 +1712,11 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "someapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -1722,7 +1773,11 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Description, check.DeepEquals, "my app description")
 	c.Assert(eventtest.EventDesc{
@@ -1756,7 +1811,11 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Platform, check.Equals, "heimerdinger")
 	c.Assert(gotApp.UpdatePlatform, check.Equals, true)
@@ -1796,7 +1855,11 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.PlatformVersion, check.Equals, "v1")
 	c.Assert(gotApp.UpdatePlatform, check.Equals, true)
@@ -1832,8 +1895,11 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2", "tag3"})
 	c.Assert(eventtest.EventDesc{
@@ -1927,8 +1993,11 @@ func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}})
 	c.Assert(eventtest.EventDesc{
@@ -1969,8 +2038,11 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}, {Name: "z", Value: "ground"}})
 	c.Assert(eventtest.EventDesc{
@@ -2047,8 +2119,11 @@ func (s *S) TestUpdateAppWithCustomPlanByProcess(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Processes, check.DeepEquals, []appTypes.Process{{Name: "web", Plan: "c1m1", Metadata: appTypes.Metadata{Labels: []appTypes.MetadataItem{}, Annotations: []appTypes.MetadataItem{}}}})
 	c.Assert(eventtest.EventDesc{
@@ -2105,8 +2180,11 @@ func (s *S) TestUpdateAppWithResetPlanByProcess(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Processes, check.DeepEquals, []appTypes.Process{})
 	c.Assert(eventtest.EventDesc{
@@ -2134,7 +2212,10 @@ func (s *S) TestUpdateAppImageReset(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&dbApp)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&dbApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
 }
@@ -2433,7 +2514,11 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
-	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myappx"}).Decode(&a)
 	c.Assert(a.TeamOwner, check.Equals, s.team.Name)
 }
 
@@ -4929,7 +5014,9 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4979,7 +5066,9 @@ func (s *S) TestBindHandler(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5002,10 +5091,14 @@ func (s *S) TestBindHandler(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Check(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.Name})
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, ManagedBy: "mysql/my-mysql"})
@@ -5047,7 +5140,9 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5070,10 +5165,14 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.Name})
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 2)
@@ -5107,7 +5206,9 @@ func (s *S) TestBindHandlerErrorShowsStatusMessage(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5160,7 +5261,9 @@ func (s *S) TestBindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
 	})
 
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
@@ -5187,7 +5290,9 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -5206,7 +5311,9 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 
 func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:instance=%s&:app=unknown&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, instance.Name, instance.ServiceName)
@@ -5230,7 +5337,9 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend"}
 	err = s.conn.Apps().Insert(a)
@@ -5265,14 +5374,16 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql2",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance2)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance2)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5296,11 +5407,16 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var result service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance2.Name, "service_name": instance2.ServiceName}).One(&result)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance2.Name, "service_name": instance2.ServiceName}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Apps, check.DeepEquals, []string{a.Name})
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
+	c.Assert(err, check.IsNil)
+
 	allEnvs := a.Envs()
 	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, ManagedBy: "mysql2/my-mysql"})
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, ManagedBy: "mysql2/my-mysql"})
@@ -5314,7 +5430,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
 	c.Assert(parts[6], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name, "service_name": instance.ServiceName}).One(&result)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name, "service_name": instance.ServiceName}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Apps, check.DeepEquals, []string{})
 	c.Assert(eventtest.EventDesc{
@@ -5357,7 +5473,9 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -5379,7 +5497,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = unbindServiceInstance(recorder, req, s.token)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 	otherApp, err = app.GetByName(context.TODO(), a.Name)
@@ -5450,7 +5568,9 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -5472,7 +5592,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = unbindServiceInstance(recorder, req, s.token)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 	otherApp, err = app.GetByName(context.TODO(), a.Name)
@@ -5545,7 +5665,9 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -5577,7 +5699,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	})
 	err = unbindServiceInstance(recorder, req, token)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 	otherApp, err = app.GetByName(context.TODO(), a.Name)
@@ -5631,7 +5753,9 @@ func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&force=true", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
@@ -5689,8 +5813,12 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 			Apps:        []string{"painkiller"},
 		},
 	}
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
 	for _, instance := range instances {
-		err = s.conn.ServiceInstances().Insert(instance)
+		_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 		c.Assert(err, check.IsNil)
 	}
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=true", instances[1].ServiceName, instances[1].Name, a.Name,
@@ -5701,10 +5829,10 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	err = unbindServiceInstance(recorder, req, s.token)
 	c.Assert(err, check.IsNil)
 	var result service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[1].Name, "service_name": instances[1].ServiceName}).One(&result)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instances[1].Name, "service_name": instances[1].ServiceName}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Apps, check.DeepEquals, []string{})
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[0].Name, "service_name": instances[0].ServiceName}).One(&result)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instances[0].Name, "service_name": instances[0].ServiceName}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Apps, check.DeepEquals, []string{a.Name})
 }
@@ -5734,7 +5862,9 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -5764,7 +5894,9 @@ func (s *S) TestUnbindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
 	})
 
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
@@ -5784,7 +5916,9 @@ func (s *S) TestUnbindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
 
 func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:service=%s&:instance=%s&:app=unknown&noRestart=false", instance.ServiceName,
 		instance.Name, instance.ServiceName, instance.Name)
@@ -5808,7 +5942,9 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend"}
 	err = s.conn.Apps().Insert(a)

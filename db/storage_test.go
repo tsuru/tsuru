@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -54,15 +54,14 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_db_storage_test")
+
+	storagev2.Reset()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
 	config.Unset("database:url")
 	config.Unset("database:name")
-	dbtest.ClearAllCollections(strg.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) TestHealthCheck(c *check.C) {
@@ -78,22 +77,4 @@ func (s *S) TestApps(c *check.C) {
 	appsc := strg.Collection("apps")
 	c.Assert(apps, check.DeepEquals, appsc)
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
-}
-
-func (s *S) TestServices(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	services := strg.Services()
-	servicesc := strg.Collection("services")
-	c.Assert(services, check.DeepEquals, servicesc)
-}
-
-func (s *S) TestServiceInstances(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	serviceInstances := strg.ServiceInstances()
-	serviceInstancesc := strg.Collection("service_instances")
-	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
 }

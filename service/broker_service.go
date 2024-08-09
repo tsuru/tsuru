@@ -30,8 +30,8 @@ func BrokerService() (serviceTypes.ServiceBrokerService, error) {
 	return &brokerService{storage: dbDriver.ServiceBrokerStorage}, nil
 }
 
-func (b *brokerService) Create(broker serviceTypes.Broker) error {
-	return b.storage.Insert(broker)
+func (b *brokerService) Create(ctx context.Context, broker serviceTypes.Broker) error {
+	return b.storage.Insert(ctx, broker)
 }
 
 func (b *brokerService) Update(ctx context.Context, name string, broker serviceTypes.Broker) error {
@@ -47,8 +47,8 @@ func (b *brokerService) Update(ctx context.Context, name string, broker serviceT
 	return b.storage.Update(ctx, name, broker)
 }
 
-func (b *brokerService) Delete(name string) error {
-	return b.storage.Delete(name)
+func (b *brokerService) Delete(ctx context.Context, name string) error {
+	return b.storage.Delete(ctx, name)
 }
 
 func (b *brokerService) Find(ctx context.Context, name string) (serviceTypes.Broker, error) {
