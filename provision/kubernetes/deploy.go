@@ -37,6 +37,7 @@ import (
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -482,35 +483,35 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return false, nil, nil, errors.WithStack(err)
 	}
 	cmds, _, err := dockercommon.LeanContainerCmds(process, cmdData, a)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return false, nil, nil, errors.WithStack(err)
 	}
 	tenRevs := int32(10)
 	webProcessName, err := version.WebProcess()
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return false, nil, nil, errors.WithStack(err)
 	}
 	yamlData, err := version.TsuruYamlData()
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return false, nil, nil, errors.WithStack(err)
 	}
 	processPorts, err := getProcessPortsForVersion(version, process)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return false, nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
 	if process == webProcessName && len(processPorts) > 0 {
 		//TODO: add support to multiple HCs
 		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
-			return nil, nil, err
+			return false, nil, nil, err
 		}
 	}
 
@@ -546,30 +547,30 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	dnsConfig := dnsConfigNdots(client, a)
 	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, a, client)
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 
 	_, uid := dockercommon.UserForContainer()
 	overCommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
+		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
 	cpuOverCommit, err := client.CPUOvercommitFactor(a.GetPool())
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "misconfigured cluster cpu overcommit factor")
+		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster cpu overcommit factor")
 	}
 	poolCPUBurst, err := client.CPUBurstFactor(a.GetPool())
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "misconfigured cluster cpu burst factor")
+		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster cpu burst factor")
 	}
 	memoryOverCommit, err := client.MemoryOvercommitFactor(a.GetPool())
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
+		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
 	}
 
 	plan, err := planForProcess(ctx, a, process)
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 
 	resourceRequirements, err := resourceRequirements(&plan, a.GetPool(), client, requirementsFactors{
@@ -579,20 +580,20 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		memoryOverCommit: memoryOverCommit,
 	})
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 	volumes, mounts, err := createVolumesForApp(ctx, client, a)
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 	deployImage := version.VersionInfo().DeployImage
 	pullSecrets, err := getImagePullSecrets(ctx, client, ns, deployImage)
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 
 	metadata := a.GetMetadata(process)
@@ -621,7 +622,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 
 	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, client.TopologySpreadConstraints(a.GetPool()))
 	if err != nil {
-		return nil, nil, err
+		return false, nil, nil, err
 	}
 
 	routers := a.GetRouters()
@@ -630,7 +631,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		var planRouter routerTypes.PlanRouter
 		_, planRouter, err = router.GetWithPlanRouter(ctx, r.Name)
 		if err != nil {
-			return nil, nil, err
+			return false, nil, nil, err
 		}
 		for _, condition := range planRouter.ReadinessGates {
 			conditionSet.Add(condition)
@@ -709,9 +710,14 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if oldDeployment == nil {
 		newDep, err = client.AppsV1().Deployments(ns).Create(ctx, &deployment, metav1.CreateOptions{})
 	} else {
+		if apiequality.Semantic.DeepDerivative(&deployment, oldDeployment) {
+			return false, oldDeployment, labels, nil
+		}
+
+		deployment.ResourceVersion = oldDeployment.ResourceVersion
 		newDep, err = client.AppsV1().Deployments(ns).Update(ctx, &deployment, metav1.UpdateOptions{})
 	}
-	return newDep, labels, errors.WithStack(err)
+	return true, newDep, labels, errors.WithStack(err)
 }
 
 func appEnvs(a provision.App, process string, version appTypes.AppVersion) []apiv1.EnvVar {
@@ -1167,39 +1173,44 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		}
 	}
 
-	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
+	changed, newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
 	if err != nil {
 		return err
 	}
-	newRevision, err := monitorDeployment(ctx, m.client, newDep, opts.App, opts.ProcessName, m.writer, events.ResourceVersion, opts.Version)
-	if err != nil {
-		// We should only rollback if the updated deployment is a new revision.
-		var rollbackErr error
-		if oldDep != nil && (newRevision == "" || oldRevision == newRevision) {
-			oldDep.Generation = 0
-			oldDep.ResourceVersion = ""
-			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n")
-			_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(ctx, oldDep, metav1.UpdateOptions{})
-		} else if oldDep == nil {
-			// We have just created the deployment, so we need to remove it
-			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n")
-			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(ctx, newDep.Name, metav1.DeleteOptions{})
-		} else {
-			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
 
-			// This code was copied from kubernetes codebase, in the next update of version of kubectl
-			// we need to move to import this library:
-			// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/kubectl/pkg/polymorphichelpers/rollback.go#L48
-			rollbacker := &DeploymentRollbacker{c: m.client}
-			rollbackErr = rollbacker.Rollback(ctx, m.writer, newDep)
+	if changed {
+		newRevision, err := monitorDeployment(ctx, m.client, newDep, opts.App, opts.ProcessName, m.writer, events.ResourceVersion, opts.Version)
+		if err != nil {
+			// We should only rollback if the updated deployment is a new revision.
+			var rollbackErr error
+			if oldDep != nil && (newRevision == "" || oldRevision == newRevision) {
+				oldDep.Generation = 0
+				oldDep.ResourceVersion = ""
+				fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n")
+				_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(ctx, oldDep, metav1.UpdateOptions{})
+			} else if oldDep == nil {
+				// We have just created the deployment, so we need to remove it
+				fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n")
+				rollbackErr = m.client.AppsV1().Deployments(ns).Delete(ctx, newDep.Name, metav1.DeleteOptions{})
+			} else {
+				fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
+
+				// This code was copied from kubernetes codebase, in the next update of version of kubectl
+				// we need to move to import this library:
+				// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/kubectl/pkg/polymorphichelpers/rollback.go#L48
+				rollbacker := &DeploymentRollbacker{c: m.client}
+				rollbackErr = rollbacker.Rollback(ctx, m.writer, newDep)
+			}
+			if rollbackErr != nil {
+				fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
+			}
+			if _, ok := err.(provision.ErrUnitStartup); ok {
+				return err
+			}
+			return provision.ErrUnitStartup{Err: err}
 		}
-		if rollbackErr != nil {
-			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
-		}
-		if _, ok := err.(provision.ErrUnitStartup); ok {
-			return err
-		}
-		return provision.ErrUnitStartup{Err: err}
+	} else {
+		fmt.Fprintf(m.writer, "\n---- No changes on units [%s] [version %d] ----\n", opts.ProcessName, opts.Version.Version())
 	}
 
 	backendCfgexists, err := ensureBackendConfig(ctx, backendConfigArgs{

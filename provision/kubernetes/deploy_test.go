@@ -3640,6 +3640,59 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*UPDATING BACK AFTER FAILURE.*`)
 }
 
+func (s *S) TestServiceManagerDeployServiceNoChanges(c *check.C) {
+	config.Set("docker:healthcheck:max-time", 1)
+	defer config.Unset("docker:healthcheck:max-time")
+	config.Set("kubernetes:deployment-progress-timeout", 2)
+	defer config.Unset("kubernetes:deployment-progress-timeout")
+	buf := bytes.Buffer{}
+	m := serviceManager{client: s.clusterClient, writer: &buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	var rollbackCalled bool
+	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		if action.GetSubresource() == "rollback" {
+			rollbackCalled = true
+			return false, nil, nil
+		}
+		return false, nil, nil
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	buf.Reset()
+
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	c.Assert(rollbackCalled, check.Equals, false)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- No changes on units \[p2\] \[version 1\] ----.*`)
+}
+
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
