@@ -1179,7 +1179,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 
 	if changed {
-		newRevision, err := monitorDeployment(ctx, m.client, newDep, opts.App, opts.ProcessName, m.writer, events.ResourceVersion, opts.Version)
+		var newRevision string
+		newRevision, err = monitorDeployment(ctx, m.client, newDep, opts.App, opts.ProcessName, m.writer, events.ResourceVersion, opts.Version)
 		if err != nil {
 			// We should only rollback if the updated deployment is a new revision.
 			var rollbackErr error
