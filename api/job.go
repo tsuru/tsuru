@@ -9,10 +9,10 @@ import (
 	stdContext "context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/tsuru/config"
@@ -228,25 +228,10 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		})
 	}
 
-	result := jobTypes.JobInfo{
+	jobInfo := &jobTypes.JobInfo{
 		Job:                  j,
 		Units:                units,
 		ServiceInstanceBinds: binds,
-	}
-
-	dashboardURLTemplate, _ := config.GetString("jobs:dashboard-url:template")
-	if dashboardURLTemplate != "" {
-		tpl, tplErr := template.New("dashboardURL").Parse(dashboardURLTemplate)
-		if tplErr != nil {
-			return fmt.Errorf("could not parse dashboard template: %w", tplErr)
-		}
-
-		var buf bytes.Buffer
-		tplErr = tpl.Execute(&buf, result)
-		if tplErr != nil {
-			return fmt.Errorf("could not execute dashboard template: %w", tplErr)
-		}
-		result.DashboardURL = strings.TrimSpace(buf.String())
 	}
 
 	cluster, err := servicemanager.Cluster.FindByPool(ctx, provision.DefaultProvisioner, j.Pool)
@@ -254,12 +239,38 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	if cluster != nil {
-		result.Cluster = cluster.Name
+		jobInfo.Cluster = cluster.Name
+	}
+
+	err = fillDashboardURL(jobInfo)
+	if err != nil {
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	return json.NewEncoder(w).Encode(&result)
+	return json.NewEncoder(w).Encode(jobInfo)
+}
+
+func fillDashboardURL(jobInfo *jobTypes.JobInfo) error {
+	dashboardURLTemplate, _ := config.GetString("jobs:dashboard-url:template")
+	if dashboardURLTemplate == "" {
+		return nil
+	}
+
+	tpl, tplErr := template.New("dashboardURL").Parse(dashboardURLTemplate)
+	if tplErr != nil {
+		return fmt.Errorf("could not parse dashboard template: %w", tplErr)
+	}
+
+	var buf bytes.Buffer
+	tplErr = tpl.Execute(&buf, jobInfo)
+	if tplErr != nil {
+		return fmt.Errorf("could not execute dashboard template: %w", tplErr)
+	}
+
+	jobInfo.DashboardURL = strings.TrimSpace(buf.String())
+	return nil
 }
 
 // title: kill a running job unit
