@@ -5481,6 +5481,8 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/AutoScaleSpec"
+      dashboardURL:
+        type: string
   AppLock:
     type: object
     description: Stores information about a lock hold on the app
@@ -5627,6 +5629,8 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/Unit"
+      dashboardURL:
+        type: string
       serviceInstanceBinds:
         type: array
         description: Service instance binds on the job
