@@ -128,6 +128,8 @@ type AppInfo struct {
 	RouterOpts map[string]string `json:"routeropts"`
 	Quota      *quota.Quota      `json:"quota,omitempty"`
 	Error      string            `json:"error,omitempty"`
+
+	DashboardURL string `json:"dashboardURL,omitempty"`
 }
 
 type AppInternalAddress struct {

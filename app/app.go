@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -17,12 +18,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
@@ -264,6 +267,22 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 	if len(errMsgs) > 0 {
 		result.Error = strings.Join(errMsgs, "\n")
 	}
+
+	dashboardURLTemplate, _ := config.GetString("apps:dashboard-url:template")
+	if dashboardURLTemplate != "" {
+		tpl, tplErr := template.New("dashboardURL").Parse(dashboardURLTemplate)
+		if tplErr != nil {
+			return nil, fmt.Errorf("could not parse dashboard template: %w", tplErr)
+		}
+
+		var buf bytes.Buffer
+		tplErr = tpl.Execute(&buf, result)
+		if tplErr != nil {
+			return nil, fmt.Errorf("could not execute dashboard template: %w", tplErr)
+		}
+		result.DashboardURL = strings.TrimSpace(buf.String())
+	}
+
 	return result, nil
 }
 
