@@ -72,6 +72,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		Opts:        map[string]interface{}{},
 		Prefixes:    []router.BackendPrefix{},
 		CNames:      o.App.GetCname(),
+		Team:        o.App.GetTeamOwner(),
 		Healthcheck: hcData,
 	}
 	for key, opt := range appRouter.Opts {
