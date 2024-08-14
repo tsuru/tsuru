@@ -2405,29 +2405,31 @@ func (app *App) validateNameForCert(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]string, error) {
+func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]router.CertData, error) {
 	addrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
 	names := append(addrs, app.CName...)
-	allCertificates := make(map[string]map[string]string)
+	allCertificates := make(map[string]map[string]router.CertData)
 	for _, appRouter := range app.GetRouters() {
-		certificates := make(map[string]string)
+		certificates := make(map[string]router.CertData)
 		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return nil, err
 		}
-		tlsRouter, ok := r.(router.TLSRouter)
+		tlsRouter, ok := r.(router.DefaultTLSRouter)
 		if !ok {
 			continue
 		}
 		for _, n := range names {
-			cert, err := tlsRouter.GetCertificate(ctx, app, n)
+			certData, err := tlsRouter.GetCertificate(ctx, app, n)
 			if err != nil && err != router.ErrCertificateNotFound {
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}
-			certificates[n] = cert
+			if certData.Certificate != "" {
+				certificates[n] = certData
+			}
 		}
 		allCertificates[appRouter.Name] = certificates
 	}

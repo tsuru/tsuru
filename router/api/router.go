@@ -66,11 +66,6 @@ type cnamesResp struct {
 	Cnames []string `json:"cnames"`
 }
 
-type certData struct {
-	Certificate string `json:"certificate"`
-	Key         string `json:"key"`
-}
-
 type certManagerData struct {
 	Issuer string `json:"issuer"`
 }
@@ -225,11 +220,13 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	}
 	resp, err := r.client.Do(req)
 	if r.debug {
-		bodyData, _ := io.ReadAll(body)
-		if err == nil {
-			code = resp.StatusCode
+		if body != nil {
+			bodyData, _ := io.ReadAll(body)
+			if err == nil {
+				code = resp.StatusCode
+			}
+			log.Debugf("%s %s %s %s: %d", r.routerName, method, url, string(bodyData), code)
 		}
-		log.Debugf("%s %s %s %s: %d", r.routerName, method, url, string(bodyData), code)
 	}
 	if err != nil {
 		return nil, 0, err
@@ -247,7 +244,7 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 }
 
 func (r *apiRouterWithTLSSupport) AddCertificate(ctx context.Context, app router.App, cname, certificate, key string) error {
-	cert := certData{Certificate: certificate, Key: key}
+	cert := router.CertData{Certificate: certificate, Key: key}
 	b, err := json.Marshal(&cert)
 	if err != nil {
 		return err
@@ -272,24 +269,24 @@ func (r *apiRouterWithTLSSupport) RemoveCertificate(ctx context.Context, app rou
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
+func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router.App, cname string) (router.CertData, error) {
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
-		return "", err
+		return router.CertData{}, err
 	}
 	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, nil)
 	switch code {
 	case http.StatusNotFound:
-		return "", router.ErrCertificateNotFound
+		return router.CertData{}, router.ErrCertificateNotFound
 	case http.StatusOK:
-		var cert certData
+		var cert router.CertData
 		errJSON := json.Unmarshal(data, &cert)
 		if errJSON != nil {
-			return "", errJSON
+			return router.CertData{}, errJSON
 		}
-		return cert.Certificate, nil
+		return cert, nil
 	}
-	return "", err
+	return router.CertData{}, err
 }
 
 func (r *apiRouterWithCertManagerSupport) IssueCertificate(ctx context.Context, app router.App, cname, issuer string) error {
@@ -316,26 +313,6 @@ func (r *apiRouterWithCertManagerSupport) RemoveCertificate(ctx context.Context,
 		return router.ErrCertificateNotFound
 	}
 	return err
-}
-
-func (r *apiRouterWithCertManagerSupport) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return "", err
-	}
-	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/cert-manager/%s", app.GetName(), cname), headers, nil)
-	switch code {
-	case http.StatusNotFound:
-		return "", router.ErrCertificateNotFound
-	case http.StatusOK:
-		var cert certData
-		errJSON := json.Unmarshal(data, &cert)
-		if errJSON != nil {
-			return "", errJSON
-		}
-		return cert.Certificate, nil
-	}
-	return "", err
 }
 
 func (r *apiRouter) GetInfo(ctx context.Context) (map[string]string, error) {
