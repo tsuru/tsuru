@@ -14,7 +14,8 @@ import (
 
 func patchWithPastUnits(process string, pastUnitsMap map[string]int, state *ProcessState) {
 	if replicas, ok := pastUnitsMap[process]; ok && (state.Start && !state.Restart) {
-		state.Increment = replicas
+		state.SetReplicas = replicas
+		state.Increment = 0
 	}
 }
 

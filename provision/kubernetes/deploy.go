@@ -710,7 +710,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if oldDeployment == nil {
 		newDep, err = client.AppsV1().Deployments(ns).Create(ctx, &deployment, metav1.CreateOptions{})
 	} else {
-		if apiequality.Semantic.DeepDerivative(&deployment, oldDeployment) {
+		if deploymentUnchanged(&deployment, oldDeployment, realReplicas) {
 			return false, oldDeployment, labels, nil
 		}
 
@@ -718,6 +718,26 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		newDep, err = client.AppsV1().Deployments(ns).Update(ctx, &deployment, metav1.UpdateOptions{})
 	}
 	return true, newDep, labels, errors.WithStack(err)
+}
+
+func deploymentUnchanged(deployment *appsv1.Deployment, oldDeployment *appsv1.Deployment, realReplicas int32) bool {
+	return (deployment.ObjectMeta.Name == oldDeployment.ObjectMeta.Name &&
+		deployment.ObjectMeta.Namespace == oldDeployment.ObjectMeta.Namespace &&
+		apiequality.Semantic.DeepEqual(deployment.ObjectMeta.Labels, oldDeployment.ObjectMeta.Labels) &&
+		annotationsUnchanged(deployment.ObjectMeta.Annotations, oldDeployment.ObjectMeta.Annotations) &&
+		apiequality.Semantic.DeepDerivative(deployment.Spec, oldDeployment.Spec) &&
+		oldDeployment.Status.ReadyReplicas == realReplicas &&
+		oldDeployment.Status.UnavailableReplicas == 0)
+}
+
+func annotationsUnchanged(new, old map[string]string) bool {
+	for key, value := range new {
+		if old[key] != value {
+			return false
+		}
+	}
+
+	return true
 }
 
 func appEnvs(a provision.App, process string, version appTypes.AppVersion) []apiv1.EnvVar {

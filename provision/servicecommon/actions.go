@@ -23,9 +23,14 @@ import (
 )
 
 type ProcessState struct {
-	Stop      bool
-	Start     bool
-	Restart   bool
+	Stop    bool
+	Start   bool
+	Restart bool
+
+	// SetReplicas is used to set the number of replicas for the process, have precedence over Increment attribute.
+	SetReplicas int
+
+	// Increment is used to increment the number of replicas for the process, when Increment is set SetReplicas may not set.
 	Increment int
 }
 
@@ -163,12 +168,16 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 		restartCount = oldLabels.labels.Restarts()
 		isStopped = oldLabels.labels.IsStopped()
 	}
-	if pState.Increment != 0 {
+
+	if pState.SetReplicas != 0 {
+		oldLabels.realReplicas = pState.SetReplicas
+	} else if pState.Increment != 0 {
 		oldLabels.realReplicas += pState.Increment
 		if oldLabels.realReplicas < 0 {
 			return oldLabels, errors.New("cannot have less than 0 units")
 		}
 	}
+
 	if pState.Start || pState.Restart {
 		if oldLabels.realReplicas == 0 {
 			oldLabels.realReplicas = 1

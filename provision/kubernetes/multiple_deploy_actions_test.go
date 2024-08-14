@@ -295,6 +295,18 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						s.hasDepWithVersion(c, "myapp4-p3-v2", 2, 1)
 					},
 				},
+
+				// redundant start
+				// previous, we had a bug that doubles the number of units
+				// to prevent regression we need to test this case
+				{
+					startStep: &startStep{},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp4-p3-v2", 2, 1)
+					},
+				},
 			},
 		},
 	}
