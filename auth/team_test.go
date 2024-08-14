@@ -7,8 +7,9 @@ package auth
 import (
 	"context"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -149,7 +150,10 @@ func (s *S) TestTeamServiceRemoveWithApps(c *check.C) {
 		},
 	}
 
-	err := s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{teamName}})
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), mongoBSON.M{"name": "leto", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
 	err = ts.Remove(context.TODO(), teamName)
 	c.Assert(err, check.ErrorMatches, "Apps: leto")
@@ -166,10 +170,13 @@ func (s *S) TestTeamServiceRemoveWithServiceInstances(c *check.C) {
 		},
 	}
 
-	err := s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{teamName}})
+	serviceInstanceCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstanceCollection.InsertOne(context.TODO(), mongoBSON.M{"name": "vladimir", "service_name": "service01", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
 	err = ts.Remove(context.TODO(), teamName)
-	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
+	c.Assert(err, check.ErrorMatches, "Service instances: service01/vladimir")
 }
 
 func (s *S) TestTeamServiceList(c *check.C) {

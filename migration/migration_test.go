@@ -6,12 +6,12 @@ package migration
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -22,16 +22,14 @@ func Test(t *testing.T) {
 var _ = check.Suite(&Suite{})
 
 type Suite struct {
-	conn *db.Storage
 }
 
 func (s *Suite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsurud_migration_tests")
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *Suite) SetUpTest(c *check.C) {
@@ -39,11 +37,11 @@ func (s *Suite) SetUpTest(c *check.C) {
 }
 
 func (s *Suite) TearDownTest(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *Suite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *Suite) TestRun(c *check.C) {
@@ -67,7 +65,7 @@ Running "migration3"... OK
 	c.Assert(err, check.IsNil)
 	err = RegisterOptional("migration4", mFunc("migration4"))
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Writer: &buf, Dry: false})
+	err = Run(context.TODO(), RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"migration1", "migration2", "migration3"})
 	c.Assert(buf.String(), check.Equals, expected)
@@ -88,7 +86,7 @@ func (s *Suite) TestMultipleRuns(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Writer: &buf, Dry: false})
+	err = Run(context.TODO(), RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	migrations = nil
 	err = Register("migration1", mFunc("migration1"))
@@ -99,7 +97,7 @@ func (s *Suite) TestMultipleRuns(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Writer: &buf, Dry: false})
+	err = Run(context.TODO(), RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"migration1", "migration2", "migration3", "migration4"})
 }
@@ -122,11 +120,11 @@ func (s *Suite) TestFailingMigration(c *check.C) {
 		return nil
 	})
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Writer: &buf, Dry: false})
+	err = Run(context.TODO(), RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "something went wrong")
 	c.Assert(runs, check.HasLen, 0)
-	err = Run(RunArgs{Writer: &buf, Dry: false})
+	err = Run(context.TODO(), RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"mig1", "mig2"})
 }
@@ -150,7 +148,7 @@ Running "migration3"... OK
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Writer: &buf, Dry: true})
+	err = Run(context.TODO(), RunArgs{Writer: &buf, Dry: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.HasLen, 0)
 	c.Assert(buf.String(), check.Equals, expected)
@@ -178,7 +176,7 @@ func (s *Suite) TestRunOptional(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RegisterOptional("migration2", mFunc("migration2"))
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	err = Run(context.TODO(), RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"migration2"})
 	c.Assert(buf.String(), check.Equals, expected)
@@ -200,11 +198,11 @@ Running "migration2"... OK
 	c.Assert(err, check.IsNil)
 	err = RegisterOptional("migration2", mFunc("migration2"))
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	err = Run(context.TODO(), RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	err = Run(context.TODO(), RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
 	c.Assert(err, check.Equals, ErrMigrationAlreadyExecuted)
-	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: true})
+	err = Run(context.TODO(), RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"migration2", "migration2"})
 	c.Assert(buf.String(), check.Equals, expected)
@@ -214,9 +212,9 @@ func (s *Suite) TestRunOptionalNotFound(c *check.C) {
 	var buf bytes.Buffer
 	err := Register("migration1", func() error { return nil })
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Name: "migration1", Writer: &buf, Dry: false, Force: false})
+	err = Run(context.TODO(), RunArgs{Name: "migration1", Writer: &buf, Dry: false, Force: false})
 	c.Assert(err, check.Equals, ErrMigrationMandatory)
-	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	err = Run(context.TODO(), RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
 	c.Assert(err, check.Equals, ErrMigrationNotFound)
 }
 
@@ -229,9 +227,9 @@ func (s *Suite) TestList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RegisterOptional("migration3", nilFn)
 	c.Assert(err, check.IsNil)
-	err = Run(RunArgs{Name: "migration3", Writer: &buf})
+	err = Run(context.TODO(), RunArgs{Name: "migration3", Writer: &buf})
 	c.Assert(err, check.IsNil)
-	migrationsList, err := List()
+	migrationsList, err := List(context.TODO())
 	c.Assert(err, check.IsNil)
 	for i := range migrationsList {
 		migrationsList[i].fn = nil

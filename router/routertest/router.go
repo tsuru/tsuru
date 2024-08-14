@@ -42,6 +42,7 @@ func createTLSRouter(name string, config router.ConfigGetter) (router.Router, er
 func newFakeRouter() fakeRouter {
 	return fakeRouter{
 		cnames:      make(map[string]string),
+		certIssuers: make(map[string]string),
 		BackendOpts: make(map[string]router.EnsureBackendOpts),
 		Info:        make(map[string]string),
 		Status: router.RouterBackendStatus{
@@ -56,6 +57,7 @@ type fakeRouter struct {
 	FailuresByHost map[string]bool
 	BackendOpts    map[string]router.EnsureBackendOpts
 	cnames         map[string]string
+	certIssuers    map[string]string
 	Info           map[string]string
 	Status         router.RouterBackendStatus
 	mutex          *sync.Mutex
@@ -97,6 +99,13 @@ func (r *fakeRouter) HasCNameFor(name, cname string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	stored, ok := r.cnames[cname]
+	return ok && stored == name
+}
+
+func (r *fakeRouter) HasCertIssuerForCName(name, cname, issuer string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	stored, ok := r.certIssuers[cname+":"+issuer]
 	return ok && stored == name
 }
 
@@ -182,6 +191,23 @@ func (r *fakeRouter) EnsureBackend(ctx context.Context, app router.App, opts rou
 			delete(r.cnames, cname)
 		}
 
+	}
+
+	currentAppCertIssuers := map[string]bool{}
+
+	for cname, issuer := range opts.CertIssuers {
+		r.certIssuers[cname+":"+issuer] = name
+		currentAppCertIssuers[cname+":"+issuer] = true
+	}
+
+	for key, app := range r.certIssuers {
+		if app != name {
+			continue
+		}
+
+		if !currentAppCertIssuers[key] {
+			delete(r.certIssuers, key)
+		}
 	}
 
 	return nil

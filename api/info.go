@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
@@ -21,6 +22,11 @@ import (
 func info(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	data := map[string]string{}
 	data["version"] = Version
+
+	if GitHash != "" {
+		data["version"] = fmt.Sprintf("%s (git commit %s)", Version, GitHash)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(data)
 }

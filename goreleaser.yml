@@ -4,7 +4,7 @@ builds:
 - main: ./cmd/tsurud
   binary: tsurud
   flags: [-trimpath]
-  ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}} -X github.com/tsuru/tsuru/api.Version={{ .Version }}
+  ldflags: -s -w -X github.com/tsuru/tsuru/api.GitHash={{.Commit}} -X github.com/tsuru/tsuru/api.Version={{ .Version }}
   env: [CGO_ENABLED=0]
   goos: [linux]
   goarch:

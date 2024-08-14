@@ -1320,6 +1320,63 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 	})
 }
 
+func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	err = s.p.Stop(context.TODO(), a, "web", version, &bytes.Buffer{})
+	c.Assert(err, check.IsNil)
+
+	autoScaleSpec := provTypes.AutoScaleSpec{
+		MinUnits:   5,
+		MaxUnits:   20,
+		AverageCPU: "500m",
+		Schedules: []provTypes.AutoScaleSchedule{
+			{
+				MinReplicas: 2,
+				Start:       "0 6 * * *",
+				End:         "0 18 * * *",
+				Timezone:    "UTC",
+			},
+		},
+		Prometheus: []provTypes.AutoScalePrometheus{
+			{
+				Name:              "prometheus_metric",
+				Query:             "sum(some_metric{app='app_test'})",
+				PrometheusAddress: "test.prometheus.address.exemple",
+				Threshold:         10.0,
+			},
+		},
+	}
+	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
+	c.Assert(err, check.IsNil)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(scaledObject.GetAnnotations(), check.DeepEquals, map[string]string{AnnotationKEDAPausedReplicas: "0"})
+
+	err = s.p.Start(context.TODO(), a, "web", version, &bytes.Buffer{})
+	c.Assert(err, check.IsNil)
+
+	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
+	c.Assert(err, check.IsNil)
+
+	scaledObject, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(scaledObject.GetAnnotations(), check.DeepEquals, map[string]string(nil))
+}
+
 func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

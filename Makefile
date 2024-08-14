@@ -6,11 +6,7 @@ SHELL       = /bin/bash -o pipefail
 BUILD_DIR   = build
 TSR_BIN     = $(BUILD_DIR)/tsurud
 TSR_SRC     = ./cmd/tsurud
-K8S_VERSION = v1.26.15
-
-# Docker binary. If you are using podman, you can change this to podman when
-# running make commands. Example: make local DOCKER=podman
-DOCKER ?= docker
+GIT_TAG_VER := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "$${TSURU_BUILD_VERSION:-dev}")
 
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
@@ -32,10 +28,6 @@ _tsurud_dry:
 	rm -f tsurud
 
 test: _go_test _tsurud_dry
-
-leakdetector:
-	go test -test.v --tags leakdetector ./... | tee /tmp/leaktest.log
-	(cat /tmp/leaktest.log | grep LEAK) && exit 1 || exit 0
 
 lint: metalint yamllint
 	misc/check-contributors.sh
@@ -112,7 +104,7 @@ binaries: tsurud
 tsurud: $(TSR_BIN)
 
 $(TSR_BIN):
-	CGO_ENABLED=0 go build -trimpath -ldflags '-s -w -X github.com/tsuru/tsuru/cmd.GitHash=$(shell git rev-parse HEAD) -X github.com/tsuru/tsuru/api.Version=$(shell git describe --tags --abbrev=0)' -o $(TSR_BIN) $(TSR_SRC)
+	CGO_ENABLED=0 go build -trimpath -ldflags '-s -w -X github.com/tsuru/tsuru/api.GitHash=$(shell git rev-parse HEAD) -X github.com/tsuru/tsuru/api.Version=$(GIT_TAG_VER)' -o $(TSR_BIN) $(TSR_SRC)
 
 run-tsurud-api: $(TSR_BIN)
 	$(TSR_BIN) api
@@ -139,33 +131,119 @@ generate-test-certs:
 	cp ./app/testdata/private.key ./api/testdata/key.pem
 	cp ./app/testdata/certificate.crt ./api/testdata/cert.pem
 
-# reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
-local-mac:
-	minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION)
-	minikube addons enable registry
-	$(DOCKER) run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
-	@make local-api
 
-# For Apple Silicon (M series) Macs, you can use the qemu2 driver with minikube.
+###
+### LOCAL DEVELOPMENT
+###
+### See https://docs.tsuru.io/stable/contributing/development.html for more
+### information on how to setup your local development environment.
+
+# Docker binary. If you are using podman, you can change this to podman when
+# running make commands. Example: make local DOCKER=podman
+DOCKER ?= docker
+
+# Kubernetes version used with minikube
+K8S_VERSION = v1.26.15
+
+# Tsuru local host
+# This is used to configure the insecure registry in minikube as well as in the
+# tsurud and buildkit configuration file.
+TSURU_HOST_IP   ?= 100.64.100.100
+TSURU_HOST_PORT ?= 8080
+
+# Root user information
+# Admin user information that can be used in the local development setup.
+TSURU_ROOT_USER ?= admin@admin.com
+TSURU_ROOT_PASS ?= admin@123
+
+# Local development script
+# This script will be used to setup the local development environment.
+LOCAL_DEV ?= ./misc/local-dev.sh
+
+# Host information
+# This is used to determine which local development setup to use.
+HOST_PLATFORM := $(shell uname -s)
+HOST_ARCH     := $(shell uname -m)
+
+ifeq ($(HOST_PLATFORM),Darwin)
+
+# For MacsOS, you can use the qemu2 driver with minikube.
 # It is recommended to use the socket_vmnet network to avoid issues with the default bridge network.
 # Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
-local-mac-mseries:
-	./misc/setup-docker-compose.sh && source .env
-	minikube start \
-		--insecure-registry="$(TSURU_HOST_IP):5000" \
-		--driver=qemu2 \
-		--network=socket_vmnet \
-		--kubernetes-version=$(K8S_VERSION)
-	@make local-api
+# 
+# NOTE: Only tested on Apple M series Macs.
+local.cluster:
+	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	@if ! minikube status &>/dev/null; then \
+		echo "Starting local kubernetes cluster for mac mseries..."; \
+		minikube start \
+			--insecure-registry="$(TSURU_HOST_IP):5000" \
+			--driver=qemu2 \
+			--network=socket_vmnet \
+			--kubernetes-version=$(K8S_VERSION); \
+	fi
 
-local:
-	minikube start --driver=none --kubernetes-version=$(K8S_VERSION)
-	@make local-api
+else
 
-local-api:
+local.cluster:
+	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	@if ! minikube status &>/dev/null; then \
+		echo "Starting local kubernetes cluster for linux..."; \
+		minikube start --driver=docker --kubernetes-version=$(K8S_VERSION); \
+	fi
+
+endif
+
+# Local development setup
+# Setup local development environment for tsuru. It only needs to be run once.
+# If the setup is already done, you can skip this step and use `make local.run`
+local.setup: local.cluster
+	@echo "Setting up local tsuru development environment..."
+	@$(LOCAL_DEV) render-templates $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
+	@$(DOCKER) compose --profile tsurud-api up -d
+	@$(LOCAL_DEV) setup-tsuru-user $(TSURU_ROOT_USER) $(TSURU_ROOT_PASS)
+	@$(LOCAL_DEV) setup-tsuru-target $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
+	@$(LOCAL_DEV) setup-tsuru-cluster $(TSURU_HOST_IP)
+	@$(DOCKER) stop tsuru-api >/dev/null
+	@echo ""
+	@echo "Setup complete. You don't need to run this step next time."
+	@echo "To start the local development environment, run 'make local.run'."
+	@touch ".local-setup"
+
+local.prerun:
+	@if [ ! -f ".local-setup" ]; then \
+		echo "Environment not ready. Please run make 'local.setup' first.";  \
+		exit 1; \
+	fi
+
+# Local development run
+# Start the local development environment for tsuru.
+local.run: local.prerun local.cluster
+	@echo "Starting local tsuru development environment..."
 	$(DOCKER) compose up -d
 	go build -o $(TSR_BIN) $(TSR_SRC)
-	$(TSR_BIN) api -c ./etc/tsurud.conf
+	$(TSR_BIN) api -c "./etc/tsurud.conf"
+
+# Local development stop
+# Stop the local development environment for tsuru.
+local.stop:
+	@echo "Stopping local tsuru development environment..."
+	@$(DOCKER) compose --profile tsurud-api down
+	@minikube stop
+	@$(LOCAL_DEV) cleanup-loopback $(TSURU_HOST_IP)
+
+# Local development cleanup
+# Clear the local development environment for tsuru.
+local.cleanup: local.stop
+	@echo "Clearing local tsuru development environment..."
+	@$(DOCKER) volume rm tsuru_datadb
+	@minikube delete
+	@find ./etc ! -name '*.template' ! -name 'tsuru.conf' -mindepth 1 | \
+		xargs -I{} echo rm {}
+	@rm -f .local-setup
+
+.PHONY: local.setup local.cluster local.precluster local.run local.stop local.cleanup
+
 
 .PHONY: install-swagger
 install-swagger:

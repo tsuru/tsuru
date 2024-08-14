@@ -6,12 +6,18 @@ package storagev2
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"testing"
 
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 func ClearAllCollections(toKeep []string) error {
+	if !testing.Testing() {
+		return errors.New("ClearAllCollections should only be used in tests")
+	}
+
 	ctx := context.Background()
 	db, err := database()
 	if err != nil {

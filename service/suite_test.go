@@ -12,8 +12,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -26,7 +24,7 @@ import (
 )
 
 type S struct {
-	conn        *db.Storage
+	//conn        *db.Storage
 	service     *Service
 	team        *authTypes.Team
 	user        *auth.User
@@ -61,19 +59,16 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 var HasAccessTo check.Checker = &hasAccessToChecker{}
 
 func (s *S) SetUpSuite(c *check.C) {
-	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_service_test")
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 }
 
 func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.user = &auth.User{Email: "cidade@raul.com"}
 	err := s.user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -94,6 +89,5 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Services().Database)
-	s.conn.Close()
+	storagev2.ClearAllCollections(nil)
 }

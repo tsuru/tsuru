@@ -5,19 +5,19 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -26,10 +26,13 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
-	ErrAppAlreadyExists = errors.New("there is already an app with this name")
+	ErrAppAlreadyExists  = errors.New("there is already an app with this name")
+	ErrCNameDoesNotExist = errors.New("cname does not exist in app")
 )
 
 var reserveTeamApp = action.Action{
@@ -118,7 +121,7 @@ var insertApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		err := createApp(app)
+		err := createApp(ctx.Context, app)
 		if err != nil {
 			return nil, err
 		}
@@ -126,17 +129,16 @@ var insertApp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		removeApp(app)
+		removeApp(ctx.Context, app)
 	},
 	MinParams: 1,
 }
 
-func createApp(app *App) error {
-	conn, err := db.Conn()
+func createApp(ctx context.Context, app *App) error {
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	if app.Quota == (quota.Quota{}) {
 		app.Quota = quota.UnlimitedQuota
 	}
@@ -144,32 +146,21 @@ func createApp(app *App) error {
 	if limit, err = config.GetInt("quota:units-per-app"); err == nil {
 		app.Quota.Limit = limit
 	}
-	err = conn.Apps().Insert(app)
-	if mgo.IsDup(err) {
+	_, err = collection.InsertOne(ctx, app)
+	if mongo.IsDuplicateKeyError(err) {
 		return ErrAppAlreadyExists
 	}
 
-	if plog, ok := servicemanager.LogService.(appTypes.AppLogServiceProvision); ok {
-		plog.Provision(app.Name)
-	}
 	return nil
 }
 
-func removeApp(app *App) error {
-	if plog, ok := servicemanager.LogService.(appTypes.AppLogServiceProvision); ok {
-		err := plog.CleanUp(app.Name)
-		if err != nil {
-			log.Errorf("Unable to cleanup logs: %v", err)
-		}
-	}
-
-	conn, err := db.Conn()
+func removeApp(ctx context.Context, app *App) error {
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
-		log.Errorf("Could not connect to the database: %s", err)
 		return err
 	}
-	defer conn.Close()
-	conn.Apps().Remove(bson.M{"name": app.Name})
+
+	collection.DeleteOne(ctx, mongoBSON.M{"name": app.Name})
 	return nil
 }
 
@@ -259,12 +250,7 @@ var reserveUnitsToAdd = action.Action{
 		default:
 			return nil, errors.New("Second parameter must be int or uint.")
 		}
-		conn, err := db.Conn()
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-		app, err = GetByName(ctx.Context, app.Name)
+		app, err := GetByName(ctx.Context, app.Name)
 		if err != nil {
 			return nil, appTypes.ErrAppNotFound
 		}
@@ -319,22 +305,23 @@ var saveApp = action.Action{
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		return nil, conn.Apps().Update(bson.M{"name": app.Name}, app)
+
+		_, err = collection.ReplaceOne(ctx.Context, mongoBSON.M{"name": app.Name}, app)
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 		oldApp := ctx.Params[1].(*App)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to get database connection: %s", err)
 			return
 		}
-		defer conn.Close()
-		err = conn.Apps().Update(bson.M{"name": oldApp.Name}, oldApp)
+
+		_, err = collection.ReplaceOne(ctx.Context, mongoBSON.M{"name": oldApp.Name}, oldApp)
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to update app: %s", err)
 		}
@@ -502,24 +489,23 @@ var validateNewCNames = action.Action{
 		app := ctx.Params[0].(*App)
 		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 		cnames := ctx.Params[1].([]string)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		appRouters := app.GetRouters()
 		for _, cname := range cnames {
 			if !cnameRegexp.MatchString(cname) {
 				return nil, errors.New("Invalid cname")
 			}
-			cs, err := conn.Apps().Find(bson.M{"cname": cname}).Count()
+			cs, err := collection.CountDocuments(ctx.Context, mongoBSON.M{"cname": cname})
 			if err != nil {
 				return nil, err
 			}
 			if cs == 0 {
 				continue
 			}
-			cs, err = conn.Apps().Find(bson.M{"name": app.Name, "cname": cname}).Count()
+			cs, err = collection.CountDocuments(ctx.Context, mongoBSON.M{"name": app.Name, "cname": cname})
 			if err != nil {
 				return nil, err
 			}
@@ -528,16 +514,16 @@ var validateNewCNames = action.Action{
 			}
 
 			appCName := App{}
-			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "routers": bson.M{"$in": appRouters}}).One(&appCName)
-			if err != nil && err != mgo.ErrNotFound {
+			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "routers": mongoBSON.M{"$in": appRouters}}).Decode(&appCName)
+			if err != nil && err != mongo.ErrNoDocuments {
 				return nil, err
 			}
 			if appCName.Name != "" {
 				return nil, errors.New(fmt.Sprintf("cname %s already exists for app %s using same router", cname, appCName.Name))
 			}
-			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "teamowner": bson.M{"$ne": app.GetTeamOwner()}}).One(&appCName)
+			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "teamowner": mongoBSON.M{"$ne": app.GetTeamOwner()}}).Decode(&appCName)
 			if err != nil {
-				if err == mgo.ErrNotFound {
+				if err == mongo.ErrNoDocuments {
 					continue
 				}
 				return nil, err
@@ -553,44 +539,37 @@ var saveCNames = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		var conn *db.Storage
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		var cnamesDone []string
-		for _, cname := range cnames {
-			err = conn.Apps().Update(
-				bson.M{"name": app.Name},
-				bson.M{"$push": bson.M{"cname": cname}},
-			)
-			if err != nil {
-				for _, c := range cnamesDone {
-					conn.Apps().Update(
-						bson.M{"name": app.Name},
-						bson.M{"$pull": bson.M{"cname": c}},
-					)
-				}
-				return nil, err
-			}
-			cnamesDone = append(cnamesDone, cname)
+
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$addToSet": mongoBSON.M{"cname": mongoBSON.M{"$each": cnames}}},
+		)
+
+		if err != nil {
+			return nil, err
 		}
-		return cnamesDone, nil
+		return cnames, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			log.Errorf("BACKWARD add cnames db - unable to connect: %s", err)
 			return
 		}
-		defer conn.Close()
+
+		// TODO: may use $pullAll instead of loop, but requires mongo > 5.0
 		for _, c := range cnames {
-			err := conn.Apps().Update(
-				bson.M{"name": app.Name},
-				bson.M{"$pull": bson.M{"cname": c}},
+			_, err := collection.UpdateOne(
+				ctx.Context,
+				mongoBSON.M{"name": app.Name},
+				mongoBSON.M{"$pull": mongoBSON.M{"cname": c}},
 			)
 			if err != nil {
 				log.Errorf("BACKWARD add cnames db - unable to update: %s", err)
@@ -612,13 +591,12 @@ var checkCNameExists = action.Action{
 	Name: "cname-exists",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		cnames := ctx.Params[1].([]string)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		for _, cname := range cnames {
-			cs, err := conn.Apps().Find(bson.M{"cname": cname}).Count()
+			cs, err := collection.CountDocuments(ctx.Context, mongoBSON.M{"cname": cname})
 			if err != nil {
 				return nil, err
 			}
@@ -635,25 +613,28 @@ var removeCNameFromDatabase = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		var conn *db.Storage
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		var cnamesDone []string
 		for _, cname := range cnames {
-			err = conn.Apps().Update(
-				bson.M{"name": app.Name},
-				bson.M{"$pull": bson.M{"cname": cname}},
+			// TODO: use $pullAll when uses mongo 5.0
+			_, err = collection.UpdateOne(
+				ctx.Context,
+				mongoBSON.M{"name": app.Name},
+				mongoBSON.M{"$pull": mongoBSON.M{"cname": cname}},
 			)
 			if err != nil {
-				for _, c := range cnamesDone {
-					conn.Apps().Update(
-						bson.M{"name": app.Name},
-						bson.M{"$push": bson.M{"cname": c}},
-					)
+				_, revertErr := collection.UpdateOne(
+					ctx.Context,
+					mongoBSON.M{"name": app.Name},
+					mongoBSON.M{"$addToSet": mongoBSON.M{"cname": mongoBSON.M{"$each": cnamesDone}}},
+				)
+				if revertErr != nil {
+					log.Errorf("BACKWARD remove cname db - unable to revert update: %s", revertErr)
 				}
+
 				return nil, err
 			}
 			cnamesDone = append(cnamesDone, cname)
@@ -663,20 +644,19 @@ var removeCNameFromDatabase = action.Action{
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			log.Errorf("BACKWARD remove cname db - unable to connect to db: %s", err)
 			return
 		}
-		defer conn.Close()
-		for _, c := range cnames {
-			err := conn.Apps().Update(
-				bson.M{"name": app.Name},
-				bson.M{"$push": bson.M{"cname": c}},
-			)
-			if err != nil {
-				log.Errorf("BACKWARD remove cname db - unable to update: %s", err)
-			}
+
+		_, revertErr := collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$addToSet": mongoBSON.M{"cname": mongoBSON.M{"$each": cnames}}},
+		)
+		if revertErr != nil {
+			log.Errorf("BACKWARD remove cname db - unable to revert update: %s", revertErr)
 		}
 	},
 }
@@ -691,5 +671,126 @@ var rebuildRoutes = action.Action{
 			return nil, err
 		}
 		return nil, nil
+	},
+}
+
+var checkSingleCNameExists = action.Action{
+	Name: "cname-exists",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		cname := ctx.Params[1].(string)
+
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			return nil, err
+		}
+
+		cs, err := collection.CountDocuments(ctx.Context, mongoBSON.M{"cname": cname})
+		if err != nil {
+			return nil, err
+		}
+		if cs == 0 {
+			return nil, ErrCNameDoesNotExist
+		}
+
+		return cname, nil
+	},
+}
+
+var saveCertIssuer = action.Action{
+	Name: "save-cert-issuer",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].(string)
+		issuer := ctx.Params[2].(string)
+
+		var conn *db.Storage
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$set": bson.M{certIssuerCName: issuer}},
+		)
+		return cname, err
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].(string)
+
+		var conn *db.Storage
+		conn, err := db.Conn()
+		if err != nil {
+			log.Errorf("BACKWARD remove certissuer db. unable to connect: %s", err)
+			return
+		}
+		defer conn.Close()
+
+		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$unset": bson.M{certIssuerCName: ""}},
+		)
+
+		if err != nil {
+			log.Errorf("BACKWARD remove certissuer db. failed to update: %s", err)
+		}
+	},
+}
+
+var removeCertIssuer = action.Action{
+	Name: "remove-cert-issuer",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].(string)
+
+		var conn *db.Storage
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$unset": bson.M{certIssuerCName: ""}},
+		)
+		return cname, err
+	},
+}
+
+var removeCertIssuersFromDatabase = action.Action{
+	Name: "remove-cert-issuer",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].([]string)
+
+		var conn *db.Storage
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		for _, c := range cname {
+			sanitizedCName := strings.ReplaceAll(c, ".", "_dot_")
+			certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+			err = conn.Apps().Update(
+				bson.M{"name": app.Name},
+				bson.M{"$unset": bson.M{certIssuerCName: ""}},
+			)
+		}
+		return cname, err
 	},
 }

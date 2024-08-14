@@ -20,8 +20,6 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -57,6 +55,8 @@ import (
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -290,16 +290,19 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 // name.
 func GetByName(ctx context.Context, name string) (*App, error) {
 	var app App
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	err = conn.Apps().Find(bson.M{"name": name}).One(&app)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"name": name}).Decode(&app)
+	if err == mongo.ErrNoDocuments {
 		return nil, appTypes.ErrAppNotFound
 	}
-	return &app, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &app, nil
 }
 
 // CreateApp creates a new app.
@@ -420,6 +423,11 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		return err
 	}
 
+	oldMetadata, err := json.Marshal(oldApp.Metadata)
+	if err != nil {
+		return err
+	}
+
 	if description != "" {
 		app.Description = description
 	}
@@ -464,7 +472,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		app.TeamOwner = team.Name
 		defer func() {
 			if err == nil {
-				app.Grant(team)
+				app.Grant(ctx, team)
 			}
 		}()
 	}
@@ -482,6 +490,12 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	}
 
 	app.Metadata.Update(args.UpdateData.Metadata)
+
+	newMetadata, err := json.Marshal(app.Metadata)
+	if err != nil {
+		return err
+	}
+
 	if platform != "" {
 		var p, v string
 		p, v, err = app.getPlatformNameAndVersion(ctx, platform)
@@ -531,7 +545,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	} else if processesHasChanged && args.ShouldRestart {
 		actions = append(actions, &restartApp)
-	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
+	} else if string(newMetadata) != string(oldMetadata) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(ctx, app, &oldApp, args.Writer)
@@ -772,17 +786,10 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to release team quota", err)
 	}
-	if plog, ok := servicemanager.LogService.(appTypes.AppLogServiceProvision); ok {
-		err = plog.CleanUp(app.Name)
-		if err != nil {
-			logErr("Unable to remove logs", err)
-		}
-	}
 
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err == nil {
-		defer conn.Close()
-		err = conn.Apps().Remove(bson.M{"name": appName})
+		_, err = collection.DeleteOne(ctx, mongoBSON.M{"name": appName})
 	}
 	if err != nil {
 		logErr("Unable to remove app from db", err)
@@ -968,17 +975,16 @@ func (app *App) findTeam(team *authTypes.Team) (int, bool) {
 
 // Grant allows a team to have access to an app. It returns an error if the
 // team already have access to the app.
-func (app *App) Grant(team *authTypes.Team) error {
+func (app *App) Grant(ctx context.Context, team *authTypes.Team) error {
 	if _, found := app.findTeam(team); found {
 		return ErrAlreadyHaveAccess
 	}
 	app.Teams = append(app.Teams, team.Name)
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$addToSet": mongoBSON.M{"teams": team.Name}})
 	if err != nil {
 		return err
 	}
@@ -988,7 +994,7 @@ func (app *App) Grant(team *authTypes.Team) error {
 
 // Revoke removes the access from a team. It returns an error if the team do
 // not have access to the app.
-func (app *App) Revoke(team *authTypes.Team) error {
+func (app *App) Revoke(ctx context.Context, team *authTypes.Team) error {
 	if len(app.Teams) == 1 {
 		return ErrCannotOrphanApp
 	}
@@ -999,12 +1005,11 @@ func (app *App) Revoke(team *authTypes.Team) error {
 	last := len(app.Teams) - 1
 	app.Teams[index] = app.Teams[last]
 	app.Teams = app.Teams[:last]
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$pull": mongoBSON.M{"teams": team.Name}})
 	if err != nil {
 		return err
 	}
@@ -1413,7 +1418,7 @@ func (app *App) GetName() string {
 
 // GetUUID returns the app v4 UUID. An UUID will be generated
 // if it does not exist.
-func (app *App) GetUUID() (string, error) {
+func (app *App) GetUUID(ctx context.Context) (string, error) {
 	if app.UUID != "" {
 		return app.UUID, nil
 	}
@@ -1421,12 +1426,11 @@ func (app *App) GetUUID() (string, error) {
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"uuid": uuidV4.String()}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"uuid": uuidV4.String()}})
 	if err != nil {
 		return "", err
 	}
@@ -1615,13 +1619,12 @@ func (app *App) SetEnvs(ctx context.Context, setEnvs bind.SetEnvArgs) error {
 		app.setEnv(env)
 	}
 
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
 
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"env": app.Env}})
 	if err != nil {
 		return err
 	}
@@ -1662,12 +1665,11 @@ func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bind.UnsetEnvArgs) erro
 	for _, name := range unsetEnvs.VariableNames {
 		delete(app.Env, name)
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"env": app.Env}})
 	if err != nil {
 		return err
 	}
@@ -1718,9 +1720,28 @@ func (app *App) RemoveCName(ctx context.Context, cnames ...string) error {
 	actions := []*action.Action{
 		&checkCNameExists,
 		&removeCNameFromDatabase,
+		&removeCertIssuersFromDatabase,
 		&rebuildRoutes,
 	}
 	return action.NewPipeline(actions...).Execute(ctx, app, cnames)
+}
+
+func (app *App) SetCertIssuer(ctx context.Context, cname, certIssuer string) error {
+	actions := []*action.Action{
+		&checkSingleCNameExists,
+		&saveCertIssuer,
+		&rebuildRoutes,
+	}
+	return action.NewPipeline(actions...).Execute(ctx, app, cname, certIssuer)
+}
+
+func (app *App) UnsetCertIssuer(ctx context.Context, cname string) error {
+	actions := []*action.Action{
+		&checkSingleCNameExists,
+		&removeCertIssuer,
+		&rebuildRoutes,
+	}
+	return action.NewPipeline(actions...).Execute(ctx, app, cname)
 }
 
 func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) error {
@@ -1731,12 +1752,11 @@ func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) e
 		fmt.Fprintf(addArgs.Writer, "---- Setting %d new environment variables ----\n", len(addArgs.Envs)+1)
 	}
 	app.ServiceEnvs = append(app.ServiceEnvs, addArgs.Envs...)
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"serviceenvs": app.ServiceEnvs}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"serviceenvs": app.ServiceEnvs}})
 	if err != nil {
 		return err
 	}
@@ -1762,12 +1782,11 @@ func (app *App) RemoveInstance(ctx context.Context, removeArgs bind.RemoveInstan
 	if removeArgs.Writer != nil {
 		fmt.Fprintf(removeArgs.Writer, "---- Unsetting %d environment variables ----\n", toUnset)
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"serviceenvs": app.ServiceEnvs}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"serviceenvs": app.ServiceEnvs}})
 	if err != nil {
 		return err
 	}
@@ -1829,22 +1848,22 @@ func (f *Filter) ExtraIn(name string, value string) {
 	f.Extra[name] = append(f.Extra[name], value)
 }
 
-func (f *Filter) Query() bson.M {
+func (f *Filter) Query() mongoBSON.M {
 	if f == nil {
-		return bson.M{}
+		return mongoBSON.M{}
 	}
-	query := bson.M{}
+	query := mongoBSON.M{}
 	if f.Extra != nil {
-		var orBlock []bson.M
+		var orBlock []mongoBSON.M
 		for field, values := range f.Extra {
-			orBlock = append(orBlock, bson.M{
-				field: bson.M{"$in": values},
+			orBlock = append(orBlock, mongoBSON.M{
+				field: mongoBSON.M{"$in": values},
 			})
 		}
 		query["$or"] = orBlock
 	}
 	if f.NameMatches != "" {
-		query["name"] = bson.M{"$regex": f.NameMatches}
+		query["name"] = mongoBSON.M{"$regex": f.NameMatches}
 	}
 	if f.Name != "" {
 		query["name"] = f.Name
@@ -1858,10 +1877,10 @@ func (f *Filter) Query() bson.M {
 		if len(parts) == 2 {
 			v := parts[1]
 			if v == "latest" {
-				query["$and"] = []bson.M{
-					{"$or": []bson.M{
-						{"platformversion": bson.M{"$in": []string{"latest", ""}}},
-						{"platformversion": bson.M{"$exists": false}},
+				query["$and"] = []mongoBSON.M{
+					{"$or": []mongoBSON.M{
+						{"platformversion": mongoBSON.M{"$in": []string{"latest", ""}}},
+						{"platformversion": mongoBSON.M{"$exists": false}},
 					}},
 				}
 			} else {
@@ -1879,11 +1898,11 @@ func (f *Filter) Query() bson.M {
 		query["lock.locked"] = true
 	}
 	if len(f.Pools) > 0 {
-		query["pool"] = bson.M{"$in": f.Pools}
+		query["pool"] = mongoBSON.M{"$in": f.Pools}
 	}
 	tags := processTags(f.Tags)
 	if len(tags) > 0 {
-		query["tags"] = bson.M{"$all": tags}
+		query["tags"] = mongoBSON.M{"$all": tags}
 	}
 	return query
 }
@@ -1954,15 +1973,21 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 func List(ctx context.Context, filter *Filter) ([]App, error) {
 	apps := []App{}
 	query := filter.Query()
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return nil, err
 	}
-	err = conn.Apps().Find(query).All(&apps)
-	conn.Close()
+
+	cursor, err := collection.Find(ctx, query)
 	if err != nil {
 		return nil, err
 	}
+
+	err = cursor.All(ctx, &apps)
+	if err != nil {
+		return nil, err
+	}
+
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
 		var prov provision.Provisioner
@@ -2080,16 +2105,18 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	return err
 }
 
-func (app *App) SetUpdatePlatform(check bool) error {
-	conn, err := db.Conn()
+func (app *App) SetUpdatePlatform(ctx context.Context, check bool) error {
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"updateplatform": check}},
+	_, err = collection.UpdateOne(
+		ctx,
+		mongoBSON.M{"name": app.Name},
+		mongoBSON.M{"$set": mongoBSON.M{"updateplatform": check}},
 	)
+
+	return err
 }
 
 func (app *App) GetUpdatePlatform() bool {
@@ -2104,13 +2131,12 @@ func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) err
 	}
 	cnames := app.GetCname()
 	appCName := App{}
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Find(bson.M{"cname": bson.M{"$in": cnames}, "name": bson.M{"$ne": app.Name}, "routers": appRouter}).One(&appCName)
-	if err != nil && err != mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"cname": mongoBSON.M{"$in": cnames}, "name": mongoBSON.M{"$ne": app.Name}, "routers": appRouter}).Decode(&appCName)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
 	if appCName.Name != "" {
@@ -2136,7 +2162,7 @@ func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) err
 		return err
 	}
 	routers := append(app.GetRouters(), appRouter)
-	err = app.updateRoutersDB(routers)
+	err = app.updateRoutersDB(ctx, routers)
 	if err != nil {
 		rollbackErr := r.RemoveBackend(ctx, app)
 		if rollbackErr != nil {
@@ -2170,7 +2196,7 @@ func (app *App) UpdateRouter(ctx context.Context, appRouter appTypes.AppRouter) 
 	}
 
 	existing.Opts = appRouter.Opts
-	err := app.updateRoutersDB(routers)
+	err := app.updateRoutersDB(ctx, routers)
 	if err != nil {
 		return err
 	}
@@ -2203,7 +2229,7 @@ func (app *App) RemoveRouter(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	err = app.updateRoutersDB(routers)
+	err = app.updateRoutersDB(ctx, routers)
 	if err != nil {
 		return err
 	}
@@ -2214,22 +2240,23 @@ func (app *App) RemoveRouter(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) updateRoutersDB(routers []appTypes.AppRouter) error {
-	conn, err := db.Conn()
+func (app *App) updateRoutersDB(ctx context.Context, routers []appTypes.AppRouter) error {
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	app.Routers = routers
 	app.Router = ""
 	app.RouterOpts = nil
-	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{
-		"$set": bson.M{
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{
+		"$set": mongoBSON.M{
 			"routers":    app.Routers,
 			"router":     app.Router,
 			"routeropts": app.RouterOpts,
 		},
 	})
+
+	return err
 }
 
 func (app *App) GetRouters() []appTypes.AppRouter {
@@ -2246,6 +2273,15 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 		}}, routers...)
 	}
 	return routers
+}
+
+func (app *App) GetCertIssuers() map[string]string {
+	certIssuers := make(map[string]string, len(app.CertIssuers))
+	for k, v := range app.CertIssuers {
+		key := strings.ReplaceAll(k, "_dot_", ".")
+		certIssuers[key] = v
+	}
+	return certIssuers
 }
 
 func (app *App) GetRoutersWithAddr(ctx context.Context) ([]appTypes.AppRouter, error) {
@@ -2390,36 +2426,58 @@ func (app *App) validateNameForCert(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]string, error) {
+func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetInfo, error) {
 	addrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	certificateSet := &appTypes.CertificateSetInfo{
+		Routers: make(map[string]appTypes.RouterCertificateInfo),
+	}
+
+	certIssuers := app.GetCertIssuers()
+
 	names := append(addrs, app.CName...)
-	allCertificates := make(map[string]map[string]string)
 	for _, appRouter := range app.GetRouters() {
-		certificates := make(map[string]string)
+		appRouterCertificates := appTypes.RouterCertificateInfo{
+			CNames: make(map[string]appTypes.CertificateInfo),
+		}
+
 		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return nil, err
 		}
+
 		tlsRouter, ok := r.(router.TLSRouter)
 		if !ok {
 			continue
 		}
+
 		for _, n := range names {
 			cert, err := tlsRouter.GetCertificate(ctx, app, n)
 			if err != nil && err != router.ErrCertificateNotFound {
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}
-			certificates[n] = cert
+
+			if cert != "" {
+				appRouterCertificates.CNames[n] = appTypes.CertificateInfo{
+					Certificate: cert,
+					Issuer:      certIssuers[n],
+				}
+			}
 		}
-		allCertificates[appRouter.Name] = certificates
+
+		if !appRouterCertificates.IsEmpty() {
+			certificateSet.Routers[appRouter.Name] = appRouterCertificates
+		}
 	}
-	if len(allCertificates) == 0 {
+
+	if certificateSet.IsEmpty() {
 		return nil, errors.New("no router with tls support")
 	}
-	return allCertificates, nil
+
+	return certificateSet, nil
 }
 
 func (app *App) RoutableAddresses(ctx context.Context) ([]appTypes.RoutableAddresses, error) {
@@ -2441,11 +2499,7 @@ func (app *App) withLogWriter(w io.Writer) io.Writer {
 }
 
 func RenameTeam(ctx context.Context, oldName, newName string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+
 	filter := &Filter{}
 	filter.ExtraIn("teams", oldName)
 	filter.ExtraIn("teamowner", oldName)
@@ -2465,20 +2519,29 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 		}
 		defer evt.Abort(ctx)
 	}
-	bulk := conn.Apps().Bulk()
-	for _, a := range apps {
-		if a.TeamOwner == oldName {
-			a.TeamOwner = newName
-		}
-		for i, team := range a.Teams {
-			if team == oldName {
-				a.Teams[i] = newName
-			}
-		}
-		bulk.Update(bson.M{"name": a.Name}, a)
+
+	collection, err := storagev2.AppsCollection()
+	if err != nil {
+		return err
 	}
-	_, err = bulk.Run()
+
+	updates := []mongo.WriteModel{
+		mongo.NewUpdateManyModel().
+			SetFilter(mongoBSON.M{"teamowner": oldName}).
+			SetUpdate(mongoBSON.M{"$set": mongoBSON.M{"teamowner": newName}}),
+
+		mongo.NewUpdateManyModel().
+			SetFilter(mongoBSON.M{"teams": oldName}).
+			SetUpdate(mongoBSON.M{"$push": mongoBSON.M{"teams": newName}}),
+
+		mongo.NewUpdateManyModel().
+			SetFilter(mongoBSON.M{"teams": oldName}).
+			SetUpdate(mongoBSON.M{"$pull": mongoBSON.M{"teams": oldName}}),
+	}
+
+	_, err = collection.BulkWrite(ctx, updates)
 	return err
+
 }
 
 func (app *App) GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error) {

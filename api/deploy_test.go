@@ -17,13 +17,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -40,12 +37,12 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
 
 type DeploySuite struct {
-	conn        *db.Storage
 	token       auth.Token
 	user        *auth.User
 	team        *authTypes.Team
@@ -87,8 +84,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
 	storagev2.Reset()
 	s.testServer = RunServer(true)
 }
@@ -96,8 +92,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool(context.TODO(), "pool1")
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
+	storagev2.ClearAllCollections(nil)
 	s.reset()
 }
 
@@ -108,7 +103,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	s.reset()
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
@@ -641,7 +636,13 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(a.Deploys, check.Equals, uint(1))
 }
 

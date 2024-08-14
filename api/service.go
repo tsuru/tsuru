@@ -52,10 +52,12 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	sInstances, err := service.GetServiceInstancesByServices(ctx, services)
+	tags := r.URL.Query()["tag"]
+	sInstances, err := service.GetServiceInstancesByServices(ctx, services, tags)
 	if err != nil {
 		return err
 	}
+
 	results := make([]service.ServiceModel, len(services))
 	for i, s := range services {
 		results[i].Service = s.Name
@@ -256,7 +258,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	instances, err := service.GetServiceInstancesByServices(ctx, []service.Service{s})
+	instances, err := service.GetServiceInstancesByServices(ctx, []service.Service{s}, []string{})
 	if err != nil {
 		return err
 	}
@@ -265,7 +267,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		msg += "Please remove these instances before removing the service."
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	return service.Delete(s)
+	return service.Delete(ctx, s)
 }
 
 // title: service proxy

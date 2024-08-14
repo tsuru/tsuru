@@ -11,7 +11,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	opentracingExt "github.com/opentracing/opentracing-go/ext"
 	"github.com/opentracing/opentracing-go/log"
-	"gopkg.in/mgo.v2/bson"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 type mongoOperation string
@@ -59,7 +59,7 @@ func (s *mongoDBSpan) SetQueryStatement(query interface{}) {
 }
 
 func (s *mongoDBSpan) SetMongoID(id interface{}) {
-	s.SetQueryStatement(bson.M{"_id": id})
+	s.SetQueryStatement(mongoBSON.M{"_id": id})
 }
 
 func (s *mongoDBSpan) SetError(err error) {

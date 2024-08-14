@@ -1,11 +1,11 @@
 services:
   mongo:
     container_name: mongo
-    image: mongo:4
+    image: mongo:6
     ports:
     - 27017:27017
     volumes:
-    - /data/db
+    - datadb:/data/db
     restart: unless-stopped
 
   registry:
@@ -51,8 +51,9 @@ services:
     restart: unless-stopped
     depends_on:
     - mongo
-    - registry
     - deploy-agent
+    profiles:
+    - tsurud-api
 
-x-custom:
-  tsuru-host-ip: ${TSURU_HOST_IP:?You must execute "./misc/setup-docker-compose.sh" before running Docker Compose}
+volumes:
+  datadb:

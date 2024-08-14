@@ -17,8 +17,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -38,7 +36,6 @@ import (
 )
 
 type BuildSuite struct {
-	conn        *db.Storage
 	token       auth.Token
 	user        *auth.User
 	team        *authTypes.Team
@@ -81,8 +78,6 @@ func (s *BuildSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 	storagev2.Reset()
 	s.testServer = RunServer(true)
 }
@@ -90,8 +85,7 @@ func (s *BuildSuite) SetUpSuite(c *check.C) {
 func (s *BuildSuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool(context.TODO(), "pool1")
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
+	storagev2.ClearAllCollections(nil)
 	s.reset()
 }
 
@@ -102,7 +96,7 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	s.reset()
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}

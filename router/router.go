@@ -157,6 +157,8 @@ type BackendPrefix struct {
 type EnsureBackendOpts struct {
 	Opts        map[string]interface{} `json:"opts"`
 	CNames      []string               `json:"cnames"`
+	Team        string                 `json:"team,omitempty"`
+	CertIssuers map[string]string      `json:"certIssuers,omitempty"`
 	Prefixes    []BackendPrefix        `json:"prefixes"`
 	Healthcheck router.HealthcheckData `json:"healthcheck"`
 }

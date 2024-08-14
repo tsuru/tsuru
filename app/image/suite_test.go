@@ -9,8 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -20,7 +19,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	storage     *db.Storage
 	mockService servicemock.MockService
 }
 
@@ -32,9 +30,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "app_image_tests")
 	config.Set("docker:collection", "docker")
 	config.Set("docker:repository-namespace", "tsuru")
-	var err error
-	s.storage, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -45,9 +42,8 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	dbtest.ClearAllCollections(s.storage.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.storage.Close()
 }

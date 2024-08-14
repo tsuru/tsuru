@@ -9,15 +9,16 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // for some compatibility reasons the name of team must be compliant on some cloud providers
@@ -95,26 +96,60 @@ func (t *teamService) FindByNames(ctx context.Context, names []string) ([]authTy
 }
 
 func (t *teamService) Remove(ctx context.Context, teamName string) error {
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	var apps []string
-	err = conn.Apps().Find(bson.M{"teams": teamName}).Distinct("name", &apps)
+	result, err := appsCollection.Distinct(ctx, "name", mongoBSON.M{"teams": teamName})
 	if err != nil {
 		return err
 	}
-	if len(apps) > 0 {
+	if len(result) > 0 {
+		var apps []string
+
+		for _, app := range result {
+			appStr, ok := app.(string)
+			if ok {
+				apps = append(apps, appStr)
+			}
+		}
+
 		return &authTypes.ErrTeamStillUsed{Apps: apps}
 	}
-	var serviceInstances []string
-	err = conn.ServiceInstances().Find(bson.M{"teams": teamName}).Distinct("name", &serviceInstances)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return err
 	}
-	if len(serviceInstances) > 0 {
-		return &authTypes.ErrTeamStillUsed{ServiceInstances: serviceInstances}
+
+	cursor, err := serviceInstancesCollection.Find(ctx, mongoBSON.M{"teams": teamName}, &options.FindOptions{
+		Projection: mongoBSON.M{"name": 1, "service_name": 1},
+	})
+	if err != nil {
+		return err
+	}
+
+	type serviceInstance struct {
+		Name        string `bson:"name"`
+		ServiceName string `bson:"service_name"`
+	}
+
+	var (
+		serviceInstanceNames []string
+		serviceInstances     []serviceInstance
+	)
+
+	err = cursor.All(ctx, &serviceInstances)
+	if err != nil {
+		return err
+	}
+
+	for _, si := range serviceInstances {
+		serviceInstanceNames = append(serviceInstanceNames, si.ServiceName+"/"+si.Name)
+	}
+
+	if len(serviceInstanceNames) > 0 {
+		return &authTypes.ErrTeamStillUsed{ServiceInstances: serviceInstanceNames}
 	}
 	return t.storage.Delete(ctx, authTypes.Team{Name: teamName})
 }

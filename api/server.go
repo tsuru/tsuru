@@ -42,7 +42,6 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/oidc"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/hc"
@@ -62,7 +61,10 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const Version = "1.22.5"
+var (
+	Version = "1.22.8"
+	GitHash = ""
+)
 
 type TsuruHandler struct {
 	version string
@@ -302,6 +304,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", http.MethodGet, "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificates))
 	m.Add("1.2", http.MethodPut, "/apps/{app}/certificate", AuthorizationRequiredHandler(setCertificate))
 	m.Add("1.2", http.MethodDelete, "/apps/{app}/certificate", AuthorizationRequiredHandler(unsetCertificate))
+	m.Add("1.24", http.MethodPut, "/apps/{app}/certissuer", AuthorizationRequiredHandler(setCertIssuer))
+	m.Add("1.24", http.MethodDelete, "/apps/{app}/certissuer", AuthorizationRequiredHandler(unsetCertIssuer))
 
 	m.Add("1.5", http.MethodPost, "/apps/{app}/routers", AuthorizationRequiredHandler(addAppRouter))
 	m.Add("1.5", http.MethodPut, "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(updateAppRouter))
@@ -511,16 +515,11 @@ func RunServer(dry bool) http.Handler {
 }
 
 func setupDatabase() error {
-	dbName, err := config.GetString("database:name")
-	if err != nil {
-		dbName = db.DefaultDatabaseName
-	}
 	dbDriverName, err := config.GetString("database:driver")
 	if err != nil {
 		dbDriverName = storage.DefaultDbDriverName
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a database driver, using default driver.")
 	}
-	fmt.Fprintf(os.Stderr, "Using %q database %q from the server.\n", dbDriverName, dbName)
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
 		return err

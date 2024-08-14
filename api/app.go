@@ -885,7 +885,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = a.Grant(team)
+	err = a.Grant(ctx, team)
 	if err == app.ErrAlreadyHaveAccess {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -935,7 +935,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = a.Revoke(team)
+	err = a.Revoke(ctx, team)
 	switch err {
 	case app.ErrNoAccess:
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -2036,6 +2036,121 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	return json.NewEncoder(w).Encode(&result)
+}
+
+// title: set app certificate issuer
+// path: /apps/{app}/certissuer
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
+func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	inputErrMsg := "You must provide a cname and a issuer."
+	cname := InputValue(r, "cname")
+	issuer := InputValue(r, "issuer")
+
+	if cname == "" || issuer == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: inputErrMsg}
+	}
+
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertIssuerSet,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateCertIssuerSet,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(ctx, err) }()
+
+	if err = a.SetCertIssuer(ctx, cname, issuer); err == nil {
+		return nil
+	}
+	if err == app.ErrCNameDoesNotExist {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("%s (%s)", err.Error(), cname),
+		}
+	}
+	return err
+}
+
+// title: unset app certificate issuer
+// path: /apps/{app}/certissuer
+// method: DELETE
+// consume: application/x-www-form-urlencoded
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
+func unsetCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	inputErrMsg := "You must provide a cname."
+	cname := InputValue(r, "cname")
+
+	if cname == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: inputErrMsg}
+	}
+
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertIssuerUnset,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateCertIssuerUnset,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(ctx, err) }()
+
+	if err = a.UnsetCertIssuer(ctx, cname); err == nil {
+		return nil
+	}
+	if err == app.ErrCNameDoesNotExist {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("%s (%s)", err.Error(), cname),
+		}
+	}
+	return err
 }
 
 func contextsForApp(a *app.App) []permTypes.PermissionContext {

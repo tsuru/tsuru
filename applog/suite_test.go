@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/check.v1"
 )
 
@@ -28,17 +28,11 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 type ServiceSuite struct {
@@ -49,20 +43,17 @@ type ServiceSuite struct {
 func (s *ServiceSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "applog_pkg_service_suite_tests")
+
+	storagev2.Reset()
 }
 
 func (s *ServiceSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *ServiceSuite) SetUpTest(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	var err error
+	storagev2.ClearAllCollections(nil)
 	s.svc, err = s.svcFunc()
 	c.Assert(err, check.IsNil)
 	c.Logf("Service: %T", s.svc)
@@ -74,14 +65,14 @@ func compareLogsNoDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.App
 
 func compareLogsDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog, compareDate bool) {
 	for i := range logs1 {
-		logs1[i].MongoID = ""
+		logs1[i].MongoID = primitive.NilObjectID
 		logs1[i].Date = logs1[i].Date.UTC()
 		if !compareDate {
 			logs1[i].Date = time.Time{}
 		}
 	}
 	for i := range logs2 {
-		logs2[i].MongoID = ""
+		logs2[i].MongoID = primitive.NilObjectID
 		logs2[i].Date = logs2[i].Date.UTC()
 		if !compareDate {
 			logs2[i].Date = time.Time{}

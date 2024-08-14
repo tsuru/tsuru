@@ -19,8 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
@@ -58,7 +57,6 @@ import (
 
 type S struct {
 	p                             *kubernetesProvisioner
-	conn                          *db.Storage
 	user                          *auth.User
 	team                          *authTypes.Team
 	token                         auth.Token
@@ -93,14 +91,13 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	s.builders = builder.List()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -112,7 +109,7 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	clus := &provision.Cluster{
 		Name:        "c1",

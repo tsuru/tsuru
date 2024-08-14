@@ -7,8 +7,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
@@ -18,6 +17,7 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types/provision"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -29,7 +29,6 @@ import (
 )
 
 type S struct {
-	conn          *db.Storage
 	clusterClient *kubeProv.ClusterClient
 	client        *kubeTesting.ClientWrapper
 	cluster       *provision.Cluster
@@ -49,9 +48,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
-	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	servicemock.SetMockService(&s.mockService)
 	s.cluster = &provision.Cluster{
@@ -104,7 +101,10 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	_, err := s.conn.Apps().RemoveAll(nil)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.DeleteMany(context.TODO(), mongoBSON.M{})
 	c.Assert(err, check.IsNil)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -117,15 +117,14 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *S) TestMigrateAppsCRDs(c *check.C) {
-	apps := []app.App{
-		{Name: "app-kube", Pool: "kube"},
-		{Name: "app-kube2", Pool: "kube"},
-		{Name: "app-kube-failed", Pool: "kube-failed"},
-		{Name: "app-docker", Pool: "docker"},
+	apps := []any{
+		app.App{Name: "app-kube", Pool: "kube"},
+		app.App{Name: "app-kube2", Pool: "kube"},
+		app.App{Name: "app-kube-failed", Pool: "kube-failed"},
+		app.App{Name: "app-docker", Pool: "docker"},
 	}
 	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provision.Cluster, error) {
 		if prov != s.cluster.Provisioner {
@@ -138,11 +137,14 @@ func (s *S) TestMigrateAppsCRDs(c *check.C) {
 		}
 		return nil, provision.ErrNoCluster
 	}
-	for _, a := range apps {
-		err := s.conn.Apps().Insert(a)
-		c.Assert(err, check.IsNil)
-	}
-	err := MigrateAppsCRDs()
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertMany(context.TODO(), apps)
+	c.Assert(err, check.IsNil)
+
+	err = MigrateAppsCRDs()
 	c.Assert(err, check.NotNil)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

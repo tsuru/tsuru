@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,8 +29,13 @@ func (s *S) TestGetPlansByServiceName(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := s.conn.Services().Insert(&srvc)
+
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
+	c.Assert(err, check.IsNil)
+
 	plans, err := GetPlansByService(context.TODO(), srvc, "", "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{
@@ -40,13 +46,16 @@ func (s *S) TestGetPlansByServiceName(c *check.C) {
 }
 
 func (s *S) TestGetPlanByServiceNameAndPlanName(c *check.C) {
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
 		w.Write([]byte(content))
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := s.conn.Services().Insert(&srvc)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
 	plan, err := GetPlanByServiceAndPlanName(context.TODO(), srvc, "", "small", "")
 	c.Assert(err, check.IsNil)
@@ -58,9 +67,13 @@ func (s *S) TestGetPlanByServiceNameAndPlanName(c *check.C) {
 }
 
 func (s *S) TestGetPlansByServiceNameWithoutEndpoint(c *check.C) {
-	srvc := Service{Name: "mysql"}
-	err := s.conn.Services().Insert(&srvc)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+
+	srvc := Service{Name: "mysql"}
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
+	c.Assert(err, check.IsNil)
+
 	plans, err := GetPlansByService(context.TODO(), srvc, "", "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{}

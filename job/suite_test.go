@@ -120,9 +120,8 @@ func setupMocks(s *S) {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:driver", "mongodb")
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queue_job_pkg_tests")
-	config.Set("queue:mongo-polling-interval", 0.01)
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "queue_job_pkg_tests")
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	var err error

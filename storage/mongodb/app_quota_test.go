@@ -5,31 +5,33 @@
 package mongodb
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/storage/storagetest"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
 type appStorage struct{}
 
-func (s *appStorage) Create(app *app.App) error {
-	conn, err := db.Conn()
+func (s *appStorage) Create(ctx context.Context, app *app.App) error {
+	appCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Insert(app)
+	_, err = appCollection.InsertOne(ctx, app)
 	return err
 }
 
-func (s *appStorage) Remove(app *app.App) error {
-	conn, err := db.Conn()
+func (s *appStorage) Remove(ctx context.Context, app *app.App) error {
+	appCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Remove(app)
+
+	_, err = appCollection.DeleteOne(ctx, mongoBSON.M{"name": app.Name})
 	return err
 }
 

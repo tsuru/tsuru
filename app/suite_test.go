@@ -16,8 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
@@ -39,7 +38,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
 	team        authTypes.Team
 	user        *auth.User
 	plan        appTypes.Plan
@@ -104,8 +102,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake-tls:type", "fake-tls")
 	config.Set("routers:fake:type", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
@@ -116,8 +115,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	defer s.conn.Close()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -138,7 +136,7 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	config.Set("docker:router", "fake")
 	s.provisioner.Reset()
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.createUserAndTeam(c)
 	s.defaultPlan = appTypes.Plan{
 		Name:    "default-plan",

@@ -10,17 +10,17 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 var ErrInvalidBrokerData = errors.New("Invalid broker data")
@@ -220,7 +220,7 @@ func (b *brokerClient) Update(ctx context.Context, instance *ServiceInstance, ev
 	if resp != nil && resp.OperationKey != nil {
 		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
 	}
-	return updateBrokerData(instance)
+	return updateBrokerData(ctx, instance)
 }
 
 func (b *brokerClient) Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
@@ -244,7 +244,7 @@ func (b *brokerClient) Destroy(ctx context.Context, instance *ServiceInstance, e
 	}
 	if resp != nil && resp.OperationKey != nil {
 		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
-		err = updateBrokerData(instance)
+		err = updateBrokerData(ctx, instance)
 	}
 	return err
 }
@@ -257,7 +257,7 @@ func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, a
 	if err != nil {
 		return nil, err
 	}
-	appGUID, err := app.GetUUID()
+	appGUID, err := app.GetUUID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, a
 		instance.BrokerData.Binds = make(map[string]BrokerInstanceBind)
 	}
 	instance.BrokerData.Binds[app.GetName()] = bind
-	return envs, updateBrokerData(instance)
+	return envs, updateBrokerData(ctx, instance)
 }
 
 func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
@@ -344,7 +344,7 @@ func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance,
 	delete(instance.BrokerData.Binds, app.GetName())
 	if resp != nil && resp.OperationKey != nil {
 		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
-		err = updateBrokerData(instance)
+		err = updateBrokerData(ctx, instance)
 	}
 	return err
 }
@@ -483,14 +483,17 @@ func idForEvent(evt *event.Event) (*osb.OriginatingIdentity, error) {
 	}, nil
 }
 
-func updateBrokerData(instance *ServiceInstance) error {
-	conn, err := db.Conn()
+func updateBrokerData(ctx context.Context, instance *ServiceInstance) error {
+	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.ServiceInstances().Update(
-		bson.M{"name": instance.Name, "service_name": instance.ServiceName},
-		bson.M{"$set": bson.M{"broker_data": instance.BrokerData}},
+
+	_, err = collection.UpdateOne(
+		ctx,
+		mongoBSON.M{"name": instance.Name, "service_name": instance.ServiceName},
+		mongoBSON.M{"$set": mongoBSON.M{"broker_data": instance.BrokerData}},
 	)
+
+	return err
 }

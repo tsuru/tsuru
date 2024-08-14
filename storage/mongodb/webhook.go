@@ -8,7 +8,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/event"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -74,7 +73,7 @@ func (s *webhookStorage) findQuery(ctx context.Context, query mongoBSON.M) ([]ev
 func (s *webhookStorage) FindAllByTeams(ctx context.Context, teams []string) ([]event.Webhook, error) {
 	var query mongoBSON.M
 	if teams != nil {
-		query = mongoBSON.M{"teamowner": bson.M{"$in": teams}}
+		query = mongoBSON.M{"teamowner": mongoBSON.M{"$in": teams}}
 	}
 	return s.findQuery(ctx, query)
 }

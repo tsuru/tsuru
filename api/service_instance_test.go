@@ -22,8 +22,6 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -45,12 +43,12 @@ import (
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
 
 type ServiceInstanceSuite struct {
-	conn        *db.Storage
 	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
@@ -78,12 +76,10 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	config.Set("routers:fake:default", true)
 	config.Set("routers:fake:type", "fake")
 	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
 		Scheme:  permission.PermServiceInstance,
@@ -165,16 +161,18 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TearDownTest(c *check.C) {
-	s.conn.Services().RemoveId(s.service.Name)
-	s.conn.Close()
+
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	s.ts.Close()
 }
 
 func (s *ServiceInstanceSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	storagev2.ClearAllCollections(nil)
 }
 
 func makeRequestToCreateServiceInstance(params map[string]interface{}, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -356,7 +354,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithInvalidPoolConstraint(c *ch
 	c.Assert(err, check.IsNil)
 
 	defer func() {
-		deleteErr := service.Delete(*multiCluterservice)
+		deleteErr := service.Delete(stdContext.TODO(), *multiCluterservice)
 		c.Assert(deleteErr, check.IsNil)
 	}()
 
@@ -617,7 +615,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Description: "desc",
 		TeamOwner:   s.team.Name,
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
@@ -664,7 +664,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	t := authTypes.Team{Name: "changed"}
 	params := map[string]interface{}{
@@ -712,7 +714,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		Tags:        []string{"tag a"},
 		TeamOwner:   s.team.Name,
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
@@ -770,7 +774,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTagsAndTagValidator(
 		Tags:        []string{"tag a"},
 		TeamOwner:   s.team.Name,
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
@@ -798,7 +804,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		TeamOwner:   s.team.Name,
 		Tags:        []string{"tag a"},
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
@@ -853,7 +861,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
@@ -874,7 +884,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 		TeamOwner:   s.team.Name,
 		PlanName:    "plan",
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
@@ -918,7 +930,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutChanges(c *check.
 			"replicas": "5",
 		},
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "Awesome description about brainsql",
@@ -948,7 +962,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 			"old-parameter": "old-value",
 		},
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
@@ -993,7 +1009,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 			"replicas": "5",
 		},
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
@@ -1060,7 +1078,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo", "foo-instance", c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -1124,8 +1144,12 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 			Apps:        []string{},
 		},
 	}
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
 	for _, instance := range si {
-		err = s.conn.ServiceInstances().Insert(instance)
+		_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 		c.Assert(err, check.IsNil)
 	}
 	recorder, request := makeRequestToRemoveServiceInstance("foo2", "foo-instance", c)
@@ -1154,7 +1178,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithoutPermissionShouldR
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo-service"}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo-service", "foo-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -1167,7 +1193,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithAssociatedAppsShould
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Apps: []string{"foo-bar"}, Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo", "foo-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -1216,7 +1244,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithUnbind("mysql", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
@@ -1262,7 +1292,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
@@ -1309,7 +1341,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app", "app2"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
@@ -1327,7 +1361,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("purity", "purity-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -1359,7 +1395,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceForcingRemoval(c *check.
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithForceRemoval("purity", "purity-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -1375,8 +1413,11 @@ func (l ServiceModelList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l ServiceModelList) Less(i, j int) bool { return l[i].Service < l[j].Service }
 
 func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	srv := service.Service{
 		Name:       "redis",
 		Teams:      []string{s.team.Name},
@@ -1402,7 +1443,9 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		Jobs:        []string{},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "mongodb-other",
@@ -1411,7 +1454,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		Jobs:        []string{},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance2)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, check.IsNil)
@@ -1448,8 +1491,11 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	srv := service.Service{
 		Name:       "redis",
 		Teams:      []string{s.team.Name},
@@ -1474,7 +1520,9 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 		Apps:        []string{"globo"},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "mongodb-other",
@@ -1482,7 +1530,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance2)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances?app=other", nil)
 	c.Assert(err, check.IsNil)
@@ -1511,20 +1559,25 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestListServiceInstancesReturnsOnlyServicesThatTheUserHasAccess(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
 	_, err = nativeScheme.Create(stdContext.TODO(), u)
 	c.Assert(err, check.IsNil)
 	srv := service.Service{Name: "redis", IsRestricted: true, Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err = s.conn.Services().Insert(srv)
+	_, err = servicesCollection.InsertOne(stdContext.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "redis-globo",
 		ServiceName: "redis",
 		Apps:        []string{"globo"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, check.IsNil)
@@ -1551,14 +1604,16 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 			ServiceName: srv.Name,
 			Teams:       []string{s.team.Name},
 		}
-		err = s.conn.ServiceInstances().Insert(instance)
+		serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+		c.Assert(err, check.IsNil)
+		_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 		c.Assert(err, check.IsNil)
 		instance = service.ServiceInstance{
 			Name:        srv.Name + "2",
 			ServiceName: srv.Name,
 			Teams:       []string{s.team.Name},
 		}
-		err = s.conn.ServiceInstances().Insert(instance)
+		_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), instance)
 		c.Assert(err, check.IsNil)
 	}
 	srv := service.Service{
@@ -1669,7 +1724,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatus(c *check.C) {
 	err := service.Create(stdContext.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceStatus("mongodb", "my_nosql", c)
 	context.SetRequestID(request, requestIDHeader, "test")
@@ -1705,10 +1762,12 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusWithSameInstanceName(c *
 	err = service.Create(stdContext.TODO(), srv2)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{Name: "my_nosql", ServiceName: srv2.Name, Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si2)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si2)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceStatus("mongodb2", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
@@ -1732,7 +1791,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusShouldReturnForbiddenWhe
 	err := service.Create(stdContext.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceStatus("mongodb", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
@@ -1787,7 +1848,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 			"storage-type": "ssd",
 		},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	request.Header.Set(requestIDHeader, "test")
@@ -1854,7 +1917,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoWithRemovedPlan(c *check.C
 			"storage-type": "ssd",
 		},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	request.Header.Set(requestIDHeader, "test")
@@ -1906,7 +1971,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoForJob(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Tags:        []string{"tag 1", "tag 2"},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongo", "mongodb", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -1951,7 +2018,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoNoPlanAndNoCustomInfo(c *c
 		TeamOwner:   s.team.Name,
 		Tags:        []string{"tag 1", "tag 2"},
 	}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -1990,7 +2059,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoShouldReturnForbiddenWhenU
 	err := service.Create(stdContext.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -2012,7 +2083,9 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 		Jobs:        []string{"test-job"},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si1)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
@@ -2020,7 +2093,7 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 		Apps:        []string{"wordpress"},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si2)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/mongodb?:name=mongodb", nil)
 	c.Assert(err, check.IsNil)
@@ -2066,7 +2139,9 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 		Apps:        []string{},
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(si1)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
@@ -2074,7 +2149,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 		Apps:        []string{"wordpress"},
 		Teams:       []string{},
 	}
-	err = s.conn.ServiceInstances().Insert(si2)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%[1]s?:name=%[1]s", "mongodb"), nil)
 	c.Assert(err, check.IsNil)
@@ -2163,10 +2238,15 @@ func (s *ServiceInstanceSuite) TestServiceDocReturns404WhenServiceDoesNotExists(
 }
 
 func (s *ServiceInstanceSuite) TestGetServiceInstanceOrError(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
+	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.DeleteOne(stdContext.TODO(), mongoBSON.M{"_id": s.service.Name})
+	c.Assert(err, check.IsNil)
+
 	si := service.ServiceInstance{Name: "foo", ServiceName: "foo-service", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	rSi, err := getServiceInstanceOrError(stdContext.TODO(), "foo-service", "foo")
 	c.Assert(err, check.IsNil)
@@ -2336,7 +2416,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/foo-instance/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -2371,7 +2453,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/1.20/services/%s/resources/%s/mypath/hi", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -2412,7 +2496,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/foo-instance/mypath", si.ServiceName, si.Name)
 	body := strings.NewReader("my=awesome&body=1")
@@ -2464,7 +2550,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2Post(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/1.20/services/%s/resources/%s/mypath", si.ServiceName, si.Name)
 	body := strings.NewReader("my=awesome&body=1")
@@ -2520,7 +2608,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostRawBody(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/foo-instance/mypath", si.ServiceName, si.Name)
 	body := strings.NewReader("something-something")
@@ -2570,7 +2660,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostJSON(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/foo-instance/mypath", si.ServiceName, si.Name)
 	body := strings.NewReader(`{"my":"awesome","body":1}`)
@@ -2612,7 +2704,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/foo-instance/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -2634,7 +2728,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyError(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/foo-instance/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -2658,7 +2754,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyOnlyPath(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("POST", url, nil)
@@ -2695,7 +2793,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyForbiddenPath(c *check.C)
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/", si.ServiceName, si.Name)
 	request, err := http.NewRequest("POST", url, nil)
@@ -2729,7 +2829,9 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "si-test", ServiceName: "go", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	teamName := "test"
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si.ServiceName, si.Name,
@@ -2781,10 +2883,12 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 		c.Assert(err, check.IsNil)
 	}
 	si := service.ServiceInstance{Name: "si-test", ServiceName: se[0].Name, Teams: []string{s.team.Name}}
-	err := s.conn.ServiceInstances().Insert(si)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{Name: "si-test", ServiceName: se[1].Name, Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(si2)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si2)
 	c.Assert(err, check.IsNil)
 	teamName := "test"
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si2.ServiceName, si2.Name,

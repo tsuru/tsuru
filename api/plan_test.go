@@ -10,11 +10,11 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/event/eventtest"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -72,10 +72,10 @@ func (s *S) TestPlanAddJSON(c *check.C) {
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
 		StartCustomData: []interface{}{
-			bson.M{"name": ":mux-path-template", "value": "/plans"},
-			bson.M{"name": "memory", "value": "9.223372036854776e+18"},
-			bson.M{"name": "cpumilli", "value": "2000"},
-			bson.M{"name": "name", "value": "xyz"},
+			mongoBSON.M{"name": ":mux-path-template", "value": "/plans"},
+			mongoBSON.M{"name": "memory", "value": "9.223372036854776e+18"},
+			mongoBSON.M{"name": "cpumilli", "value": "2000"},
+			mongoBSON.M{"name": "name", "value": "xyz"},
 		},
 	}, eventtest.HasEvent)
 

@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongodb:
-        image: mongo:4
+        image: mongo:5
         ports: ['27017:27017']
       redis:
         image: redis
@@ -13,7 +13,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
@@ -38,19 +38,20 @@ jobs:
       fail-fast: true
       matrix:
         k8s_version:
-        - 1.28
+        - "1.29"
+        - "1.30"
     steps:
     - uses: actions/checkout@master
     - name: Running up Kubernetes (using Minikube)
       uses: medyagh/setup-minikube@master
       with:
-        kubernetes-version: v${{ matrix.k8s_version }}
+        kubernetes-version: "v${{ matrix.k8s_version }}"
     - uses: azure/setup-helm@v1
       with:
-        version: v3.7.0
+        version: v3.14.3
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.20"
+        go-version: "1.22"
     - uses: actions/cache@v2
       with:
         path: |
@@ -75,7 +76,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
     - run: make yamllint
     - uses: golangci/golangci-lint-action@v6
@@ -90,7 +91,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21.12'
+        go-version: '1.22'
     - id: govulncheck
       uses: golang/govulncheck-action@v1
   check-contributors:
@@ -98,40 +99,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: ./misc/check-contributors.sh
-  leakdetector:
-    runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:4
-        ports: ['27017:27017']
-      redis:
-        image: redis
-        ports: ['6379:6379']
-    steps:
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/go/pkg/mod
-          ~/.cache/go-build
-        key: ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
-        restore-keys: |
-          ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-
-          ${{ runner.os }}-goleak-
-    - run: git ls-tree -r -t --full-name --name-only HEAD | grep -v vendor | xargs -I{} -P4 sh -c 'touch -d $(git log --pretty=format:%cI -1 HEAD -- "{}") "{}"'
-    - run: sudo apt-get update && sudo apt-get install -y xmlsec1
-    - run: make leakdetector
   check-handlers:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -145,7 +118,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -159,7 +132,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -173,7 +146,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
     - run: make validate-api-spec
   verify-codegen:
@@ -181,7 +154,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -197,7 +170,6 @@ jobs:
     - lint
     - integration
     - check-contributors
-    - leakdetector
     - check-handlers
     - check-events
     - check-api-doc
@@ -223,6 +195,11 @@ jobs:
         docker_image: tsuru/api
         default_branch: main
         tag_with_sha: 'true'
+    - name: Get version from tag
+      id: gittag
+      uses: jimschubert/query-tag-action@v1
+      with:
+        commit-ish: HEAD
     - uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -230,6 +207,8 @@ jobs:
     - uses: docker/build-push-action@v2
       with:
         context: .
+        build-args: |
+          TSURU_BUILD_VERSION="${{steps.gittag.outputs.tag}}"
         push: true
         tags: ${{ steps.smarttag.outputs.tag }}
         cache-from: type=local,src=/tmp/.buildx-cache

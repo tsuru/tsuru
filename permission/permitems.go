@@ -43,6 +43,8 @@ var (
 	PermAppUpdateCertificate             = PermissionRegistry.get("app.update.certificate")              // [global app team pool]
 	PermAppUpdateCertificateSet          = PermissionRegistry.get("app.update.certificate.set")          // [global app team pool]
 	PermAppUpdateCertificateUnset        = PermissionRegistry.get("app.update.certificate.unset")        // [global app team pool]
+	PermAppUpdateCertIssuerSet		     = PermissionRegistry.get("app.update.certissuer.set")           // [global app team pool]
+	PermAppUpdateCertIssuerUnset		 = PermissionRegistry.get("app.update.certissuer.unset")         // [global app team pool]
 	PermAppUpdateCname                   = PermissionRegistry.get("app.update.cname")                    // [global app team pool]
 	PermAppUpdateCnameAdd                = PermissionRegistry.get("app.update.cname.add")                // [global app team pool]
 	PermAppUpdateCnameRemove             = PermissionRegistry.get("app.update.cname.remove")             // [global app team pool]

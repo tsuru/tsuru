@@ -21,6 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	mongoprom "github.com/globocom/mongo-go-prometheus"
 )
 
 const (
@@ -38,6 +40,7 @@ func init() {
 	var runtimeObject runtime.Object
 
 	var ignoreEncode bsoncodec.ValueEncoderFunc = func(ec bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
+		vw.WriteUndefined()
 		return nil
 	}
 
@@ -50,12 +53,19 @@ func init() {
 	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreEncode)
 	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreDecode)
 	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreDecode)
+
 }
 
 func Reset() {
 	client.Store(nil)
 	databaseNamePtr.Store(nil)
 }
+
+var monitor = mongoprom.NewCommandMonitor(
+	mongoprom.WithInstanceName("tsurud"),
+	mongoprom.WithNamespace("tsuru"),
+	mongoprom.WithDurationBuckets([]float64{.001, .005, .01, .05, .1, .5, 1, 5, 10}),
+)
 
 func connect() (*mongo.Client, *string, error) {
 	var uri string
@@ -72,7 +82,9 @@ func connect() (*mongo.Client, *string, error) {
 			SetAppName("tsurud").
 			SetBSONOptions(&options.BSONOptions{
 				NilSliceAsEmpty: true,
-			}),
+				NilMapAsEmpty:   true,
+			}).
+			SetMonitor(monitor),
 	)
 	if err != nil {
 		return nil, nil, err

@@ -8,17 +8,18 @@ import (
 	"context"
 	"io"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -71,7 +72,11 @@ func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	expected := quota.Quota{Limit: 2}
 	a, ok := r.(*App)
 	c.Assert(ok, check.Equals, true)
@@ -123,17 +128,20 @@ func (s *S) TestInsertAppDuplication(c *check.C) {
 }
 
 func (s *S) TestInsertAppBackward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: &app,
 	}
-	err := CreateApp(context.TODO(), &app, s.user)
+	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	insertApp.Backward(ctx)
-	n, err := s.conn.Apps().Find(bson.M{"name": app.Name}).Count()
+	n, err := appsCollection.CountDocuments(context.TODO(), mongoBSON.M{"name": app.Name})
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	c.Assert(n, check.Equals, int64(0))
 }
 
 func (s *S) TestInsertAppMinimumParams(c *check.C) {
@@ -192,12 +200,15 @@ func (s *S) TestExportEnvironmentsMinParams(c *check.C) {
 }
 
 func (s *S) TestProvisionAppForward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
@@ -209,12 +220,15 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 }
 
 func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
@@ -232,12 +246,15 @@ func (s *S) TestProvisionAppForwardInvalidApp(c *check.C) {
 }
 
 func (s *S) TestProvisionAppBackward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(fwctx)
@@ -385,6 +402,9 @@ func (s *S) TestReserveUserAppMinParams(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -396,7 +416,7 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(err, check.IsNil)
@@ -404,6 +424,9 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -415,7 +438,7 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
 	c.Assert(err, check.IsNil)
@@ -423,6 +446,9 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -434,7 +460,7 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 1}})
 	c.Assert(result, check.IsNil)
@@ -468,6 +494,9 @@ func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -479,7 +508,7 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 		c.Assert(quantity, check.Equals, -3)
 		return nil
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
 }

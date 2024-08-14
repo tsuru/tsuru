@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -24,6 +24,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
@@ -220,6 +221,62 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0], expected[1]})
 }
 
+func (s *S) TestListFilteredDeploysWithDisabledRollback(c *check.C) {
+	a := App{
+		Name:      "g1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	team := authTypes.Team{Name: "team"}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &team, nil
+	}
+	a = App{
+		Name:      "ge",
+		Platform:  "zend",
+		TeamOwner: team.Name,
+	}
+	err = CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
+	version.ToggleEnabled(false, "test") // disable rollback
+	testBaseImage, err := version.BaseImageName()
+	c.Check(err, check.IsNil)
+	insert := []DeployData{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		{App: "ge", Timestamp: time.Now(), Image: testBaseImage},
+	}
+	insertDeploysAsEvents(insert, c)
+	expected := []DeployData{insert[1], insert[0]}
+	expected[0].CanRollback = false
+	expected[0].Image = "registry.somewhere/tsuru/app-ge:v1"
+	expected[0].Version = version.Version()
+	normalizeTS(expected)
+	f := &Filter{}
+	f.ExtraIn("teams", team.Name)
+	deploys, err := ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.HasLen, 1)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0]})
+	f = &Filter{}
+	f.ExtraIn("name", "g1")
+	deploys, err = ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[1]})
+	f = &Filter{}
+	deploys, err = ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0], expected[1]})
+}
+
 func normalizeTS(deploys []DeployData) {
 	for i := range deploys {
 		deploys[i].Timestamp = time.Unix(deploys[i].Timestamp.Unix(), 0)
@@ -281,7 +338,7 @@ func (s *S) TestGetDeploy(c *check.C) {
 }
 
 func (s *S) TestGetDeployNotFound(c *check.C) {
-	idTest := bson.NewObjectId()
+	idTest := primitive.NewObjectID()
 	deploy, err := GetDeploy(context.TODO(), idTest.Hex())
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 	c.Assert(deploy, check.IsNil)
@@ -324,6 +381,9 @@ func (s *S) TestBuildApp(c *check.C) {
 }
 
 func (s *S) TestDeployAppUpload(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "some-app",
 		Platform:  "django",
@@ -331,7 +391,7 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my file")
 	writer := &bytes.Buffer{}
@@ -353,11 +413,15 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
 }
 
 func (s *S) TestDeployAppImage(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "some-app",
 		Platform:  "django",
@@ -365,7 +429,7 @@ func (s *S) TestDeployAppImage(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -386,11 +450,15 @@ func (s *S) TestDeployAppImage(c *check.C) {
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:           "some-app",
 		Platform:       "django",
@@ -399,7 +467,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 		TeamOwner:      s.team.Name,
 		Router:         "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my file")
 	writer := &bytes.Buffer{}
@@ -421,11 +489,15 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
 }
 
 func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:           "some-app",
 		Platform:       "django",
@@ -434,7 +506,7 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 		TeamOwner:      s.team.Name,
 		Router:         "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -455,7 +527,8 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
@@ -486,6 +559,9 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 }
 
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -493,7 +569,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -512,11 +588,15 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployData(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -524,7 +604,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
@@ -545,11 +625,15 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -557,7 +641,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -576,11 +660,15 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -588,7 +676,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -609,11 +697,15 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -621,7 +713,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -642,7 +734,8 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
@@ -754,17 +847,21 @@ func (s *S) TestValidateOrigin(c *check.C) {
 }
 
 func (s *S) TestIncrementDeploy(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	incrementDeploy(&a)
+	incrementDeploy(context.TODO(), &a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
+	c.Assert(err, check.IsNil)
 	c.Assert(a.Deploys, check.Equals, uint(1))
 }
 
@@ -866,6 +963,9 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 }
 
 func (s *S) TestRollbackWithNameImage(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -874,7 +974,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Router:    "fake",
 	}
 	version := newSuccessfulAppVersion(c, &a)
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -897,11 +997,15 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, testBaseImage)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "otherapp"}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "otherapp",
 		Platform:  "zend",
@@ -909,7 +1013,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &a)
 	writer := &bytes.Buffer{}
@@ -933,7 +1037,8 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, testBaseImage)
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "otherapp"}).Decode(&updatedApp)
+	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 

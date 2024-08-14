@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/set"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -85,11 +84,6 @@ func headlessServiceName(a provision.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "units")
 }
 
-func deployPodNameForApp(a provision.App, version appTypes.AppVersion) string {
-	name := provision.ValidKubeName(a.GetName())
-	return fmt.Sprintf("%s-v%d-deploy", name, version.Version())
-}
-
 func hpaNameForApp(a provision.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
@@ -107,30 +101,12 @@ func execCommandPodNameForApp(a provision.App) string {
 	return fmt.Sprintf("%s-isolated-run", name)
 }
 
-func daemonSetName(name, pool string) string {
-	name = provision.ValidKubeName(name)
-	pool = provision.ValidKubeName(pool)
-	if pool == "" {
-		return fmt.Sprintf("node-container-%s-all", name)
-	}
-	return fmt.Sprintf("node-container-%s-pool-%s", name, pool)
-}
-
 func volumeName(name string) string {
 	return fmt.Sprintf("%s-tsuru", name)
 }
 
 func volumeClaimName(name string) string {
 	return fmt.Sprintf("%s-tsuru-claim", name)
-}
-
-func registrySecretName(registry string) string {
-	registry = provision.ValidKubeName(registry)
-	if registry == "" {
-		return "registry"
-	}
-
-	return fmt.Sprintf("registry-%s", registry)
 }
 
 func waitFor(ctx context.Context, fn func() (bool, error), onCancel func() error) error {

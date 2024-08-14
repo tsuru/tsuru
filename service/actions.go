@@ -9,17 +9,17 @@ import (
 	"io"
 	"sort"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // notifyCreateServiceInstance is an action that calls the service endpoint
@@ -93,24 +93,31 @@ var createServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("Second parameter must be a *ServiceInstance.")
 		}
-		conn, err := db.Conn()
+
+		serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		return nil, conn.ServiceInstances().Insert(instance)
+
+		_, err = serviceInstancesCollection.InsertOne(ctx.Context, instance)
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
 			return
 		}
-		conn, err := db.Conn()
+		serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 		if err != nil {
+			log.Errorf("[create-service-instance backward] could not get service instances collection: %s", err)
 			return
 		}
-		defer conn.Close()
-		conn.ServiceInstances().Remove(bson.M{"name": instance.Name, "service_name": instance.ServiceName})
+
+		_, err = serviceInstancesCollection.DeleteOne(ctx.Context, mongoBSON.M{"name": instance.Name, "service_name": instance.ServiceName})
+		if err != nil {
+			log.Errorf("[create-service-instance backward] could not remove service instance: %s", err)
+			return
+		}
 	},
 	MinParams: 2,
 }
@@ -130,41 +137,45 @@ var updateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("Third parameter must be a ServiceInstance.")
 		}
-		conn, err := db.Conn()
+		collection, err := storagev2.ServiceInstancesCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		return nil, conn.ServiceInstances().Update(
-			bson.M{"name": instance.Name, "service_name": instance.ServiceName},
-			bson.M{
-				"$set": bson.M{
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": instance.Name, "service_name": instance.ServiceName},
+			mongoBSON.M{
+				"$set": mongoBSON.M{
 					"description": updateData.Description,
 					"tags":        updateData.Tags,
 					"teamowner":   updateData.TeamOwner,
 					"plan_name":   updateData.PlanName,
 					"parameters":  updateData.Parameters,
 				},
-				"$addToSet": bson.M{
+				"$addToSet": mongoBSON.M{
 					"teams": updateData.TeamOwner,
 				},
 			},
 		)
+
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 		instance, ok := ctx.Params[1].(ServiceInstance)
 		if !ok {
 			return
 		}
-		conn, err := db.Conn()
+		collection, err := storagev2.ServiceInstancesCollection()
 		if err != nil {
+			log.Errorf("[update-service-instance backward] could not get service instances collection: %s", err)
 			return
 		}
-		defer conn.Close()
-		conn.ServiceInstances().Update(
-			bson.M{"name": instance.Name, "service_name": instance.ServiceName},
-			bson.M{
-				"$set": bson.M{
+
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": instance.Name, "service_name": instance.ServiceName},
+			mongoBSON.M{
+				"$set": mongoBSON.M{
 					"description": instance.Description,
 					"tags":        instance.Tags,
 					"teamowner":   instance.TeamOwner,
@@ -173,6 +184,11 @@ var updateServiceInstance = action.Action{
 				},
 			},
 		)
+
+		if err != nil {
+			log.Errorf("[update-service-instance backward] could not update service instance: %s", err)
+		}
+
 	},
 	MinParams: 3,
 }
@@ -243,25 +259,29 @@ var bindAppDBAction = &action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
-		conn, err := db.Conn()
+		collection, err := storagev2.ServiceInstancesCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		si := args.serviceInstance
-		updateOp := bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}}
-		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "apps": bson.M{"$ne": args.app.GetName()}}, updateOp)
+		updateOp := mongoBSON.M{"$addToSet": mongoBSON.M{"apps": args.app.GetName()}}
+		result, err := collection.UpdateOne(ctx.Context, mongoBSON.M{"name": si.Name, "service_name": si.ServiceName, "apps": mongoBSON.M{"$ne": args.app.GetName()}}, updateOp)
 		if err != nil {
-			if err == mgo.ErrNotFound {
+			if err == mongo.ErrNoDocuments {
 				return nil, ErrAppAlreadyBound
 			}
 			return nil, err
 		}
+
+		if result.ModifiedCount == 0 {
+			return nil, ErrAppAlreadyBound
+		}
+
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		if err := args.serviceInstance.updateData(bson.M{"$pull": bson.M{"apps": args.app.GetName()}}); err != nil {
+		if err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"apps": args.app.GetName()}}); err != nil {
 			log.Errorf("[bind-app-db backward] could not remove app from service instance: %s", err)
 		}
 	},
@@ -275,25 +295,29 @@ var bindJobDBAction = &action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 		}
-		conn, err := db.Conn()
+		collection, err := storagev2.ServiceInstancesCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 		si := args.serviceInstance
-		updateOp := bson.M{"$addToSet": bson.M{"jobs": args.job.Name}}
-		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "jobs": bson.M{"$ne": args.job.Name}}, updateOp)
+		updateOp := mongoBSON.M{"$addToSet": mongoBSON.M{"jobs": args.job.Name}}
+		result, err := collection.UpdateOne(ctx.Context, mongoBSON.M{"name": si.Name, "service_name": si.ServiceName, "jobs": mongoBSON.M{"$ne": args.job.Name}}, updateOp)
 		if err != nil {
-			if err == mgo.ErrNotFound {
+			if err == mongo.ErrNoDocuments {
 				return nil, ErrJobAlreadyBound
 			}
 			return nil, err
 		}
+
+		if result.ModifiedCount == 0 {
+			return nil, ErrJobAlreadyBound
+		}
+
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
-		if err := args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.Name}}); err != nil {
+		if err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"jobs": args.job.Name}}); err != nil {
 			log.Errorf("[bind-job-db backward] could not remove job from service instance: %s", err)
 		}
 	},
@@ -494,11 +518,11 @@ var unbindAppDB = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
-		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
+		return nil, args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"apps": args.app.GetName()}})
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		err := args.serviceInstance.updateData(bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}})
+		err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$addToSet": mongoBSON.M{"apps": args.app.GetName()}})
 		if err != nil {
 			log.Errorf("[unbind-app-db backward] failed to rebind app in db: %s", err)
 		}
@@ -577,11 +601,11 @@ var unbindJobDB = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 		}
-		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.Name}})
+		return nil, args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"jobs": args.job.Name}})
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
-		err := args.serviceInstance.updateData(bson.M{"$addToSet": bson.M{"jobs": args.job.Name}})
+		err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$addToSet": mongoBSON.M{"jobs": args.job.Name}})
 		if err != nil {
 			log.Errorf("[unbind-job-db backward] failed to rebind job in db: %s", err)
 		}

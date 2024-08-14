@@ -14,8 +14,6 @@ import (
 
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/servicemanager"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -95,27 +93,6 @@ func (s *S) TestHeadlessServiceName(c *check.C) {
 	}
 }
 
-func (s *S) TestDeployPodNameForApp(c *check.C) {
-	var tests = []struct {
-		name, expected string
-	}{
-		{"myapp", "myapp-v1-deploy"},
-		{"MYAPP", "myapp-v1-deploy"},
-		{"my-app_app", "my-app-app-v1-deploy"},
-		{"myapp", "myapp-v2-deploy"},
-	}
-	for i, tt := range tests {
-		fakeApp := provisiontest.NewFakeApp(tt.name, "python", 0)
-		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-			App: fakeApp,
-		})
-		c.Assert(err, check.IsNil)
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		name := deployPodNameForApp(a, version)
-		c.Check(name, check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
-
 func (s *S) TestExecCommandPodNameForApp(c *check.C) {
 	var tests = []struct {
 		name, expected string
@@ -127,35 +104,6 @@ func (s *S) TestExecCommandPodNameForApp(c *check.C) {
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
 		c.Check(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
-
-func (s *S) TestDaemonSetName(c *check.C) {
-	var tests = []struct {
-		name, pool, expected string
-	}{
-		{"d1", "", "node-container-d1-all"},
-		{"D1", "", "node-container-d1-all"},
-		{"d1_x", "", "node-container-d1-x-all"},
-		{"d1", "p1", "node-container-d1-pool-p1"},
-		{"d1", "P1", "node-container-d1-pool-p1"},
-		{"d1", "P_1", "node-container-d1-pool-p-1"},
-		{"d1", "P-x_1", "node-container-d1-pool-p-x-1"},
-	}
-	for i, tt := range tests {
-		c.Check(daemonSetName(tt.name, tt.pool), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
-
-func (s *S) TestRegistrySecretName(c *check.C) {
-	var tests = []struct {
-		name, expected string
-	}{
-		{"registry.tsuru.io", "registry-registry.tsuru.io"},
-		{"my-registry", "registry-my-registry"},
-	}
-	for i, tt := range tests {
-		c.Check(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 

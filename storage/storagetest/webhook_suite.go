@@ -7,6 +7,7 @@ package storagetest
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 
 	eventTypes "github.com/tsuru/tsuru/types/event"
@@ -38,6 +39,7 @@ func (s *WebhookSuite) TestInsertWebhook(c *check.C) {
 		TeamOwner: "team1",
 		URL:       "http://mysrv.com:123/abc?a=b",
 		Method:    "GET",
+		Headers:   http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			KindTypes:    []string{},
 			KindNames:    []string{},
@@ -217,8 +219,9 @@ func (s *WebhookSuite) TestUpdate(c *check.C) {
 	dbW, err := s.WebhookStorage.FindByName(context.TODO(), "wh1")
 	c.Assert(err, check.IsNil)
 	c.Assert(dbW, check.DeepEquals, &eventTypes.Webhook{
-		Name:   "wh1",
-		Method: "GET",
+		Name:    "wh1",
+		Method:  "GET",
+		Headers: http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			KindTypes:    []string{},
 			KindNames:    []string{},

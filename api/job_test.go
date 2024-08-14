@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/cezarsa/form"
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -1198,7 +1198,9 @@ func (s *S) TestJobInfo(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{"j1"},
 	}
-	err = s.conn.ServiceInstances().Insert(&sInstance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance)
 	c.Assert(err, check.IsNil)
 
 	defer provision.Unregister("jobProv")
@@ -1265,7 +1267,9 @@ func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1295,7 +1299,7 @@ func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
 	c.Check(recorder.Code, check.Equals, http.StatusOK)
 	c.Check(recorder.Body.String(), check.Equals, "")
 
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Jobs, check.DeepEquals, []string{job.Name})
 	c.Assert(eventtest.EventDesc{
@@ -1323,7 +1327,9 @@ func (s *S) TestJobServiceInstanceBindWithNonExistentServiceInstance(c *check.C)
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1372,7 +1378,9 @@ func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check
 		ServiceName: "mysql",
 		TeamOwner:   s.team.Name,
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1424,7 +1432,10 @@ func (s *S) TestJobServiceInstanceBindWithNonExistentJob(c *check.C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 	}
-	err := s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, "fake-job-name")
@@ -1456,7 +1467,9 @@ func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1515,7 +1528,9 @@ func (s *S) TestJobServiceInstanceBindWithInvalidPoolService(c *check.C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1573,7 +1588,9 @@ func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1656,7 +1673,9 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{job.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1668,7 +1687,7 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Jobs, check.DeepEquals, []string{})
 
@@ -1762,7 +1781,9 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{"test-job"},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s?force=true", instance.ServiceName, instance.Name, job.Name)
@@ -1774,7 +1795,7 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Jobs, check.DeepEquals, []string{})
 
@@ -1867,8 +1888,12 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 			Jobs:        []string{job.Name},
 		},
 	}
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
 	for _, instance := range instances {
-		err = s.conn.ServiceInstances().Insert(instance)
+		_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 		c.Assert(err, check.IsNil)
 	}
 
@@ -1882,11 +1907,11 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 
 	var result service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[0].Name, "service_name": instances[0].ServiceName}).One(&result)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instances[0].Name, "service_name": instances[0].ServiceName}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Jobs, check.DeepEquals, []string{})
 
-	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[1].Name, "service_name": instances[1].ServiceName}).One(&result)
+	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instances[1].Name, "service_name": instances[1].ServiceName}).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Jobs, check.DeepEquals, []string{job.Name})
 }
@@ -1905,7 +1930,11 @@ func (s *S) TestJobServiceInstanceUnbindWithNonExistentJob(c *check.C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 	}
-	err := s.conn.ServiceInstances().Insert(instance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, "fake-job-name")
@@ -1938,7 +1967,9 @@ func (s *S) TestJobServiceInstanceUnbindWithNonExistentServiceInstance(c *check.
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1987,7 +2018,9 @@ func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *che
 		ServiceName: "mysql",
 		TeamOwner:   s.team.Name,
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -2042,7 +2075,9 @@ func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -2127,7 +2162,9 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) 
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{job.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s?force=true", instance.ServiceName, instance.Name, job.Name)
@@ -2194,7 +2231,9 @@ func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{job.Name},
 	}
-	err = s.conn.ServiceInstances().Insert(instance)
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)

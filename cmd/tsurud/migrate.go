@@ -10,23 +10,13 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tablecli"
-	"github.com/tsuru/tsuru/app"
-	appImageMigrate "github.com/tsuru/tsuru/app/image/migrate"
-	appMigrate "github.com/tsuru/tsuru/app/migrate"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/migration"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	kubeMigrate "github.com/tsuru/tsuru/provision/kubernetes/migrate"
-	"github.com/tsuru/tsuru/provision/pool"
-	authTypes "github.com/tsuru/tsuru/types/auth"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 const (
@@ -39,35 +29,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
-	err = migration.Register("migrate-pool", migratePool)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-set-pool-to-app", setPoolToApps)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-plan-router-to-app-router", appMigrate.MigrateAppPlanRouterToRouter)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-service-envs", appMigrate.MigrateAppTsuruServicesVarToServiceEnvs)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-plan-id-to-plan-name", appMigrate.MigrateAppPlanIDToPlanName)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.RegisterOptional("migrate-roles", migrateRoles)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
 	err = migration.Register("migrate-apps-kubernetes-crd", kubeMigrate.MigrateAppsCRDs)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-app-image-exposed-ports", appImageMigrate.MigrateExposedPorts)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -91,8 +53,8 @@ func (*migrationListCmd) Info() *cmd.Info {
 	}
 }
 
-func (*migrationListCmd) Run(context *cmd.Context) error {
-	migrations, err := migration.List()
+func (*migrationListCmd) Run(c *cmd.Context) error {
+	migrations, err := migration.List(context.Background())
 	if err != nil {
 		return err
 	}
@@ -101,7 +63,7 @@ func (*migrationListCmd) Run(context *cmd.Context) error {
 	for _, m := range migrations {
 		tbl.AddRow(tablecli.Row{m.Name, strconv.FormatBool(!m.Optional), strconv.FormatBool(m.Ran)})
 	}
-	fmt.Fprint(context.Stdout, tbl.String())
+	fmt.Fprint(c.Stdout, tbl.String())
 	return nil
 }
 
@@ -122,9 +84,9 @@ must be informed.`,
 	}
 }
 
-func (c *migrateCmd) Run(context *cmd.Context) error {
-	return migration.Run(migration.RunArgs{
-		Writer: context.Stdout,
+func (c *migrateCmd) Run(cmdContext *cmd.Context) error {
+	return migration.Run(context.Background(), migration.RunArgs{
+		Writer: cmdContext.Stdout,
 		Dry:    c.dry,
 		Name:   c.name,
 		Force:  c.force,
@@ -157,146 +119,6 @@ func migrateImages() error {
 			return err
 		}
 		return nil
-	}
-	return nil
-}
-
-func migratePool() error {
-	db, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	poolColl := db.Collection("pool")
-	var pools []pool.Pool
-	err = db.Collection("docker_scheduler").Find(nil).All(&pools)
-	if err != nil {
-		return err
-	}
-	for _, p := range pools {
-		err = poolColl.Insert(p)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func setPoolToApps() error {
-	ctx := context.Background()
-	db, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	var apps []app.App
-	var tooManyPoolsApps []app.App
-	err = db.Apps().Find(nil).All(&apps)
-	if err != nil {
-		return err
-	}
-	for _, a := range apps {
-		err = a.SetPool(ctx)
-		if err != nil {
-			tooManyPoolsApps = append(tooManyPoolsApps, a)
-			continue
-		}
-		err = db.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"pool": a.Pool}})
-		if err != nil {
-			return err
-		}
-	}
-	if len(tooManyPoolsApps) > 0 {
-		fmt.Println("Apps bellow couldn't be migrated because they are in more than one pool.")
-		fmt.Println("To fix this, please run `tsuru app-change-pool <pool_name> -a app` for each app.")
-		fmt.Println("*****************************************")
-		for _, a := range tooManyPoolsApps {
-			fmt.Println(a.Name)
-		}
-	}
-	return nil
-}
-
-func createRole(ctx context.Context, name, contextType string) (permission.Role, error) {
-	role, err := permission.NewRole(ctx, name, contextType, "")
-	if err == permTypes.ErrRoleAlreadyExists {
-		role, err = permission.FindRole(ctx, name)
-	}
-	return role, err
-}
-
-func migrateRoles() error {
-	ctx := context.Background()
-	adminTeam, err := config.GetString("admin-team")
-	if err != nil {
-		return err
-	}
-	adminRole, err := createRole(ctx, "admin", "global")
-	if err != nil {
-		return err
-	}
-	err = adminRole.AddPermissions(ctx, "*")
-	if err != nil {
-		return err
-	}
-	teamMember, err := createRole(ctx, "team-member", "team")
-	if err != nil {
-		return err
-	}
-	err = teamMember.AddPermissions(ctx, permission.PermApp.FullName(),
-		permission.PermTeam.FullName(),
-		permission.PermServiceInstance.FullName())
-	if err != nil {
-		return err
-	}
-	err = teamMember.AddEvent(ctx, permTypes.RoleEventTeamCreate.String())
-	if err != nil {
-		return err
-	}
-	teamCreator, err := createRole(ctx, "team-creator", "global")
-	if err != nil {
-		return err
-	}
-	err = teamCreator.AddPermissions(ctx, permission.PermTeamCreate.FullName())
-	if err != nil {
-		return err
-	}
-	err = teamCreator.AddEvent(ctx, permTypes.RoleEventUserCreate.String())
-	if err != nil {
-		return err
-	}
-	users, err := auth.ListUsers(ctx)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	for _, u := range users {
-		var teams []authTypes.Team
-		err := conn.Collection("teams").Find(bson.M{"users": bson.M{"$in": []string{u.Email}}}).All(&teams)
-		if err != nil {
-			return err
-		}
-		for _, team := range teams {
-			if team.Name == adminTeam {
-				err := u.AddRole(ctx, adminRole.Name, "")
-				if err != nil {
-					fmt.Printf("%s\n", err.Error())
-				}
-				continue
-			}
-			err := u.AddRole(ctx, teamMember.Name, team.Name)
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-			}
-			err = u.AddRole(ctx, teamCreator.Name, "")
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-			}
-		}
 	}
 	return nil
 }
