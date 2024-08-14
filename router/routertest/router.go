@@ -20,8 +20,7 @@ var FakeRouter = newFakeRouter()
 
 var TLSRouter = tlsRouter{
 	fakeRouter: newFakeRouter(),
-	Certs:      make(map[string]string),
-	Keys:       make(map[string]string),
+	CertData:   make(map[string]router.CertData),
 }
 
 var ErrForcedFailure = errors.New("Forced failure")
@@ -220,30 +219,30 @@ func (r *fakeRouter) Addresses(ctx context.Context, app router.App) ([]string, e
 
 type tlsRouter struct {
 	fakeRouter
-	Certs map[string]string
-	Keys  map[string]string
+	CertData map[string]router.CertData
 }
 
 var _ router.TLSRouter = &tlsRouter{}
 
 func (r *tlsRouter) AddCertificate(ctx context.Context, app router.App, cname, certificate, key string) error {
-	r.Certs[cname] = certificate
-	r.Keys[cname] = key
+	r.CertData[cname] = router.CertData{
+		Certificate: certificate,
+		Key:         key,
+	}
 	return nil
 }
 
 func (r *tlsRouter) RemoveCertificate(ctx context.Context, app router.App, cname string) error {
-	delete(r.Certs, cname)
-	delete(r.Keys, cname)
+	delete(r.CertData, cname)
 	return nil
 }
 
-func (r *tlsRouter) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
-	data, ok := r.Certs[cname]
-	if !ok {
-		return "", router.ErrCertificateNotFound
+func (r *tlsRouter) GetCertificate(ctx context.Context, app router.App, cname string) (router.CertData, error) {
+	certData, hasCert := r.CertData[cname]
+	if !hasCert {
+		return router.CertData{}, router.ErrCertificateNotFound
 	}
-	return data, nil
+	return certData, nil
 }
 
 func (r *tlsRouter) Addresses(ctx context.Context, app router.App) ([]string, error) {
@@ -256,4 +255,17 @@ func (r *tlsRouter) Addresses(ctx context.Context, app router.App) ([]string, er
 	}
 
 	return addrs, nil
+}
+
+type certManagerTLSRouter struct {
+	CertData map[string]router.CertData
+}
+
+var _ router.CertmanagerTLSRouter = &certManagerTLSRouter{}
+
+func (r *certManagerTLSRouter) IssueCertificate(ctx context.Context, app router.App, cname, issuer string) error {
+	r.CertData[cname] = router.CertData{
+		IsManagedByCertManager: true,
+	}
+	return nil
 }

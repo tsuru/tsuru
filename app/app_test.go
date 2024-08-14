@@ -4728,8 +4728,19 @@ func (s *S) TestSetCertificateForApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, string(cert))
-	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, string(key))
+	c.Assert(routertest.TLSRouter.CertData[cname].Certificate, check.Equals, string(cert))
+	c.Assert(routertest.TLSRouter.CertData[cname].Key, check.Equals, string(key))
+	c.Assert(routertest.TLSRouter.CertData[cname].IsManagedByCertManager, check.Equals, false)
+}
+
+func (s *S) TestSetCertificateWithIssuer(c *check.C) {
+	cname := "app.io"
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificateWithIssuer(context.TODO(), cname, "certmanager-issuer")
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.TLSRouter.CertData[cname].IsManagedByCertManager, check.Equals, true)
 }
 
 func (s *S) TestSetCertificateForAppCName(c *check.C) {
@@ -4743,8 +4754,9 @@ func (s *S) TestSetCertificateForAppCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, string(cert))
-	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, string(key))
+	c.Assert(routertest.TLSRouter.CertData[cname].Certificate, check.Equals, string(cert))
+	c.Assert(routertest.TLSRouter.CertData[cname].Key, check.Equals, string(key))
+	c.Assert(routertest.TLSRouter.CertData[cname].IsManagedByCertManager, check.Equals, false)
 }
 
 func (s *S) TestSetCertificateNonTLSRouter(c *check.C) {
@@ -4765,8 +4777,8 @@ func (s *S) TestSetCertificateInvalidCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(context.TODO(), "example.com", "cert", "key")
 	c.Assert(err, check.ErrorMatches, "invalid name")
-	c.Assert(routertest.TLSRouter.Certs["example.com"], check.Equals, "")
-	c.Assert(routertest.TLSRouter.Keys["example.com"], check.Equals, "")
+	c.Assert(routertest.TLSRouter.CertData["example.com"].Certificate, check.Equals, "")
+	c.Assert(routertest.TLSRouter.CertData["example.com"].Key, check.Equals, "")
 }
 
 func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
@@ -4780,8 +4792,8 @@ func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
 	c.Assert(err, check.ErrorMatches, "*certificate is valid for app.io, not example.io*")
-	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
-	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
+	c.Assert(routertest.TLSRouter.CertData[cname].Certificate, check.Equals, "")
+	c.Assert(routertest.TLSRouter.CertData[cname].Key, check.Equals, "")
 }
 
 func (s *S) TestRemoveCertificate(c *check.C) {
@@ -4797,8 +4809,8 @@ func (s *S) TestRemoveCertificate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.RemoveCertificate(context.TODO(), cname)
 	c.Assert(err, check.IsNil)
-	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
-	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
+	_, hasCertData := routertest.TLSRouter.CertData[cname]
+	c.Assert(hasCertData, check.Equals, false)
 }
 
 func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
@@ -4814,8 +4826,8 @@ func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.RemoveCertificate(context.TODO(), cname)
 	c.Assert(err, check.IsNil)
-	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
-	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
+	_, hasCertData := routertest.TLSRouter.CertData[cname]
+	c.Assert(hasCertData, check.Equals, false)
 }
 
 func (s *S) TestGetCertificates(c *check.C) {
@@ -4824,7 +4836,15 @@ func (s *S) TestGetCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
+	a := App{
+		Name:      "my-test-app",
+		TeamOwner: s.team.Name,
+		Routers: []appTypes.AppRouter{
+			{Name: "fake-tls"},
+			{Name: "fake-tls-2"},
+		},
+		CName: []string{cname},
+	}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
@@ -4834,13 +4854,12 @@ func (s *S) TestGetCertificates(c *check.C) {
 
 	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	expectedCerts := map[string]string{
-		"app.io":                        string(cert),
-		"my-test-app.faketlsrouter.com": "",
+	expectedCerts := map[string]router.CertData{
+		"app.io": {Certificate: string(cert)},
 	}
 	certs, err := a.GetCertificates(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
+	c.Assert(certs, check.DeepEquals, map[string]map[string]router.CertData{
 		"fake-tls": expectedCerts,
 	})
 }

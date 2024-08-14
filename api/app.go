@@ -1958,7 +1958,6 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-
 	if issuer != "" {
 		err = a.SetCertificateWithIssuer(ctx, cname, issuer)
 	} else {
