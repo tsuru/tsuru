@@ -68,7 +68,7 @@ func init() {
 
 func (s *S) SetUpTest(c *check.C) {
 	s.apiRouter = newFakeRouter(c)
-	s.apiRouter.certificates = make(map[string]certData)
+	s.apiRouter.certificates = make(map[string]router.CertData)
 	s.testRouter = &apiRouter{
 		endpoint:   s.apiRouter.endpoint,
 		client:     tsuruNet.Dial15Full60ClientNoKeepAlive,
@@ -110,7 +110,7 @@ func (s *S) TestAddCertificate(c *check.C) {
 	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
 	err := tlsRouter.AddCertificate(context.TODO(), routertest.FakeApp{Name: "myapp"}, "cname.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.certificates["myapp/cname.com"], check.DeepEquals, certData{Certificate: "cert", Key: "key"})
+	c.Assert(s.apiRouter.certificates["myapp/cname.com"], check.DeepEquals, router.CertData{Certificate: "cert", Key: "key"})
 }
 
 func (s *S) TestRemoveCertificate(c *check.C) {
@@ -323,7 +323,7 @@ type backend struct {
 type fakeRouterAPI struct {
 	listener     net.Listener
 	backends     map[string]*backend
-	certificates map[string]certData
+	certificates map[string]router.CertData
 	endpoint     string
 	router       *mux.Router
 	interceptor  func(r *http.Request)
@@ -678,7 +678,7 @@ func (f *fakeRouterAPI) addCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cname := vars["cname"]
 	name := vars["name"]
-	var cert certData
+	var cert router.CertData
 	json.NewDecoder(r.Body).Decode(&cert)
 	f.certificates[name+"/"+cname] = cert
 	w.WriteHeader(http.StatusOK)

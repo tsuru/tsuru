@@ -106,8 +106,8 @@ func (s *S) TestAddCertificate(c *check.C) {
 	r := TLSRouter
 	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	c.Assert(r.Certs["example.com"], check.DeepEquals, "cert")
-	c.Assert(r.Keys["example.com"], check.DeepEquals, "key")
+	c.Assert(r.CertData["example.com"].Certificate, check.DeepEquals, "cert")
+	c.Assert(r.CertData["example.com"].Key, check.DeepEquals, "key")
 }
 
 func (s *S) TestRemoveCertificate(c *check.C) {
@@ -116,8 +116,8 @@ func (s *S) TestRemoveCertificate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.RemoveCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(r.Certs["example.com"], check.Equals, "")
-	c.Assert(r.Keys["example.com"], check.Equals, "")
+	c.Assert(r.CertData["example.com"].Certificate, check.DeepEquals, "cert")
+	c.Assert(r.CertData["example.com"].Key, check.DeepEquals, "key")
 }
 
 func (s *S) TestGetCertificate(c *check.C) {
