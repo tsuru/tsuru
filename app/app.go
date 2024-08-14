@@ -2314,7 +2314,7 @@ func (app *App) SetCertificate(ctx context.Context, name, certificate, key strin
 		if err != nil {
 			return err
 		}
-		tlsRouter, ok := r.(router.DefaultTLSRouter)
+		tlsRouter, ok := r.(router.TLSRouter)
 		if !ok {
 			continue
 		}
@@ -2418,7 +2418,7 @@ func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]rout
 		if err != nil {
 			return nil, err
 		}
-		tlsRouter, ok := r.(router.DefaultTLSRouter)
+		tlsRouter, ok := r.(router.TLSRouter)
 		if !ok {
 			continue
 		}
@@ -2431,7 +2431,9 @@ func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]rout
 				certificates[n] = certData
 			}
 		}
-		allCertificates[appRouter.Name] = certificates
+		if len(certificates) > 0 {
+			allCertificates[appRouter.Name] = certificates
+		}
 	}
 	if len(allCertificates) == 0 {
 		return nil, errors.New("no router with tls support")

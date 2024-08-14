@@ -27,7 +27,7 @@ const routerType = "api"
 
 var (
 	_ router.Router               = &apiRouter{}
-	_ router.DefaultTLSRouter     = &apiRouterWithTLSSupport{}
+	_ router.TLSRouter            = &apiRouterWithTLSSupport{}
 	_ router.CertmanagerTLSRouter = &apiRouterWithCertManagerSupport{}
 )
 
@@ -300,18 +300,6 @@ func (r *apiRouterWithCertManagerSupport) IssueCertificate(ctx context.Context, 
 		return err
 	}
 	_, _, err = r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/cert-manager/%s", app.GetName(), cname), headers, bytes.NewReader(b))
-	return err
-}
-
-func (r *apiRouterWithCertManagerSupport) RemoveCertificate(ctx context.Context, app router.App, cname string) error {
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return err
-	}
-	_, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/cert-manager/%s", app.GetName(), cname), headers, nil)
-	if code == http.StatusNotFound {
-		return router.ErrCertificateNotFound
-	}
 	return err
 }
 

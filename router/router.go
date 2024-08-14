@@ -170,21 +170,14 @@ type CertData struct {
 
 // TLSRouter is the base interface for routers that support TLS certificates
 type TLSRouter interface {
-	RemoveCertificate(ctx context.Context, app App, cname string) error
-}
-
-// DefaultTLSRouter is a router that supports adding certificates manually
-// by providing the certificate and key for a given cname
-type DefaultTLSRouter interface {
-	TLSRouter
 	GetCertificate(ctx context.Context, app App, cname string) (CertData, error)
 	AddCertificate(ctx context.Context, app App, cname, certificate, key string) error
+	RemoveCertificate(ctx context.Context, app App, cname string) error
 }
 
 // CertmanagerTLSRouter is a router that supports issuing certificates automatically
 // for a given cname using cert-manager issuer
 type CertmanagerTLSRouter interface {
-	TLSRouter
 	IssueCertificate(ctx context.Context, app App, cname, issuer string) error
 }
 
