@@ -897,6 +897,8 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 		svcs = append(svcs, svc)
 	}
 
+	svcs = filterTsuruControlledServices(svcs)
+
 	processSet := set.Set{}
 	for _, svc := range svcs {
 		ls := labelOnlySetFromMeta(&svc.ObjectMeta)
