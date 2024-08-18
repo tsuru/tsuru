@@ -169,11 +169,12 @@ HOST_PLATFORM := $(shell uname -s)
 HOST_ARCH     := $(shell uname -m)
 
 ifeq ($(HOST_PLATFORM),Darwin)
-ifeq ($(HOST_ARCH),arm64)
 
-# NOTE: For Apple Silicon (M series) Macs, you can use the qemu2 driver with minikube.
+# For MacsOS, you can use the qemu2 driver with minikube.
 # It is recommended to use the socket_vmnet network to avoid issues with the default bridge network.
 # Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
+# 
+# NOTE: Only tested on Apple M series Macs.
 local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
 	# TODO: Check if socket_vmnet service is running
@@ -186,20 +187,6 @@ local.cluster:
 			--kubernetes-version=$(K8S_VERSION); \
 	fi
 
-else
-
-# NOTE: This needs to be tested on Apple Intel Macs.
-# reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
-local.cluster:
-	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
-	@if [ $(minikube status &>/dev/null) ]; then \
-		@echo "Starting local kubernetes cluster for mac..."; \
-		@minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION); \
-		@minikube addons enable registry; \
-		@$(DOCKER) run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"; \
-	fi
-
-endif
 else
 
 local.cluster:
@@ -242,10 +229,13 @@ local.stop:
 	@echo "Stopping local tsuru development environment..."
 	@$(DOCKER) compose --profile tsurud-api down
 	@minikube stop
+	@(LOCAL_DEV) cleanup-loopback $(TSURU_HOST_IP)
 
 local.cleardb:
-	$(DOCKER) compose --profile tsurud-api down
-	$(DOCKER) volume rm tsuru_datadb
+	@echo "Clearing local tsuru development environment..."
+	@$(DOCKER) compose --profile tsurud-api down
+	@$(DOCKER) volume rm tsuru_datadb
+	@rm -f .local-setup
 
 .PHONY: local.setup local.cluster local.precluster local.run local.stop local.cleardb
 

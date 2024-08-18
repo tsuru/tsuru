@@ -94,6 +94,21 @@ ifname_add_ip() {
     esac
 }
 
+ifname_del_ip() {
+    local interface_name=${1}
+    local ip=${2}
+
+    case "$(uname -s)" in
+        Darwin)
+            sudo ifconfig "${interface_name}" -alias "${ip}"
+            ;;
+
+        Linux)
+            sudo ip addr del "${ip}/32" dev "${interface_name}"
+            ;;
+    esac
+}
+
 render_config_template() {
     local src=$1
     local dst=$2
@@ -182,13 +197,27 @@ exec_render_templates() {
     done
 }
 
+exec_cleanup_loopback() {
+    local fake_host_ip=${1:-"$FAKE_HOST_IP"}
+    local ifname=$(get_ifname)
+
+    echo "Checking if the IP $fake_host_ip is assigned to the interface $ifname..."
+    ifname_has_ip "$ifname" "$fake_host_ip"
+    if [ $? -eq 0 ]; then
+        echo "Removing the IP $fake_host_ip from the interface $ifname..."
+        ifname_del_ip "$ifname" "$fake_host_ip"
+    fi
+}
+
 exec_help() {
     echo "Usage: $(basename $0) [COMMAND|OPTIONS]"
     echo
     echo "COMMANDS:"
-    echo "  setup-loopback      Setup the loopback interface with a fake IP"
+    echo "  setup-loopback       Setup the loopback interface with a fake IP"
     echo "  setup-tsuru-user     Setup the root user in Tsuru"
-    echo "  render-templates    Render the configuration templates"
+    echo "  setup-tsuru-target   Setup the Tsuru local-dev target"
+    echo "  setup-tsuru-cluster  Setup the Tsuru minikube cluster"
+    echo "  render-templates     Render the configuration templates"
     echo
     echo "OPTIONS:"
     echo "  -h, --help      Print this help message"
@@ -220,6 +249,7 @@ case "$1" in
     setup-tsuru-target  ) exec_setup_tsuru_target "${@:2}" ;;
     setup-tsuru-cluster ) exec_setup_tsuru_cluster "${@:2}" ;;
     render-templates    ) exec_render_templates   "${@:2}" ;;
+    cleanup-loopback    ) exec_cleanup_loopback   "${@:2}" ;;
 
     # options
     -h | --help    ) exec_help     ;;
