@@ -176,6 +176,7 @@ ifeq ($(HOST_ARCH),arm64)
 # Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
 local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	# TODO: Check if socket_vmnet service is running
 	@if [ $(minikube status &>/dev/null) ]; then \
 		@echo "Starting local kubernetes cluster for mac mseries..."; \
 		@minikube start \
