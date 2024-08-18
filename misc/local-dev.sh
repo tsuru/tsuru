@@ -7,6 +7,7 @@
 
 ### Constants
 readonly FAKE_HOST_IP="100.64.100.100"
+readonly TSURU_API_PORT="8080"
 readonly TEMPLATES_DIR="./etc"
 
 
@@ -97,7 +98,7 @@ render_config_template() {
     local src=$1
     local dst=$2
     local fake_host_ip=$3
-    local host_port=${4:-"8080"}
+    local host_port=${4:-"$TSURU_API_PORT"}
 
     {
         TSURU_HOST_IP="$fake_host_ip" TSURU_HOST_PORT="$host_port" \
@@ -137,13 +138,37 @@ exec_setup_tsuru_user() {
 }
 
 exec_setup_tsuru_target() {
-    local target_host=${1:-"localhost"}
-    local target_port=${2:-"8080"}
+    local target_host=${1:-"$FAKE_HOST_IP"}
+    local target_port=${2:-"$TSURU_API_PORT"}
     local target_name=${3:-"local-dev"}
 
     # Add the Tsuru target, ignore the output and errors because the target may already exist
     echo "Setting up the Tsuru target $target_name at http://${target_host}:${target_port}..."
     tsuru target add "$target_name" "http://${target_host}:${target_port}" &> /dev/null || true
+}
+
+exec_setup_tsuru_cluster() {
+    local tsuru_host_ip=${1:-"$FAKE_HOST_IP"}
+    local kconfig=${KUBECONFIG:-"$HOME/.kube/config"}
+
+    kconfig=$(echo $kconfig | cut -d: -f1)
+
+    tsuru --target=local-dev cluster list | grep -q my-cluster
+    if [ $? -eq 0 ]; then
+        echo "Cluster my-cluster already exists, skipping..."
+        return
+    fi
+
+    tsuru --target=local-dev cluster add my-cluster kubernetes \
+        --addr       $(yq -r '.clusters[] | select(.name == "minikube") | .cluster.server' ${kconfig}) \
+        --cacert     $(yq -r '.clusters[] | select(.name == "minikube") | .cluster["certificate-authority"]' ${kconfig}) \
+        --clientcert $(yq -r '.users[] | select(.name == "minikube") | .user["client-certificate"]' ${kconfig}) \
+        --clientkey  $(yq -r '.users[] | select(.name == "minikube") | .user["client-key"]' ${kconfig}) \
+        --custom "registry=${tsuru_host_ip}:5000/tsuru" \
+        --custom "registry-insecure=true" \
+        --custom "build-service-address=dns:///${tsuru_host_ip}:8000" \
+        --custom "build-service-tls=false" \
+        --default
 }
 
 exec_render_templates() {
@@ -190,10 +215,11 @@ fi
 
 case "$1" in
     # commands
-    setup-loopback     ) exec_setup_loopback     "${@:2}" ;;
-    setup-tsuru-user   ) exec_setup_tsuru_user   "${@:2}" ;;
-    setup-tsuru-target ) exec_setup_tsuru_target "${@:2}" ;;
-    render-templates   ) exec_render_templates   "${@:2}" ;;
+    setup-loopback      ) exec_setup_loopback     "${@:2}" ;;
+    setup-tsuru-user    ) exec_setup_tsuru_user   "${@:2}" ;;
+    setup-tsuru-target  ) exec_setup_tsuru_target "${@:2}" ;;
+    setup-tsuru-cluster ) exec_setup_tsuru_cluster "${@:2}" ;;
+    render-templates    ) exec_render_templates   "${@:2}" ;;
 
     # options
     -h | --help    ) exec_help     ;;

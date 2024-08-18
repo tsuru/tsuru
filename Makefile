@@ -168,55 +168,86 @@ LOCAL_DEV ?= ./misc/local-dev.sh
 HOST_PLATFORM := $(shell uname -s)
 HOST_ARCH     := $(shell uname -m)
 
-local.setup:
+ifeq ($(HOST_PLATFORM),Darwin)
+ifeq ($(HOST_ARCH),arm64)
+
+# NOTE: For Apple Silicon (M series) Macs, you can use the qemu2 driver with minikube.
+# It is recommended to use the socket_vmnet network to avoid issues with the default bridge network.
+# Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
+local.cluster:
+	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	@if [ $(minikube status &>/dev/null) ]; then \
+		@echo "Starting local kubernetes cluster for mac mseries..."; \
+		@minikube start \
+			--insecure-registry="$(TSURU_HOST_IP):5000" \
+			--driver=qemu2 \
+			--network=socket_vmnet \
+			--kubernetes-version=$(K8S_VERSION); \
+	fi
+
+else
+
+# NOTE: This needs to be tested on Apple Intel Macs.
+# reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
+local.cluster:
+	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	@if [ $(minikube status &>/dev/null) ]; then \
+		@echo "Starting local kubernetes cluster for mac..."; \
+		@minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION); \
+		@minikube addons enable registry; \
+		@$(DOCKER) run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"; \
+	fi
+
+endif
+else
+
+local.cluster:
+	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	@if [ $(minikube status &>/dev/null) ]; then \
+		@echo "Starting local kubernetes cluster for linux..."; \
+		@minikube start --driver=docker --kubernetes-version=$(K8S_VERSION); \
+	fi
+
+endif
+
+# Local development setup
+# Setup local development environment for tsuru. It only needs to be run once.
+# If the setup is already done, you can skip this step and use `make local.run`
+local.setup: local.cluster
 	@echo "Setting up local tsuru development environment..."
 	@$(LOCAL_DEV) render-templates $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
 	@$(DOCKER) compose --profile tsurud-api up -d
 	@$(LOCAL_DEV) setup-tsuru-user $(TSURU_ROOT_USER) $(TSURU_ROOT_PASS)
 	@$(LOCAL_DEV) setup-tsuru-target $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
+	@$(LOCAL_DEV) setup-tsuru-cluster $(TSURU_HOST_IP)
 	@$(DOCKER) stop tsuru-api >/dev/null
 	@echo ""
 	@echo "Setup complete. You can don't need to run this step next time."
 	@echo "To start the local development environment, run 'make local.run'."
+	@touch ".local-setup"
 
-local.run: local.cluster
+local.prerun:
+	@if [ ! -f ".local-setup" ]; then \
+		echo "Environment not ready. Please run make 'local.setup' first.";  \
+		exit 1; \
+	fi
+
+local.run: local.prerun local.cluster
 	@echo "Starting local tsuru development environment..."
-	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
-	@$(DOCKER) compose up -d
+	go build -o $(TSR_BIN) $(TSR_SRC)
+	$(TSR_BIN) api -c "./etc/tsurud.conf"
 
-local.cluster:
-	minikube start --driver=docker --kubernetes-version=$(K8S_VERSION)
-
-# reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
-local-mac:
-	minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION)
-	minikube addons enable registry
-	$(DOCKER) run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
-	@make local-api
-
-# For Apple Silicon (M series) Macs, you can use the qemu2 driver with minikube.
-# It is recommended to use the socket_vmnet network to avoid issues with the default bridge network.
-# Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
-local-mac-mseries:
-	minikube start \
-		--insecure-registry="$(TSURU_HOST_IP):5000" \
-		--driver=qemu2 \
-		--network=socket_vmnet \
-		--kubernetes-version=$(K8S_VERSION)
-	@make local-api
+local.stop:
+	@echo "Stopping local tsuru development environment..."
+	@$(DOCKER) compose --profile tsurud-api down
+	@minikube stop
 
 local.cleardb:
 	$(DOCKER) compose --profile tsurud-api down
 	$(DOCKER) volume rm tsuru_datadb
 
-local:
-	minikube start --driver=docker --kubernetes-version=$(K8S_VERSION)
-	@make local-api
+.PHONY: local.setup local.cluster local.precluster local.run local.stop local.cleardb
 
-local-api:
-	$(DOCKER) compose up -d
-	go build -o $(TSR_BIN) $(TSR_SRC)
-	$(TSR_BIN) api -c ./etc/tsurud.conf
 
 .PHONY: install-swagger
 install-swagger:
