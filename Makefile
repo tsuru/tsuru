@@ -6,11 +6,6 @@ SHELL       = /bin/bash -o pipefail
 BUILD_DIR   = build
 TSR_BIN     = $(BUILD_DIR)/tsurud
 TSR_SRC     = ./cmd/tsurud
-K8S_VERSION = v1.26.15
-
-# Docker binary. If you are using podman, you can change this to podman when
-# running make commands. Example: make local DOCKER=podman
-DOCKER ?= docker
 
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
@@ -139,6 +134,59 @@ generate-test-certs:
 	cp ./app/testdata/private.key ./api/testdata/key.pem
 	cp ./app/testdata/certificate.crt ./api/testdata/cert.pem
 
+
+###
+### LOCAL DEVELOPMENT
+###
+### See https://docs.tsuru.io/stable/contributing/development.html for more
+### information on how to setup your local development environment.
+
+# Docker binary. If you are using podman, you can change this to podman when
+# running make commands. Example: make local DOCKER=podman
+DOCKER ?= docker
+
+# Kubernetes version used with minikube
+K8S_VERSION = v1.26.15
+
+# Tsuru local host
+# This is used to configure the insecure registry in minikube as well as in the
+# tsurud and buildkit configuration file.
+TSURU_HOST_IP   ?= 100.64.100.100
+TSURU_HOST_PORT ?= 8080
+
+# Root user information
+# Admin user information that can be used in the local development setup.
+TSURU_ROOT_USER ?= admin@admin.com
+TSURU_ROOT_PASS ?= admin@123
+
+# Local development script
+# This script will be used to setup the local development environment.
+LOCAL_DEV ?= ./misc/local-dev.sh
+
+# Host information
+# This is used to determine which local development setup to use.
+HOST_PLATFORM := $(shell uname -s)
+HOST_ARCH     := $(shell uname -m)
+
+local.setup:
+	@echo "Setting up local tsuru development environment..."
+	@$(LOCAL_DEV) render-templates $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
+	@$(DOCKER) compose --profile tsurud-api up -d
+	@$(LOCAL_DEV) setup-tsuru-user $(TSURU_ROOT_USER) $(TSURU_ROOT_PASS)
+	@$(LOCAL_DEV) setup-tsuru-target $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
+	@$(DOCKER) stop tsuru-api >/dev/null
+	@echo ""
+	@echo "Setup complete. You can don't need to run this step next time."
+	@echo "To start the local development environment, run 'make local.run'."
+
+local.run: local.cluster
+	@echo "Starting local tsuru development environment..."
+	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
+	@$(DOCKER) compose up -d
+
+local.cluster:
+	minikube start --driver=docker --kubernetes-version=$(K8S_VERSION)
+
 # reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
 local-mac:
 	minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION)
@@ -150,7 +198,6 @@ local-mac:
 # It is recommended to use the socket_vmnet network to avoid issues with the default bridge network.
 # Reference: https://minikube.sigs.k8s.io/docs/drivers/qemu/#known-issues
 local-mac-mseries:
-	./misc/setup-docker-compose.sh && source .env
 	minikube start \
 		--insecure-registry="$(TSURU_HOST_IP):5000" \
 		--driver=qemu2 \
@@ -158,8 +205,12 @@ local-mac-mseries:
 		--kubernetes-version=$(K8S_VERSION)
 	@make local-api
 
+local.cleardb:
+	$(DOCKER) compose --profile tsurud-api down
+	$(DOCKER) volume rm tsuru_datadb
+
 local:
-	minikube start --driver=none --kubernetes-version=$(K8S_VERSION)
+	minikube start --driver=docker --kubernetes-version=$(K8S_VERSION)
 	@make local-api
 
 local-api:
