@@ -51,6 +51,7 @@ services:
     restart: unless-stopped
     depends_on:
     - mongo
+    - deploy-agent
     profiles:
     - tsurud-api
 

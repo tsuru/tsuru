@@ -168,6 +168,9 @@ exec_setup_tsuru_cluster() {
 
     kconfig=$(echo $kconfig | cut -d: -f1)
 
+    # Login to Tsuru
+    echo -e "admin@123" | tsuru login admin@admin.com
+
     tsuru --target=local-dev cluster list | grep -q my-cluster
     if [ $? -eq 0 ]; then
         echo "Cluster my-cluster already exists, skipping..."
@@ -242,14 +245,16 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+preflight_checks
+
 case "$1" in
     # commands
-    setup-loopback      ) exec_setup_loopback     "${@:2}" ;;
-    setup-tsuru-user    ) exec_setup_tsuru_user   "${@:2}" ;;
-    setup-tsuru-target  ) exec_setup_tsuru_target "${@:2}" ;;
+    setup-loopback      ) exec_setup_loopback      "${@:2}" ;;
+    setup-tsuru-user    ) exec_setup_tsuru_user    "${@:2}" ;;
+    setup-tsuru-target  ) exec_setup_tsuru_target  "${@:2}" ;;
     setup-tsuru-cluster ) exec_setup_tsuru_cluster "${@:2}" ;;
-    render-templates    ) exec_render_templates   "${@:2}" ;;
-    cleanup-loopback    ) exec_cleanup_loopback   "${@:2}" ;;
+    render-templates    ) exec_render_templates    "${@:2}" ;;
+    cleanup-loopback    ) exec_cleanup_loopback    "${@:2}" ;;
 
     # options
     -h | --help    ) exec_help     ;;

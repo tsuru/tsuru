@@ -177,10 +177,9 @@ ifeq ($(HOST_PLATFORM),Darwin)
 # NOTE: Only tested on Apple M series Macs.
 local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
-	# TODO: Check if socket_vmnet service is running
-	@if [ $(minikube status &>/dev/null) ]; then \
-		@echo "Starting local kubernetes cluster for mac mseries..."; \
-		@minikube start \
+	@if [ ! $(minikube status &>/dev/null) ]; then \
+		echo "Starting local kubernetes cluster for mac mseries..."; \
+		minikube start \
 			--insecure-registry="$(TSURU_HOST_IP):5000" \
 			--driver=qemu2 \
 			--network=socket_vmnet \
@@ -191,9 +190,9 @@ else
 
 local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
-	@if [ $(minikube status &>/dev/null) ]; then \
-		@echo "Starting local kubernetes cluster for linux..."; \
-		@minikube start --driver=docker --kubernetes-version=$(K8S_VERSION); \
+	@if [ ! $(minikube status &>/dev/null) ]; then \
+		echo "Starting local kubernetes cluster for linux..."; \
+		minikube start --driver=docker --kubernetes-version=$(K8S_VERSION); \
 	fi
 
 endif
@@ -210,7 +209,7 @@ local.setup: local.cluster
 	@$(LOCAL_DEV) setup-tsuru-cluster $(TSURU_HOST_IP)
 	@$(DOCKER) stop tsuru-api >/dev/null
 	@echo ""
-	@echo "Setup complete. You can don't need to run this step next time."
+	@echo "Setup complete. You don't need to run this step next time."
 	@echo "To start the local development environment, run 'make local.run'."
 	@touch ".local-setup"
 
@@ -229,12 +228,13 @@ local.stop:
 	@echo "Stopping local tsuru development environment..."
 	@$(DOCKER) compose --profile tsurud-api down
 	@minikube stop
-	@(LOCAL_DEV) cleanup-loopback $(TSURU_HOST_IP)
+	@$(LOCAL_DEV) cleanup-loopback $(TSURU_HOST_IP)
 
-local.cleardb:
+local.cleanup: local.stop
 	@echo "Clearing local tsuru development environment..."
-	@$(DOCKER) compose --profile tsurud-api down
 	@$(DOCKER) volume rm tsuru_datadb
+	@find ./etc ! -name '*.template' ! -name 'tsuru.conf' -mindepth 1 | \
+		xargs -I{} echo rm {}
 	@rm -f .local-setup
 
 .PHONY: local.setup local.cluster local.precluster local.run local.stop local.cleardb
