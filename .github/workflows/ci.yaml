@@ -38,7 +38,8 @@ jobs:
       fail-fast: true
       matrix:
         k8s_version:
-        - 1.28
+        - 1.29
+        - 1.30
     steps:
     - uses: actions/checkout@master
     - name: Running up Kubernetes (using Minikube)
