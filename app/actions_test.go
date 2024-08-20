@@ -13,12 +13,14 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -123,17 +125,20 @@ func (s *S) TestInsertAppDuplication(c *check.C) {
 }
 
 func (s *S) TestInsertAppBackward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: &app,
 	}
-	err := CreateApp(context.TODO(), &app, s.user)
+	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	insertApp.Backward(ctx)
-	n, err := s.conn.Apps().Find(bson.M{"name": app.Name}).Count()
+	n, err := appsCollection.CountDocuments(context.TODO(), mongoBSON.M{"name": app.Name})
 	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	c.Assert(n, check.Equals, int64(0))
 }
 
 func (s *S) TestInsertAppMinimumParams(c *check.C) {

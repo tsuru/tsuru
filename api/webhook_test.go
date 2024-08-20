@@ -51,6 +51,7 @@ func (s *S) TestWebhookList(c *check.C) {
 			TeamOwner: s.team.Name,
 			Name:      "wh1",
 			URL:       "http://me",
+			Headers:   http.Header{},
 			EventFilter: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{},
 				TargetValues: []string{},
@@ -62,6 +63,7 @@ func (s *S) TestWebhookList(c *check.C) {
 			TeamOwner: s.team.Name,
 			Name:      "wh2",
 			URL:       "http://me",
+			Headers:   http.Header{},
 			EventFilter: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{},
 				TargetValues: []string{},
@@ -117,6 +119,7 @@ func (s *S) TestWebhookListByTeam(c *check.C) {
 			TeamOwner: "t2",
 			Name:      "wh2",
 			URL:       "http://me",
+			Headers:   http.Header{},
 			EventFilter: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{},
 				TargetValues: []string{},
@@ -151,6 +154,7 @@ func (s *S) TestWebhookCreate(c *check.C) {
 		TeamOwner: s.team.Name,
 		Name:      "wh1",
 		URL:       "http://me",
+		Headers:   http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},
@@ -183,6 +187,7 @@ func (s *S) TestWebhookCreateAutoTeam(c *check.C) {
 		TeamOwner: s.team.Name,
 		Name:      "wh1",
 		URL:       "http://me",
+		Headers:   http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},
@@ -261,6 +266,7 @@ func (s *S) TestWebhookUpdate(c *check.C) {
 		TeamOwner: s.team.Name,
 		Name:      "wh1",
 		URL:       "http://me/xyz",
+		Headers:   http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},
@@ -370,6 +376,7 @@ func (s *S) TestWebhookInfo(c *check.C) {
 		TeamOwner: s.team.Name,
 		Name:      "wh1",
 		URL:       "http://me/xyz",
+		Headers:   http.Header{},
 		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},

@@ -7,6 +7,7 @@ import (
 
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
@@ -269,8 +270,13 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 	}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
-	err = s.conn.ServiceInstances().Insert(&instance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
+	c.Assert(err, check.IsNil)
+
 	params := BindAppParameters(map[string]interface{}{
 		"param1": "val1",
 	})
@@ -342,8 +348,13 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 			UUID: "xxxx-xxxx",
 		},
 	}
-	err = s.conn.ServiceInstances().Insert(&instance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
+	c.Assert(err, check.IsNil)
+
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
 	err = client.UnbindApp(context.TODO(), &instance, a, ev, "request-id")
 	c.Assert(err, check.IsNil)
@@ -404,8 +415,13 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
-	err = s.conn.ServiceInstances().Insert(&instance)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
+	c.Assert(err, check.IsNil)
+
 	instance.Parameters = map[string]interface{}{
 		"param1": "val1",
 	}

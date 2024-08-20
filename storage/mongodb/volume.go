@@ -7,78 +7,69 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/volume"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-)
-
-const (
-	volumeCollectionName      = "volumes"
-	volumeBindsCollectionName = "volume_binds"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var _ volume.VolumeStorage = &volumeStorage{}
 
-func volumesCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection(volumeCollectionName)
-}
-func volumeBindsCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection(volumeBindsCollectionName)
-}
-
-type volumeStorage struct {
-}
+type volumeStorage struct{}
 
 func (*volumeStorage) Save(ctx context.Context, v *volume.Volume) error {
-	span := newMongoDBSpan(ctx, mongoSpanUpsertID, volumeCollectionName)
-	defer span.Finish()
-	span.SetMongoID(v.Name)
-
-	conn, err := db.Conn()
+	collection, err := storagev2.VolumesCollection()
 	if err != nil {
-		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
 
-	_, err = volumesCollection(conn).UpsertId(v.Name, v)
-	span.SetError(err)
-	return errors.WithStack(err)
+	span := newMongoDBSpan(ctx, mongoSpanUpsertID, collection.Name())
+	span.SetMongoID(v.Name)
+	defer span.Finish()
+
+	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"_id": v.Name}, v, options.Replace().SetUpsert(true))
+
+	if err != nil {
+		span.SetError(err)
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 func (*volumeStorage) Delete(ctx context.Context, v *volume.Volume) error {
-	span := newMongoDBSpan(ctx, mongoSpanDeleteID, volumeCollectionName)
+	collection, err := storagev2.VolumesCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanDeleteID, collection.Name())
 	defer span.Finish()
 	span.SetMongoID(v.Name)
 
-	conn, err := db.Conn()
+	_, err = collection.DeleteOne(ctx, mongoBSON.M{"_id": v.Name})
+
 	if err != nil {
 		span.SetError(err)
-		return err
+		return errors.WithStack(err)
 	}
-	defer conn.Close()
 
-	err = volumesCollection(conn).RemoveId(v.Name)
-	span.SetError(err)
-	return errors.WithStack(err)
+	return nil
 }
 
 func (*volumeStorage) Get(ctx context.Context, name string) (*volume.Volume, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFindID, volumeCollectionName)
+
+	collection, err := storagev2.VolumesCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFindID, collection.Name())
 	defer span.Finish()
 	span.SetMongoID(name)
 
-	collection, err := storagev2.Collection(volumeCollectionName)
-	if err != nil {
-		span.SetError(err)
-		return nil, err
-	}
 	var v volume.Volume
 	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&v)
 	if err == mongo.ErrNoDocuments {
@@ -93,14 +84,13 @@ func (*volumeStorage) Get(ctx context.Context, name string) (*volume.Volume, err
 }
 
 func (*volumeStorage) ListByFilter(ctx context.Context, f *volume.Filter) ([]volume.Volume, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, volumeCollectionName)
-	defer span.Finish()
-
-	collection, err := storagev2.Collection(volumeCollectionName)
+	collection, err := storagev2.VolumesCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	defer span.Finish()
 
 	query := mongoBSON.M{}
 	if f != nil {
@@ -139,54 +129,62 @@ func (*volumeStorage) ListByFilter(ctx context.Context, f *volume.Filter) ([]vol
 }
 
 func (*volumeStorage) InsertBind(ctx context.Context, b *volume.VolumeBind) error {
-	span := newMongoDBSpan(ctx, mongoSpanInsert, volumeBindsCollectionName)
+	collection, err := storagev2.VolumeBindsCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanInsert, collection.Name())
 	defer span.Finish()
 	span.SetMongoID(b.ID)
 
-	conn, err := db.Conn()
-	if err != nil {
-		span.SetError(err)
-		return err
-	}
-	defer conn.Close()
-
-	err = volumeBindsCollection(conn).Insert(b)
-	if err != nil && mgo.IsDup(err) {
+	_, err = collection.InsertOne(ctx, b)
+	if err != nil && mongo.IsDuplicateKeyError(err) {
 		return volume.ErrVolumeAlreadyBound
 	}
 
-	span.SetError(err)
-	return errors.WithStack(err)
+	if err != nil {
+		span.SetError(err)
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 func (*volumeStorage) RemoveBind(ctx context.Context, id volume.VolumeBindID) error {
-	span := newMongoDBSpan(ctx, mongoSpanDeleteID, volumeBindsCollectionName)
+	collection, err := storagev2.VolumeBindsCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanDeleteID, collection.Name())
 	defer span.Finish()
 	span.SetMongoID(id)
 
-	conn, err := db.Conn()
-	if err != nil {
-		span.SetError(err)
-		return err
-	}
-	defer conn.Close()
-	err = volumeBindsCollection(conn).RemoveId(id)
-	if err == mgo.ErrNotFound {
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": id})
+	if err == mongo.ErrNoDocuments {
 		return volume.ErrVolumeBindNotFound
 	}
-	span.SetError(err)
-	return errors.WithStack(err)
+	if err != nil {
+		span.SetError(err)
+		return errors.WithStack(err)
+	}
+
+	if result.DeletedCount == 0 {
+		return volume.ErrVolumeBindNotFound
+	}
+
+	return nil
 }
 
 func (*volumeStorage) Binds(ctx context.Context, volumeName string) ([]volume.VolumeBind, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, volumeBindsCollectionName)
-	defer span.Finish()
-
-	collection, err := storagev2.Collection(volumeBindsCollectionName)
+	collection, err := storagev2.VolumeBindsCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	defer span.Finish()
 
 	var binds []volume.VolumeBind
 	query := mongoBSON.M{"_id.volume": volumeName}
@@ -208,14 +206,13 @@ func (*volumeStorage) Binds(ctx context.Context, volumeName string) ([]volume.Vo
 }
 
 func (*volumeStorage) BindsForApp(ctx context.Context, volumeName, appName string) ([]volume.VolumeBind, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, volumeBindsCollectionName)
-	defer span.Finish()
-
-	collection, err := storagev2.Collection(volumeBindsCollectionName)
+	collection, err := storagev2.VolumeBindsCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	defer span.Finish()
 
 	var binds []volume.VolumeBind
 	query := mongoBSON.M{"_id.app": appName}
@@ -239,19 +236,22 @@ func (*volumeStorage) BindsForApp(ctx context.Context, volumeName, appName strin
 	return binds, nil
 }
 func (*volumeStorage) RenameTeam(ctx context.Context, oldName, newName string) error {
-	span := newMongoDBSpan(ctx, mongoSpanUpdateAll, volumeCollectionName)
-	defer span.Finish()
-
-	conn, err := db.Conn()
+	collection, err := storagev2.VolumesCollection()
 	if err != nil {
-		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
 
-	query := bson.M{"teamowner": oldName}
+	span := newMongoDBSpan(ctx, mongoSpanUpdateAll, collection.Name())
+	defer span.Finish()
+
+	query := mongoBSON.M{"teamowner": oldName}
 	span.SetQueryStatement(query)
-	_, err = volumesCollection(conn).UpdateAll(query, bson.M{"$set": bson.M{"teamowner": newName}})
-	span.SetError(err)
-	return errors.WithStack(err)
+	_, err = collection.UpdateMany(ctx, query, mongoBSON.M{"$set": mongoBSON.M{"teamowner": newName}})
+
+	if err != nil {
+		span.SetError(err)
+		return errors.WithStack(err)
+	}
+
+	return nil
 }

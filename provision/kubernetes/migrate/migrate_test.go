@@ -8,7 +8,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
@@ -51,7 +51,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	servicemock.SetMockService(&s.mockService)
 	s.cluster = &provision.Cluster{

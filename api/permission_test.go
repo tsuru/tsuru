@@ -753,7 +753,11 @@ func (s *S) TestRoleAssignValidateCtxServiceInstanceFound(c *check.C) {
 		Description: "desc",
 		TeamOwner:   s.team.Name,
 	}
-	err := s.conn.ServiceInstances().Insert(si)
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermAll,

@@ -17,7 +17,7 @@ type MockServiceBrokerService struct {
 	OnList   func() ([]Broker, error)
 }
 
-func (m *MockServiceBrokerService) Create(broker Broker) error {
+func (m *MockServiceBrokerService) Create(ctx context.Context, broker Broker) error {
 	if m.OnCreate == nil {
 		return nil
 	}
@@ -31,7 +31,7 @@ func (m *MockServiceBrokerService) Update(ctx context.Context, name string, brok
 	return m.OnUpdate(name, broker)
 }
 
-func (m *MockServiceBrokerService) Delete(name string) error {
+func (m *MockServiceBrokerService) Delete(ctx context.Context, name string) error {
 	if m.OnDelete == nil {
 		return nil
 	}

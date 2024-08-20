@@ -14,8 +14,6 @@ import (
 var (
 	sessions    = map[string]*mgo.Session{}
 	sessionLock sync.RWMutex
-	createdMap  = map[string]struct{}{}
-	createdLock sync.RWMutex
 )
 
 // Storage holds the connection with the database.
@@ -29,29 +27,6 @@ type Storage struct {
 // using the method close.
 type Collection struct {
 	*mgo.Collection
-}
-
-func (c *Collection) Create(info *mgo.CollectionInfo) error {
-	createdLock.RLock()
-	if _, ok := createdMap[c.Name]; ok {
-		createdLock.RUnlock()
-		return nil
-	}
-	createdLock.RUnlock()
-	createdLock.Lock()
-	defer createdLock.Unlock()
-	if _, ok := createdMap[c.Name]; ok {
-		return nil
-	}
-	createdMap[c.Name] = struct{}{}
-	return c.Collection.Create(info)
-}
-
-func (c *Collection) DropCollection() error {
-	createdLock.Lock()
-	defer createdLock.Unlock()
-	delete(createdMap, c.Name)
-	return c.Collection.DropCollection()
 }
 
 // Close closes the session with the database.
@@ -81,14 +56,6 @@ func open(addr string) (*mgo.Session, error) {
 // Close closes the storage, releasing the connection.
 func (s *Storage) Close() {
 	s.session.Close()
-}
-
-func (s *Storage) DefaultDatabase() *mgo.Database {
-	return s.Database(s.dbname)
-}
-
-func (s *Storage) Database(name string) *mgo.Database {
-	return s.session.DB(name)
 }
 
 // Collection returns a collection by its name.

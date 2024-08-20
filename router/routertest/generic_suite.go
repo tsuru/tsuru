@@ -9,8 +9,7 @@ import (
 	"net/url"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/router"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	check "gopkg.in/check.v1"
@@ -69,10 +68,7 @@ func (s *RouterSuite) TearDownSuite(c *check.C) {
 		s.TearDownSuiteFunc(c)
 	}
 	if _, err := config.GetString("database:name"); err == nil {
-		conn, err := db.Conn()
-		c.Assert(err, check.IsNil)
-		defer conn.Close()
-		dbtest.ClearAllCollections(conn.Apps().Database)
+		storagev2.ClearAllCollections(nil)
 	}
 }
 

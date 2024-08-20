@@ -265,7 +265,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		msg += "Please remove these instances before removing the service."
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	return service.Delete(s)
+	return service.Delete(ctx, s)
 }
 
 // title: service proxy

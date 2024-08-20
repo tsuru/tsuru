@@ -7,8 +7,6 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/quota"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -37,19 +35,24 @@ func (s *quotaStorage) SetLimit(ctx context.Context, name string, limit int) err
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(s.collection)
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
 
-	err = conn.Collection(s.collection).Update(
+	_, err = collection.UpdateOne(
+		ctx,
 		query,
-		bson.M{"$set": bson.M{"quota.limit": limit}},
+		mongoBSON.M{"$set": mongoBSON.M{"quota.limit": limit}},
 	)
-	span.SetError(err)
-	return err
+
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *quotaStorage) Set(ctx context.Context, name string, inUse int) error {
@@ -63,17 +66,24 @@ func (s *quotaStorage) Set(ctx context.Context, name string, inUse int) error {
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(s.collection)
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
 
-	err = conn.Collection(s.collection).Update(
+	_, err = collection.UpdateOne(
+		ctx,
 		query,
-		bson.M{"$set": bson.M{"quota.inuse": inUse}},
+		mongoBSON.M{"$set": mongoBSON.M{"quota.inuse": inUse}},
 	)
-	return err
+
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *quotaStorage) Get(ctx context.Context, name string) (*quota.Quota, error) {

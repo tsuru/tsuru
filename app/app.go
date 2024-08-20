@@ -20,7 +20,6 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
@@ -32,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -57,6 +57,8 @@ import (
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -290,16 +292,19 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 // name.
 func GetByName(ctx context.Context, name string) (*App, error) {
 	var app App
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	err = conn.Apps().Find(bson.M{"name": name}).One(&app)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"name": name}).Decode(&app)
+	if err == mongo.ErrNoDocuments {
 		return nil, appTypes.ErrAppNotFound
 	}
-	return &app, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &app, nil
 }
 
 // CreateApp creates a new app.
@@ -1954,15 +1959,21 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 func List(ctx context.Context, filter *Filter) ([]App, error) {
 	apps := []App{}
 	query := filter.Query()
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return nil, err
 	}
-	err = conn.Apps().Find(query).All(&apps)
-	conn.Close()
+
+	cursor, err := collection.Find(ctx, query)
 	if err != nil {
 		return nil, err
 	}
+
+	err = cursor.All(ctx, &apps)
+	if err != nil {
+		return nil, err
+	}
+
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
 		var prov provision.Provisioner
@@ -2104,13 +2115,12 @@ func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) err
 	}
 	cnames := app.GetCname()
 	appCName := App{}
-	conn, err := db.Conn()
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Find(bson.M{"cname": bson.M{"$in": cnames}, "name": bson.M{"$ne": app.Name}, "routers": appRouter}).One(&appCName)
-	if err != nil && err != mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"cname": mongoBSON.M{"$in": cnames}, "name": mongoBSON.M{"$ne": app.Name}, "routers": appRouter}).Decode(&appCName)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
 	if appCName.Name != "" {
