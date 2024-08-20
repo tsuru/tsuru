@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -955,7 +956,7 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name}}
-	err := a.Grant(&s.team)
+	err := a.Grant(context.TODO(), &s.team)
 	c.Assert(err, check.Equals, ErrAlreadyHaveAccess)
 }
 
@@ -963,13 +964,13 @@ func (s *S) TestRevokeAccessDoesntLeaveOrphanApps(c *check.C) {
 	app := App{Name: "app-name", Platform: "django", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.Revoke(&s.team)
+	err = app.Revoke(context.TODO(), &s.team)
 	c.Assert(err, check.Equals, ErrCannotOrphanApp)
 }
 
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django", Teams: []string{}}
-	err := a.Revoke(&s.team)
+	err := a.Revoke(context.TODO(), &s.team)
 	c.Assert(err, check.Equals, ErrNoAccess)
 }
 
@@ -4268,7 +4269,7 @@ func (s *S) TestAppSetUpdatePlatform(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	a.SetUpdatePlatform(true)
+	a.SetUpdatePlatform(context.TODO(), true)
 	app, err := GetByName(context.TODO(), "someapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.UpdatePlatform, check.Equals, true)
@@ -5529,10 +5530,14 @@ func (s *S) TestRenameTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	c.Assert(dbApps, check.HasLen, 2)
+
+	slices.Sort(dbApps[0].Teams)
+	slices.Sort(dbApps[1].Teams)
+
 	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
-	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t9000", "t3", "t1"})
-	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t1", "t3", "t9000"})
+	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t1", "t3"})
 }
 
 func (s *S) TestRenameTeamLockedApp(c *check.C) {
@@ -5566,10 +5571,14 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	c.Assert(dbApps, check.HasLen, 2)
+
+	slices.Sort(dbApps[0].Teams)
+	slices.Sort(dbApps[1].Teams)
+
 	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t2")
-	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t2", "t3", "t1"})
-	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t1", "t2", "t3"})
+	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t1", "t3"})
 }
 
 func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
@@ -5605,10 +5614,14 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	c.Assert(dbApps, check.HasLen, 3)
+
+	slices.Sort(dbApps[0].Teams)
+	slices.Sort(dbApps[1].Teams)
+
 	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
-	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t9000", "t3", "t1"})
-	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t1", "t3", "t9000"})
+	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t1", "t3"})
 }
 
 func (s *S) TestUpdateRouter(c *check.C) {
@@ -5962,7 +5975,7 @@ func (s *S) TestGetUUID(c *check.C) {
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.UUID, check.DeepEquals, "")
-	uuid, err := app.GetUUID()
+	uuid, err := app.GetUUID(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(uuid, check.Not(check.DeepEquals), "")
 	c.Assert(uuid, check.DeepEquals, app.UUID)

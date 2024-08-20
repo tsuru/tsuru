@@ -24,7 +24,7 @@ type App interface {
 	GetName() string
 
 	// GetUUID returns the App v4 UUID
-	GetUUID() (string, error)
+	GetUUID(ctx context.Context) (string, error)
 
 	// AddInstance adds an instance to the application.
 	AddInstance(ctx context.Context, args AddInstanceArgs) error

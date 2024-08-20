@@ -20,11 +20,6 @@ type AppLogService interface {
 	Watch(ctx context.Context, args ListLogArgs) (LogWatcher, error)
 }
 
-type AppLogServiceProvision interface {
-	Provision(appName string) error
-	CleanUp(appname string) error
-}
-
 type AppLogServiceInstance interface {
 	Instance() AppLogService
 }

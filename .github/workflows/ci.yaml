@@ -98,34 +98,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: ./misc/check-contributors.sh
-  leakdetector:
-    runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:4
-        ports: ['27017:27017']
-      redis:
-        image: redis
-        ports: ['6379:6379']
-    steps:
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/go/pkg/mod
-          ~/.cache/go-build
-        key: ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
-        restore-keys: |
-          ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-
-          ${{ runner.os }}-goleak-
-    - run: git ls-tree -r -t --full-name --name-only HEAD | grep -v vendor | xargs -I{} -P4 sh -c 'touch -d $(git log --pretty=format:%cI -1 HEAD -- "{}") "{}"'
-    - run: sudo apt-get update && sudo apt-get install -y xmlsec1
-    - run: make leakdetector
   check-handlers:
     runs-on: ubuntu-latest
     steps:
@@ -197,7 +169,6 @@ jobs:
     - lint
     - integration
     - check-contributors
-    - leakdetector
     - check-handlers
     - check-events
     - check-api-doc

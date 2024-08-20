@@ -803,7 +803,7 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 	}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	incrementDeploy(&a)
+	incrementDeploy(context.TODO(), &a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
 	err = appsCollection.FindOne(context.TODO(), bson.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)

@@ -257,7 +257,7 @@ func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, a
 	if err != nil {
 		return nil, err
 	}
-	appGUID, err := app.GetUUID()
+	appGUID, err := app.GetUUID(ctx)
 	if err != nil {
 		return nil, err
 	}

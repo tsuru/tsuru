@@ -16,7 +16,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
@@ -345,16 +345,16 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = incrementDeploy(opts.App)
+	err = incrementDeploy(ctx, opts.App)
 	if err != nil {
 		log.Errorf("WARNING: couldn't increment deploy count, deploy opts: %#v", opts)
 	}
 	if opts.Kind == provisionTypes.DeployImage || opts.Kind == provisionTypes.DeployRollback {
 		if !opts.App.UpdatePlatform {
-			opts.App.SetUpdatePlatform(true)
+			opts.App.SetUpdatePlatform(ctx, true)
 		}
 	} else if opts.App.UpdatePlatform {
-		opts.App.SetUpdatePlatform(false)
+		opts.App.SetUpdatePlatform(ctx, false)
 	}
 	return imageID, nil
 }
@@ -451,15 +451,15 @@ func ValidateOrigin(origin string) bool {
 	return false
 }
 
-func incrementDeploy(app *App) error {
-	conn, err := db.Conn()
+func incrementDeploy(ctx context.Context, app *App) error {
+	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$inc": bson.M{"deploys": 1}},
+	_, err = collection.UpdateOne(
+		ctx,
+		mongoBSON.M{"name": app.Name},
+		mongoBSON.M{"$inc": mongoBSON.M{"deploys": 1}},
 	)
 	if err == nil {
 		app.Deploys += 1

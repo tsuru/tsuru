@@ -162,7 +162,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		}
 
 		for _, app := range apps {
-			app.SetUpdatePlatform(true)
+			app.SetUpdatePlatform(ctx, true)
 		}
 	}
 
@@ -252,7 +252,7 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 		return err
 	}
 	for _, app := range apps {
-		app.SetUpdatePlatform(true)
+		app.SetUpdatePlatform(ctx, true)
 	}
 	return nil
 }

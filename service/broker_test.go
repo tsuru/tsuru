@@ -203,7 +203,7 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 func (s *S) TestBrokerClientBindApp(c *check.C) {
 	ev := createEvt(c)
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
-	appGUID, err := a.GetUUID()
+	appGUID, err := a.GetUUID(context.TODO())
 	c.Assert(err, check.IsNil)
 	var bindID string
 	reaction := func(req *osb.BindRequest) (*osb.BindResponse, error) {
