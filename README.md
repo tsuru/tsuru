@@ -58,3 +58,78 @@ Call `app list` to see tsuru working, this command needs to return one app calle
 ```
 $ tsuru app list
 ```
+
+## Local development
+
+### Dependencies
+
+Before starting, make sure you have the following tools installed:
+
+* [docker](https://docs.docker.com/engine/install) (or [podman](https://podman.io/docs/installation))
+* [minikube](https://minikube.sigs.k8s.io/docs/start)
+* [go](https://go.dev/dl/)
+* [yq](https://github.com/mikefarah/yq#install)
+
+You'll also need the [Tsuru Client](https://docs.tsuru.io/stable/using/install-client.html) to interact with the Tsuru API.
+If you haven't installed it yet, please do so.
+
+**For macOS users**: We recommend using the **_qemu_** driver with **_socket_vmnet_** for Minikube clusters.
+For more information on installing **_qemu_** and **_socket_vmnet_**, refer to the following links:
+
+* [qemu](https://www.qemu.org/download/)
+* [socket_vmnet](https://github.com/lima-vm/socket_vmnet)
+
+**Note**: If you are using Docker-compatible alternatives like Podman, be sure to specify the `DOCKER` variable with the
+correct binary when running make commands. For example: `make local.run DOCKER=podman`.
+
+### Running local environment
+
+To run the Tsuru API locally, you'll need to first set up the local environment.
+This setup process is crucial because it creates the default configuration files, initializes required dependencies, and prepares your local system to host the Tsuru API.
+The following command will handle all these tasks:
+
+```bash
+make local.setup
+```
+
+Once the setup is complete, you won’t need to run this command again unless you want to reset your environment.
+
+After the initial setup, you can start the Tsuru API and its dependencies using the following command:
+
+```bash
+make local.run
+```
+
+Once the Tsuru API is running, open a new terminal window and configure your Tsuru CLI to point to the `local-dev` target.
+This target tells the CLI to interact with your local Tsuru API instance rather than a remote server.
+You can set the target using this command:
+
+```bash
+tsuru target-set local-dev
+```
+
+Tsuru's targets function similarly to Kubernetes' `kubectl` config contexts, allowing you to switch between different environments easily.
+
+To confirm that everything is set up correctly, you can log in and list the clusters managed by your Tsuru API instance:
+
+```bash
+tsuru login admin@admin.com # password: admin@123
+tsuru cluster list
+```
+
+If everything is working as expected, you should see your local Minikube cluster listed as the default provisioner.
+
+### Cleaning up
+
+When you're done working with your local environment, it's important to stop the services to free up system resources.
+You can stop the dependencies using:
+
+```bash
+make local.stop
+```
+
+If you want to fully reset your environment, or if you no longer need the Tsuru API and its dependencies on your local machine, you can remove all associated resources using:
+
+```bash
+make local.cleanup
+```

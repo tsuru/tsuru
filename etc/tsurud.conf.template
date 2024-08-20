@@ -1,5 +1,5 @@
 listen: 0.0.0.0:8080
-host: http://${TSURU_HOST_IP}:8080
+host: http://${TSURU_HOST_IP}:${TSURU_HOST_PORT}
 
 database:
   driver: mongodb
