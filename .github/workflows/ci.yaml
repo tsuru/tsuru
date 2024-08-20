@@ -38,14 +38,14 @@ jobs:
       fail-fast: true
       matrix:
         k8s_version:
-        - 1.29
-        - 1.30
+        - "1.29"
+        - "1.30"
     steps:
     - uses: actions/checkout@master
     - name: Running up Kubernetes (using Minikube)
       uses: medyagh/setup-minikube@master
       with:
-        kubernetes-version: v${{ matrix.k8s_version }}
+        kubernetes-version: "v${{ matrix.k8s_version }}"
     - uses: azure/setup-helm@v1
       with:
         version: v3.7.0
