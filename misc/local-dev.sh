@@ -160,6 +160,8 @@ exec_setup_tsuru_target() {
     # Add the Tsuru target, ignore the output and errors because the target may already exist
     echo "Setting up the Tsuru target $target_name at http://${target_host}:${target_port}..."
     tsuru target add "$target_name" "http://${target_host}:${target_port}" &> /dev/null || true
+
+    tsuru target-set "$target_name"
 }
 
 exec_setup_tsuru_cluster() {
