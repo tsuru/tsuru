@@ -169,7 +169,7 @@ exec_setup_tsuru_cluster() {
     kconfig=$(echo $kconfig | cut -d: -f1)
 
     # Login to Tsuru
-    echo -e "admin@123" | tsuru login admin@admin.com
+    echo -e "admin@123" | tsuru --target=local-dev login admin@admin.com
 
     tsuru --target=local-dev cluster list | grep -q my-cluster
     if [ $? -eq 0 ]; then

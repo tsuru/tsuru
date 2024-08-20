@@ -219,25 +219,33 @@ local.prerun:
 		exit 1; \
 	fi
 
+# Local development run
+# Start the local development environment for tsuru.
 local.run: local.prerun local.cluster
 	@echo "Starting local tsuru development environment..."
+	$(DOCKER) compose up -d
 	go build -o $(TSR_BIN) $(TSR_SRC)
 	$(TSR_BIN) api -c "./etc/tsurud.conf"
 
+# Local development stop
+# Stop the local development environment for tsuru.
 local.stop:
 	@echo "Stopping local tsuru development environment..."
 	@$(DOCKER) compose --profile tsurud-api down
 	@minikube stop
 	@$(LOCAL_DEV) cleanup-loopback $(TSURU_HOST_IP)
 
+# Local development cleanup
+# Clear the local development environment for tsuru.
 local.cleanup: local.stop
 	@echo "Clearing local tsuru development environment..."
 	@$(DOCKER) volume rm tsuru_datadb
+	@minikube delete
 	@find ./etc ! -name '*.template' ! -name 'tsuru.conf' -mindepth 1 | \
 		xargs -I{} echo rm {}
 	@rm -f .local-setup
 
-.PHONY: local.setup local.cluster local.precluster local.run local.stop local.cleardb
+.PHONY: local.setup local.cluster local.precluster local.run local.stop local.cleanup
 
 
 .PHONY: install-swagger
