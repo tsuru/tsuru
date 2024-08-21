@@ -20,7 +20,6 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -1819,22 +1818,22 @@ func (f *Filter) ExtraIn(name string, value string) {
 	f.Extra[name] = append(f.Extra[name], value)
 }
 
-func (f *Filter) Query() bson.M {
+func (f *Filter) Query() mongoBSON.M {
 	if f == nil {
-		return bson.M{}
+		return mongoBSON.M{}
 	}
-	query := bson.M{}
+	query := mongoBSON.M{}
 	if f.Extra != nil {
-		var orBlock []bson.M
+		var orBlock []mongoBSON.M
 		for field, values := range f.Extra {
-			orBlock = append(orBlock, bson.M{
-				field: bson.M{"$in": values},
+			orBlock = append(orBlock, mongoBSON.M{
+				field: mongoBSON.M{"$in": values},
 			})
 		}
 		query["$or"] = orBlock
 	}
 	if f.NameMatches != "" {
-		query["name"] = bson.M{"$regex": f.NameMatches}
+		query["name"] = mongoBSON.M{"$regex": f.NameMatches}
 	}
 	if f.Name != "" {
 		query["name"] = f.Name
@@ -1848,10 +1847,10 @@ func (f *Filter) Query() bson.M {
 		if len(parts) == 2 {
 			v := parts[1]
 			if v == "latest" {
-				query["$and"] = []bson.M{
-					{"$or": []bson.M{
-						{"platformversion": bson.M{"$in": []string{"latest", ""}}},
-						{"platformversion": bson.M{"$exists": false}},
+				query["$and"] = []mongoBSON.M{
+					{"$or": []mongoBSON.M{
+						{"platformversion": mongoBSON.M{"$in": []string{"latest", ""}}},
+						{"platformversion": mongoBSON.M{"$exists": false}},
 					}},
 				}
 			} else {
@@ -1869,11 +1868,11 @@ func (f *Filter) Query() bson.M {
 		query["lock.locked"] = true
 	}
 	if len(f.Pools) > 0 {
-		query["pool"] = bson.M{"$in": f.Pools}
+		query["pool"] = mongoBSON.M{"$in": f.Pools}
 	}
 	tags := processTags(f.Tags)
 	if len(tags) > 0 {
-		query["tags"] = bson.M{"$all": tags}
+		query["tags"] = mongoBSON.M{"$all": tags}
 	}
 	return query
 }

@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -52,8 +53,8 @@ func (*migrationListCmd) Info() *cmd.Info {
 	}
 }
 
-func (*migrationListCmd) Run(context *cmd.Context) error {
-	migrations, err := migration.List()
+func (*migrationListCmd) Run(c *cmd.Context) error {
+	migrations, err := migration.List(context.Background())
 	if err != nil {
 		return err
 	}
@@ -62,7 +63,7 @@ func (*migrationListCmd) Run(context *cmd.Context) error {
 	for _, m := range migrations {
 		tbl.AddRow(tablecli.Row{m.Name, strconv.FormatBool(!m.Optional), strconv.FormatBool(m.Ran)})
 	}
-	fmt.Fprint(context.Stdout, tbl.String())
+	fmt.Fprint(c.Stdout, tbl.String())
 	return nil
 }
 
@@ -83,9 +84,9 @@ must be informed.`,
 	}
 }
 
-func (c *migrateCmd) Run(context *cmd.Context) error {
-	return migration.Run(migration.RunArgs{
-		Writer: context.Stdout,
+func (c *migrateCmd) Run(cmdContext *cmd.Context) error {
+	return migration.Run(context.Background(), migration.RunArgs{
+		Writer: cmdContext.Stdout,
 		Dry:    c.dry,
 		Name:   c.name,
 		Force:  c.force,

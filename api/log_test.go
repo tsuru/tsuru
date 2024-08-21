@@ -22,17 +22,18 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/websocket"
 	check "gopkg.in/check.v1"
 )
 
 func compareLogs(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog) {
 	for i := range logs1 {
-		logs1[i].MongoID = ""
+		logs1[i].MongoID = primitive.NilObjectID
 		logs1[i].Date = logs1[i].Date.UTC()
 	}
 	for i := range logs2 {
-		logs2[i].MongoID = ""
+		logs2[i].MongoID = primitive.NilObjectID
 		logs2[i].Date = logs2[i].Date.UTC()
 	}
 	c.Assert(logs1, check.DeepEquals, logs2)

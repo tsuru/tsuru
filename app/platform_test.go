@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -20,7 +19,6 @@ import (
 
 type PlatformSuite struct {
 	builder     *builder.MockBuilder
-	conn        *db.Storage
 	mockService servicemock.MockService
 }
 
@@ -30,13 +28,11 @@ func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "platform_tests")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	s.conn = conn
+
+	storagev2.Reset()
 }
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
-	defer s.conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 
@@ -217,6 +213,9 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-update"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -242,7 +241,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
@@ -253,6 +252,9 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-update"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -278,7 +280,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
@@ -289,6 +291,9 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-update"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -315,7 +320,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args})
@@ -326,6 +331,9 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-update"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -351,7 +359,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
@@ -362,6 +370,9 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-update"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -387,7 +398,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args})
@@ -418,6 +429,9 @@ func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-update"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -443,7 +457,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
@@ -497,6 +511,9 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	name := "test-platform-remove"
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -513,7 +530,7 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 		Name:     appName,
 		Platform: name,
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	err = ps.Remove(context.TODO(), name)

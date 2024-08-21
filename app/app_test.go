@@ -21,7 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
@@ -56,11 +55,14 @@ import (
 )
 
 func (s *S) TestGetAppByName(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	newApp := App{Name: "my-app", Platform: "Django", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &newApp, s.user)
+	err = CreateApp(context.TODO(), &newApp, s.user)
 	c.Assert(err, check.IsNil)
 	newApp.Env = map[string]bindTypes.EnvVar{}
-	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
+	_, err = collection.ReplaceOne(context.TODO(), mongoBSON.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, check.IsNil)
 	myApp, err := GetByName(context.TODO(), "my-app")
 	c.Assert(err, check.IsNil)
@@ -764,6 +766,9 @@ func (s *S) TestAddUnitsQuota(c *check.C) {
 
 func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	ctx := context.Background()
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name: "warpaint", Platform: "ruby",
 		TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}},
@@ -774,7 +779,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = collection.InsertOne(ctx, app)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(ctx, 1, "web", "", nil)
@@ -817,6 +822,10 @@ func (s *S) TestAddZeroUnits(c *check.C) {
 
 func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 	ctx := context.Background()
+
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:      "scars",
 		Platform:  "golang",
@@ -824,7 +833,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 		TeamOwner: s.team.Name,
 		Routers:   []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = collection.InsertOne(ctx, app)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(ctx, 2, "web", "", nil)
@@ -1592,12 +1601,15 @@ func (s *S) TestAddCnameRollbackWithRouterFailure(c *check.C) {
 }
 
 func (s *S) TestAddCnameRollbackWithDatabaseFailure(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{Name: "ktulu", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
+	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddCName(context.TODO(), "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
-	s.conn.Apps().Remove(bson.M{"name": a.Name})
+	collection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
 	err = a.AddCName(context.TODO(), "ktulu3.mycompany.com")
 	c.Assert(err, check.NotNil)
 	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu3.mycompany.com")
@@ -2375,6 +2387,9 @@ func (p *logDisabledFakeProvisioner) LogsEnabled(app provision.App) (bool, strin
 }
 
 func (s *S) TestLastLogsDisabled(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "log-disabled"
@@ -2387,7 +2402,7 @@ func (s *S) TestLastLogsDisabled(c *check.C) {
 		Platform: "vougan",
 		Teams:    []string{s.team.Name},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = collection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	_, err = app.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 10,
@@ -3520,18 +3535,21 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatformVersion(c *check.C) {
-	apps := []App{
-		{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
-		{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
-		{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
-		{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
-		{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	apps := []any{
+		App{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
+		App{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
+		App{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
+		App{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
+		App{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
 	}
-	for _, a := range apps {
-		err := s.conn.Apps().Insert(a)
-		c.Assert(err, check.IsNil)
-	}
-	err := s.conn.Apps().Update(bson.M{"name": "testappwithoutversionfield"}, bson.M{"$unset": bson.M{"platformversion": ""}})
+
+	_, err = collection.InsertMany(context.TODO(), apps)
+	c.Assert(err, check.IsNil)
+
+	_, err = collection.UpdateOne(context.TODO(), mongoBSON.M{"name": "testappwithoutversionfield"}, mongoBSON.M{"$unset": mongoBSON.M{"platformversion": ""}})
 	c.Assert(err, check.IsNil)
 	tt := []struct {
 		platform string
@@ -3553,6 +3571,9 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatformVersion(c *check.
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "testapp",
 		Teams:     []string{s.team.Name},
@@ -3563,16 +3584,19 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
 		Teams:     []string{"commonteam", s.team.Name},
 		TeamOwner: "bar",
 	}
-	err := s.conn.Apps().Insert(a)
+
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), &Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:  "testapp",
 		Teams: []string{s.team.Name},
@@ -3583,10 +3607,10 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
 		Teams: []string{"commonteam", s.team.Name},
 		Owner: "bar",
 	}
-	err := s.conn.Apps().Insert(a)
+
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), &Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
@@ -3620,6 +3644,9 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 }
 
 func (s *S) TestListAll(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:  "testapp",
 		Teams: []string{s.team.Name},
@@ -3628,10 +3655,10 @@ func (s *S) TestListAll(c *check.C) {
 		Name:  "othertestapp",
 		Teams: []string{"commonteam", s.team.Name},
 	}
-	err := s.conn.Apps().Insert(a)
+
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
@@ -3741,13 +3768,16 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 }
 
 func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "app1",
 		TeamOwner: s.team.Name,
 		Teams:     []string{s.team.Name},
 		Router:    "fake",
 	}
-	err := s.conn.Apps().Insert(a)
+	_, err = collection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &a, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
@@ -3867,6 +3897,9 @@ func (s *S) TestListFilteringByPlatform(c *check.C) {
 }
 
 func (s *S) TestListFilteringByOwner(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:  "testapp",
 		Owner: "foo",
@@ -3875,16 +3908,18 @@ func (s *S) TestListFilteringByOwner(c *check.C) {
 		Name:  "othertestapp",
 		Owner: "bar",
 	}
-	err := s.conn.Apps().Insert(a)
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), &Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListFilteringByTeamOwner(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{
 		Name:      "testapp",
 		Teams:     []string{s.team.Name},
@@ -3895,18 +3930,21 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 		Teams:     []string{s.team.Name},
 		TeamOwner: "bar",
 	}
-	err := s.conn.Apps().Insert(a)
+
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), &Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListFilteringByPool(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	opts := pool.AddPoolOptions{Name: "test2", Default: false}
-	err := pool.AddPool(context.TODO(), opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp",
@@ -3918,10 +3956,9 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 		Owner: "bar",
 		Pool:  s.Pool,
 	}
-	err = s.conn.Apps().Insert(a)
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), &Filter{Pool: s.Pool})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
@@ -3930,8 +3967,11 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 }
 
 func (s *S) TestListFilteringByPools(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	opts := pool.AddPoolOptions{Name: "test2", Default: false}
-	err := pool.AddPool(context.TODO(), opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test3", Default: false}
 	err = pool.AddPool(context.TODO(), opts)
@@ -3951,12 +3991,10 @@ func (s *S) TestListFilteringByPools(c *check.C) {
 		Owner: "bar",
 		Pool:  "test3",
 	}
-	err = s.conn.Apps().Insert(a)
+
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2, a3})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a3)
-	c.Assert(err, check.IsNil)
+
 	apps, err := List(context.TODO(), &Filter{Pools: []string{s.Pool, "test2"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
@@ -4023,8 +4061,11 @@ func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) 
 }
 
 func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	a := App{Name: "testApp", Teams: []string{"notAdmin", "noSuperUser"}}
-	err := s.conn.Apps().Insert(a)
+	_, err = collection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
@@ -4034,8 +4075,11 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 }
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	opts := pool.AddPoolOptions{Name: "test2", Default: false}
-	err := pool.AddPool(context.TODO(), opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp1",
@@ -4054,12 +4098,10 @@ func (s *S) TestListFilteringExtraWithOr(c *check.C) {
 		Owner: "bar",
 		Pool:  opts.Name,
 	}
-	err = s.conn.Apps().Insert(a)
+
+	_, err = collection.InsertMany(context.TODO(), []any{a, a2, a3})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a3)
-	c.Assert(err, check.IsNil)
+
 	f := &Filter{}
 	f.ExtraIn("pool", s.Pool)
 	f.ExtraIn("teams", "otherteam")
@@ -4734,8 +4776,11 @@ func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	opts := pool.AddPoolOptions{Name: "test", Public: true}
-	err := pool.AddPool(context.TODO(), opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "nonpublic"}
 	err = pool.AddPool(context.TODO(), opts)
@@ -4748,7 +4793,7 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	}
 	err = a.SetPool(context.TODO())
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a)
+	_, err = collection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	app, _ := GetByName(context.TODO(), a.Name)
 	c.Assert("nonpublic", check.Equals, app.Pool)
@@ -4943,8 +4988,11 @@ func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
 }
 
 func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{Name: "app with invalid name", Plan: s.defaultPlan, Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
-	err := s.conn.Apps().Insert(app)
+	_, err = collection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	updateData := App{Name: app.Name, Description: "bleble"}
@@ -5511,14 +5559,12 @@ func (s *S) TestRenameTeam(c *check.C) {
 	collection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	apps := []App{
-		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
-		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+	apps := []any{
+		App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
+		App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
-	for _, a := range apps {
-		err = s.conn.Apps().Insert(a)
-		c.Assert(err, check.IsNil)
-	}
+	_, err = collection.InsertMany(context.TODO(), apps)
+	c.Assert(err, check.IsNil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var dbApps []App
@@ -5544,14 +5590,13 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 	collection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	apps := []App{
-		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
-		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+	apps := []any{
+		App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
+		App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
-	for _, a := range apps {
-		err = s.conn.Apps().Insert(a)
-		c.Assert(err, check.IsNil)
-	}
+	_, err = collection.InsertMany(context.TODO(), apps)
+	c.Assert(err, check.IsNil)
+
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   eventTypes.Target{Type: "app", Value: "test2"},
 		Kind:     permission.PermAppUpdate,
@@ -5582,19 +5627,17 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 }
 
 func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
-
 	collection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	apps := []App{
-		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
-		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
-		{Name: "test3", TeamOwner: "t3", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+	apps := []any{
+		App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
+		App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+		App{Name: "test3", TeamOwner: "t3", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
-	for _, a := range apps {
-		err = s.conn.Apps().Insert(a)
-		c.Assert(err, check.IsNil)
-	}
+	_, err = collection.InsertMany(context.TODO(), apps)
+	c.Assert(err, check.IsNil)
+
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   eventTypes.Target{Type: "app", Value: "test3"},
 		Kind:     permission.PermAppUpdate,
@@ -6053,7 +6096,11 @@ func (s *S) TestGetHealthcheckDataHCProvisioner(c *check.C) {
 	})
 	defer provision.Unregister("hcprov")
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
-	err := s.conn.Apps().Insert(a)
+
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = collection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
 	hcData, err := a.GetHealthcheckData(context.TODO())

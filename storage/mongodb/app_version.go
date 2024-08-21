@@ -9,36 +9,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/db/storagev2"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-)
-
-const (
-	appVersionsCollectionName = "app_versions"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type appVersionStorage struct{}
-
-func (s *appVersionStorage) collection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	coll := conn.Collection(appVersionsCollectionName)
-	err = coll.EnsureIndex(mgo.Index{
-		Key:    []string{"appname"},
-		Unique: true,
-	})
-	return coll, err
-}
 
 func (s *appVersionStorage) UpdateVersion(ctx context.Context, appName string, vi *appTypes.AppVersionInfo, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
@@ -47,8 +27,8 @@ func (s *appVersionStorage) UpdateVersion(ctx context.Context, appName string, v
 		errors.WithMessage(err, "failed to generate uuid v4")
 	}
 	vi.UpdatedAt = now
-	return s.baseUpdate(ctx, appName, bson.M{
-		"$set": bson.M{
+	return s.baseUpdate(ctx, appName, mongoBSON.M{
+		"$set": mongoBSON.M{
 			fmt.Sprintf("versions.%d", vi.Version): vi,
 			"updatedat":                            now,
 			"updatedhash":                          uuidV4.String(),
@@ -63,8 +43,8 @@ func (s *appVersionStorage) UpdateVersionSuccess(ctx context.Context, appName st
 	if err != nil {
 		errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	return s.baseUpdate(ctx, appName, bson.M{
-		"$set": bson.M{
+	return s.baseUpdate(ctx, appName, mongoBSON.M{
+		"$set": mongoBSON.M{
 			"lastsuccessfulversion":                vi.Version,
 			"updatedat":                            now,
 			"updatedhash":                          uuidV4.String(),
@@ -73,8 +53,8 @@ func (s *appVersionStorage) UpdateVersionSuccess(ctx context.Context, appName st
 	}, opts...)
 }
 
-func (s *appVersionStorage) baseUpdate(ctx context.Context, appName string, updateQuery bson.M, opts ...*appTypes.AppVersionWriteOptions) error {
-	where := bson.M{"appname": appName}
+func (s *appVersionStorage) baseUpdate(ctx context.Context, appName string, updateQuery mongoBSON.M, opts ...*appTypes.AppVersionWriteOptions) error {
+	where := mongoBSON.M{"appname": appName}
 
 	// when receive a PreviousUpdatedHash will perform a optimistic update
 	if len(opts) > 0 && opts[0].PreviousUpdatedHash != "" {
@@ -83,19 +63,20 @@ func (s *appVersionStorage) baseUpdate(ctx context.Context, appName string, upda
 	return s.baseUpdateWhere(ctx, where, updateQuery)
 }
 
-func (s *appVersionStorage) baseUpdateWhere(ctx context.Context, where, updateQuery bson.M) error {
-	span := newMongoDBSpan(ctx, mongoSpanUpdate, appVersionsCollectionName)
+func (s *appVersionStorage) baseUpdateWhere(ctx context.Context, where, updateQuery mongoBSON.M) error {
+
+	collection, err := storagev2.AppVersionsCollection()
+	if err != nil {
+		return err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, collection.Name())
 	span.SetQueryStatement(where)
 
 	defer span.Finish()
 
-	coll, err := s.collection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	err = coll.Update(where, updateQuery)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOneAndUpdate(ctx, where, updateQuery).Err()
+	if err == mongo.ErrNoDocuments {
 		if _, exists := where["updatedhash"]; exists {
 			span.LogKV("event", appTypes.ErrTransactionCancelledByChange.Error())
 			return appTypes.ErrTransactionCancelledByChange
@@ -103,8 +84,12 @@ func (s *appVersionStorage) baseUpdateWhere(ctx context.Context, where, updateQu
 		span.LogKV("event", appTypes.ErrNoVersionsAvailable.Error())
 		return appTypes.ErrNoVersionsAvailable
 	}
-	span.SetError(err)
-	return err
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *appVersionStorage) NewAppVersion(ctx context.Context, args appTypes.NewVersionArgs) (*appTypes.AppVersionInfo, error) {
@@ -128,25 +113,25 @@ func (s *appVersionStorage) NewAppVersion(ctx context.Context, args appTypes.New
 		UpdatedAt:      now,
 	}
 
-	query := bson.M{"appname": args.App.GetName()}
-	span := newMongoDBSpan(ctx, mongoSpanUpsert, appVersionsCollectionName)
+	query := mongoBSON.M{"appname": args.App.GetName()}
+
+	collection, err := storagev2.AppVersionsCollection()
+	if err != nil {
+		return nil, err
+	}
+
+	span := newMongoDBSpan(ctx, mongoSpanUpsert, collection.Name())
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	coll, err := s.collection()
-	if err != nil {
-		span.SetError(err)
-		return nil, err
-	}
-	defer coll.Close()
-	_, err = coll.Upsert(query, bson.M{
-		"$set": bson.M{
+	_, err = collection.UpdateOne(ctx, query, mongoBSON.M{
+		"$set": mongoBSON.M{
 			"count":       appVersionInfo.Version,
 			"updatedat":   time.Now().UTC(),
 			"updatedhash": uuidV4.String(),
 			fmt.Sprintf("versions.%d", appVersionInfo.Version): appVersionInfo,
 		},
-	})
+	}, options.Update().SetUpsert(true))
 	if err != nil {
 		span.SetError(err)
 		return nil, err
@@ -155,7 +140,7 @@ func (s *appVersionStorage) NewAppVersion(ctx context.Context, args appTypes.New
 }
 
 func (s *appVersionStorage) DeleteVersions(ctx context.Context, appName string, opts ...*appTypes.AppVersionWriteOptions) error {
-	where := bson.M{"appname": appName}
+	where := mongoBSON.M{"appname": appName}
 
 	// when receive a PreviousUpdatedHash will perform a optimistic delete
 	if len(opts) > 0 && opts[0].PreviousUpdatedHash != "" {
@@ -167,8 +152,8 @@ func (s *appVersionStorage) DeleteVersions(ctx context.Context, appName string, 
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
 
-	err = s.baseUpdate(ctx, appName, bson.M{
-		"$set": bson.M{
+	err = s.baseUpdate(ctx, appName, mongoBSON.M{
+		"$set": mongoBSON.M{
 			"versions":        map[int]appTypes.AppVersionInfo{},
 			"updatedhash":     uuidV4.String(),
 			"markedtoremoval": false,
@@ -183,19 +168,18 @@ func (s *appVersionStorage) DeleteVersions(ctx context.Context, appName string, 
 }
 
 func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter ...string) ([]appTypes.AppVersions, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
-	defer span.Finish()
-
 	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {
-		span.SetError(err)
 		return nil, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	defer span.Finish()
 
 	var allAppVersions []appTypes.AppVersions
 	var filter mongoBSON.M
 	if len(appNamesFilter) > 0 {
-		filter = mongoBSON.M{"appname": bson.M{"$in": appNamesFilter}}
+		filter = mongoBSON.M{"appname": mongoBSON.M{"$in": appNamesFilter}}
 	}
 
 	cursor, err := collection.Find(ctx, filter)
@@ -214,15 +198,15 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 
 func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.AppInterface) (appTypes.AppVersions, error) {
 	query := mongoBSON.M{"appname": app.GetName()}
-	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
-	span.SetQueryStatement(query)
-	defer span.Finish()
 
 	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {
-		span.SetError(err)
 		return appTypes.AppVersions{}, err
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, collection.Name())
+	span.SetQueryStatement(query)
+	defer span.Finish()
 
 	var appVersions appTypes.AppVersions
 	err = collection.FindOne(ctx, query).Decode(&appVersions)
@@ -241,13 +225,13 @@ func (s *appVersionStorage) DeleteVersionIDs(ctx context.Context, appName string
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	fullChange := bson.M{
-		"$set": bson.M{
+	fullChange := mongoBSON.M{
+		"$set": mongoBSON.M{
 			"updatedat":   time.Now().UTC(),
 			"updatedhash": uuidV4.String(),
 		},
 	}
-	unset := bson.M{}
+	unset := mongoBSON.M{}
 	for _, version := range versions {
 		unset[fmt.Sprintf("versions.%d", version)] = ""
 	}
@@ -262,8 +246,8 @@ func (s *appVersionStorage) MarkToRemoval(ctx context.Context, appName string, o
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	update := bson.M{
-		"$set": bson.M{
+	update := mongoBSON.M{
+		"$set": mongoBSON.M{
 			"markedtoremoval": true,
 			"updatedat":       time.Now().UTC(),
 			"updatedhash":     uuidV4.String(),
@@ -279,7 +263,7 @@ func (s *appVersionStorage) MarkVersionsToRemoval(ctx context.Context, appName s
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
 
-	where := bson.M{
+	where := mongoBSON.M{
 		"appname": appName,
 	}
 
@@ -288,18 +272,18 @@ func (s *appVersionStorage) MarkVersionsToRemoval(ctx context.Context, appName s
 		where["updatedhash"] = opts[0].PreviousUpdatedHash
 	}
 
-	set := bson.M{
+	set := mongoBSON.M{
 		"updatedat":   now,
 		"updatedhash": uuidV4.String(),
 	}
 
 	for _, version := range versions {
 		versionKey := fmt.Sprintf("versions.%d", version)
-		where[versionKey] = bson.M{"$exists": true}
+		where[versionKey] = mongoBSON.M{"$exists": true}
 		set[versionKey+".markedtoremoval"] = true
 		set[versionKey+".updatedat"] = now
 	}
 
-	update := bson.M{"$set": set}
+	update := mongoBSON.M{"$set": set}
 	return s.baseUpdateWhere(ctx, where, update)
 }

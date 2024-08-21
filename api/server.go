@@ -42,7 +42,6 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/oidc"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/hc"
@@ -511,16 +510,11 @@ func RunServer(dry bool) http.Handler {
 }
 
 func setupDatabase() error {
-	dbName, err := config.GetString("database:name")
-	if err != nil {
-		dbName = db.DefaultDatabaseName
-	}
 	dbDriverName, err := config.GetString("database:driver")
 	if err != nil {
 		dbDriverName = storage.DefaultDbDriverName
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a database driver, using default driver.")
 	}
-	fmt.Fprintf(os.Stderr, "Using %q database %q from the server.\n", dbDriverName, dbName)
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
 		return err

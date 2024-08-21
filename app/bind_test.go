@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
@@ -61,7 +60,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	err = Delete(context.TODO(), app, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\.`+"\n$")
-	n, err := serviceInstancesCollection.CountDocuments(context.TODO(), mongoBSON.M{"apps": bson.M{"$in": []string{a.Name}}})
+	n, err := serviceInstancesCollection.CountDocuments(context.TODO(), mongoBSON.M{"apps": mongoBSON.M{"$in": []string{a.Name}}})
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, int64(0))
 }

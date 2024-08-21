@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -283,7 +282,7 @@ func (s *S) TestGetDeploy(c *check.C) {
 }
 
 func (s *S) TestGetDeployNotFound(c *check.C) {
-	idTest := bson.NewObjectId()
+	idTest := primitive.NewObjectID()
 	deploy, err := GetDeploy(context.TODO(), idTest.Hex())
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 	c.Assert(deploy, check.IsNil)
@@ -805,7 +804,7 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	incrementDeploy(context.TODO(), &a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	err = appsCollection.FindOne(context.TODO(), bson.M{"name": a.Name}).Decode(&a)
+	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Deploys, check.Equals, uint(1))
 }

@@ -21,11 +21,9 @@ import (
 	"time"
 
 	"github.com/cezarsa/form"
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
@@ -636,10 +634,9 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 		Teams:     []string{s.team.Name},
 		Router:    "fake",
 	}
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(app1)
+	_, err = appsCollection.InsertOne(context.TODO(), app1)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.EnsureBackend(context.TODO(), &app1, router.EnsureBackendOpts{})
 	request, err := http.NewRequest("GET", "/apps/app1", nil)
@@ -852,7 +849,10 @@ func (s *S) TestDeleteVersion(c *check.C) {
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
 	myApp := app.App{Name: "app-to-delete", Platform: "zend"}
-	err := s.conn.Apps().Insert(myApp)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), myApp)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppDelete,
@@ -921,7 +921,12 @@ func (s *S) TestAppInfo(c *check.C) {
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *check.C) {
 	expectedApp := app.App{Name: "new-app", Platform: "zend"}
-	err := s.conn.Apps().Insert(expectedApp)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), expectedApp)
+
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
 	c.Assert(err, check.IsNil)
@@ -2261,7 +2266,11 @@ func (s *S) TestUpdateAppPoolWithNoRestart(c *check.C) {
 
 func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend"}
-	err := s.conn.Apps().Insert(&a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "test"}
 	err = pool.AddPool(context.TODO(), opts)
@@ -2630,7 +2639,12 @@ func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *check.C) {
 
 func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
+
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("units=1&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
@@ -2791,7 +2805,12 @@ func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *check.C) {
 
 func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "fetisha", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
+
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateUnitRemove,
@@ -2919,7 +2938,10 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *check.C) {
 
 func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateGrant,
@@ -2978,7 +3000,10 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 
 func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{"abcd", s.team.Name}}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -3014,7 +3039,10 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *check.C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRevoke,
@@ -3052,7 +3080,10 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	t := authTypes.Team{Name: "blaaa"}
 	t2 := authTypes.Team{Name: "team2"}
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name, t2.Name}}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, t.Name)
@@ -3262,7 +3293,10 @@ func (s *S) TestRunAppDoesNotExist(c *check.C) {
 
 func (s *S) TestRunUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRun,
@@ -3395,7 +3429,10 @@ func (s *S) TestGetEnvAppDoesNotExist(c *check.C) {
 
 func (s *S) TestGetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadEnv,
@@ -3936,7 +3973,10 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 			InstanceName: "some-service",
 		},
 	}}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
@@ -4026,7 +4066,10 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 
 func (s *S) TestSetEnvMissingFormBody(c *check.C) {
 	a := app.App{Name: "rock", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", "/apps/rock/env", nil)
 	c.Assert(err, check.IsNil)
@@ -4041,7 +4084,10 @@ func (s *S) TestSetEnvMissingFormBody(c *check.C) {
 
 func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
 	a := app.App{Name: "rock", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", "/apps/rock/env", strings.NewReader(""))
 	c.Assert(err, check.IsNil)
@@ -4068,7 +4114,10 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
 
 func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "rock-and-roll", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateEnvSet,
@@ -4167,7 +4216,10 @@ func (s *S) TestUnsetEnv(c *check.C) {
 			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 		},
 	}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
@@ -4208,7 +4260,10 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 		},
 	}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
@@ -4249,7 +4304,10 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 		},
 	}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -4292,7 +4350,10 @@ func (s *S) TestUnsetHandlerRemovesPrivateVariables(c *check.C) {
 			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 		},
 	}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER&env=DATABASE_PASSWORD", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -4319,7 +4380,10 @@ func (s *S) TestUnsetEnvVariablesMissing(c *check.C) {
 			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 		},
 	}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/swift/env?noRestart=false&env=", nil)
 	c.Assert(err, check.IsNil)
@@ -4342,7 +4406,10 @@ func (s *S) TestUnsetEnvAppDoesNotExist(c *check.C) {
 
 func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "mountain-mama"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateEnvUnset,
@@ -4590,7 +4657,10 @@ func (s *S) TestRemoveCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 		Name:     "lost",
 		Platform: "vougan",
 	}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateCnameRemove,
@@ -4619,7 +4689,10 @@ func (s *S) TestAppLogShouldReturnNotFoundWhenAppDoesNotExist(c *check.C) {
 
 func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "lost", Platform: "vougan"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
@@ -5342,7 +5415,10 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend"}
-	err = s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
@@ -5447,6 +5523,9 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 }
 
 func (s *S) TestUnbindHandler(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	s.provisioner.PrepareOutput([]byte("exported"))
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -5455,7 +5534,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(context.TODO(), srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5488,7 +5567,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		ServiceName:  instance.ServiceName,
 	})
 	otherApp.Env["MY_VAR"] = bindTypes.EnvVar{Name: "MY_VAR", Value: "123"}
-	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
+	_, err = appsCollection.ReplaceOne(context.TODO(), mongoBSON.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
@@ -5544,6 +5623,9 @@ func (s *S) TestUnbindHandler(c *check.C) {
 }
 
 func (s *S) TestUnbindNoRestartFlag(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	s.provisioner.PrepareOutput([]byte("exported"))
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -5551,7 +5633,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(context.TODO(), srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5583,7 +5665,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		ServiceName:  instance.ServiceName,
 	})
 	otherApp.Env["MY_VAR"] = bindTypes.EnvVar{Name: "MY_VAR", Value: "123"}
-	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
+	_, err = appsCollection.ReplaceOne(context.TODO(), mongoBSON.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=true", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
@@ -5638,6 +5720,9 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 }
 
 func (s *S) TestUnbindForceFlag(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	s.provisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind-app" {
@@ -5647,7 +5732,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(context.TODO(), srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5680,7 +5765,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 		ServiceName:  instance.ServiceName,
 	})
 	otherApp.Env["MY_VAR"] = bindTypes.EnvVar{Name: "MY_VAR", Value: "123"}
-	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
+	_, err = appsCollection.ReplaceOne(context.TODO(), mongoBSON.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&force=true", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
@@ -5947,7 +6032,10 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend"}
-	err = s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name,
 		a.Name, instance.ServiceName, instance.Name, a.Name)
@@ -6047,7 +6135,10 @@ func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 
 func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "nightmist"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRestart,
@@ -6235,7 +6326,10 @@ func (s *S) TestStopHandler(c *check.C) {
 
 func (s *S) TestForceDeleteLock(c *check.C) {
 	a := app.App{Name: "locked"}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)

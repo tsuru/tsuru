@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/cezarsa/form"
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -30,6 +29,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -307,7 +307,8 @@ func (s *EventSuite) TestEventInfoInvalidObjectID(c *check.C) {
 }
 
 func (s *EventSuite) TestEventInfoNotFound(c *check.C) {
-	uuid := bson.NewObjectId()
+	uuid := primitive.NewObjectID()
+
 	u := fmt.Sprintf("/events/%s", uuid.Hex())
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
@@ -348,7 +349,7 @@ func (s *EventSuite) TestEventCancelInvalidObjectID(c *check.C) {
 }
 
 func (s *EventSuite) TestEventCancelNotFound(c *check.C) {
-	id := bson.NewObjectId()
+	id := primitive.NewObjectID()
 	u := fmt.Sprintf("/events/%s/cancel", id.Hex())
 	body := strings.NewReader("reason=we ain't gonna take it")
 	request, err := http.NewRequest("POST", u, body)
@@ -760,7 +761,7 @@ func (s *EventSuite) TestEventBlockRemoveUUIDNotFound(c *check.C) {
 		Scheme:  permission.PermEventBlockRemove,
 		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", bson.NewObjectId().Hex()), nil)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", primitive.NewObjectID().Hex()), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

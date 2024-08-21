@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -114,7 +113,7 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 }
 
 func GetDeploy(ctx context.Context, id string) (*DeployData, error) {
-	if !bson.IsObjectIdHex(id) {
+	if _, err := primitive.ObjectIDFromHex(id); err != nil {
 		return nil, errors.Errorf("id parameter is not ObjectId: %s", id)
 	}
 	evt, err := event.GetByHexID(ctx, id)

@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -19,7 +18,6 @@ import (
 )
 
 type S struct {
-	conn *db.Storage
 }
 
 var _ = check.Suite(&S{})
@@ -33,9 +31,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "provision_kubernetes_cluster_tests_s")
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -45,7 +42,6 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Close()
 }
 
 func (s *S) TestClusterServiceCreateError(c *check.C) {

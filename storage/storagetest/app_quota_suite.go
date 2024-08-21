@@ -13,8 +13,8 @@ import (
 )
 
 type appStorage interface {
-	Create(*app.App) error
-	Remove(*app.App) error
+	Create(context.Context, *app.App) error
+	Remove(context.Context, *app.App) error
 }
 
 type AppQuotaSuite struct {
@@ -25,7 +25,7 @@ type AppQuotaSuite struct {
 
 func (s *AppQuotaSuite) TestGet(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: quota.UnlimitedQuota}
-	s.AppStorage.Create(app)
+	s.AppStorage.Create(context.TODO(), app)
 	quota, err := s.AppQuotaStorage.Get(context.TODO(), "myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
@@ -40,7 +40,7 @@ func (s *AppQuotaSuite) TestGetNotFound(c *check.C) {
 
 func (s *AppQuotaSuite) TestSetLimit(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
-	s.AppStorage.Create(app)
+	s.AppStorage.Create(context.TODO(), app)
 	err := s.AppQuotaStorage.SetLimit(context.TODO(), "myapp", 1)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AppQuotaStorage.Get(context.TODO(), "myapp")
@@ -57,7 +57,7 @@ func (s *AppQuotaSuite) TestSetLimitNotFound(c *check.C) {
 
 func (s *AppQuotaSuite) TestSet(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
-	s.AppStorage.Create(app)
+	s.AppStorage.Create(context.TODO(), app)
 	err := s.AppQuotaStorage.Set(context.TODO(), "myapp", 3)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AppQuotaStorage.Get(context.TODO(), "myapp")

@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/job"
@@ -39,7 +38,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
 	team        authTypes.Team
 	user        *auth.User
 	plan        appTypes.Plan
@@ -106,8 +104,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 
 	storagev2.Reset()
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
+
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
@@ -118,7 +115,6 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	defer s.conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 
