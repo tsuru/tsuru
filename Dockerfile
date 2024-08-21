@@ -15,6 +15,7 @@ RUN set -x && \
 
 ARG gke_auth_plugin_version=0.1.1
 ARG TARGETARCH
+ARG TSURU_BUILD_VERSION
 RUN set -x \
     && apk add --update --no-cache curl ca-certificates \
     && curl -fsSL "https://github.com/traviswt/gke-auth-plugin/releases/download/${gke_auth_plugin_version}/gke-auth-plugin_Linux_$( [[ ${TARGETARCH} == 'amd64' ]] && echo 'x86_64' || echo ${TARGETARCH} ).tar.gz" \

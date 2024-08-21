@@ -224,6 +224,11 @@ jobs:
         docker_image: tsuru/api
         default_branch: main
         tag_with_sha: 'true'
+    - name: Get version from tag
+      id: gittag
+      uses: jimschubert/query-tag-action@v1
+      with:
+        commit-ish: HEAD
     - uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -231,6 +236,8 @@ jobs:
     - uses: docker/build-push-action@v2
       with:
         context: .
+        build-args: |
+          TSURU_BUILD_VERSION="${{steps.gittag.outputs.tag}}"
         push: true
         tags: ${{ steps.smarttag.outputs.tag }}
         cache-from: type=local,src=/tmp/.buildx-cache

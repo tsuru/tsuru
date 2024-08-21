@@ -62,7 +62,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const (
+var (
 	Version = "1.22.7"
 	GitHash = ""
 )

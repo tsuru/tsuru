@@ -6,6 +6,7 @@ SHELL       = /bin/bash -o pipefail
 BUILD_DIR   = build
 TSR_BIN     = $(BUILD_DIR)/tsurud
 TSR_SRC     = ./cmd/tsurud
+GIT_TAG_VER := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "$${TSURU_BUILD_VERSION:-dev}")
 
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
@@ -107,7 +108,7 @@ binaries: tsurud
 tsurud: $(TSR_BIN)
 
 $(TSR_BIN):
-	CGO_ENABLED=0 go build -trimpath -ldflags '-s -w -X github.com/tsuru/tsuru/api.GitHash=$(shell git rev-parse HEAD) -X github.com/tsuru/tsuru/api.Version=$(shell git describe --tags --abbrev=0)' -o $(TSR_BIN) $(TSR_SRC)
+	CGO_ENABLED=0 go build -trimpath -ldflags '-s -w -X github.com/tsuru/tsuru/api.GitHash=$(shell git rev-parse HEAD) -X github.com/tsuru/tsuru/api.Version=$(GIT_TAG_VER)' -o $(TSR_BIN) $(TSR_SRC)
 
 run-tsurud-api: $(TSR_BIN)
 	$(TSR_BIN) api
