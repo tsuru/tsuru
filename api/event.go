@@ -256,7 +256,8 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return permission.ErrUnauthorized
 	}
 	uuid := r.URL.Query().Get(":uuid")
-	if _, err := primitive.ObjectIDFromHex(uuid); err != nil {
+	_, err = primitive.ObjectIDFromHex(uuid)
+	if err != nil {
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
