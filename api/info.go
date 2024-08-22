@@ -24,7 +24,7 @@ func info(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	data["version"] = Version
 
 	if GitHash != "" {
-		data["vesion"] = fmt.Sprintf("%s (git commit %s)", Version, GitHash)
+		data["version"] = fmt.Sprintf("%s (git commit %s)", Version, GitHash)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
