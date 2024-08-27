@@ -5432,8 +5432,8 @@ func (s *S) TestUpdateMetadataWhenEmpty(c *check.C) {
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 
-	expectedMetadataJSON, err := json.Marshal(expectedMetadata)
-	newMetadataJSON, err := json.Marshal(dbApp.Metadata)
+	expectedMetadataJSON, _ := json.Marshal(expectedMetadata)
+	newMetadataJSON, _ := json.Marshal(dbApp.Metadata)
 	c.Assert(string(expectedMetadataJSON), check.Equals, string(newMetadataJSON))
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
@@ -5464,8 +5464,8 @@ func (s *S) TestUpdateMetadataWhenAlreadySet(c *check.C) {
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 
-	expectedMetadataJSON, err := json.Marshal(expectedMetadata)
-	newMetadataJSON, err := json.Marshal(dbApp.Metadata)
+	expectedMetadataJSON, _ := json.Marshal(expectedMetadata)
+	newMetadataJSON, _ := json.Marshal(dbApp.Metadata)
 	c.Assert(string(expectedMetadataJSON), check.Equals, string(newMetadataJSON))
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 }
