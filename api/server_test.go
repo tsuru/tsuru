@@ -438,7 +438,7 @@ func generateTLSCertificate() (cert *tls.Certificate, raw *encodedCertificate, e
 
 func generateCertificate(template *x509.Certificate, parent *tls.Certificate) (*tls.Certificate, error) {
 	var err error
-	privateKey, err := rsa.GenerateKey(cryptoRand.Reader, 1024)
+	privateKey, err := rsa.GenerateKey(cryptoRand.Reader, 2048)
 	if err != nil {
 		return nil, err
 	}
