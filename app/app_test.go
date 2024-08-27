@@ -5420,17 +5420,22 @@ func (s *S) TestUpdateMetadataWhenEmpty(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 
-	updateData := App{Metadata: appTypes.Metadata{
+	expectedMetadata := appTypes.Metadata{
 		Annotations: []appTypes.MetadataItem{{Name: "a", Value: "b"}},
 		Labels:      []appTypes.MetadataItem{{Name: "c", Value: "d"}},
-	}}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	}
+
+	updateData := App{Metadata: expectedMetadata}
+	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
 
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}})
-	c.Assert(dbApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "c", Value: "d"}})
+
+	expectedMetadataJSON, err := json.Marshal(expectedMetadata)
+	newMetadataJSON, err := json.Marshal(dbApp.Metadata)
+	c.Assert(string(expectedMetadataJSON), check.Equals, string(newMetadataJSON))
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdateMetadataWhenAlreadySet(c *check.C) {
@@ -5447,14 +5452,22 @@ func (s *S) TestUpdateMetadataWhenAlreadySet(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 
+	expectedMetadata := appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{{Name: "a", Value: "new"}},
+		Labels:      []appTypes.MetadataItem{{Name: "c", Value: "d"}},
+	}
+
 	updateData := App{Metadata: appTypes.Metadata{Annotations: []appTypes.MetadataItem{{Name: "a", Value: "new"}}}}
 	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "new"}})
-	c.Assert(dbApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "c", Value: "d"}})
+
+	expectedMetadataJSON, err := json.Marshal(expectedMetadata)
+	newMetadataJSON, err := json.Marshal(dbApp.Metadata)
+	c.Assert(string(expectedMetadataJSON), check.Equals, string(newMetadataJSON))
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdateMetadataCanRemoveAnnotation(c *check.C) {
