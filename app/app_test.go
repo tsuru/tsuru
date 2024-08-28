@@ -5433,7 +5433,9 @@ func (s *S) TestUpdateMetadataWhenEmpty(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	expectedMetadataJSON, _ := json.Marshal(expectedMetadata)
-	newMetadataJSON, _ := json.Marshal(dbApp.Metadata)
+	newMetadataJSON, err := json.Marshal(dbApp.Metadata)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(string(expectedMetadataJSON), check.Equals, string(newMetadataJSON))
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
@@ -5465,7 +5467,9 @@ func (s *S) TestUpdateMetadataWhenAlreadySet(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	expectedMetadataJSON, _ := json.Marshal(expectedMetadata)
-	newMetadataJSON, _ := json.Marshal(dbApp.Metadata)
+	newMetadataJSON, err := json.Marshal(dbApp.Metadata)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(string(expectedMetadataJSON), check.Equals, string(newMetadataJSON))
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 }
