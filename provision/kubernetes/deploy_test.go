@@ -3308,7 +3308,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Healthcheck Timeout of 1s exceeded .* ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), &apiv1.Event{
@@ -3479,7 +3479,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Healthcheck Timeout of 1s exceeded .*ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), &apiv1.Event{
@@ -3637,7 +3637,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-1-1\" not ready.*")
 	waitDep()
 	c.Assert(rollbackCalled, check.Equals, false)
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*UPDATING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Deployment Progress Timeout of 2s exceeded .*UPDATING BACK AFTER FAILURE.*`)
 }
 
 func (s *S) TestServiceManagerDeployServiceNoChanges(c *check.C) {
