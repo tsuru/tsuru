@@ -62,7 +62,7 @@ func findValidImages(ctx context.Context, appNames []string) (set.Set, error) {
 
 	for _, av := range allVersions {
 		for _, version := range av.Versions {
-			if version.DeploySuccessful && version.DeployImage != "" {
+			if version.DeploySuccessful && version.DeployImage != "" && !version.Disabled {
 				validImages.Add(version.DeployImage)
 			}
 		}

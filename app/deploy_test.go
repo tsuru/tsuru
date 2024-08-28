@@ -222,6 +222,62 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0], expected[1]})
 }
 
+func (s *S) TestListFilteredDeploysWithDisabledRollback(c *check.C) {
+	a := App{
+		Name:      "g1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	team := authTypes.Team{Name: "team"}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &team, nil
+	}
+	a = App{
+		Name:      "ge",
+		Platform:  "zend",
+		TeamOwner: team.Name,
+	}
+	err = CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
+	version.ToggleEnabled(false, "test") // disable rollback
+	testBaseImage, err := version.BaseImageName()
+	c.Check(err, check.IsNil)
+	insert := []DeployData{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		{App: "ge", Timestamp: time.Now(), Image: testBaseImage},
+	}
+	insertDeploysAsEvents(insert, c)
+	expected := []DeployData{insert[1], insert[0]}
+	expected[0].CanRollback = false
+	expected[0].Image = "registry.somewhere/tsuru/app-ge:v1"
+	expected[0].Version = version.Version()
+	normalizeTS(expected)
+	f := &Filter{}
+	f.ExtraIn("teams", team.Name)
+	deploys, err := ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.HasLen, 1)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0]})
+	f = &Filter{}
+	f.ExtraIn("name", "g1")
+	deploys, err = ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[1]})
+	f = &Filter{}
+	deploys, err = ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0], expected[1]})
+}
+
 func normalizeTS(deploys []DeployData) {
 	for i := range deploys {
 		deploys[i].Timestamp = time.Unix(deploys[i].Timestamp.Unix(), 0)
