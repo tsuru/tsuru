@@ -425,6 +425,11 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		return err
 	}
 
+	oldMetadata, err := json.Marshal(oldApp.Metadata)
+	if err != nil {
+		return err
+	}
+
 	if description != "" {
 		app.Description = description
 	}
@@ -487,6 +492,12 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	}
 
 	app.Metadata.Update(args.UpdateData.Metadata)
+
+	newMetadata, err := json.Marshal(app.Metadata)
+	if err != nil {
+		return err
+	}
+
 	if platform != "" {
 		var p, v string
 		p, v, err = app.getPlatformNameAndVersion(ctx, platform)
@@ -536,7 +547,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	} else if processesHasChanged && args.ShouldRestart {
 		actions = append(actions, &restartApp)
-	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
+	} else if string(newMetadata) != string(oldMetadata) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(ctx, app, &oldApp, args.Writer)
