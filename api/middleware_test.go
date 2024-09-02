@@ -338,7 +338,10 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidAPIToken(c *check.C) {
 
 func (s *S) TestAuthTokenMiddlewareUserTokenForApp(c *check.C) {
 	a := app.App{Name: "something", Teams: []string{s.team.Name}}
-	err := s.conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(stdContext.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=something", nil)

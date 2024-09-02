@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db/storagev2"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/check.v1"
 )
 
@@ -64,14 +65,14 @@ func compareLogsNoDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.App
 
 func compareLogsDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog, compareDate bool) {
 	for i := range logs1 {
-		logs1[i].MongoID = ""
+		logs1[i].MongoID = primitive.NilObjectID
 		logs1[i].Date = logs1[i].Date.UTC()
 		if !compareDate {
 			logs1[i].Date = time.Time{}
 		}
 	}
 	for i := range logs2 {
-		logs2[i].MongoID = ""
+		logs2[i].MongoID = primitive.NilObjectID
 		logs2[i].Date = logs2[i].Date.UTC()
 		if !compareDate {
 			logs2[i].Date = time.Time{}

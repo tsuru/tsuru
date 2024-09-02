@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	logTypes "github.com/tsuru/tsuru/types/log"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type LogWatcher interface {
@@ -18,11 +18,6 @@ type AppLogService interface {
 	Add(appName, message, source, unit string) error
 	List(ctx context.Context, args ListLogArgs) ([]Applog, error)
 	Watch(ctx context.Context, args ListLogArgs) (LogWatcher, error)
-}
-
-type AppLogServiceProvision interface {
-	Provision(appName string) error
-	CleanUp(appname string) error
 }
 
 type AppLogServiceInstance interface {
@@ -40,7 +35,7 @@ type ListLogArgs struct {
 
 // Applog represents a log entry.
 type Applog struct {
-	MongoID bson.ObjectId `bson:"_id,omitempty" json:"-"`
+	MongoID primitive.ObjectID `bson:"_id,omitempty" json:"-"`
 	Date    time.Time
 	Message string
 	Source  string

@@ -104,6 +104,10 @@ func AuthGroupsCollection() (*mongo.Collection, error) {
 	return Collection("auth_groups")
 }
 
+func MigrationsCollection() (*mongo.Collection, error) {
+	return Collection("migrations")
+}
+
 func OAuth2TokensCollection() (*mongo.Collection, error) {
 	collectionName := getOAuthTokensCollectionName()
 	return Collection(collectionName)

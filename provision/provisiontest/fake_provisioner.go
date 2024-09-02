@@ -234,7 +234,7 @@ func (a *FakeApp) GetName() string {
 	return a.name
 }
 
-func (a *FakeApp) GetUUID() (string, error) {
+func (a *FakeApp) GetUUID(ctx context.Context) (string, error) {
 	if a.uuid != "" {
 		return a.uuid, nil
 	}

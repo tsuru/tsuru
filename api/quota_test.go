@@ -11,11 +11,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -456,16 +454,17 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, "civil")
 		return &quota.Quota{Limit: 4, InUse: 2}, nil
 	}
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	app := &app.App{
 		Name:  "civil",
 		Teams: []string{s.team.Name},
 	}
-	err = conn.Apps().Insert(app)
+
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+
+	_, err = appsCollection.InsertOne(context.TODO(), app)
+	c.Assert(err, check.IsNil)
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -484,16 +483,17 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	app := &app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 	}
-	err = conn.Apps().Insert(app)
+
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+
+	_, err = appsCollection.InsertOne(context.TODO(), app)
+	c.Assert(err, check.IsNil)
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
@@ -527,9 +527,6 @@ func (s *QuotaSuite) TestGetAppQuotaAppNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	a := &app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
@@ -540,9 +537,12 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
-	err = conn.Apps().Insert(a)
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
+
+	_, err = appsCollection.InsertOne(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
 	body := bytes.NewBufferString("limit=40")
 	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -563,17 +563,17 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
+
 	app := app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	err = conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "other", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
 		Context: permission.Context(permTypes.CtxTeam, "-other-"),
@@ -589,17 +589,17 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
+
 	app := app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	err = conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	values := []string{"four", ""}
 	for _, value := range values {
 		body := bytes.NewBufferString("limit=" + value)
@@ -637,9 +637,9 @@ func (s *QuotaSuite) TestChangeAppQuotaAppNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
-	conn, err := db.Conn()
+	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
+
 	a := &app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
@@ -650,9 +650,9 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
 	}
-	err = conn.Apps().Insert(a)
+	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
 	body := bytes.NewBufferString("limit=3")
 	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

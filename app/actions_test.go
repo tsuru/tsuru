@@ -8,7 +8,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -73,7 +72,11 @@ func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	expected := quota.Quota{Limit: 2}
 	a, ok := r.(*App)
 	c.Assert(ok, check.Equals, true)
@@ -197,12 +200,15 @@ func (s *S) TestExportEnvironmentsMinParams(c *check.C) {
 }
 
 func (s *S) TestProvisionAppForward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
@@ -214,12 +220,15 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 }
 
 func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
@@ -237,12 +246,15 @@ func (s *S) TestProvisionAppForwardInvalidApp(c *check.C) {
 }
 
 func (s *S) TestProvisionAppBackward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(fwctx)
@@ -390,6 +402,9 @@ func (s *S) TestReserveUserAppMinParams(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -401,7 +416,7 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(err, check.IsNil)
@@ -409,6 +424,9 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -420,7 +438,7 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
 	c.Assert(err, check.IsNil)
@@ -428,6 +446,9 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -439,7 +460,7 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 1}})
 	c.Assert(result, check.IsNil)
@@ -473,6 +494,9 @@ func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -484,7 +508,7 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 		c.Assert(quantity, check.Equals, -3)
 		return nil
 	}
-	err := s.conn.Apps().Insert(app)
+	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
 }

@@ -8,13 +8,14 @@
 package migration
 
 import (
+	"context"
 	"fmt"
 	"io"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ErrDuplicateMigration is the error returned by Register when the given name
@@ -85,26 +86,25 @@ func register(name string, optional bool, fn MigrateFunc) error {
 // Run runs all registered non optional migrations if no ".Name" is informed.
 // Migrations are executed in the order that they were registered. If ".Name"
 // is informed, an optional migration with the given name is executed.
-func Run(args RunArgs) error {
+func Run(ctx context.Context, args RunArgs) error {
 	if args.Name != "" {
-		return runOptional(args)
+		return runOptional(ctx, args)
 	}
 	if args.Force {
 		return ErrCannotForceMandatory
 	}
-	return run(args)
+	return run(ctx, args)
 }
 
-func run(args RunArgs) error {
-	migrationsToRun, err := getMigrations(true)
+func run(ctx context.Context, args RunArgs) error {
+	migrationsToRun, err := getMigrations(ctx, true)
 	if err != nil {
 		return err
 	}
-	coll, err := collection()
+	collection, err := storagev2.MigrationsCollection()
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
 	for _, m := range migrationsToRun {
 		if m.Optional {
 			continue
@@ -116,7 +116,7 @@ func run(args RunArgs) error {
 				return err
 			}
 			m.Ran = true
-			err = coll.Insert(m)
+			_, err = collection.InsertOne(ctx, m)
 			if err != nil {
 				return err
 			}
@@ -126,8 +126,8 @@ func run(args RunArgs) error {
 	return nil
 }
 
-func runOptional(args RunArgs) error {
-	migrationsToRun, err := getMigrations(false)
+func runOptional(ctx context.Context, args RunArgs) error {
+	migrationsToRun, err := getMigrations(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -149,17 +149,16 @@ func runOptional(args RunArgs) error {
 	}
 	fmt.Fprintf(args.Writer, "Running %q... ", toRun.Name)
 	if !args.Dry {
-		coll, err := collection()
+		collection, err := storagev2.MigrationsCollection()
 		if err != nil {
 			return err
 		}
-		defer coll.Close()
 		err = toRun.fn()
 		if err != nil {
 			return err
 		}
 		toRun.Ran = true
-		_, err = coll.Upsert(bson.M{"name": toRun.Name}, toRun)
+		_, err = collection.ReplaceOne(ctx, mongoBSON.M{"name": toRun.Name}, toRun, options.Replace().SetUpsert(true))
 		if err != nil {
 			return err
 		}
@@ -168,24 +167,28 @@ func runOptional(args RunArgs) error {
 	return nil
 }
 
-func List() ([]migration, error) {
-	return getMigrations(false)
+func List(ctx context.Context) ([]migration, error) {
+	return getMigrations(ctx, false)
 }
 
-func getMigrations(ignoreRan bool) ([]migration, error) {
-	coll, err := collection()
+func getMigrations(ctx context.Context, ignoreRan bool) ([]migration, error) {
+	collection, err := storagev2.MigrationsCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer coll.Close()
 	result := make([]migration, 0, len(migrations))
 	names := make([]string, len(migrations))
 	for i, m := range migrations {
 		names[i] = m.Name
 	}
-	query := bson.M{"name": bson.M{"$in": names}, "ran": true}
+	query := mongoBSON.M{"name": mongoBSON.M{"$in": names}, "ran": true}
 	var ran []migration
-	err = coll.Find(query).All(&ran)
+	cursor, err := collection.Find(ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &ran)
 	if err != nil {
 		return nil, err
 	}
@@ -202,12 +205,4 @@ func getMigrations(ignoreRan bool) ([]migration, error) {
 		}
 	}
 	return result, nil
-}
-
-func collection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return conn.Collection("migrations"), nil
 }

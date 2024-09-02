@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
@@ -112,7 +111,7 @@ func (s *S) TearDownSuite(c *check.C) {
 func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int) {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            a,
-		EventID:        bson.NewObjectId().Hex(),
+		EventID:        primitive.NewObjectID().Hex(),
 		CustomBuildTag: "my-custom-tag",
 	})
 	c.Assert(err, check.IsNil)
@@ -123,7 +122,7 @@ func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int
 	for i := 1; i <= desiredNumberOfVersions; i++ {
 		version, err = servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App:     a,
-			EventID: bson.NewObjectId().Hex(),
+			EventID: primitive.NewObjectID().Hex(),
 		})
 		c.Assert(err, check.IsNil)
 		err = version.CommitBuildImage()

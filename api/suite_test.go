@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
@@ -42,7 +41,6 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
 	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
@@ -116,9 +114,6 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("routers:fake-tls:type", "fake-tls")
 	routertest.FakeRouter.Reset()
 	routertest.TLSRouter.Reset()
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 
@@ -131,7 +126,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	s.Pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(stdcontext.TODO(), opts)
+	err := pool.AddPool(stdcontext.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	s.setupMocks()
 	servicemanager.App, err = app.AppService()
@@ -200,15 +195,11 @@ func (s *S) setupMocks() {
 func (s *S) TearDownTest(c *check.C) {
 	app.GetAppRouterUpdater().Shutdown(stdcontext.Background())
 	s.provisioner.Reset()
-	s.conn.Close()
 	config.Unset("listen")
 	config.Unset("tls:listen")
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	storagev2.ClearAllCollections(nil)
 }
 

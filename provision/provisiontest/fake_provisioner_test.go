@@ -10,17 +10,16 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -377,15 +376,16 @@ func (s *S) TestDoubleProvision(c *check.C) {
 }
 
 func (s *S) TestRestart(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	a := NewFakeApp("kid-gloves", "rush", 1)
 	nApp := app.App{
 		Name: a.name,
 	}
-	err = conn.Apps().Insert(nApp)
-	defer conn.Apps().Remove(bson.M{"name": nApp.Name})
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+
+	_, err = appsCollection.InsertOne(context.TODO(), nApp)
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": nApp.Name})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
 	p.Provision(context.TODO(), a)

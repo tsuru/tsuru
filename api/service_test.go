@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -154,7 +153,7 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 	recorder, request := s.makeRequestToCreateHandler(c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	query := bson.M{"_id": "some-service"}
+	query := mongoBSON.M{"_id": "some-service"}
 	var rService service.Service
 
 	servicesCollection, err := storagev2.ServicesCollection()
@@ -194,7 +193,7 @@ func (s *ProvisionSuite) TestServiceCreateMultipleEndpoints(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	query := bson.M{"_id": "some-service"}
+	query := mongoBSON.M{"_id": "some-service"}
 	var rService service.Service
 
 	servicesCollection, err := storagev2.ServicesCollection()
@@ -328,7 +327,7 @@ func (s *ProvisionSuite) TestServiceCreateWithMultiClusterEnabled(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	query := bson.M{"_id": "multi-cluster-service"}
+	query := mongoBSON.M{"_id": "multi-cluster-service"}
 	var rService service.Service
 
 	servicesCollection, err := storagev2.ServicesCollection()
@@ -507,7 +506,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	query := bson.M{"_id": se.Name}
+	query := mongoBSON.M{"_id": se.Name}
 
 	servicesCollection, err := storagev2.ServicesCollection()
 	c.Assert(err, check.IsNil)

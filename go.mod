@@ -13,7 +13,6 @@ require (
 	github.com/felixge/fgprof v0.9.1
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/fsouza/go-dockerclient v1.9.8
-	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
 	github.com/gorilla/mux v1.8.0

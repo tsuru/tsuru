@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -97,7 +96,7 @@ func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	uuid := r.URL.Query().Get(":uuid")
-	if !bson.IsObjectIdHex(uuid) {
+	if _, err := primitive.ObjectIDFromHex(uuid); err != nil {
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
@@ -140,7 +139,7 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	uuid := r.URL.Query().Get(":uuid")
-	if !bson.IsObjectIdHex(uuid) {
+	if _, err := primitive.ObjectIDFromHex(uuid); err != nil {
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
@@ -257,7 +256,8 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return permission.ErrUnauthorized
 	}
 	uuid := r.URL.Query().Get(":uuid")
-	if !bson.IsObjectIdHex(uuid) {
+	_, err = primitive.ObjectIDFromHex(uuid)
+	if err != nil {
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}

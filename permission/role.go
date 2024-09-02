@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -54,7 +53,7 @@ func ListRoles(ctx context.Context) ([]Role, error) {
 		return roles, err
 	}
 
-	cursor, err := collection.Find(ctx, bson.M{})
+	cursor, err := collection.Find(ctx, mongoBSON.M{})
 	if err != nil {
 		return nil, err
 	}
