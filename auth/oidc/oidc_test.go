@@ -41,6 +41,9 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 		json.NewEncoder(w).Encode(s.jwkKeySet)
 	}))
 
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "oidc_tests")
+
 	config.Set("auth:oidc:jwks-url", s.fakeJWKSServer.URL)
 	config.Set("auth:user-registration", true)
 
