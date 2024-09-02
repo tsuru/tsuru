@@ -19,6 +19,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -43,6 +44,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "oidc_tests")
+	storagev2.Reset()
 
 	config.Set("auth:oidc:jwks-url", s.fakeJWKSServer.URL)
 	config.Set("auth:user-registration", true)
