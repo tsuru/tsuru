@@ -64,7 +64,7 @@ func Reset() {
 var monitor = mongoprom.NewCommandMonitor(
 	mongoprom.WithInstanceName("tsurud"),
 	mongoprom.WithNamespace("tsuru"),
-	mongoprom.WithDurationBuckets([]float64{.001, .005, .01}),
+	mongoprom.WithDurationBuckets([]float64{.001, .005, .01, .05, .1, .5, 1, 5, 10}),
 )
 
 func connect() (*mongo.Client, *string, error) {
