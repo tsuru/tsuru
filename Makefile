@@ -174,7 +174,7 @@ ifeq ($(HOST_PLATFORM),Darwin)
 # NOTE: Only tested on Apple M series Macs.
 local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
-	@if [ ! $(minikube status &>/dev/null) ]; then \
+	@if ! minikube status &>/dev/null; then \
 		echo "Starting local kubernetes cluster for mac mseries..."; \
 		minikube start \
 			--insecure-registry="$(TSURU_HOST_IP):5000" \
@@ -187,7 +187,7 @@ else
 
 local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
-	@if [ ! $(minikube status &>/dev/null) ]; then \
+	@if ! minikube status &>/dev/null; then \
 		echo "Starting local kubernetes cluster for linux..."; \
 		minikube start --driver=docker --kubernetes-version=$(K8S_VERSION); \
 	fi
