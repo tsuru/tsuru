@@ -48,7 +48,7 @@ jobs:
         kubernetes-version: "v${{ matrix.k8s_version }}"
     - uses: azure/setup-helm@v1
       with:
-        version: v3.7.0
+        version: v3.14.3
     - uses: actions/setup-go@v5
       with:
         go-version: "1.21"
