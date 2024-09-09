@@ -461,6 +461,155 @@ func (s *S) TestBuildJob_BuildWithContainerImage(c *check.C) {
 	c.Assert(newImageDst, check.Equals, "tsuru.io/job-myjob:latest")
 }
 
+func (s *S) TestBuildJob_BuildWithContainerFile(c *check.C) {
+	s.mockService.JobService.OnBaseImageName = func(ctx context.Context, j *job.Job) (string, error) {
+		reg := imagetypes.ImageRegistry("tsuru.io")
+		newImage, err := image.JobBasicImageName(reg, j.Name)
+		c.Assert(err, check.IsNil)
+		return fmt.Sprintf("%s:latest", newImage), nil
+	}
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke a deadlock on RPC client and server.
+			c.Check(req.GetJob(), check.DeepEquals, &buildpb.TsuruJob{Name: "myjob"})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_JOB_DEPLOY_WITH_CONTAINER_FILE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru.io/job-myjob:latest"})
+			c.Check(req.GetData(), check.IsNil)
+			c.Check(req.GetContainerfile(), check.DeepEquals, "FROM busybox")
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	var output bytes.Buffer
+	buildJob := &job.Job{
+		Name: "myjob",
+		Spec: job.JobSpec{
+			Container: job.ContainerInfo{
+				OriginalImageSrc: "my-job:v1",
+				Command:          []string{"echo", "hello world"},
+			},
+		},
+	}
+	newImageDst, err := s.b.BuildJob(context.TODO(), buildJob, builder.BuildOpts{
+		Message:    "New dockerfile deploy xD",
+		Dockerfile: "FROM busybox",
+		Output:     &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(newImageDst, check.Equals, "tsuru.io/job-myjob:latest")
+}
+
+func (s *S) TestBuildJob_BuildWithJobEnvVars(c *check.C) {
+	s.mockService.JobService.OnBaseImageName = func(ctx context.Context, j *job.Job) (string, error) {
+		reg := imagetypes.ImageRegistry("tsuru.io")
+		newImage, err := image.JobBasicImageName(reg, j.Name)
+		c.Assert(err, check.IsNil)
+		return fmt.Sprintf("%s:latest", newImage), nil
+	}
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	s.mockService.JobService.OnGetEnvs = func(j *job.Job) map[string]bindTypes.EnvVar {
+		return map[string]bindTypes.EnvVar{
+			"MY_ENV1": {Name: "MY_ENV1", Value: "value 1"},
+		}
+	}
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke a deadlock on RPC client and server.
+			c.Check(req.GetJob(), check.DeepEquals, &buildpb.TsuruJob{Name: "myjob", EnvVars: map[string]string{"MY_ENV1": "value 1"}})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_JOB_DEPLOY_WITH_CONTAINER_FILE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru.io/job-myjob:latest"})
+			c.Check(req.GetData(), check.IsNil)
+			c.Check(req.GetContainerfile(), check.DeepEquals, "FROM busybox")
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	var output bytes.Buffer
+	buildJob := &job.Job{
+		Name: "myjob",
+		Spec: job.JobSpec{
+			Container: job.ContainerInfo{
+				OriginalImageSrc: "my-job:v1",
+				Command:          []string{"echo", "hello world"},
+			},
+		},
+	}
+	newImageDst, err := s.b.BuildJob(context.TODO(), buildJob, builder.BuildOpts{
+		Message:    "New dockerfile deploy xD",
+		Dockerfile: "FROM busybox",
+		Output:     &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(newImageDst, check.Equals, "tsuru.io/job-myjob:latest")
+}
+
+func (s *S) TestBuildJob_BuildDockerfileWithContext(c *check.C) {
+	s.mockService.JobService.OnBaseImageName = func(ctx context.Context, j *job.Job) (string, error) {
+		reg := imagetypes.ImageRegistry("tsuru.io")
+		newImage, err := image.JobBasicImageName(reg, j.Name)
+		c.Assert(err, check.IsNil)
+		return fmt.Sprintf("%s:latest", newImage), nil
+	}
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke a deadlock on RPC client and server.
+			c.Check(req.GetJob(), check.DeepEquals, &buildpb.TsuruJob{Name: "myjob"})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_JOB_DEPLOY_WITH_CONTAINER_FILE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru.io/job-myjob:latest"})
+			c.Check(string(req.GetData()), check.Equals, "some context files")
+			c.Check(req.GetContainerfile(), check.Equals, "FROM busybox")
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	var output bytes.Buffer
+	buildJob := &job.Job{
+		Name: "myjob",
+		Spec: job.JobSpec{
+			Container: job.ContainerInfo{
+				OriginalImageSrc: "my-job:v1",
+				Command:          []string{"echo", "hello world"},
+			},
+		},
+	}
+	newImageDst, err := s.b.BuildJob(context.TODO(), buildJob, builder.BuildOpts{
+		Message:     "New dockerfile deploy xD",
+		Dockerfile:  "FROM busybox",
+		ArchiveFile: strings.NewReader("some context files"),
+		ArchiveSize: 18,
+		Output:      &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(newImageDst, check.Equals, "tsuru.io/job-myjob:latest")
+}
+
 func (s *S) TestBuild_DeployWithContainerImage_NoImageConfigReturned(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

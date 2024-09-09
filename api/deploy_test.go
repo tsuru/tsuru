@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -36,7 +37,9 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -65,6 +68,9 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermJobDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	s.user, err = auth.ConvertNewUser(s.token.User(context.TODO()))
@@ -1474,4 +1480,315 @@ func (s *DeploySuite) TestRollbackUpdateErrNoPerms(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this app\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *DeploySuite) TestJobDeployHandler(c *check.C) {
+	var deployCalled bool
+	s.mockService.JobService.OnDeploy = func(ctx context.Context, opts jobTypes.DeployOptions, job *jobTypes.Job, output io.Writer) (string, error) {
+		deployCalled = true
+		c.Assert(opts.Image, check.Equals, "127.0.0.1:5000/tsuru/somejob")
+		imageName := "tsuru/job-" + job.Name + ":latest"
+		return imageName, nil
+	}
+
+	job := jobTypes.Job{
+		Name:      "myjob",
+		Pool:      "pool",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			JobName: "myjob",
+			Kind:    provTypes.DeployImage,
+			Image:   "127.0.0.1:5000/tsuru/somejob",
+			User:    s.token.GetUserName(),
+		},
+	}
+
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return &job, nil
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/somejob"))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(deployCalled, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: job.Name},
+		Owner:  user.Email,
+		Kind:   "job.deploy",
+		StartCustomData: map[string]interface{}{
+			"dockerfile": "",
+			"jobname":    job.Name,
+			"filesize":   0,
+			"kind":       "image",
+			"user":       s.token.GetUserName(),
+			"image":      "127.0.0.1:5000/tsuru/somejob",
+			"message":    "",
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "tsuru/job-" + job.Name + ":latest",
+		},
+		LogMatches: []string{`.*Deploy finished with success`},
+	}, eventtest.HasEvent)
+}
+
+func (s *DeploySuite) TestJobDeployWithDockerfile(c *check.C) {
+	var deployCalled bool
+	s.mockService.JobService.OnDeploy = func(ctx context.Context, opts jobTypes.DeployOptions, job *jobTypes.Job, output io.Writer) (string, error) {
+		deployCalled = true
+		c.Assert(opts.Dockerfile, check.Equals, "FROM busybox")
+		imageName := "tsuru/job-" + job.Name + ":latest"
+		return imageName, nil
+	}
+
+	job := jobTypes.Job{
+		Name:      "myjob",
+		Pool:      "pool",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			JobName:    "myjob",
+			Kind:       provTypes.DeployDockerfile,
+			Dockerfile: "FROM busybox",
+			User:       s.token.GetUserName(),
+		},
+	}
+
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return &job, nil
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	requestUrl := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	values := url.Values{
+		"dockerfile": []string{"FROM busybox"},
+	}
+
+	request, err := http.NewRequest("POST", requestUrl, strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Body.String(), check.Equals, "\nDeploy finished with success!\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(deployCalled, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: job.Name},
+		Owner:  user.Email,
+		Kind:   "job.deploy",
+		StartCustomData: map[string]interface{}{
+			"dockerfile": "FROM busybox",
+			"jobname":    job.Name,
+			"filesize":   0,
+			"kind":       "dockerfile",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"message":    "",
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "tsuru/job-" + job.Name + ":latest",
+		},
+		LogMatches: []string{`.*Deploy finished with success`},
+	}, eventtest.HasEvent)
+}
+
+func (s *DeploySuite) TestJobDeploySetBothFieldsImageAndDockerfile(c *check.C) {
+	job := jobTypes.Job{
+		Name:      "myjob",
+		Pool:      "pool",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			JobName:    "myjob",
+			Kind:       provTypes.DeployDockerfile,
+			Dockerfile: "FROM busybox",
+			User:       s.token.GetUserName(),
+		},
+	}
+
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return &job, nil
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	requestUrl := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	values := url.Values{
+		"image":      []string{"example.com/team/my-job:latest"},
+		"dockerfile": []string{"FROM busybox"},
+	}
+
+	request, err := http.NewRequest("POST", requestUrl, strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	message := recorder.Body.String()
+	c.Assert(message, check.Equals, "Cannot set \"image\" mutually with \"dockerfile\"\n")
+}
+
+func (s *DeploySuite) TestJobDeployShouldReturnNotFoundWhenJobDoesNotExist(c *check.C) {
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return nil, jobTypes.ErrJobNotFound
+	}
+
+	url := fmt.Sprintf("/jobs/%s/deploy", "non-existent-job")
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/somejob"))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	message := recorder.Body.String()
+	c.Assert(message, check.Equals, "Job non-existent-job not found.\n")
+}
+
+func (s *DeploySuite) TestJobDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessToJob(c *check.C) {
+	user := &auth.User{Email: "someone@tsuru.io", Password: "123456"}
+	_, err := nativeScheme.Create(context.TODO(), user)
+	c.Assert(err, check.IsNil)
+
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "myjob",
+		Pool:      "pool",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			JobName:    "myjob",
+			Kind:       provTypes.DeployDockerfile,
+			Dockerfile: "FROM busybox",
+			User:       s.token.GetUserName(),
+		},
+	}
+
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return &job, nil
+	}
+
+	url := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/somejob&user=fulano"))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this job\n")
+}
+
+func (s *DeploySuite) TestJobDeployFailed(c *check.C) {
+	var deployCalled bool
+	s.mockService.JobService.OnDeploy = func(ctx context.Context, opts jobTypes.DeployOptions, job *jobTypes.Job, output io.Writer) (string, error) {
+		deployCalled = true
+		c.Assert(opts.Image, check.Equals, "127.0.0.1:5000/tsuru/somejob")
+		return "", errors.Errorf("Some fake error during Build")
+	}
+
+	job := jobTypes.Job{
+		Name:      "myjob",
+		Pool:      "pool",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			JobName: "myjob",
+			Kind:    provTypes.DeployImage,
+			Image:   "127.0.0.1:5000/tsuru/somejob",
+			User:    s.token.GetUserName(),
+		},
+	}
+
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return &job, nil
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/somejob"))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(deployCalled, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: job.Name},
+		Owner:  user.Email,
+		Kind:   "job.deploy",
+		StartCustomData: map[string]interface{}{
+			"dockerfile": "",
+			"jobname":    job.Name,
+			"filesize":   0,
+			"kind":       "image",
+			"user":       s.token.GetUserName(),
+			"image":      "127.0.0.1:5000/tsuru/somejob",
+			"message":    "",
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "",
+		},
+		LogMatches:   []string{`.*Tsuru failed to deploy job myjob\n`},
+		ErrorMatches: "Some fake error during Build",
+	}, eventtest.HasEvent)
 }
