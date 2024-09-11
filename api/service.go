@@ -58,12 +58,12 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 
 	tags := r.URL.Query()["tag"]
-	sInstancesFilteredByTags := filterServicesInstancesByTags(sInstances, tags)
+	sInstances = filterServicesInstancesByTags(sInstances, tags)
 
 	results := make([]service.ServiceModel, len(services))
 	for i, s := range services {
 		results[i].Service = s.Name
-		for _, si := range sInstancesFilteredByTags {
+		for _, si := range sInstances {
 			if si.ServiceName == s.Name {
 				results[i].Instances = append(results[i].Instances, si.Name)
 				results[i].ServiceInstances = append(results[i].ServiceInstances, si)
@@ -520,7 +520,7 @@ func filterServicesInstancesByTags(sInstances []service.ServiceInstance, tags []
 		tagMap[tag] = struct{}{}
 	}
 
-	var filteredInstances []service.ServiceInstance
+	filteredInstances := make([]service.ServiceInstance, 0, len(sInstances))
 	for _, service := range sInstances {
 		for _, sTag := range service.Tags {
 			if _, exists := tagMap[sTag]; exists {

@@ -130,25 +130,24 @@ func (s *ProvisionSuite) TestServiceListEmptyList(c *check.C) {
 }
 
 func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
-	// Setup: create a service and services instances with tags
-	srv1 := service.Service{
+	srv := service.Service{
 		Name:       "service1",
 		OwnerTeams: []string{s.team.Name},
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := service.Create(context.TODO(), srv1)
+	err := service.Create(context.TODO(), srv)
 	c.Assert(err, check.IsNil)
 
 	si1 := service.ServiceInstance{
 		Name:        "instance1",
-		ServiceName: srv1.Name,
+		ServiceName: srv.Name,
 		Teams:       []string{s.team.Name},
 		Tags:        []string{"tag1", "product=produto"},
 	}
 	si2 := service.ServiceInstance{
 		Name:        "instance2",
-		ServiceName: srv1.Name,
+		ServiceName: srv.Name,
 		Teams:       []string{s.team.Name},
 		Tags:        []string{"tag2"},
 	}
@@ -159,7 +158,6 @@ func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si2)
 	c.Assert(err, check.IsNil)
 
-	// Test: make a GET request to list services by tag "product=produto"
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	query := request.URL.Query()
@@ -167,7 +165,6 @@ func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
 	request.URL.RawQuery = query.Encode()
 	s.testServer.ServeHTTP(recorder, request)
 
-	// checking the response
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	services := make([]service.ServiceModel, 1)
 	err = json.Unmarshal(recorder.Body.Bytes(), &services)
