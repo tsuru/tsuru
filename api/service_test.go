@@ -129,6 +129,61 @@ func (s *ProvisionSuite) TestServiceListEmptyList(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
+func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
+	// Setup: create a service and services instances with tags
+	srv1 := service.Service{
+		Name:       "service1",
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+	}
+	err := service.Create(context.TODO(), srv1)
+	c.Assert(err, check.IsNil)
+
+	si1 := service.ServiceInstance{
+		Name:        "instance1",
+		ServiceName: srv1.Name,
+		Teams:       []string{s.team.Name},
+		Tags:        []string{"tag1", "product=produto"},
+	}
+	si2 := service.ServiceInstance{
+		Name:        "instance2",
+		ServiceName: srv1.Name,
+		Teams:       []string{s.team.Name},
+		Tags:        []string{"tag2"},
+	}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si2)
+	c.Assert(err, check.IsNil)
+
+	// Test: make a GET request to list services by tag "product=produto"
+	recorder, request := s.makeRequestToServicesHandler(c)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	query := request.URL.Query()
+	query.Add("tag", "product=produto")
+	request.URL.RawQuery = query.Encode()
+	s.testServer.ServeHTTP(recorder, request)
+
+	// checking the response
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	services := make([]service.ServiceModel, 1)
+	err = json.Unmarshal(recorder.Body.Bytes(), &services)
+	c.Assert(err, check.IsNil)
+
+	expected := []service.ServiceModel{{
+		Service:   "service1",
+		Instances: []string{"instance1"},
+		ServiceInstances: []service.ServiceInstance{
+			{Name: "instance1", Tags: []string{"tag1", "product=produto"}, ServiceName: "service1"},
+		},
+	}}
+	c.Assert(services, check.DeepEquals, expected)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+}
+
 func (s *ProvisionSuite) makeRequestToCreateHandler(c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	v := url.Values{}
 	v.Set("id", "some-service")

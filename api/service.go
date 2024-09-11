@@ -56,10 +56,14 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+
+	tags := r.URL.Query()["tag"]
+	sInstancesFilteredByTags := filterServicesInstancesByTags(sInstances, tags)
+
 	results := make([]service.ServiceModel, len(services))
 	for i, s := range services {
 		results[i].Service = s.Name
-		for _, si := range sInstances {
+		for _, si := range sInstancesFilteredByTags {
 			if si.ServiceName == s.Name {
 				results[i].Instances = append(results[i].Instances, si.Name)
 				results[i].ServiceInstances = append(results[i].ServiceInstances, si)
@@ -504,4 +508,26 @@ func contextsForServiceProvision(s *service.Service) []permTypes.PermissionConte
 	return append(permission.Contexts(permTypes.CtxTeam, s.OwnerTeams),
 		permission.Context(permTypes.CtxService, s.Name),
 	)
+}
+
+func filterServicesInstancesByTags(sInstances []service.ServiceInstance, tags []string) []service.ServiceInstance {
+	if len(tags) == 0 {
+		return sInstances
+	}
+
+	tagMap := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		tagMap[tag] = struct{}{}
+	}
+
+	var filteredInstances []service.ServiceInstance
+	for _, service := range sInstances {
+		for _, sTag := range service.Tags {
+			if _, exists := tagMap[sTag]; exists {
+				filteredInstances = append(filteredInstances, service)
+				break
+			}
+		}
+	}
+	return filteredInstances
 }
