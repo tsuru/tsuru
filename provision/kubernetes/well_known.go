@@ -19,4 +19,8 @@ const (
 	// AnnotationEnableVPA is used to enable the creation of a recommendation
 	// only VPA for the application. Its value must be a boolean.
 	AnnotationEnableVPA = "app.tsuru.io/enable-vpa"
+
+	// AnnotationKEDAPausedReplicas is used to pause the scaling of an app using KEDA scaling
+	// Introduced to avoid scaling up the app when the user requested an app to be stopped
+	AnnotationKEDAPausedReplicas = "autoscaling.keda.sh/paused-replicas"
 )

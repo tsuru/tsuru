@@ -535,11 +535,20 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a provision.App, depInfo 
 		kedaTriggers = append(kedaTriggers, *prometheusTrigger)
 	}
 
+	var scaledObjectAnnotation map[string]string
+	if depInfo.replicas == 0 {
+		//this is to disable the scale object when the deployment is scaled to 0 (app stop)
+		scaledObjectAnnotation = map[string]string{
+			AnnotationKEDAPausedReplicas: "0",
+		}
+	}
+
 	return &kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hpaName,
-			Namespace: ns,
-			Labels:    labels.ToLabels(),
+			Name:        hpaName,
+			Namespace:   ns,
+			Labels:      labels.ToLabels(),
+			Annotations: scaledObjectAnnotation,
 		},
 		Spec: kedav1alpha1.ScaledObjectSpec{
 			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
@@ -646,7 +655,7 @@ func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provi
 			if process != "" && process != dep.process {
 				continue
 			}
-			if dep.dep.Spec.Replicas == nil || *dep.dep.Spec.Replicas == 0 {
+			if dep.dep.Spec.Replicas == nil {
 				continue
 			}
 			if dep.isRoutable {
