@@ -1,6 +1,6 @@
 module github.com/tsuru/tsuru
 
-go 1.21
+go 1.22
 
 require (
 	github.com/adhocore/gronx v1.6.6
