@@ -143,13 +143,13 @@ func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
 		Name:        "instance1",
 		ServiceName: srv.Name,
 		Teams:       []string{s.team.Name},
-		Tags:        []string{"tag1", "product=produto"},
+		Tags:        []string{"product=p1", "env=prod"},
 	}
 	si2 := service.ServiceInstance{
 		Name:        "instance2",
 		ServiceName: srv.Name,
 		Teams:       []string{s.team.Name},
-		Tags:        []string{"tag2"},
+		Tags:        []string{"product=p1", "env=dev"},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -158,10 +158,11 @@ func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si2)
 	c.Assert(err, check.IsNil)
 
+	// test with one tags
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	query := request.URL.Query()
-	query.Add("tag", "product=produto")
+	query.Add("tag", "product=p1") // Filtra por uma tag apenas
 	request.URL.RawQuery = query.Encode()
 	s.testServer.ServeHTTP(recorder, request)
 
@@ -172,9 +173,34 @@ func (s *ProvisionSuite) TestServiceListFilterByTag(c *check.C) {
 
 	expected := []service.ServiceModel{{
 		Service:   "service1",
+		Instances: []string{"instance1", "instance2"},
+		ServiceInstances: []service.ServiceInstance{
+			{Name: "instance1", Tags: []string{"product=p1", "env=prod"}, ServiceName: "service1", Teams: []string{"tsuruteam"}, Apps: []string{}, Jobs: []string{}},
+			{Name: "instance2", Tags: []string{"product=p1", "env=dev"}, ServiceName: "service1", Teams: []string{"tsuruteam"}, Apps: []string{}, Jobs: []string{}},
+		},
+	}}
+	c.Assert(services, check.DeepEquals, expected)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+
+	// test with two tags
+	recorder, request = s.makeRequestToServicesHandler(c)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	query = request.URL.Query()
+	query.Add("tag", "product=p1")
+	query.Add("tag", "env=prod")
+	request.URL.RawQuery = query.Encode()
+	s.testServer.ServeHTTP(recorder, request)
+
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	services = make([]service.ServiceModel, 1)
+	err = json.Unmarshal(recorder.Body.Bytes(), &services)
+	c.Assert(err, check.IsNil)
+
+	expected = []service.ServiceModel{{
+		Service:   "service1",
 		Instances: []string{"instance1"},
 		ServiceInstances: []service.ServiceInstance{
-			{Name: "instance1", Tags: []string{"tag1", "product=produto"}, ServiceName: "service1"},
+			{Name: "instance1", Tags: []string{"product=p1", "env=prod"}, ServiceName: "service1", Teams: []string{"tsuruteam"}, Apps: []string{}, Jobs: []string{}},
 		},
 	}}
 	c.Assert(services, check.DeepEquals, expected)
