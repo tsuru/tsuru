@@ -35,7 +35,7 @@ require (
 	github.com/sajari/fuzzy v1.0.0
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
 	github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560
-	github.com/tsuru/deploy-agent v0.0.0-20231017214502-c5b414b01059
+	github.com/tsuru/deploy-agent v0.0.0-20240916181158-7fa4d9b8dff4
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
