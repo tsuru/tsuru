@@ -219,7 +219,7 @@ func jobDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer writer.Stop()
 
 	evt.SetLogWriter(&tsuruIo.NoErrorWriter{Writer: writer})
-	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
+	if err = ctx.Err(); err != nil { // e.g. context deadline exceeded
 		return err
 	}
 

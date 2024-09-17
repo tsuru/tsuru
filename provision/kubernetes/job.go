@@ -334,7 +334,7 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 		return err
 	}
 	namespace := client.PoolNamespace(job.Pool)
-	if err := client.CoreV1().ServiceAccounts(namespace).Delete(ctx, serviceAccountNameForJob(*job), metav1.DeleteOptions{}); err != nil && !k8sErrors.IsNotFound(err) {
+	if err = client.CoreV1().ServiceAccounts(namespace).Delete(ctx, serviceAccountNameForJob(*job), metav1.DeleteOptions{}); err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 
