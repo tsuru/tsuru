@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -21,7 +20,6 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 func serviceTarget(name string) eventTypes.Target {
@@ -54,13 +52,8 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	sInstances, err := service.GetServiceInstancesByServices(ctx, services)
-	if err != nil {
-		return err
-	}
-
 	tags := r.URL.Query()["tag"]
-	sInstances, err = filterServicesInstancesByTags(ctx, sInstances, tags)
+	sInstances, err := service.GetServiceInstancesByServices(ctx, services, tags)
 	if err != nil {
 		return err
 	}
@@ -265,7 +258,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	instances, err := service.GetServiceInstancesByServices(ctx, []service.Service{s})
+	instances, err := service.GetServiceInstancesByServices(ctx, []service.Service{s}, []string{})
 	if err != nil {
 		return err
 	}
@@ -513,32 +506,4 @@ func contextsForServiceProvision(s *service.Service) []permTypes.PermissionConte
 	return append(permission.Contexts(permTypes.CtxTeam, s.OwnerTeams),
 		permission.Context(permTypes.CtxService, s.Name),
 	)
-}
-
-func filterServicesInstancesByTags(ctx context.Context, sInstances []service.ServiceInstance, tags []string) ([]service.ServiceInstance, error) {
-	if len(tags) == 0 {
-		return sInstances, nil
-	}
-
-	// make a query for MongoDB with tags
-	query := mongoBSON.M{"tags": mongoBSON.M{"$all": tags}}
-	collection, err := storagev2.ServiceInstancesCollection()
-	if err != nil {
-		return nil, err
-	}
-
-	// get the cursor and error
-	cursor, err := collection.Find(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	// iterates the cursor and get the results
-	filteredInstances := make([]service.ServiceInstance, 0, len(sInstances))
-	if err = cursor.All(ctx, &filteredInstances); err != nil {
-		return nil, err
-	}
-
-	return filteredInstances, nil
 }

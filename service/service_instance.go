@@ -429,13 +429,16 @@ func CreateServiceInstance(ctx context.Context, instance ServiceInstance, servic
 	return pipeline.Execute(ctx, *service, &instance, evt, requestID)
 }
 
-func GetServiceInstancesByServices(ctx context.Context, services []Service) ([]ServiceInstance, error) {
+func GetServiceInstancesByServices(ctx context.Context, services []Service, tags []string) ([]ServiceInstance, error) {
 	var instances []ServiceInstance
 	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {
 		return nil, err
 	}
 	query := genericServiceInstancesFilter(services, []string{})
+	if len(tags) > 0 {
+		query["tags"] = mongoBSON.M{"$all": tags}
+	}
 	f := mongoBSON.M{"name": 1, "service_name": 1, "tags": 1}
 
 	opts := options.Find().SetProjection(f)
