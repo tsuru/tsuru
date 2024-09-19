@@ -306,7 +306,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql", Tags: []string{}}
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc})
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc}, []string{})
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql", Tags: []string{}}, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
@@ -318,7 +318,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithoutAnyExistingServi
 	c.Assert(err, check.IsNil)
 	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc})
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc}, []string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(sInstances, check.DeepEquals, []ServiceInstance(nil))
 }
@@ -341,10 +341,41 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *chec
 	sInstance2 := ServiceInstance{Name: "s9nosql", ServiceName: "mongodb", Tags: []string{"tag 1", "tag 2"}}
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc, srvc2})
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc, srvc2}, []string{})
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql", Tags: []string{}}, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestGetServiceInstancesByServicesFilteringByTags(c *check.C) {
+	srvc := Service{Name: "mysql"}
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srvc)
+	c.Assert(err, check.IsNil)
+
+	sInstance1 := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Tags: []string{"tag1", "tag2"}}
+	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql", Tags: []string{"tag1", "tag3"}}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
+	c.Assert(err, check.IsNil)
+
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc}, []string{"tag1"})
+	c.Assert(err, check.IsNil)
+	expected := []ServiceInstance{sInstance1, sInstance2}
+	c.Assert(sInstances, check.DeepEquals, expected)
+
+	sInstances, err = GetServiceInstancesByServices(context.TODO(), []Service{srvc}, []string{"tag1", "tag2"})
+	c.Assert(err, check.IsNil)
+	expected = []ServiceInstance{sInstance1}
+	c.Assert(sInstances, check.DeepEquals, expected)
+
+	sInstances, err = GetServiceInstancesByServices(context.TODO(), []Service{srvc}, []string{"tag4"})
+	c.Assert(err, check.IsNil)
+	c.Assert(sInstances, check.HasLen, 0)
 }
 
 func (s *InstanceSuite) TestGenericServiceInstancesFilter(c *check.C) {
