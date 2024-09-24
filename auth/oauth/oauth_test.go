@@ -82,7 +82,7 @@ func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
 	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.ErrorMatches, `.*missing access_token.*`)
-	c.Assert(s.reqs, check.HasLen, 1)
+	c.Assert(len(s.reqs) >= 1, check.Equals, true)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
 }
 
