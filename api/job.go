@@ -559,7 +559,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if err = servicemanager.Job.RemoveJob(ctx, j); err != nil {
 		if err == jobTypes.ErrJobNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+			return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("Job %s not found.", name)}
 		}
 		return err
 	}

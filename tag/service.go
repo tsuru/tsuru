@@ -14,7 +14,7 @@ import (
 func TagService() (tagTypes.TagServiceClient, error) {
 	tagServiceAddr, _ := config.GetString("tag:service-addr")
 	if tagServiceAddr != "" {
-		conn, err := grpc.Dial(tagServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.NewClient(tagServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return nil, err
 		}

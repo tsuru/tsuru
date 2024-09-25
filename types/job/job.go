@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/provision"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 // Job is another main type in tsuru as of version 1.13
@@ -82,11 +81,6 @@ type RemoveInstanceArgs struct {
 	Writer       io.Writer
 }
 
-type DeployOptions struct {
-	Kind  provisionTypes.DeployKind `json:"kind"`
-	Image string                    `json:"image"`
-}
-
 type JobService interface {
 	CreateJob(ctx context.Context, job *Job, user *authTypes.User) error
 	RemoveJobProv(ctx context.Context, job *Job) error
@@ -101,6 +95,7 @@ type JobService interface {
 	GetEnvs(ctx context.Context, job *Job) map[string]bindTypes.EnvVar
 	BaseImageName(ctx context.Context, job *Job) (string, error)
 	KillUnit(ctx context.Context, job *Job, unitName string, force bool) error
+	Deploy(ctx context.Context, opts DeployOptions, job *Job, output io.Writer) (string, error)
 }
 
 type JobInfo struct {

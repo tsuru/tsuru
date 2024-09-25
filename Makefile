@@ -236,7 +236,7 @@ local.stop:
 # Clear the local development environment for tsuru.
 local.cleanup: local.stop
 	@echo "Clearing local tsuru development environment..."
-	@$(DOCKER) volume rm tsuru_datadb
+	@$(DOCKER) compose down --volumes --rmi all
 	@minikube delete
 	@find ./etc ! -name '*.template' ! -name 'tsuru.conf' -mindepth 1 | \
 		xargs -I{} echo rm {}

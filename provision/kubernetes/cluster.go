@@ -620,7 +620,7 @@ func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.C
 		grpc.WithTransportCredentials(creds),
 	}
 
-	conn, err := grpc.Dial(addr, opts...)
+	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
 		return nil, nil, err
 	}

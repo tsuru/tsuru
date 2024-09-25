@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
@@ -39,6 +40,21 @@ var (
 		Buckets:   []float64{0, 30, 60, 120, 180, 240, 300, 600, 900, 1200}, // 0s, 30s, 1min, 2min, 3min, 4min, 5min, 10min, 15min, 30min
 		Help:      "Duration in seconds of app deploy",
 	}, []string{"app", "status", "kind", "platform"})
+
+	jobDeploysTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "tsuru",
+		Subsystem: "job",
+		Name:      "deploys_total",
+		Help:      "Total number of job deploys",
+	}, []string{"job", "status", "kind"})
+
+	jobDeployDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "tsuru",
+		Subsystem: "job",
+		Name:      "deploy_duration_seconds",
+		Buckets:   []float64{0, 30, 60, 120, 180, 240, 300, 600, 900, 1200}, // 0s, 30s, 1min, 2min, 3min, 4min, 5min, 10min, 15min, 30min
+		Help:      "Duration in seconds of job deploy",
+	}, []string{"job", "status", "kind"})
 )
 
 func init() {
@@ -132,6 +148,91 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
+
+// path: /jobs/{name}/deploy
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//
+//	200: OK
+//	400: Invalid data
+//	403: Forbidden
+//	404: Not found
+func jobDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	startingDeployTime := time.Now()
+	ctx := r.Context()
+	opts, err := prepareToBuildJob(r)
+	if err != nil {
+		return err
+	}
+
+	if opts.File != nil {
+		defer opts.File.Close()
+	}
+
+	w.Header().Set("Content-Type", "text")
+	jobName := r.URL.Query().Get(":name")
+	job, err := servicemanager.Job.GetByName(ctx, jobName)
+	if err != nil {
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("Job %s not found.", jobName)}
+	}
+
+	userName := t.GetUserName()
+	canDeploy := permission.Check(ctx, t, permission.PermJobDeploy, contextsForJob(job)...)
+	if !canDeploy {
+		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this job"}
+	}
+
+	message := InputValue(r, "message")
+	opts.JobName = jobName
+	opts.User = userName
+	opts.Message = message
+	opts.GetKind()
+
+	var imageID string
+	evt, err := event.New(ctx, &event.Opts{
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: jobName},
+		Kind:          permission.PermJobDeploy,
+		RawOwner:      eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: userName},
+		RemoteAddr:    r.RemoteAddr,
+		CustomData:    opts,
+		Allowed:       event.Allowed(permission.PermJobReadEvents, contextsForJob(job)...),
+		AllowedCancel: event.Allowed(permission.PermJobUpdateEvents, contextsForJob(job)...),
+		Cancelable:    true,
+	})
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		evt.DoneCustomData(ctx, err, map[string]string{"image": imageID})
+		labels := prometheus.Labels{"job": jobName, "status": deployStatus(evt), "kind": string(opts.GetKind())}
+		jobDeployDuration.With(labels).Observe(time.Since(startingDeployTime).Seconds())
+		jobDeploysTotal.With(labels).Inc()
+	}()
+	ctx, cancel := evt.CancelableContext(ctx)
+	defer cancel()
+
+	w.Header().Set(eventIDHeader, evt.UniqueID.Hex())
+	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	defer writer.Stop()
+
+	evt.SetLogWriter(&tsuruIo.NoErrorWriter{Writer: writer})
+	if err = ctx.Err(); err != nil { // e.g. context deadline exceeded
+		return err
+	}
+
+	//job deploy
+	imageID, err = servicemanager.Job.Deploy(ctx, opts, job, evt)
+	if err != nil {
+		fmt.Fprintln(evt, "Tsuru failed to deploy job", job.Name)
+		return err
+	}
+
+	fmt.Fprintln(evt, "\nDeploy finished with success!")
+
+	return nil
 }
 
 func deployStatus(evt *event.Event) string {
