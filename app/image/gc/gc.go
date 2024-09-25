@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -500,10 +501,28 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 
 func pruneAllVersionsByApp(ctx context.Context, appVersions appTypes.AppVersions) error {
 	multi := tsuruErrors.NewMultiError()
-
-	err := registry.RemoveAppImages(ctx, appVersions.AppName)
+	appStruct, err := app.GetByName(ctx, appVersions.AppName)
 	if err != nil {
-		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appVersions.AppName))
+		return errors.Wrapf(err, "could not get app %q", appVersions.AppName)
+	}
+	prov, err := pool.GetProvisionerForPool(ctx, appStruct.Pool)
+	if err != nil {
+		multi.Add(errors.Wrapf(err, "could not remove images from registry, app %q: %+v", appVersions.AppName, err))
+	}
+	if prov != nil {
+		provisionerName := prov.GetName()
+		cluster, err := servicemanager.Cluster.FindByPool(ctx, provisionerName, appStruct.Pool)
+		if err != nil && err != provision.ErrNoCluster {
+			log.Errorf("unable to get cluster name for app %s: %+v", appStruct.Name, err)
+		}
+		if cluster != nil {
+			err = registry.RemoveAppImages(ctx, appStruct.Name, cluster)
+		} else {
+			log.Errorf("unable to remove images for app %s: no cluster associated with the app", appStruct.Name)
+		}
+		if err != nil {
+			multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appVersions.AppName))
+		}
 	}
 	err = servicemanager.AppVersion.DeleteVersions(ctx, appVersions.AppName, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: appVersions.UpdatedHash,
