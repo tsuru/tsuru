@@ -14,11 +14,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
 type S struct {
-	server *registrytest.RegistryServer
+	server      *registrytest.RegistryServer
+	cluster     *provision.Cluster
+	mockService servicemock.MockService
 }
 
 var suiteInstance = &S{}
@@ -32,12 +36,21 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.server, err = registrytest.NewServer("127.0.0.1:0")
 	c.Assert(err, check.IsNil)
-	config.Set("registry", "docker")
-	config.Set("docker:registry", s.server.Addr())
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	config.Set("docker:registry", s.server.Addr())
+	s.cluster = &provision.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+		CustomData:  map[string]string{"registry": s.server.Addr()},
+	}
+	servicemock.SetMockService(&s.mockService)
+	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
+		c.Assert(name, check.Equals, s.cluster.Name)
+		return nil, provision.ErrNoCluster
+	}
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -49,7 +62,7 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestRegistryRemoveAppImagesErrorImageNotFound(c *check.C) {
-	err := RemoveAppImages(context.TODO(), "test")
+	err := RemoveAppImages(context.TODO(), "test", s.cluster)
 	c.Assert(err, check.NotNil)
 }
 
@@ -58,7 +71,7 @@ func (s *S) TestRegistryRemoveAppImagesErrorErrDeleteDisabled(c *check.C) {
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	s.server.SetStorageDelete(false)
-	err := RemoveAppImages(context.TODO(), "test")
+	err := RemoveAppImages(context.TODO(), "test", s.cluster)
 	c.Assert(errors.Cause(err), check.Equals, ErrDeleteDisabled)
 }
 
@@ -66,7 +79,7 @@ func (s *S) TestRegistryRemoveAppImages(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
-	err := RemoveAppImages(context.TODO(), "test")
+	err := RemoveAppImages(context.TODO(), "test", s.cluster)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
@@ -144,7 +157,7 @@ func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
 
 func (s *S) TestRegistryRemoveImageEmpty(c *check.C) {
 	err := RemoveImage(context.TODO(), "")
-	c.Assert(err, check.ErrorMatches, `empty image.*`)
+	c.Assert(err, check.ErrorMatches, `invalid empty image name`)
 }
 
 func (s *S) TestRegistryRemoveImageDigestNotFound(c *check.C) {
@@ -176,8 +189,8 @@ func (s *S) TestDockerRegistryDoRequest(c *check.C) {
 	}))
 	defer srv.Close()
 	r := dockerRegistry{
-		server: srv.URL,
-		client: srv.Client(),
+		registry: srv.URL,
+		client:   srv.Client(),
 	}
 	rsp, err := r.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
@@ -190,8 +203,8 @@ func (s *S) TestDockerRegistryDoRequestTLS(c *check.C) {
 	}))
 	defer srv.Close()
 	r := dockerRegistry{
-		server: srv.URL,
-		client: srv.Client(),
+		registry: srv.URL,
+		client:   srv.Client(),
 	}
 	rsp, err := r.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)

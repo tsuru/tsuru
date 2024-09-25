@@ -13,20 +13,34 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
+	"strings"
+	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/containerd/containerd/remotes/docker/auth"
+	dockerConfig "github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/config/configfile"
+	dockerConfigTypes "github.com/docker/cli/cli/config/types"
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/types/provision"
 )
 
 type dockerRegistry struct {
-	server string
-	client *http.Client
+	registry    string
+	client      *http.Client
+	token       string
+	expires     time.Time
+	cluster     *provision.Cluster
+	authConfig  dockerConfigTypes.AuthConfig
+	authHeaders http.Header
 }
+
+const defaultExpiration = 60
 
 var (
 	ErrImageNotFound  = errors.New("image not found")
@@ -41,7 +55,6 @@ func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
 		if cause != ErrDeleteDisabled && cause != ErrDigestNotFound && cause != ErrImageNotFound {
 			return err
 		}
-		log.Debugf("ignored error removing image from registry: %v", err.Error())
 	}
 	return nil
 }
@@ -49,38 +62,39 @@ func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
 // RemoveImage removes an image manifest from a remote registry v2 server, returning an error
 // in case of failure.
 func RemoveImage(ctx context.Context, imageName string) error {
+	if imageName == "" {
+		return errors.New("invalid empty image name")
+	}
 	registry, image, tag := image.ParseImageParts(imageName)
-	if registry == "" {
-		registry, _ = config.GetString("docker:registry")
+	r := &dockerRegistry{registry: registry}
+	err := r.registryAuth(ctx, imageName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get auth for %s registry", r.registry)
 	}
-	if registry == "" {
-		// Nothing to do if no registry is set
-		return nil
-	}
-	if image == "" {
-		return errors.Errorf("empty image after parsing %q", imageName)
-	}
-	r := &dockerRegistry{server: registry}
 	digest, err := r.getDigest(ctx, image, tag)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag)
+		return errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.registry, image, tag)
 	}
 	err = r.removeImage(ctx, image, tag, digest)
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest)
+		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.registry, image, tag, digest)
 	}
 	return nil
 }
 
 // RemoveAppImages removes all app images from a remote registry v2 server, returning an error
 // in case of failure.
-func RemoveAppImages(ctx context.Context, appName string) error {
-	registry, _ := config.GetString("docker:registry")
-	if registry == "" {
-		// Nothing to do if no registry is set
-		return nil
+func RemoveAppImages(ctx context.Context, appName string, cluster *provision.Cluster) error {
+	clusterRegistry, registryExists := cluster.CustomData["registry"]
+	if !registryExists {
+		return errors.Errorf("registry not found in cluster %v", cluster.Name)
 	}
-	r := &dockerRegistry{server: registry}
+	r := &dockerRegistry{registry: clusterRegistry}
+	r.cluster = cluster
+	err := r.registryAuth(ctx, "")
+	if err != nil {
+		return errors.Wrapf(err, "failed to get auth for %s registry", r.registry)
+	}
 	image := fmt.Sprintf("tsuru/app-%s", appName)
 	tags, err := r.getImageTags(ctx, image)
 	if err != nil {
@@ -90,12 +104,12 @@ func RemoveAppImages(ctx context.Context, appName string) error {
 	for _, tag := range tags {
 		digest, err := r.getDigest(ctx, image, tag)
 		if err != nil {
-			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag))
+			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.registry, image, tag))
 			continue
 		}
 		err = r.removeImage(ctx, image, tag, digest)
 		if err != nil {
-			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest))
+			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.registry, image, tag, digest))
 			if errors.Cause(err) == ErrDeleteDisabled {
 				break
 			}
@@ -179,18 +193,18 @@ func (r dockerRegistry) removeImagePath(ctx context.Context, path string) error 
 }
 
 func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, headers map[string]string) (resp *http.Response, err error) {
-	u, _ := url.Parse(r.server)
-	server := r.server
+	u, _ := url.Parse(r.registry)
+	server := r.registry
 	if u != nil && u.Host != "" {
 		server = u.Host
 	}
-	authHeaders := registryAuth(server)
 	if r.client == nil {
 		r.client, err = tsuruNet.WithProxyFromConfig(*tsuruNet.Dial15Full300ClientNoKeepAlive, server)
 		if err != nil {
 			return nil, err
 		}
 	}
+request:
 	for _, scheme := range []string{"https", "http"} {
 		endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
 		var req *http.Request
@@ -205,14 +219,41 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}
-		for k, v := range authHeaders {
-			req.Header[k] = v
-		}
+		r.fillAuthCredentials(req)
 		resp, err = r.client.Do(req)
-		if err != nil {
-			if _, ok := err.(net.Error); ok {
-				continue
+		if _, ok := err.(net.Error); ok {
+			continue
+		}
+		if resp.StatusCode == http.StatusUnauthorized && resp.Header.Get("WWW-Authenticate") != "" && r.checkTokenIsValidForRenew() {
+			to := auth.TokenOptions{}
+			to.Username = r.authConfig.Username
+			to.Secret = r.authConfig.Password
+			challenges := auth.ParseAuthHeader(resp.Header)
+			for _, c := range challenges {
+				if c.Scheme == auth.BearerAuth {
+					to.Realm = c.Parameters["realm"]
+					to.Service = c.Parameters["service"]
+					to.Scopes = append(to.Scopes, c.Parameters["scope"])
+				}
 			}
+			to.Scopes = parseScopes(to.Scopes).normalize()
+			respAuth, err := auth.FetchToken(ctx, r.client, req.Header, to)
+			if err != nil {
+				return nil, err
+			}
+			if respAuth.IssuedAt.IsZero() {
+				respAuth.IssuedAt = time.Now()
+			}
+			if respAuth.ExpiresIn == 0 {
+				respAuth.ExpiresIn = defaultExpiration
+			}
+			if exp := respAuth.IssuedAt.Add(time.Duration(float64(respAuth.ExpiresIn)*0.9) * time.Second); time.Now().Before(exp) {
+				r.expires = exp
+			}
+			r.token = respAuth.AccessToken
+			continue request
+		}
+		if err != nil {
 			return nil, err
 		}
 		return resp, nil
@@ -220,36 +261,127 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 	return nil, err
 }
 
-func registryAuth(registry string) http.Header {
-	authConfig, err := docker.NewAuthConfigurationsFromCredsHelpers(registry)
+func (r *dockerRegistry) fillAuthCredentials(req *http.Request) {
+	if r.token != "" && time.Now().Before(r.expires) {
+		req.Header.Set("Authorization", "Bearer "+r.token)
+		return
+	}
+	for k, v := range r.authHeaders {
+		req.Header[k] = v
+	}
+}
+
+func (r *dockerRegistry) checkTokenIsValidForRenew() bool {
+	if r.token == "" || (r.token != "" && time.Now().After(r.expires)) {
+		return true
+	}
+	return false
+}
+
+func (r *dockerRegistry) registryAuth(ctx context.Context, image string) error {
+	var err error
+	var config *configfile.ConfigFile
+	if r.cluster != nil {
+		_, registryExists := r.cluster.CustomData["registry"]
+		dockerConfigJson, dockerConfigExists := r.cluster.CustomData["docker-config-json"]
+		if registryExists && dockerConfigExists {
+			config, err = dockerConfig.LoadFromReader(strings.NewReader(dockerConfigJson))
+		}
+		if err != nil {
+			return err
+		}
+		if !dockerConfigExists {
+			return nil
+		}
+	} else {
+		clusters, err := servicemanager.Cluster.List(ctx)
+		if err != nil {
+			return err
+		}
+		dockerConfigExists := false
+		for _, cluster := range clusters {
+			clusterRegistry, registryExists := cluster.CustomData["registry"]
+			dockerConfigJson, dockerConfigExists := cluster.CustomData["docker-config-json"]
+			if registryExists && dockerConfigExists && strings.Contains(image, clusterRegistry) {
+				config, err = dockerConfig.LoadFromReader(strings.NewReader(dockerConfigJson))
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if !dockerConfigExists {
+			return nil
+		}
+	}
+	r.authConfig, err = config.GetAuthConfig(r.registry)
 	if err != nil {
-		configs, err := docker.NewAuthConfigurationsFromDockerCfg()
-		if err == nil {
-			if config, ok := configs.Configs[registry]; ok {
-				authConfig = &config
+		if confAuth, ok := config.AuthConfigs[r.registry]; ok {
+			r.authConfig = confAuth
+		} else {
+			return fmt.Errorf("failed to get auth config for registry %s: %v", r.registry, err)
+		}
+	}
+	if r.authConfig.RegistryToken != "" {
+		r.authHeaders.Set("Authorization", "Bearer "+r.authConfig.RegistryToken)
+	} else if r.authConfig.Username != "" || r.authConfig.Password != "" {
+		basic := base64.StdEncoding.EncodeToString([]byte(r.authConfig.Username + ":" + r.authConfig.Password))
+		r.authHeaders.Set("Authorization", "Basic "+basic)
+	}
+	return nil
+}
+
+type scopes map[string]map[string]struct{}
+
+func parseScopes(s []string) scopes {
+	// https://docs.docker.com/registry/spec/auth/scope/
+	m := map[string]map[string]struct{}{}
+	for _, scopeStr := range s {
+		if scopeStr == "" {
+			return nil
+		}
+		// The scopeStr may have strings that contain multiple scopes separated by a space.
+		for _, scope := range strings.Split(scopeStr, " ") {
+			parts := strings.SplitN(scope, ":", 3)
+			names := []string{parts[0]}
+			if len(parts) > 1 {
+				names = append(names, parts[1])
+			}
+			var actions []string
+			if len(parts) == 3 {
+				actions = append(actions, strings.Split(parts[2], ",")...)
+			}
+			name := strings.Join(names, ":")
+			ma, ok := m[name]
+			if !ok {
+				ma = map[string]struct{}{}
+				m[name] = ma
+			}
+
+			for _, a := range actions {
+				ma[a] = struct{}{}
 			}
 		}
 	}
-	if authConfig == nil {
-		username, _ := config.GetString("docker:registry-auth:username")
-		password, _ := config.GetString("docker:registry-auth:password")
-		authConfig = &docker.AuthConfiguration{
-			Username: username,
-			Password: password,
+	return m
+}
+
+func (s scopes) normalize() []string {
+	names := make([]string, 0, len(s))
+	for n := range s {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	out := make([]string, 0, len(s))
+
+	for _, n := range names {
+		actions := make([]string, 0, len(s[n]))
+		for a := range s[n] {
+			actions = append(actions, a)
 		}
-	}
+		sort.Strings(actions)
 
-	headers := http.Header{}
-	if *authConfig == (docker.AuthConfiguration{}) {
-		return headers
+		out = append(out, n+":"+strings.Join(actions, ","))
 	}
-
-	if authConfig.RegistryToken != "" {
-		headers.Set("Authorization", "Bearer "+authConfig.RegistryToken)
-	} else if authConfig.Username != "" || authConfig.Password != "" {
-		basic := base64.StdEncoding.EncodeToString([]byte(authConfig.Username + ":" + authConfig.Password))
-		headers.Set("Authorization", "Basic "+basic)
-	}
-
-	return headers
+	return out
 }
