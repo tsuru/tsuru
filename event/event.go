@@ -844,6 +844,13 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 
 	if !opts.DisableLock {
 		evt.EventData.Lock = &opts.Target
+		evt.EventData.Locks = append(evt.EventData.Locks, opts.Target)
+
+		for _, extraTarget := range opts.ExtraTargets {
+			if extraTarget.Lock {
+				evt.EventData.Locks = append(evt.EventData.Locks, extraTarget.Target)
+			}
+		}
 	}
 	if opts.ExpireAt != nil {
 		evt.EventData.ExpireAt = *opts.ExpireAt
@@ -872,7 +879,20 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 			if i >= maxRetries || !checkIsExpired(ctx, collection, evt.Lock) {
 				var existing Event
 
-				err = collection.FindOne(ctx, mongoBSON.M{"lock": evt.Lock}).Decode(&existing.EventData)
+				orBlock := []mongoBSON.M{}
+				for _, lock := range evt.Locks {
+					orBlock = append(orBlock, mongoBSON.M{
+						"locks": mongoBSON.M{
+							"$elemMatch": mongoBSON.D{
+								{Key: "type", Value: lock.Type},
+								{Key: "value", Value: lock.Value},
+							},
+						},
+					},
+					)
+				}
+
+				err = collection.FindOne(ctx, mongoBSON.M{"$or": orBlock}).Decode(&existing.EventData)
 				if err == mongo.ErrNoDocuments {
 					maxRetries++
 				}
@@ -900,14 +920,16 @@ func checkLocked(ctx context.Context, evt *Event, disableLock bool) error {
 	if len(targets) == 0 {
 		return nil
 	}
-	var orBlock []mongoBSON.M
+	orBlock := []mongoBSON.M{}
+
 	for _, t := range targets {
-		tBson := mongoBSON.D{
-			{Key: "type", Value: t.Type},
-			{Key: "value", Value: t.Value},
-		}
-		orBlock = append(orBlock, mongoBSON.M{"lock": tBson}, mongoBSON.M{
-			"extratargets": mongoBSON.M{"$elemMatch": mongoBSON.M{"target": tBson, "lock": true}},
+		orBlock = append(orBlock, mongoBSON.M{
+			"locks": mongoBSON.M{
+				"$elemMatch": mongoBSON.D{
+					{Key: "type", Value: t.Type},
+					{Key: "value", Value: t.Value},
+				},
+			},
 		})
 	}
 
@@ -1185,7 +1207,11 @@ func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, 
 		e.EventData.Lock = nil
 	}
 
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{"$set": e.EventData, "$unset": mongoBSON.M{"lock": ""}})
+	if len(e.EventData.Locks) > 0 {
+		e.EventData.Locks = nil
+	}
+
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{"$set": e.EventData, "$unset": mongoBSON.M{"lock": "", "locks": ""}})
 
 	return err
 }
