@@ -292,6 +292,173 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 	c.Assert(sInstances, check.DeepEquals, expected)
 }
 
+func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesNoFilters(c *check.C) {
+	sInstance1 := ServiceInstance{
+		Name:        "t3sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team1"},
+		Tags:        []string{"tag1"},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	sInstance2 := ServiceInstance{
+		Name:        "s9sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team2"},
+		Tags:        []string{"tag2"},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
+	c.Assert(err, check.IsNil)
+
+	sInstances, err := GetServicesInstancesByTeamsAndNames(context.TODO(), nil, nil, "", "", nil)
+	c.Assert(err, check.IsNil)
+
+	expected := []ServiceInstance{sInstance1, sInstance2}
+
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByTeams(c *check.C) {
+	sInstance1 := ServiceInstance{
+		Name:        "t3sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team1"},
+		Tags:        []string{},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	sInstance2 := ServiceInstance{
+		Name:        "s9sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team2"},
+		Tags:        []string{},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
+	c.Assert(err, check.IsNil)
+
+	sInstances, err := GetServicesInstancesByTeamsAndNames(context.TODO(), []string{"team1"}, nil, "", "", nil)
+	c.Assert(err, check.IsNil)
+
+	expected := []ServiceInstance{sInstance1}
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByNames(c *check.C) {
+	sInstance1 := ServiceInstance{
+		Name:        "t3sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team1"},
+		Tags:        []string{},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	sInstance2 := ServiceInstance{
+		Name:        "s9sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team2"},
+		Tags:        []string{},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
+	c.Assert(err, check.IsNil)
+
+	sInstances, err := GetServicesInstancesByTeamsAndNames(context.TODO(), nil, []string{"t3sql"}, "", "", nil)
+	c.Assert(err, check.IsNil)
+
+	expected := []ServiceInstance{sInstance1}
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByTags(c *check.C) {
+	sInstance1 := ServiceInstance{
+		Name:        "t3sql",
+		ServiceName: "mysql",
+		Tags:        []string{"tag1", "tag2"},
+		Teams:       []string{"team1"},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	sInstance2 := ServiceInstance{
+		Name:        "s9sql",
+		ServiceName: "mysql",
+		Tags:        []string{"tag1", "tag3"},
+		Teams:       []string{"team1"},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
+	c.Assert(err, check.IsNil)
+
+	sInstances, err := GetServicesInstancesByTeamsAndNames(context.TODO(), nil, nil, "", "", []string{"tag1"})
+	c.Assert(err, check.IsNil)
+
+	expected := []ServiceInstance{sInstance1, sInstance2}
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByMultipleCriteria(c *check.C) {
+	sInstance1 := ServiceInstance{
+		Name:        "t3sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team1"},
+		Tags:        []string{"tag1"},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	sInstance2 := ServiceInstance{
+		Name:        "s9sql",
+		ServiceName: "mysql",
+		Teams:       []string{"team2"},
+		Tags:        []string{"tag1", "tag3"},
+		Apps:        []string{},
+		Jobs:        []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance1)
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
+	c.Assert(err, check.IsNil)
+
+	sInstances, err := GetServicesInstancesByTeamsAndNames(context.TODO(), []string{"team2"}, []string{"s9sql"}, "", "", []string{"tag1"})
+	c.Assert(err, check.IsNil)
+
+	expected := []ServiceInstance{sInstance2}
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
 func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	servicesCollection, err := storagev2.ServicesCollection()
