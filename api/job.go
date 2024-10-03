@@ -620,7 +620,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(j.Name),
 		ExtraTargets: []eventTypes.ExtraTarget{
-			{Target: serviceInstanceTarget(serviceName, instanceName)},
+			{Target: serviceInstanceTarget(serviceName, instanceName), Lock: true},
 		},
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
@@ -699,7 +699,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(jobName),
 		ExtraTargets: []eventTypes.ExtraTarget{
-			{Target: serviceInstanceTarget(serviceName, instanceName)},
+			{Target: serviceInstanceTarget(serviceName, instanceName), Lock: true},
 		},
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
