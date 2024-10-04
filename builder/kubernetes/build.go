@@ -327,6 +327,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		Kind: kindToBuildKind(opts),
 		App: &buildpb.TsuruApp{
 			Name:    app.GetName(),
+			Team:    app.GetTeamOwner(),
 			EnvVars: envs,
 		},
 		SourceImage:       baseImage,

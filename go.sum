@@ -468,8 +468,8 @@ github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a h1:Z9AGmLYCqZ+
 github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a/go.mod h1:qIgHCNEogDodrCcRfLe4eWSgm3i5tH++2A8DfoO7gxQ=
 github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560 h1:fniQ/BmYAHdnNmY333kX4RdVBY+WDAOOs78VEunpY14=
 github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560/go.mod h1:mj6t8JKWU51GScTT50XRmDj65T5XhTyNvO5FUNV5zS4=
-github.com/tsuru/deploy-agent v0.0.0-20240916181158-7fa4d9b8dff4 h1:DavI2skjPqxor7vm9TXuDaIkPhT6igtHu3CfWzHwZDk=
-github.com/tsuru/deploy-agent v0.0.0-20240916181158-7fa4d9b8dff4/go.mod h1:b47JxFJz1icP2oIn5ykqxmG/fZb6jYwc/G1Ecn/kki4=
+github.com/tsuru/deploy-agent v0.0.0-20241004132402-8b6d39f21671 h1:fZW480XctS0B+u1Xv5cStVJW0B8L7ATZt7O0ODr4bZk=
+github.com/tsuru/deploy-agent v0.0.0-20241004132402-8b6d39f21671/go.mod h1:9faF1Jn54oWdO3f3avmgLhouqL3wqnT3/OHtYUwGi+o=
 github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa h1:JlLQP1xa13a994p/Aau2e3K9xXYaHNoNvTDVIMHSUa4=
 github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa/go.mod h1:UibOSvkMFKRe/eiwktAPAvQG8L+p8nYsECJvu3Dgw7I=
 github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6 h1:1XDdWFAjIbCSG1OjN9v9KdWhuM8UtYlFcfHe/Ldkchk=
