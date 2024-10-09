@@ -17,10 +17,7 @@ import (
 	"strings"
 	"time"
 
-<<<<<<< HEAD
-=======
 	"github.com/pkg/errors"
->>>>>>> main
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -42,10 +39,7 @@ import (
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-<<<<<<< HEAD
-=======
 	provTypes "github.com/tsuru/tsuru/types/provision"
->>>>>>> main
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
