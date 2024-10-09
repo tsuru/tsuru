@@ -62,7 +62,7 @@ import (
 )
 
 var (
-	Version = "1.22.8"
+	Version = "1.23.1"
 	GitHash = ""
 )
 
