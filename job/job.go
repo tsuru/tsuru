@@ -211,7 +211,10 @@ func ensureDeployOptions(j *jobTypes.Job) error {
 		}
 		return nil
 	}
-	return jobTypes.ErrInvalidDeployKind
+
+	j.DeployOptions = &jobTypes.DeployOptions{}
+
+	return nil //nil to allow creation without image
 }
 
 // CreateJob creates a new job or cronjob.
@@ -245,17 +248,21 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return err
 	}
 
-	err := buildWithDeployAgent(ctx, job)
-	if err != nil {
-		return &jobTypes.JobCreationError{Job: job.Name, Err: err}
-	}
-
 	actions := []*action.Action{
 		&reserveTeamCronjob,
 		&reserveUserCronjob,
 		&insertJob,
-		&provisionJob,
 	}
+
+	if job.DeployOptions.Image != "" {
+		err := buildWithDeployAgent(ctx, job)
+		if err != nil {
+			return &jobTypes.JobCreationError{Job: job.Name, Err: err}
+		}
+
+		actions = append(actions, &provisionJob)
+	}
+
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(ctx, job, user)
 }
@@ -530,6 +537,10 @@ func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bind.SetEnvArgs) er
 		return err
 	}
 
+	if !shouldUpdateJobProvision(job) {
+		return nil
+	}
+
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return err
@@ -566,11 +577,20 @@ func UnsetEnvs(ctx context.Context, job *jobTypes.Job, unsetEnvs bind.UnsetEnvAr
 		return err
 	}
 
+	if !shouldUpdateJobProvision(job) {
+		return nil
+	}
+
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return err
 	}
 	return prov.EnsureJob(ctx, job)
+}
+
+func shouldUpdateJobProvision(job *jobTypes.Job) bool {
+	//no need to update provisioner if there is no image provided yet
+	return job.Spec.Container.InternalRegistryImage != "" || job.Spec.Container.OriginalImageSrc != ""
 }
 
 func indexEnvInSet(envName string, envs []bindTypes.EnvVar) int {

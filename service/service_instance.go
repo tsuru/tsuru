@@ -454,7 +454,7 @@ func GetServiceInstancesByServices(ctx context.Context, services []Service, tags
 	return instances, err
 }
 
-func GetServicesInstancesByTeamsAndNames(ctx context.Context, teams []string, names []string, appName, serviceName string) ([]ServiceInstance, error) {
+func GetServicesInstancesByTeamsAndNames(ctx context.Context, teams []string, names []string, appName, serviceName string, tags []string) ([]ServiceInstance, error) {
 	filter := mongoBSON.M{}
 	if teams != nil || names != nil {
 		orConditions := []mongoBSON.M{}
@@ -474,6 +474,9 @@ func GetServicesInstancesByTeamsAndNames(ctx context.Context, teams []string, na
 	}
 	if serviceName != "" {
 		filter["service_name"] = serviceName
+	}
+	if len(tags) > 0 {
+		filter["tags"] = mongoBSON.M{"$all": tags}
 	}
 	collection, err := storagev2.ServiceInstancesCollection()
 	if err != nil {

@@ -30,6 +30,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -262,4 +263,46 @@ func (s *BuildSuite) TestBuildWithoutTag(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "you must specify the image tag.\n")
+}
+
+func (s *BuildSuite) TestJobWithImageAndDockerfileTogether(c *check.C) {
+	job := jobTypes.Job{
+		Name: "my-job",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("image=127.0.0.1:5000/tsuru/otherapp&dockerfile=FROM"))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Cannot set \"image\" mutually with \"dockerfile\"\n")
+}
+
+func (s *BuildSuite) TestJobWithoutImageOrDockerfile(c *check.C) {
+	job := jobTypes.Job{
+		Name: "my-job",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/deploy", job.Name)
+	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("archive-url=http://something.tar.gz"))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide at least one of: \"dockerfile\" or \"image\"\n")
 }

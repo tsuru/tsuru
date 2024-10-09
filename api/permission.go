@@ -670,7 +670,7 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxServiceInstance:
-		sInstances, err := service.GetServicesInstancesByTeamsAndNames(ctx, nil, []string{contextValue}, "", "")
+		sInstances, err := service.GetServicesInstancesByTeamsAndNames(ctx, nil, []string{contextValue}, "", "", []string{})
 		if err != nil {
 			return &errors.ValidationError{Message: err.Error()}
 		}

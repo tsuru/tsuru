@@ -477,6 +477,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.13", http.MethodDelete, "/jobs/{name}/env", AuthorizationRequiredHandler(unsetJobEnv))
 	m.Add("1.13", http.MethodGet, "/jobs/{name}/log", AuthorizationRequiredHandler(jobLog))
 	m.Add("1.13", http.MethodDelete, "/jobs/{name}/units/{unit}", AuthorizationRequiredHandler(killJob))
+	m.Add("1.23", http.MethodPost, "/jobs/{name}/deploy", AuthorizationRequiredHandler(jobDeploy))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

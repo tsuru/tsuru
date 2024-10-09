@@ -6,6 +6,7 @@ package job
 
 import (
 	"context"
+	"io"
 
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -27,6 +28,7 @@ type MockJobService struct {
 	OnGetEnvs          func(*Job) map[string]bindTypes.EnvVar
 	OnBaseImageName    func(context.Context, *Job) (string, error)
 	OnKillUnit         func(*Job, string) error
+	OnDeploy           func(context.Context, DeployOptions, *Job, io.Writer) (string, error)
 }
 
 func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authTypes.User) error {
@@ -118,4 +120,11 @@ func (m *MockJobService) KillUnit(ctx context.Context, job *Job, unit string, fo
 		return nil
 	}
 	return m.OnKillUnit(job, unit)
+}
+
+func (m *MockJobService) Deploy(ctx context.Context, opts DeployOptions, job *Job, output io.Writer) (string, error) {
+	if m.OnDeploy == nil {
+		return "", nil
+	}
+	return m.OnDeploy(ctx, opts, job, output)
 }

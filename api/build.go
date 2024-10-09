@@ -20,6 +20,7 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 var (
@@ -155,6 +156,38 @@ func prepareToBuild(r *http.Request) (opts app.DeployOptions, err error) {
 		return opts, &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: `You must provide at least one of: "archive-url", "dockerfile", "image" or "file"`,
+		}
+	}
+
+	return
+}
+
+func prepareToBuildJob(r *http.Request) (opts jobTypes.DeployOptions, err error) {
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+		var fh *multipart.FileHeader
+
+		opts.File, fh, err = r.FormFile("file")
+		if err != nil && !errors.Is(err, http.ErrMissingFile) {
+			return opts, &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+
+		opts.FileSize = fh.Size
+	}
+
+	opts.Image = InputValue(r, "image")
+	opts.Dockerfile = InputValue(r, "dockerfile")
+
+	if opts.Image != "" && opts.Dockerfile != "" {
+		return opts, &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: `Cannot set "image" mutually with "dockerfile"`,
+		}
+	}
+
+	if opts.Image == "" && opts.Dockerfile == "" {
+		return opts, &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: `You must provide at least one of: "dockerfile" or "image"`,
 		}
 	}
 

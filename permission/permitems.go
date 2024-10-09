@@ -109,6 +109,7 @@ var (
 	PermJobUnitKill                      = PermissionRegistry.get("job.unit.kill")                       // [global team pool job]
 	PermJobUpdate                        = PermissionRegistry.get("job.update")                          // [global team pool job]
 	PermJobUpdateEvents                  = PermissionRegistry.get("job.update.events")                   // [global team pool job]
+	PermJobDeploy                        = PermissionRegistry.get("job.deploy")                          // [global team pool job]
 	PermPlan                             = PermissionRegistry.get("plan")                                // [global]
 	PermPlanCreate                       = PermissionRegistry.get("plan.create")                         // [global]
 	PermPlanDelete                       = PermissionRegistry.get("plan.delete")                         // [global]

@@ -234,4 +234,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"job.trigger",
 ).add(
 	"job.unit.kill",
+).add(
+	"job.deploy",
 )

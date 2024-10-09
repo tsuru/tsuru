@@ -324,7 +324,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-func readableInstances(ctx stdContext.Context, contexts []permTypes.PermissionContext, appName, serviceName string) ([]service.ServiceInstance, error) {
+func readableInstances(ctx stdContext.Context, contexts []permTypes.PermissionContext, appName, serviceName string, tags []string) ([]service.ServiceInstance, error) {
 	teams := []string{}
 	instanceNames := []string{}
 	for _, c := range contexts {
@@ -343,7 +343,7 @@ func readableInstances(ctx stdContext.Context, contexts []permTypes.PermissionCo
 			teams = append(teams, c.Value)
 		}
 	}
-	return service.GetServicesInstancesByTeamsAndNames(ctx, teams, instanceNames, appName, serviceName)
+	return service.GetServicesInstancesByTeamsAndNames(ctx, teams, instanceNames, appName, serviceName, tags)
 }
 
 func filtersForServiceList(contexts []permTypes.PermissionContext) (teams []string, serviceNames []string, global bool) {
@@ -386,7 +386,8 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	ctx := r.Context()
 	appName := r.URL.Query().Get("app")
 	contexts := permission.ContextsForPermission(ctx, t, permission.PermServiceInstanceRead)
-	instances, err := readableInstances(ctx, contexts, appName, "")
+	tags := r.URL.Query()["tag"]
+	instances, err := readableInstances(ctx, contexts, appName, "", tags)
 	if err != nil {
 		return err
 	}
@@ -542,7 +543,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	contexts := permission.ContextsForPermission(ctx, t, permission.PermServiceInstanceRead)
-	instances, err := readableInstances(ctx, contexts, "", serviceName)
+	instances, err := readableInstances(ctx, contexts, "", serviceName, []string{})
 	if err != nil {
 		return err
 	}

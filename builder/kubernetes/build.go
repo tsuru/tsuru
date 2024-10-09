@@ -97,8 +97,12 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 	}
 	defer conn.Close()
 
-	if opts.ImageID == "" {
-		return "", errors.New("image id not provided")
+	data := make([]byte, opts.ArchiveSize)
+	if opts.ArchiveSize > 0 {
+		_, err = opts.ArchiveFile.Read(data)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", err
+		}
 	}
 
 	baseImage := opts.ImageID
@@ -109,13 +113,22 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 	dstImages := make([]string, 0, 2)
 	dstImages = append(dstImages, dstImage)
 
+	jobEnvVars := make(map[string]string)
+	for k, v := range servicemanager.Job.GetEnvs(ctx, job) {
+		jobEnvVars[k] = v.Value
+	}
+
 	req := &buildpb.BuildRequest{
-		Kind: buildpb.BuildKind_BUILD_KIND_JOB_CREATE_WITH_CONTAINER_IMAGE,
+		Kind: kindToJobBuildKind(opts),
 		Job: &buildpb.TsuruJob{
-			Name: job.GetName(),
+			Name:    job.GetName(),
+			EnvVars: jobEnvVars,
 		},
 		SourceImage:       baseImage,
 		DestinationImages: dstImages,
+		PushOptions:       &buildpb.PushOptions{InsecureRegistry: cc.InsecureRegistry()},
+		Data:              data,
+		Containerfile:     opts.Dockerfile,
 	}
 
 	_, err = callBuildService(ctx, bs, req, w)
@@ -314,6 +327,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		Kind: kindToBuildKind(opts),
 		App: &buildpb.TsuruApp{
 			Name:    app.GetName(),
+			Team:    app.GetTeamOwner(),
 			EnvVars: envs,
 		},
 		SourceImage:       baseImage,
@@ -429,6 +443,18 @@ func kindToBuildKind(opts builder.BuildOpts) buildpb.BuildKind {
 
 	if opts.ArchiveSize > 0 {
 		return buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD
+	}
+
+	return buildpb.BuildKind_BUILD_KIND_UNSPECIFIED
+}
+
+func kindToJobBuildKind(opts builder.BuildOpts) buildpb.BuildKind {
+	if opts.ImageID != "" {
+		return buildpb.BuildKind_BUILD_KIND_JOB_DEPLOY_WITH_CONTAINER_IMAGE
+	}
+
+	if opts.Dockerfile != "" {
+		return buildpb.BuildKind_BUILD_KIND_JOB_DEPLOY_WITH_CONTAINER_FILE
 	}
 
 	return buildpb.BuildKind_BUILD_KIND_UNSPECIFIED

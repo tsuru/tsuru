@@ -1528,7 +1528,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
 		ExtraTargets: []eventTypes.ExtraTarget{
-			{Target: serviceInstanceTarget(serviceName, instanceName)},
+			{Target: serviceInstanceTarget(serviceName, instanceName), Lock: true},
 		},
 		Kind:       permission.PermAppUpdateBind,
 		Owner:      t,
@@ -1623,7 +1623,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
 		ExtraTargets: []eventTypes.ExtraTarget{
-			{Target: serviceInstanceTarget(serviceName, instanceName)},
+			{Target: serviceInstanceTarget(serviceName, instanceName), Lock: true},
 		},
 		Kind:       permission.PermAppUpdateUnbind,
 		Owner:      t,

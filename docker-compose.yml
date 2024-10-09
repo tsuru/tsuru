@@ -19,7 +19,7 @@ services:
 
   deploy-agent:
     container_name: deploy-agent
-    image: tsuru/deploy-agent:v2.3.3
+    image: tsuru/deploy-agent:v2.6.0
     command:
     - -port=8000
     - -buildkit-addr=tcp://buildkit:8001
