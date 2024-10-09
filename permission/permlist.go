@@ -46,6 +46,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.unbind-volume",
 	"app.update.certificate.set",
 	"app.update.certificate.unset",
+	"app.update.certissuer.set",
+	"app.update.certissuer.unset",
 	"app.update.deploy.rollback",
 	"app.update.router.add",
 	"app.update.router.update",

@@ -304,6 +304,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", http.MethodGet, "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificates))
 	m.Add("1.2", http.MethodPut, "/apps/{app}/certificate", AuthorizationRequiredHandler(setCertificate))
 	m.Add("1.2", http.MethodDelete, "/apps/{app}/certificate", AuthorizationRequiredHandler(unsetCertificate))
+	m.Add("1.24", http.MethodPut, "/apps/{app}/certissuer", AuthorizationRequiredHandler(setCertIssuer))
+	m.Add("1.24", http.MethodDelete, "/apps/{app}/certissuer", AuthorizationRequiredHandler(unsetCertIssuer))
 
 	m.Add("1.5", http.MethodPost, "/apps/{app}/routers", AuthorizationRequiredHandler(addAppRouter))
 	m.Add("1.5", http.MethodPut, "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(updateAppRouter))

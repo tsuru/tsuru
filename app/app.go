@@ -1720,9 +1720,28 @@ func (app *App) RemoveCName(ctx context.Context, cnames ...string) error {
 	actions := []*action.Action{
 		&checkCNameExists,
 		&removeCNameFromDatabase,
+		&removeCertIssuersFromDatabase,
 		&rebuildRoutes,
 	}
 	return action.NewPipeline(actions...).Execute(ctx, app, cnames)
+}
+
+func (app *App) SetCertIssuer(ctx context.Context, cname, certIssuer string) error {
+	actions := []*action.Action{
+		&checkSingleCNameExists,
+		&saveCertIssuer,
+		&rebuildRoutes,
+	}
+	return action.NewPipeline(actions...).Execute(ctx, app, cname, certIssuer)
+}
+
+func (app *App) UnsetCertIssuer(ctx context.Context, cname string) error {
+	actions := []*action.Action{
+		&checkSingleCNameExists,
+		&removeCertIssuer,
+		&rebuildRoutes,
+	}
+	return action.NewPipeline(actions...).Execute(ctx, app, cname)
 }
 
 func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) error {
@@ -2256,6 +2275,15 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 	return routers
 }
 
+func (app *App) GetCertIssuers() map[string]string {
+	certIssuers := make(map[string]string, len(app.CertIssuers))
+	for k, v := range app.CertIssuers {
+		key := strings.ReplaceAll(k, "_dot_", ".")
+		certIssuers[key] = v
+	}
+	return certIssuers
+}
+
 func (app *App) GetRoutersWithAddr(ctx context.Context) ([]appTypes.AppRouter, error) {
 	routers := app.GetRouters()
 	multi := tsuruErrors.NewMultiError()
@@ -2398,36 +2426,58 @@ func (app *App) validateNameForCert(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]string, error) {
+func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetInfo, error) {
 	addrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	certificateSet := &appTypes.CertificateSetInfo{
+		Routers: make(map[string]appTypes.RouterCertificateInfo),
+	}
+
+	certIssuers := app.GetCertIssuers()
+
 	names := append(addrs, app.CName...)
-	allCertificates := make(map[string]map[string]string)
 	for _, appRouter := range app.GetRouters() {
-		certificates := make(map[string]string)
+		appRouterCertificates := appTypes.RouterCertificateInfo{
+			CNames: make(map[string]appTypes.CertificateInfo),
+		}
+
 		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return nil, err
 		}
+
 		tlsRouter, ok := r.(router.TLSRouter)
 		if !ok {
 			continue
 		}
+
 		for _, n := range names {
 			cert, err := tlsRouter.GetCertificate(ctx, app, n)
 			if err != nil && err != router.ErrCertificateNotFound {
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}
-			certificates[n] = cert
+
+			if cert != "" {
+				appRouterCertificates.CNames[n] = appTypes.CertificateInfo{
+					Certificate: cert,
+					Issuer:      certIssuers[n],
+				}
+			}
 		}
-		allCertificates[appRouter.Name] = certificates
+
+		if !appRouterCertificates.IsEmpty() {
+			certificateSet.Routers[appRouter.Name] = appRouterCertificates
+		}
 	}
-	if len(allCertificates) == 0 {
+
+	if certificateSet.IsEmpty() {
 		return nil, errors.New("no router with tls support")
 	}
-	return allCertificates, nil
+
+	return certificateSet, nil
 }
 
 func (app *App) RoutableAddresses(ctx context.Context) ([]appTypes.RoutableAddresses, error) {

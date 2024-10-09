@@ -25,6 +25,7 @@ type App struct {
 	PlatformVersion string
 	Name            string
 	CName           []string
+	CertIssuers     map[string]string
 	Teams           []string
 	TeamOwner       string
 	Owner           string

@@ -22,6 +22,7 @@ type RebuildApp interface {
 	router.App
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
+	GetCertIssuers() map[string]string
 	GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error)
 	RoutableAddresses(context.Context) ([]appTypes.RoutableAddresses, error)
 }
@@ -71,7 +72,9 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 	opts := router.EnsureBackendOpts{
 		Opts:        map[string]interface{}{},
 		Prefixes:    []router.BackendPrefix{},
+		Team:        o.App.GetTeamOwner(),
 		CNames:      o.App.GetCname(),
+		CertIssuers: o.App.GetCertIssuers(),
 		Healthcheck: hcData,
 	}
 	for key, opt := range appRouter.Opts {

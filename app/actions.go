@@ -10,6 +10,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -30,7 +31,8 @@ import (
 )
 
 var (
-	ErrAppAlreadyExists = errors.New("there is already an app with this name")
+	ErrAppAlreadyExists  = errors.New("there is already an app with this name")
+	ErrCNameDoesNotExist = errors.New("cname does not exist in app")
 )
 
 var reserveTeamApp = action.Action{
@@ -669,5 +671,122 @@ var rebuildRoutes = action.Action{
 			return nil, err
 		}
 		return nil, nil
+	},
+}
+
+var checkSingleCNameExists = action.Action{
+	Name: "cname-exists",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		cname := ctx.Params[1].(string)
+
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			return nil, err
+		}
+
+		cs, err := collection.CountDocuments(ctx.Context, mongoBSON.M{"cname": cname})
+		if err != nil {
+			return nil, err
+		}
+		if cs == 0 {
+			return nil, ErrCNameDoesNotExist
+		}
+
+		return cname, nil
+	},
+}
+
+var saveCertIssuer = action.Action{
+	Name: "save-cert-issuer",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].(string)
+		issuer := ctx.Params[2].(string)
+
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			return nil, err
+		}
+
+		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$set": mongoBSON.M{certIssuerCName: issuer}},
+		)
+		return cname, err
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].(string)
+
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			log.Errorf("BACKWARD remove certissuer db. unable to connect: %s", err)
+			return
+		}
+
+		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$unset": mongoBSON.M{certIssuerCName: ""}},
+		)
+
+		if err != nil {
+			log.Errorf("BACKWARD remove certissuer db. failed to update: %s", err)
+		}
+	},
+}
+
+var removeCertIssuer = action.Action{
+	Name: "remove-cert-issuer",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].(string)
+
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			return nil, err
+		}
+
+		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$unset": mongoBSON.M{certIssuerCName: ""}},
+		)
+		return cname, err
+	},
+}
+
+var removeCertIssuersFromDatabase = action.Action{
+	Name: "remove-cert-issuer",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cname := ctx.Params[1].([]string)
+
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, c := range cname {
+			sanitizedCName := strings.ReplaceAll(c, ".", "_dot_")
+			certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
+
+			_, err = collection.UpdateOne(
+				ctx.Context,
+				mongoBSON.M{"name": app.Name},
+				mongoBSON.M{"$unset": mongoBSON.M{certIssuerCName: ""}},
+			)
+		}
+		return cname, err
 	},
 }
