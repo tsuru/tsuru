@@ -703,19 +703,18 @@ var saveCertIssuer = action.Action{
 		cname := ctx.Params[1].(string)
 		issuer := ctx.Params[2].(string)
 
-		var conn *db.Storage
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 
 		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
 		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{certIssuerCName: issuer}},
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$set": mongoBSON.M{certIssuerCName: issuer}},
 		)
 		return cname, err
 	},
@@ -723,20 +722,19 @@ var saveCertIssuer = action.Action{
 		app := ctx.Params[0].(*App)
 		cname := ctx.Params[1].(string)
 
-		var conn *db.Storage
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			log.Errorf("BACKWARD remove certissuer db. unable to connect: %s", err)
 			return
 		}
-		defer conn.Close()
 
 		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
 		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$unset": bson.M{certIssuerCName: ""}},
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$unset": mongoBSON.M{certIssuerCName: ""}},
 		)
 
 		if err != nil {
@@ -751,19 +749,18 @@ var removeCertIssuer = action.Action{
 		app := ctx.Params[0].(*App)
 		cname := ctx.Params[1].(string)
 
-		var conn *db.Storage
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 
 		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
 		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$unset": bson.M{certIssuerCName: ""}},
+		_, err = collection.UpdateOne(
+			ctx.Context,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$unset": mongoBSON.M{certIssuerCName: ""}},
 		)
 		return cname, err
 	},
@@ -775,20 +772,19 @@ var removeCertIssuersFromDatabase = action.Action{
 		app := ctx.Params[0].(*App)
 		cname := ctx.Params[1].([]string)
 
-		var conn *db.Storage
-		conn, err := db.Conn()
+		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
 
 		for _, c := range cname {
 			sanitizedCName := strings.ReplaceAll(c, ".", "_dot_")
 			certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
-			err = conn.Apps().Update(
-				bson.M{"name": app.Name},
-				bson.M{"$unset": bson.M{certIssuerCName: ""}},
+			_, err = collection.UpdateOne(
+				ctx.Context,
+				mongoBSON.M{"name": app.Name},
+				mongoBSON.M{"$unset": mongoBSON.M{certIssuerCName: ""}},
 			)
 		}
 		return cname, err
