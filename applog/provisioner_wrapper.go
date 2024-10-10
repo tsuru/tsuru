@@ -46,11 +46,19 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 	return k.logService.Enqueue(entry)
 }
 
-func defineLogabbleObject(ctx context.Context, lType logTypes.LogType, name string) (logTypes.LogabbleObject, error) {
+func defineLogabbleObject(ctx context.Context, lType logTypes.LogType, name string) (*logTypes.LogabbleObject, error) {
 	if lType == logTypes.LogTypeJob {
-		return servicemanager.Job.GetByName(ctx, name)
+		job, err := servicemanager.Job.GetByName(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		return &logTypes.LogabbleObject{Name: job.Name, Pool: job.Pool}, nil
 	}
-	return servicemanager.App.GetByName(ctx, name)
+	app, err := servicemanager.App.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return &logTypes.LogabbleObject{Name: app.Name, Pool: app.Pool}, nil
 }
 
 func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
@@ -126,10 +134,10 @@ func (k *provisionerWrapper) Instance() appTypes.AppLogService {
 	return k.logService
 }
 
-type logsProvisionerGetter func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error)
+type logsProvisionerGetter func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error)
 
-var defaultLogsProvisionerGetter = func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
-	provisioner, err := pool.GetProvisionerForPool(ctx, obj.GetPool())
+var defaultLogsProvisionerGetter = func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+	provisioner, err := pool.GetProvisionerForPool(ctx, obj.Pool)
 	if err != nil {
 		return nil, err
 	}

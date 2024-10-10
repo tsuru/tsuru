@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"net/http"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -249,7 +250,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateRouterAdd,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -273,13 +274,13 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	return a.AddRouter(ctx, appRouter)
+	return app.AddRouter(ctx, a, appRouter)
 }
 
 // title: update app router
@@ -313,7 +314,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateRouterUpdate,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -337,13 +338,13 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	return a.UpdateRouter(ctx, appRouter)
+	return app.UpdateRouter(ctx, a, appRouter)
 }
 
 // title: delete app router
@@ -363,7 +364,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateRouterRemove,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -374,13 +375,13 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = a.RemoveRouter(ctx, routerName)
+	err = app.RemoveRouter(ctx, a, routerName)
 	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -403,13 +404,13 @@ func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	canRead := permission.Check(ctx, t, permission.PermAppReadRouter,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	routers, err := a.GetRoutersWithAddr(ctx)
+	routers, err := app.GetRoutersWithAddr(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -447,7 +448,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateRoutable,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -458,18 +459,18 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, &a, args.Version)
+	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, a, args.Version)
 	if err != nil {
 		if appTypes.IsInvalidVersionError(err) {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 		return err
 	}
-	return a.SetRoutable(ctx, version, args.IsRoutable)
+	return app.SetRoutable(ctx, a, version, args.IsRoutable)
 }

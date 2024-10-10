@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -389,7 +390,7 @@ func (s *LabelSet) getBoolLabel(k string) bool {
 }
 
 type ServiceLabelsOpts struct {
-	App     App
+	App     *appTypes.App
 	Process string
 	Version int
 	ServiceLabelExtendedOpts
@@ -418,7 +419,7 @@ func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, erro
 	}
 	if set.RawLabels == nil {
 		set.RawLabels = map[string]string{
-			"app.kubernetes.io/name":       opts.App.GetName(),
+			"app.kubernetes.io/name":       opts.App.Name,
 			"app.kubernetes.io/component":  "tsuru-app",
 			"app.kubernetes.io/managed-by": "tsuru",
 		}
@@ -459,7 +460,7 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 }
 
 type ProcessLabelsOpts struct {
-	App     App
+	App     *appTypes.App
 	Process string
 	Prefix  string
 }
@@ -469,15 +470,15 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 		Labels: map[string]string{
 			labelIsTsuru:      strconv.FormatBool(true),
 			labelIsStopped:    strconv.FormatBool(false),
-			LabelAppName:      opts.App.GetName(),
-			LabelAppTeamOwner: opts.App.GetTeamOwner(),
+			LabelAppName:      opts.App.Name,
+			LabelAppTeamOwner: opts.App.TeamOwner,
 			LabelAppProcess:   opts.Process,
-			LabelAppPlatform:  opts.App.GetPlatform(),
-			LabelAppPool:      opts.App.GetPool(),
+			LabelAppPlatform:  opts.App.Platform,
+			LabelAppPool:      opts.App.Pool,
 		},
 		Prefix: opts.Prefix,
 	}
-	for _, tag := range opts.App.ListTags() {
+	for _, tag := range opts.App.Tags {
 		parts := strings.SplitN(tag, "=", 2)
 		var key, value string
 		if len(parts) > 0 {
@@ -500,7 +501,7 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 }
 
 type ServiceAccountLabelsOpts struct {
-	App               App
+	App               *appTypes.App
 	Job               *jobTypes.Job
 	NodeContainerName string
 	Prefix            string
@@ -511,7 +512,7 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 		labelIsTsuru: strconv.FormatBool(true),
 	}
 	if opts.App != nil {
-		labelMap[LabelAppName] = opts.App.GetName()
+		labelMap[LabelAppName] = opts.App.Name
 	} else {
 		labelMap[LabelJobName] = opts.Job.Name
 	}
@@ -582,7 +583,7 @@ func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
 }
 
 type PDBLabelsOpts struct {
-	App     App
+	App     *appTypes.App
 	Prefix  string
 	Process string
 }
@@ -591,9 +592,9 @@ func PDBLabels(opts PDBLabelsOpts) *LabelSet {
 	return &LabelSet{
 		Labels: map[string]string{
 			labelIsTsuru:      strconv.FormatBool(true),
-			LabelAppName:      opts.App.GetName(),
+			LabelAppName:      opts.App.Name,
 			LabelAppProcess:   opts.Process,
-			LabelAppTeamOwner: opts.App.GetTeamOwner(),
+			LabelAppTeamOwner: opts.App.TeamOwner,
 		},
 		Prefix: opts.Prefix,
 	}
@@ -643,10 +644,10 @@ func ValidKubeName(name string) string {
 	return strings.ToLower(kubeNameRegex.ReplaceAllString(name, "-"))
 }
 
-func AppProcessName(a App, process string, version int, suffix string) string {
+func AppProcessName(a *appTypes.App, process string, version int, suffix string) string {
 	const kubeLabelNameMaxLen = 55
 
-	name := ValidKubeName(a.GetName())
+	name := ValidKubeName(a.Name)
 	processVersion := ValidKubeName(process)
 	if version > 0 {
 		processVersion = fmt.Sprintf("%s-v%d", processVersion, version)

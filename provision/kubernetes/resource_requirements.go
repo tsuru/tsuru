@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
@@ -98,10 +97,10 @@ func resourceRequirements(plan *appTypes.Plan, pool string, client *ClusterClien
 	return apiv1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests}, nil
 }
 
-func planForProcess(ctx context.Context, a provision.App, process string) (appTypes.Plan, error) {
-	p := a.GetProcess(process)
+func planForProcess(ctx context.Context, a *appTypes.App, process string) (appTypes.Plan, error) {
+	p := getProcess(a, process)
 	if p == nil || p.Plan == "" {
-		plan := a.GetPlan()
+		plan := a.Plan
 		return plan, nil
 	}
 
@@ -111,4 +110,13 @@ func planForProcess(ctx context.Context, a provision.App, process string) (appTy
 	}
 
 	return *plan, nil
+}
+
+func getProcess(app *appTypes.App, process string) *appTypes.Process {
+	for _, p := range app.Processes {
+		if p.Name == process {
+			return &p
+		}
+	}
+	return nil
 }

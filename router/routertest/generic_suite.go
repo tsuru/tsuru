@@ -15,29 +15,6 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-type FakeApp struct {
-	Name      string
-	Pool      string
-	Teams     []string
-	TeamOwner string
-}
-
-func (r FakeApp) GetName() string {
-	return r.Name
-}
-
-func (r FakeApp) GetPool() string {
-	return r.Pool
-}
-
-func (r FakeApp) GetTeamOwner() string {
-	return r.TeamOwner
-}
-
-func (r FakeApp) GetTeamsName() []string {
-	return r.Teams
-}
-
 type RouterSuite struct {
 	Router            router.Router
 	SetUpSuiteFunc    func(c *check.C)
