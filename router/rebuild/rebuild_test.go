@@ -19,7 +19,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func newVersion(c *check.C, a appTypes.AppInterface) appTypes.AppVersion {
+func newVersion(c *check.C, a *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})

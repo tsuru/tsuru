@@ -32,8 +32,8 @@ var (
 	watchTimeout = time.Hour
 )
 
-func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	clusterClient, err := clusterForPool(ctx, obj.GetPool())
+func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	clusterClient, err := clusterForPool(ctx, obj.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.Logab
 		return nil, err
 	}
 
-	ns := clusterClient.PoolNamespace(obj.GetPool())
+	ns := clusterClient.PoolNamespace(obj.Pool)
 
 	podInformer, err := clusterController.getPodInformer()
 	if err != nil {
@@ -59,8 +59,8 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.Logab
 	return listLogsFromPods(ctx, clusterClient, ns, pods, args)
 }
 
-func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	pool := obj.GetPool()
+func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	pool := obj.Pool
 	clusterClient, err := clusterForPool(ctx, pool)
 	if err != nil {
 		return nil, err
