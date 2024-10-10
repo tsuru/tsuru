@@ -305,7 +305,7 @@ func suppressSensitiveEnvs(e *event.Event) error {
 		return nil
 	}
 
-	deployOptions.App.SuppressSensitiveEnvs()
+	app.SuppressSensitiveEnvs(deployOptions.App)
 
 	e.StartCustomData.Type, e.StartCustomData.Value, err = mongoBSON.MarshalValue(deployOptions)
 	if err != nil {

@@ -13,23 +13,14 @@ import (
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
-type RebuildApp interface {
-	router.App
-	GetCname() []string
-	GetRouters() []appTypes.AppRouter
-	GetCertIssuers() map[string]string
-	GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error)
-	RoutableAddresses(context.Context) ([]appTypes.RoutableAddresses, error)
-	ListTags() []string
-}
-
 type RebuildRoutesOpts struct {
-	App    RebuildApp
+	App    *appTypes.App
 	Writer io.Writer
 	Dry    bool
 }
@@ -42,7 +33,7 @@ func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) error {
 		opts.Writer = io.Discard
 	}
 
-	for _, appRouter := range opts.App.GetRouters() {
+	for _, appRouter := range getAppRouters(opts.App) {
 		err := RebuildRoutesInRouter(ctx, appRouter, opts)
 		if err != nil {
 			multi.Add(err)
@@ -51,8 +42,24 @@ func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) error {
 	return multi.ToError()
 }
 
+func getAppRouters(app *appTypes.App) []appTypes.AppRouter {
+	routers := append([]appTypes.AppRouter{}, app.Routers...)
+	if app.Router != "" {
+		for _, r := range routers {
+			if r.Name == app.Router {
+				return routers
+			}
+		}
+		routers = append([]appTypes.AppRouter{{
+			Name: app.Router,
+			Opts: app.RouterOpts,
+		}}, routers...)
+	}
+	return routers
+}
+
 func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o RebuildRoutesOpts) error {
-	log.Debugf("[rebuild-routes] rebuilding routes for app %q", o.App.GetName())
+	log.Debugf("[rebuild-routes] rebuilding routes for app %q", o.App.Name)
 	if o.Writer == nil {
 		o.Writer = io.Discard
 	}
@@ -62,21 +69,24 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		return err
 	}
 
-	routes, routesErr := o.App.RoutableAddresses(ctx)
+	provisioner, err := pool.GetProvisionerForPool(ctx, o.App.Pool)
+	if err != nil {
+		return err
+	}
+	routes, routesErr := provisioner.RoutableAddresses(ctx, o.App)
 	if routesErr != nil {
 		return routesErr
 	}
-	hcData, errHc := o.App.GetHealthcheckData(ctx)
+	hcData, errHc := servicemanager.App.GetHealthcheckData(ctx, o.App)
 	if errHc != nil {
 		return errHc
 	}
 	opts := router.EnsureBackendOpts{
 		Opts:        map[string]interface{}{},
 		Prefixes:    []router.BackendPrefix{},
-		Team:        o.App.GetTeamOwner(),
-		Tags:        o.App.ListTags(),
-		CNames:      o.App.GetCname(),
-		CertIssuers: o.App.GetCertIssuers(),
+		Team:        o.App.TeamOwner,
+		CertIssuers: o.App.CertIssuers,
+		CNames:      o.App.CName,
 		Healthcheck: hcData,
 	}
 	for key, opt := range appRouter.Opts {
@@ -91,7 +101,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 	return r.EnsureBackend(ctx, o.App, opts)
 }
 
-type initializeFunc func(string) (RebuildApp, error)
+type initializeFunc func(string) (*appTypes.App, error)
 
 var appFinder = atomic.Pointer[initializeFunc]{}
 

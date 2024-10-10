@@ -19,7 +19,7 @@ func patchWithPastUnits(process string, pastUnitsMap map[string]int, state *Proc
 	}
 }
 
-func ChangeAppState(ctx context.Context, manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion) error {
+func ChangeAppState(ctx context.Context, manager ServiceManager, a *appTypes.App, process string, state ProcessState, version appTypes.AppVersion) error {
 	var (
 		processes []string
 		err       error
@@ -48,8 +48,8 @@ func ChangeAppState(ctx context.Context, manager ServiceManager, a provision.App
 	return nil
 }
 
-func ChangeUnits(ctx context.Context, manager ServiceManager, a provision.App, units int, processName string, version appTypes.AppVersion) error {
-	if a.GetDeploys() == 0 {
+func ChangeUnits(ctx context.Context, manager ServiceManager, a *appTypes.App, units int, processName string, version appTypes.AppVersion) error {
+	if a.Deploys == 0 {
 		return errors.New("units can only be modified after the first deploy")
 	}
 	err := RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{

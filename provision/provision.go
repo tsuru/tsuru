@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
-	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -80,44 +79,8 @@ type RunArgs struct {
 	Isolated bool
 }
 
-// App represents a tsuru app.
-//
-// It contains only relevant information for provisioning.
-type App interface {
-	Named
-
-	// GetPlatform returns the platform (type) of the app. It is equivalent
-	// to the Unit `Type` field.
-	GetPlatform() string
-
-	// GetPlatformVersion returns the locked platform version of the app.
-	GetPlatformVersion() string
-
-	// GetDeploy returns the deploys that an app has.
-	GetDeploys() uint
-
-	Envs() map[string]bindTypes.EnvVar
-
-	GetUpdatePlatform() bool
-
-	GetRouters() []appTypes.AppRouter
-
-	GetTeamOwner() string
-	GetTeamsName() []string
-
-	GetPlan() appTypes.Plan
-	GetPool() string
-	GetProcess(process string) *appTypes.Process
-
-	ListTags() []string
-
-	GetMetadata(process string) appTypes.Metadata
-
-	GetRegistry(context.Context) (imgTypes.ImageRegistry, error)
-}
-
 type DeployArgs struct {
-	App              App
+	App              *appTypes.App
 	Version          appTypes.AppVersion
 	Event            *event.Event
 	PreserveVersions bool
@@ -130,8 +93,8 @@ type BuilderDeploy interface {
 }
 
 type VersionsProvisioner interface {
-	ToggleRoutable(context.Context, App, appTypes.AppVersion, bool) error
-	DeployedVersions(context.Context, App) ([]int, error)
+	ToggleRoutable(context.Context, *appTypes.App, appTypes.AppVersion, bool) error
+	DeployedVersions(context.Context, *appTypes.App) ([]int, error)
 }
 
 // Provisioner is the basic interface of this package.
@@ -142,45 +105,45 @@ type Provisioner interface {
 	Named
 
 	// Provision is called when tsuru is creating the app.
-	Provision(context.Context, App) error
+	Provision(context.Context, *appTypes.App) error
 
 	// Destroy is called when tsuru is destroying the app.
-	Destroy(context.Context, App) error
+	Destroy(context.Context, *appTypes.App) error
 
 	// DestroyVersion is called when tsuru is destroying an app version.
-	DestroyVersion(context.Context, App, appTypes.AppVersion) error
+	DestroyVersion(context.Context, *appTypes.App, appTypes.AppVersion) error
 
 	// AddUnits adds units to an app. The first parameter is the app, the
 	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
-	AddUnits(context.Context, App, uint, string, appTypes.AppVersion, io.Writer) error
+	AddUnits(context.Context, *appTypes.App, uint, string, appTypes.AppVersion, io.Writer) error
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.
-	RemoveUnits(context.Context, App, uint, string, appTypes.AppVersion, io.Writer) error
+	RemoveUnits(context.Context, *appTypes.App, uint, string, appTypes.AppVersion, io.Writer) error
 
 	// Restart restarts the units of the application, with an optional
 	// string parameter represeting the name of the process to start. When
 	// the process is empty, Restart will restart all units of the
 	// application.
-	Restart(context.Context, App, string, appTypes.AppVersion, io.Writer) error
+	Restart(context.Context, *appTypes.App, string, appTypes.AppVersion, io.Writer) error
 
 	// Start starts the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Start will start all units of the application.
-	Start(context.Context, App, string, appTypes.AppVersion, io.Writer) error
+	Start(context.Context, *appTypes.App, string, appTypes.AppVersion, io.Writer) error
 
 	// Stop stops the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Stop will stop all units of the application.
-	Stop(context.Context, App, string, appTypes.AppVersion, io.Writer) error
+	Stop(context.Context, *appTypes.App, string, appTypes.AppVersion, io.Writer) error
 
 	// Units returns information about units by App.
-	Units(context.Context, ...App) ([]provTypes.Unit, error)
+	Units(context.Context, ...*appTypes.App) ([]provTypes.Unit, error)
 
 	// RoutableAddresses returns the addresses used to access an application.
-	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
+	RoutableAddresses(context.Context, *appTypes.App) ([]appTypes.RoutableAddresses, error)
 }
 
 type JobProvisioner interface {
@@ -196,7 +159,7 @@ type JobProvisioner interface {
 }
 
 type ExecOptions struct {
-	App    App
+	App    *appTypes.App
 	Stdout io.Writer
 	Stderr io.Writer
 	Stdin  io.Reader
@@ -213,26 +176,26 @@ type ExecutableProvisioner interface {
 
 // LogsProvisioner is a provisioner that is self responsible for storage logs.
 type LogsProvisioner interface {
-	ListLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
-	WatchLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
+	ListLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
+	WatchLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
 }
 
 // MetricsProvisioner is a provisioner that have capability to view metrics of workloads
 type MetricsProvisioner interface {
 	// Units returns information about cpu and memory usage by App.
-	UnitsMetrics(ctx context.Context, a App) ([]provTypes.UnitMetric, error)
+	UnitsMetrics(ctx context.Context, a *appTypes.App) ([]provTypes.UnitMetric, error)
 }
 
 // UpdatableProvisioner is a provisioner that stores data about applications
 // and must be notified when they are updated
 type UpdatableProvisioner interface {
-	UpdateApp(ctx context.Context, old, new App, w io.Writer) error
+	UpdateApp(ctx context.Context, old, new *appTypes.App, w io.Writer) error
 }
 
 // InterAppProvisioner is a provisioner that allows an app to comunicate with each other
 // using internal dns and own load balancers provided by provisioner.
 type InterAppProvisioner interface {
-	InternalAddresses(ctx context.Context, a App) ([]appTypes.AppInternalAddress, error)
+	InternalAddresses(ctx context.Context, a *appTypes.App) ([]appTypes.AppInternalAddress, error)
 }
 
 // MessageProvisioner is a provisioner that provides a welcome message for
@@ -251,11 +214,11 @@ type InitializableProvisioner interface {
 // logs for a given app.
 type OptionalLogsProvisioner interface {
 	// Checks if logs are enabled for given app.
-	LogsEnabled(App) (bool, string, error)
+	LogsEnabled(*appTypes.App) (bool, string, error)
 }
 
 type KillUnitProvisioner interface {
-	KillUnit(ctx context.Context, app App, unit string, force bool) error
+	KillUnit(ctx context.Context, app *appTypes.App, unit string, force bool) error
 }
 
 // HCProvisioner is a provisioner that may handle loadbalancing healthchecks.
@@ -280,13 +243,13 @@ type RebalanceNodesOptions struct {
 // provisioner.
 type UnitFinderProvisioner interface {
 	// GetAppFromUnitID returns an app from unit id
-	GetAppFromUnitID(context.Context, string) (App, error)
+	GetAppFromUnitID(context.Context, string) (*appTypes.App, error)
 }
 
 // AppFilterProvisioner is a provisioner that allows filtering apps by the
 // state of its units.
 type AppFilterProvisioner interface {
-	FilterAppsByUnitStatus(context.Context, []App, []string) ([]App, error)
+	FilterAppsByUnitStatus(context.Context, []*appTypes.App, []string) ([]*appTypes.App, error)
 }
 
 type VolumeProvisioner interface {
@@ -295,7 +258,7 @@ type VolumeProvisioner interface {
 	DeleteVolume(ctx context.Context, volumeName, pool string) error
 }
 
-func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a App) (int, error) {
+func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a *appTypes.App) (int, error) {
 	rawCPU := strings.TrimSuffix(s.AverageCPU, "%")
 	cpu, err := strconv.Atoi(rawCPU)
 	if err != nil {
@@ -307,7 +270,7 @@ func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a App) (int, error) {
 		cpu = cpu / 10
 	}
 
-	cpuLimit := a.GetPlan().GetMilliCPU()
+	cpuLimit := a.Plan.GetMilliCPU()
 	if cpuLimit == 0 {
 		// No cpu limit is set in app, the AverageCPU value must be considered
 		// as absolute milli cores and we cannot validate it.
@@ -325,7 +288,7 @@ func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a App) (int, error) {
 	return cpu, nil
 }
 
-func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a App) error {
+func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a *appTypes.App) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
 	}
@@ -358,10 +321,10 @@ func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a App) er
 }
 
 type AutoScaleProvisioner interface {
-	GetAutoScale(ctx context.Context, a App) ([]provTypes.AutoScaleSpec, error)
-	GetVerticalAutoScaleRecommendations(ctx context.Context, a App) ([]provTypes.RecommendedResources, error)
-	SetAutoScale(ctx context.Context, a App, spec provTypes.AutoScaleSpec) error
-	RemoveAutoScale(ctx context.Context, a App, process string) error
+	GetAutoScale(ctx context.Context, a *appTypes.App) ([]provTypes.AutoScaleSpec, error)
+	GetVerticalAutoScaleRecommendations(ctx context.Context, a *appTypes.App) ([]provTypes.RecommendedResources, error)
+	SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) error
+	RemoveAutoScale(ctx context.Context, a *appTypes.App, process string) error
 }
 
 type UnitStatusData struct {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
@@ -109,8 +110,8 @@ func (r *fakeRouter) HasCertIssuerForCName(name, cname, issuer string) bool {
 	return ok && stored == name
 }
 
-func (r *fakeRouter) RemoveBackend(ctx context.Context, app router.App) error {
-	backendName := app.GetName()
+func (r *fakeRouter) RemoveBackend(ctx context.Context, app *appTypes.App) error {
+	backendName := app.Name
 
 	if !r.HasBackend(backendName) {
 		return router.ErrBackendNotFound
@@ -130,8 +131,8 @@ func (r *fakeRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return r.Info, nil
 }
 
-func (r *fakeRouter) GetBackendStatus(ctx context.Context, app router.App) (router.RouterBackendStatus, error) {
-	backendName := app.GetName()
+func (r *fakeRouter) GetBackendStatus(ctx context.Context, app *appTypes.App) (router.RouterBackendStatus, error) {
+	backendName := app.Name
 
 	if r.FailuresByHost[r.GetName()+":"+backendName] || r.FailuresByHost[backendName] {
 		return router.RouterBackendStatus{
@@ -154,8 +155,8 @@ func (r *fakeRouter) Reset() {
 	r.FailuresByHost = map[string]bool{}
 }
 
-func (r *fakeRouter) EnsureBackend(ctx context.Context, app router.App, opts router.EnsureBackendOpts) error {
-	name := app.GetName()
+func (r *fakeRouter) EnsureBackend(ctx context.Context, app *appTypes.App, opts router.EnsureBackendOpts) error {
+	name := app.Name
 	if name == "myapp-with-error" {
 		return errors.New("Ensure backend error")
 	}
@@ -213,8 +214,8 @@ func (r *fakeRouter) EnsureBackend(ctx context.Context, app router.App, opts rou
 	return nil
 }
 
-func (r *fakeRouter) Addresses(ctx context.Context, app router.App) ([]string, error) {
-	backendName := app.GetName()
+func (r *fakeRouter) Addresses(ctx context.Context, app *appTypes.App) ([]string, error) {
+	backendName := app.Name
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -252,20 +253,20 @@ type tlsRouter struct {
 
 var _ router.TLSRouter = &tlsRouter{}
 
-func (r *tlsRouter) AddCertificate(ctx context.Context, app router.App, cname, certificate, key string) error {
+func (r *tlsRouter) AddCertificate(ctx context.Context, app *appTypes.App, cname, certificate, key string) error {
 	r.Certs[cname] = certificate
 	r.Keys[cname] = key
 	return nil
 }
 
-func (r *tlsRouter) RemoveCertificate(ctx context.Context, app router.App, cname string) error {
+func (r *tlsRouter) RemoveCertificate(ctx context.Context, app *appTypes.App, cname string) error {
 	delete(r.Certs, cname)
 	delete(r.Keys, cname)
 	return nil
 }
 
-func (r *tlsRouter) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
-	if app.GetName()+".faketlsrouter.com" == cname {
+func (r *tlsRouter) GetCertificate(ctx context.Context, app *appTypes.App, cname string) (string, error) {
+	if app.Name+".faketlsrouter.com" == cname {
 		return "<mock cert>", nil
 	}
 	data, ok := r.Certs[cname]
@@ -275,7 +276,7 @@ func (r *tlsRouter) GetCertificate(ctx context.Context, app router.App, cname st
 	return data, nil
 }
 
-func (r *tlsRouter) Addresses(ctx context.Context, app router.App) ([]string, error) {
+func (r *tlsRouter) Addresses(ctx context.Context, app *appTypes.App) ([]string, error) {
 	addrs, err := r.fakeRouter.Addresses(ctx, app)
 	if err != nil {
 		return nil, err

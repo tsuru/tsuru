@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -32,13 +33,13 @@ func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	}
 
 	canRead := permission.Check(ctx, t, permission.PermAppRead,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
 
-	info, err := a.AutoScaleInfo(ctx)
+	info, err := app.AutoScaleInfo(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleAdd,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -78,11 +79,11 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: fmt.Sprintf("unable to parse autoscale spec: %v", err),
 		}
 	}
-	quota, err := a.GetQuota(ctx)
+	quota, err := app.GetQuota(ctx, a)
 	if err != nil {
 		return err
 	}
-	err = provision.ValidateAutoScaleSpec(&spec, quota.Limit, &a)
+	err = provision.ValidateAutoScaleSpec(&spec, quota.Limit, a)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -102,13 +103,13 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	return a.AutoScale(ctx, spec)
+	return app.AutoScale(ctx, a, spec)
 }
 
 // title: remove unit auto scale
@@ -129,7 +130,7 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleRemove,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -140,11 +141,11 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	return a.RemoveAutoScale(ctx, process)
+	return app.RemoveAutoScale(ctx, a, process)
 }

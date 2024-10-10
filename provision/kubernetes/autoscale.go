@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -36,8 +37,8 @@ const (
 
 var errNoDeploy = errors.New("no routable version found for app, at least one deploy is required before configuring autoscale")
 
-func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, a provision.App) ([]provTypes.RecommendedResources, error) {
-	client, err := clusterForPool(ctx, a.GetPool())
+func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, a *appTypes.App) ([]provTypes.RecommendedResources, error) {
+	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +121,8 @@ func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provTypes.RecommendedReso
 	return rec
 }
 
-func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.App) ([]provTypes.AutoScaleSpec, error) {
-	client, err := clusterForPool(ctx, a.GetPool())
+func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.App) ([]provTypes.AutoScaleSpec, error) {
+	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +273,7 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 	return spec
 }
 
-func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provision.App) error {
+func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a *appTypes.App) error {
 	scaleSpecs, err := p.GetAutoScale(ctx, a)
 	if err != nil {
 		return err
@@ -286,7 +287,7 @@ func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provis
 	return nil
 }
 
-func (p *kubernetesProvisioner) deleteHPAByVersionAndProcess(ctx context.Context, a provision.App, process string, version int) error {
+func (p *kubernetesProvisioner) deleteHPAByVersionAndProcess(ctx context.Context, a *appTypes.App, process string, version int) error {
 	scaleSpecs, err := p.GetAutoScale(ctx, a)
 	if err != nil {
 		return err
@@ -302,8 +303,8 @@ func (p *kubernetesProvisioner) deleteHPAByVersionAndProcess(ctx context.Context
 	return nil
 }
 
-func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision.App, process string) error {
-	client, err := clusterForPool(ctx, a.GetPool())
+func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a *appTypes.App, process string) error {
+	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return err
 	}
@@ -347,15 +348,15 @@ func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string
 	return nil
 }
 
-func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.App, spec provTypes.AutoScaleSpec) error {
-	client, err := clusterForPool(ctx, a.GetPool())
+func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) error {
+	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return err
 	}
 	return setAutoScale(ctx, client, a, spec)
 }
 
-func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, spec provTypes.AutoScaleSpec) error {
+func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, spec provTypes.AutoScaleSpec) error {
 	depInfo, err := minimumAutoScaleVersion(ctx, client, a, spec.Process)
 	if err != nil {
 		return err
@@ -392,7 +393,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	}
 
 	target := autoscalingv2.MetricTarget{}
-	if a.GetPlan().GetMilliCPU() > 0 {
+	if a.Plan.GetMilliCPU() > 0 {
 		target.Type = autoscalingv2.UtilizationMetricType
 		val := int32(cpuValue)
 		target.AverageUtilization = &val
@@ -463,7 +464,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	return nil
 }
 
-func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet) error {
+func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet) error {
 	kedaClient, err := KEDAClientForConfig(client.restConfig)
 	if err != nil {
 		return err
@@ -499,7 +500,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 	return err
 }
 
-func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
+func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
 	kedaTriggers := []kedav1alpha1.ScaleTriggers{}
 
 	if spec.AverageCPU != "" {
@@ -512,7 +513,7 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a provision.App, depInfo 
 			Type: "cpu",
 		}
 
-		if a.GetPlan().GetMilliCPU() > 0 {
+		if a.Plan.GetMilliCPU() > 0 {
 			cpuTrigger.MetricType = autoscalingv2.UtilizationMetricType
 		} else {
 			cpuTrigger.MetricType = autoscalingv2.AverageValueMetricType
@@ -674,7 +675,8 @@ func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPolicy) (policies 
 	}
 }
 
-func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provision.App, process string) (*deploymentInfo, error) {
+func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) (*deploymentInfo, error) {
+
 	depGroups, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return nil, err
@@ -723,7 +725,7 @@ func vpaCRDExists(ctx context.Context, client *ClusterClient) (bool, error) {
 	return crdExists(ctx, client, vpaCRDName)
 }
 
-func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+func ensureAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
 	multiErr := tsuruErrors.NewMultiError()
 
 	err := ensureHPA(ctx, client, a, process)
@@ -739,7 +741,7 @@ func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App
 	return multiErr.ToError()
 }
 
-func ensureVPAIfEnabled(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+func ensureVPAIfEnabled(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
 	hasVPA, err := vpaCRDExists(ctx, client)
 	if err != nil {
 		return err
@@ -749,7 +751,7 @@ func ensureVPAIfEnabled(ctx context.Context, client *ClusterClient, a provision.
 		return nil
 	}
 
-	rawEnableVPA, _ := a.GetMetadata(process).Annotation(AnnotationEnableVPA)
+	rawEnableVPA, _ := provision.GetAppMetadata(a, process).Annotation(AnnotationEnableVPA)
 	if enableVPA, _ := strconv.ParseBool(rawEnableVPA); enableVPA {
 		err = ensureVPA(ctx, client, a, process)
 	} else {
@@ -758,7 +760,7 @@ func ensureVPAIfEnabled(ctx context.Context, client *ClusterClient, a provision.
 	return err
 }
 
-func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+func ensureVPA(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
 	cli, err := VPAClientForConfig(client.RestConfig())
 	if err != nil {
 		return err
@@ -823,7 +825,7 @@ func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 	return nil
 }
 
-func ensureVPADeleted(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+func ensureVPADeleted(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
 	cli, err := VPAClientForConfig(client.RestConfig())
 	if err != nil {
 		return err
@@ -839,7 +841,7 @@ func ensureVPADeleted(ctx context.Context, client *ClusterClient, a provision.Ap
 	return nil
 }
 
-func ensureHPA(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+func ensureHPA(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
 	autoScaleSpecs, err := getAutoScale(ctx, client, a, process)
 	if err != nil {
 		return err
@@ -858,7 +860,7 @@ func ensureHPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 	return multiErr.ToError()
 }
 
-func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provTypes.AutoScaleSpec, error) {
+func getAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) ([]provTypes.AutoScaleSpec, error) {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -902,7 +904,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 	return specs, nil
 }
 
-func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a provision.App) (*vpav1.VerticalPodAutoscalerList, error) {
+func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a *appTypes.App) (*vpav1.VerticalPodAutoscalerList, error) {
 	ns, err := clusterClient.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -926,7 +928,7 @@ func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient 
 	return existingVPAs, nil
 }
 
-func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a provision.App, version int) (*vpav1.VerticalPodAutoscalerList, error) {
+func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a *appTypes.App, version int) (*vpav1.VerticalPodAutoscalerList, error) {
 	ns, err := clusterClient.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -951,7 +953,7 @@ func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient
 	return vpasForVersion, nil
 }
 
-func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) error {
+func deleteAllVPA(ctx context.Context, client *ClusterClient, a *appTypes.App) error {
 	vpaCli, err := VPAClientForConfig(client.RestConfig())
 	if err != nil {
 		return err
@@ -975,7 +977,7 @@ func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) e
 	return nil
 }
 
-func deleteVPAsByVersion(ctx context.Context, client *ClusterClient, a provision.App, version int) error {
+func deleteVPAsByVersion(ctx context.Context, client *ClusterClient, a *appTypes.App, version int) error {
 	vpaCli, err := VPAClientForConfig(client.RestConfig())
 	if err != nil {
 		return err

@@ -326,11 +326,11 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) AppNamespace(ctx context.Context, app appTypes.AppInterface) (string, error) {
+func (c *ClusterClient) AppNamespace(ctx context.Context, app *appTypes.App) (string, error) {
 	if app == nil {
 		return c.Namespace(), nil
 	}
-	return c.appNamespaceByName(ctx, app.GetName())
+	return c.appNamespaceByName(ctx, app.Name)
 }
 
 func (c *ClusterClient) appNamespaceByName(ctx context.Context, appName string) (string, error) {
@@ -646,21 +646,21 @@ func (c *ClusterClient) buildServiceTLSCrendentials(pool, addr string) (credenti
 
 type clusterApp struct {
 	client *ClusterClient
-	apps   []provision.App
+	apps   []*appTypes.App
 }
 
-func clustersForApps(ctx context.Context, apps []provision.App) ([]clusterApp, error) {
+func clustersForApps(ctx context.Context, apps []*appTypes.App) ([]clusterApp, error) {
 	clusterClientMap := map[string]clusterApp{}
 	var poolNames []string
 	for _, a := range apps {
-		poolNames = append(poolNames, a.GetPool())
+		poolNames = append(poolNames, a.Pool)
 	}
 	clusterPoolMap, err := servicemanager.Cluster.FindByPools(ctx, provisionerName, poolNames)
 	if err != nil {
 		return nil, err
 	}
 	for _, a := range apps {
-		poolName := a.GetPool()
+		poolName := a.Pool
 		cluster, clusterFound := clusterPoolMap[poolName]
 		if !clusterFound {
 			continue

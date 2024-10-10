@@ -113,7 +113,7 @@ func (s *appVersionStorage) NewAppVersion(ctx context.Context, args appTypes.New
 		UpdatedAt:      now,
 	}
 
-	query := mongoBSON.M{"appname": args.App.GetName()}
+	query := mongoBSON.M{"appname": args.App.Name}
 
 	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {
@@ -196,8 +196,8 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 	return allAppVersions, nil
 }
 
-func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.AppInterface) (appTypes.AppVersions, error) {
-	query := mongoBSON.M{"appname": app.GetName()}
+func (s *appVersionStorage) AppVersions(ctx context.Context, app *appTypes.App) (appTypes.AppVersions, error) {
+	query := mongoBSON.M{"appname": app.Name}
 
 	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {

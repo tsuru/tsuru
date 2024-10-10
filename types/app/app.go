@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/volume"
 )
 
@@ -34,7 +35,7 @@ type App struct {
 	Lock            AppLock
 	Pool            string
 	Description     string
-	Router          string
+	Router          string // TODO: drop Router field and use just on inputApp
 	RouterOpts      map[string]string
 	Deploys         uint
 	Tags            []string
@@ -53,17 +54,9 @@ var CertIssuerDotReplacement = "_dot_"
 
 type CertIssuers map[string]string
 
-type AppInterface interface {
-	GetName() string
-	GetPool() string
-	GetTeamOwner() string
-	GetTeamsName() []string
-	GetPlatform() string
-	GetPlatformVersion() string
-	GetRegistry(ctx context.Context) (image.ImageRegistry, error)
-	GetDeploys() uint
-	GetUpdatePlatform() bool
-}
+const (
+	DefaultAppDir = "/home/application/current"
+)
 
 type AppRouter struct {
 	Name         string            `json:"name"`
@@ -96,8 +89,13 @@ type Filter struct {
 }
 
 type AppService interface {
-	GetByName(ctx context.Context, name string) (AppInterface, error)
-	List(ctx context.Context, filter *Filter) ([]AppInterface, error)
+	GetByName(ctx context.Context, name string) (*App, error)
+	List(ctx context.Context, filter *Filter) ([]*App, error)
+	GetHealthcheckData(ctx context.Context, app *App) (router.HealthcheckData, error)
+	GetAddresses(ctx context.Context, app *App) ([]string, error)
+	GetInternalBindableAddresses(ctx context.Context, app *App) ([]string, error)
+	EnsureUUID(ctx context.Context, app *App) (string, error)
+	GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error)
 }
 
 type AppInfo struct {

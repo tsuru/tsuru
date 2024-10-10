@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -19,13 +20,13 @@ import (
 type appVersionImpl struct {
 	ctx         context.Context
 	storage     appTypes.AppVersionStorage
-	app         appTypes.AppInterface
+	app         *appTypes.App
 	versionInfo *appTypes.AppVersionInfo
 	reg         imgTypes.ImageRegistry
 }
 
-func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, app appTypes.AppInterface, versionInfo *appTypes.AppVersionInfo) (*appVersionImpl, error) {
-	reg, err := app.GetRegistry(ctx)
+func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, app *appTypes.App, versionInfo *appTypes.AppVersionInfo) (*appVersionImpl, error) {
+	reg, err := servicemanager.App.GetRegistry(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, 
 var _ appTypes.AppVersion = &appVersionImpl{}
 
 func (v *appVersionImpl) BuildImageName() (string, error) {
-	return image.AppBuildImageName(v.reg, v.app.GetName(), v.versionInfo.CustomBuildTag, v.app.GetTeamOwner(), v.Version())
+	return image.AppBuildImageName(v.reg, v.app.Name, v.versionInfo.CustomBuildTag, v.app.TeamOwner, v.Version())
 }
 
 func (v *appVersionImpl) CommitBuildImage() error {
@@ -53,11 +54,11 @@ func (v *appVersionImpl) CommitBuildImage() error {
 	if err != nil {
 		return err
 	}
-	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersion(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) BaseImageName() (string, error) {
-	newImage, err := image.AppBasicImageName(v.reg, v.app.GetName())
+	newImage, err := image.AppBasicImageName(v.reg, v.app.Name)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +74,7 @@ func (v *appVersionImpl) CommitBaseImage() error {
 	if err != nil {
 		return err
 	}
-	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersion(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) VersionInfo() appTypes.AppVersionInfo {
@@ -114,7 +115,7 @@ func (v *appVersionImpl) CommitSuccessful() error {
 		return err
 	}
 	v.versionInfo.DeploySuccessful = true
-	return v.storage.UpdateVersionSuccess(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersionSuccess(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) MarkToRemoval() error {
@@ -123,7 +124,7 @@ func (v *appVersionImpl) MarkToRemoval() error {
 		return err
 	}
 	v.versionInfo.MarkedToRemoval = true
-	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersion(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) AddData(args appTypes.AddVersionDataArgs) error {
@@ -149,7 +150,7 @@ func (v *appVersionImpl) AddData(args appTypes.AddVersionDataArgs) error {
 	if args.ExposedPorts != nil {
 		v.versionInfo.ExposedPorts = args.ExposedPorts
 	}
-	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersion(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) UpdatePastUnits(process string, replicas int) error {
@@ -164,7 +165,7 @@ func (v *appVersionImpl) UpdatePastUnits(process string, replicas int) error {
 		v.versionInfo.PastUnits[process] = replicas
 	}
 
-	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersion(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) ToggleEnabled(enabled bool, reason string) error {
@@ -174,7 +175,7 @@ func (v *appVersionImpl) ToggleEnabled(enabled bool, reason string) error {
 	}
 	v.versionInfo.Disabled = !enabled
 	v.versionInfo.DisabledReason = reason
-	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+	return v.storage.UpdateVersion(v.ctx, v.app.Name, v.versionInfo)
 }
 
 func (v *appVersionImpl) Version() int {

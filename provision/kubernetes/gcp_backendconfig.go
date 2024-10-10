@@ -27,7 +27,7 @@ func backendConfigCRDExists(ctx context.Context, client *ClusterClient) (bool, e
 	return crdExists(ctx, client, backendConfigCRDName)
 }
 
-func backendConfigNameForApp(a provision.App, process string) string {
+func backendConfigNameForApp(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
@@ -69,7 +69,7 @@ func gcpHCToString(hc *backendconfigv1.HealthCheckConfig) string {
 	return fmt.Sprintf("path=%s type=%s interval=%v timeout=%v success=%d failure=%d", path, hcType, time.Duration(intervalSec)*time.Second, time.Duration(timeoutSec)*time.Second, success, failure)
 }
 
-func backendConfigFromHC(ctx context.Context, app provision.App, process string, hc provTypes.TsuruYamlHealthcheck) (*backendconfigv1.BackendConfig, error) {
+func backendConfigFromHC(ctx context.Context, app *appTypes.App, process string, hc provTypes.TsuruYamlHealthcheck) (*backendconfigv1.BackendConfig, error) {
 	err := ensureHealthCheckDefaults(&hc)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func backendConfigFromHC(ctx context.Context, app provision.App, process string,
 
 type backendConfigArgs struct {
 	client  *ClusterClient
-	app     provision.App
+	app     *appTypes.App
 	process string
 	writer  io.Writer
 	version appTypes.AppVersion
@@ -194,7 +194,7 @@ func ensureBackendConfig(ctx context.Context, args backendConfigArgs) (bool, err
 	return crdExists, nil
 }
 
-func deleteAllBackendConfig(ctx context.Context, client *ClusterClient, app provision.App) error {
+func deleteAllBackendConfig(ctx context.Context, client *ClusterClient, app *appTypes.App) error {
 	cli, err := BackendConfigClientForConfig(client.RestConfig())
 	if err != nil {
 		return err

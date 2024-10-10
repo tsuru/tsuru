@@ -21,7 +21,6 @@ import (
 	"sync"
 	"text/template"
 
-	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -30,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db/storagev2"
-	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -52,7 +50,6 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
-	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -94,32 +91,23 @@ func init() {
 }
 
 const (
-	defaultAppDir = "/home/application/current"
-
 	routerNone = "none"
 )
 
-// App is the main type in tsuru. An app represents a real world application.
-// This struct holds information about the app: its name, address, list of
-// teams that have access to it, used platform, etc.
-type App appTypes.App
-
 var (
-	_ provision.App        = &App{}
-	_ rebuild.RebuildApp   = &App{}
-	_ quota.QuotaItemInUse = &App{}
+	_ quota.QuotaItemInUse = &App{} // TODO: solve this
 )
 
-func (app *App) getBuilder(ctx context.Context) (builder.Builder, error) {
-	p, err := app.getProvisioner(ctx)
+func getBuilder(ctx context.Context, app *appTypes.App) (builder.Builder, error) {
+	p, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
 	return builder.GetForProvisioner(p)
 }
 
-func internalAddresses(ctx context.Context, app *App) ([]appTypes.AppInternalAddress, error) {
-	provisioner, err := app.getProvisioner(ctx)
+func internalAddresses(ctx context.Context, app *appTypes.App) ([]appTypes.AppInternalAddress, error) {
+	provisioner, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -131,13 +119,13 @@ func internalAddresses(ctx context.Context, app *App) ([]appTypes.AppInternalAdd
 	return nil, nil
 }
 
-func (app *App) getProvisioner(ctx context.Context) (provision.Provisioner, error) {
+func getProvisioner(ctx context.Context, app *appTypes.App) (provision.Provisioner, error) {
 	return pool.GetProvisionerForPool(ctx, app.Pool)
 }
 
 // Units returns the list of units.
-func (app *App) Units(ctx context.Context) ([]provTypes.Unit, error) {
-	prov, err := app.getProvisioner(ctx)
+func AppUnits(ctx context.Context, app *appTypes.App) ([]provTypes.Unit, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return []provTypes.Unit{}, err
 	}
@@ -152,7 +140,7 @@ func (app *App) Units(ctx context.Context) ([]provTypes.Unit, error) {
 }
 
 // AppInfo returns a agregated format of app
-func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
+func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) {
 	var errMsgs []string
 	result := &appTypes.AppInfo{
 		Name:        app.Name,
@@ -170,10 +158,10 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 		Metadata:    app.Metadata,
 	}
 
-	if version := app.GetPlatformVersion(); version != "latest" {
+	if version := image.GetPlatformVersion(app); version != "latest" {
 		result.Platform = fmt.Sprintf("%s:%s", app.Platform, version)
 	}
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get provisioner name: %+v", err))
 	}
@@ -188,13 +176,13 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 			result.Cluster = cluster.Name
 		}
 	}
-	units, err := app.Units(ctx)
+	units, err := AppUnits(ctx, app)
 	result.Units = units
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
 	}
 
-	routers, err := app.GetRoutersWithAddr(ctx)
+	routers, err := GetRoutersWithAddr(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app addresses: %+v", err))
 	}
@@ -209,7 +197,7 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 		result.Processes = app.Processes
 	}
 
-	q, err := app.GetQuota(ctx)
+	q, err := GetQuota(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
 	}
@@ -224,21 +212,21 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 	if len(internalAddresses) > 0 {
 		result.InternalAddresses = internalAddresses
 	}
-	autoscale, err := app.AutoScaleInfo(ctx)
+	autoscale, err := AutoScaleInfo(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale info: %+v", err))
 	}
 	if autoscale != nil {
 		result.Autoscale = autoscale
 	}
-	autoscaleRec, err := app.VerticalAutoScaleRecommendations(ctx)
+	autoscaleRec, err := VerticalAutoScaleRecommendations(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale recommendation info: %+v", err))
 	}
 	if autoscaleRec != nil {
 		result.AutoscaleRecommendation = autoscaleRec
 	}
-	unitMetrics, err := app.UnitsMetrics(ctx)
+	unitMetrics, err := UnitsMetrics(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get units metrics: %+v", err))
 	}
@@ -289,8 +277,8 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 
 // GetByName queries the database to find an app identified by the given
 // name.
-func GetByName(ctx context.Context, name string) (*App, error) {
-	var app App
+func GetByName(ctx context.Context, name string) (*appTypes.App, error) {
+	var app appTypes.App
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return nil, err
@@ -312,19 +300,19 @@ func GetByName(ctx context.Context, name string) (*App, error) {
 //
 //  1. Save the app in the database
 //  2. Provision the app using the provisioner
-func CreateApp(ctx context.Context, app *App, user *auth.User) error {
-	if _, err := GetByName(ctx, app.GetName()); err != appTypes.ErrAppNotFound {
+func CreateApp(ctx context.Context, app *appTypes.App, user *auth.User) error {
+	if _, err := GetByName(ctx, app.Name); err != appTypes.ErrAppNotFound {
 		if err != nil {
 			return errors.WithMessage(err, "unable to check if app already exists")
 		}
-		return &appTypes.AppCreationError{Err: ErrAppAlreadyExists, App: app.GetName()}
+		return &appTypes.AppCreationError{Err: ErrAppAlreadyExists, App: app.Name}
 	}
 	var err error
-	err = app.SetPool(ctx)
+	err = SetPool(ctx, app)
 	if err != nil {
 		return err
 	}
-	appPool, err := pool.GetPoolByName(ctx, app.GetPool())
+	appPool, err := pool.GetPoolByName(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -339,7 +327,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		return err
 	}
 	app.Plan = *plan
-	err = app.configureCreateRouters(ctx)
+	err = configureCreateRouters(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -347,13 +335,13 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
 	if app.Platform != "" {
-		app.Platform, app.PlatformVersion, err = app.getPlatformNameAndVersion(ctx, app.Platform)
+		app.Platform, app.PlatformVersion, err = getPlatformNameAndVersion(ctx, app, app.Platform)
 		if err != nil {
 			return err
 		}
 	}
-	app.pruneProcesses()
-	err = app.validateNew(ctx)
+	pruneProcesses(app)
+	err = validateNew(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -372,7 +360,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	return nil
 }
 
-func (app *App) configureCreateRouters(ctx context.Context) error {
+func configureCreateRouters(ctx context.Context, app *appTypes.App) error {
 	if len(app.Routers) > 0 {
 		return nil
 	}
@@ -384,7 +372,7 @@ func (app *App) configureCreateRouters(ctx context.Context) error {
 	var err error
 	if app.Router == "" {
 		var appPool *pool.Pool
-		appPool, err = pool.GetPoolByName(ctx, app.GetPool())
+		appPool, err = pool.GetPoolByName(ctx, app.Pool)
 		if err != nil {
 			return err
 		}
@@ -405,13 +393,13 @@ func (app *App) configureCreateRouters(ctx context.Context) error {
 }
 
 type UpdateAppArgs struct {
-	UpdateData    App
+	UpdateData    *appTypes.App
 	Writer        io.Writer
 	ShouldRestart bool
 }
 
 // Update changes informations of the application.
-func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
+func Update(ctx context.Context, app *appTypes.App, args UpdateAppArgs) (err error) {
 	description := args.UpdateData.Description
 	poolName := args.UpdateData.Pool
 	teamOwner := args.UpdateData.TeamOwner
@@ -434,16 +422,16 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	}
 	if poolName != "" {
 		app.Pool = poolName
-		_, err = app.getPoolForApp(ctx, app.Pool)
+		_, err = getPoolForApp(ctx, app, app.Pool)
 		if err != nil {
 			return err
 		}
 	}
-	newProv, err := app.getProvisioner(ctx)
+	newProv, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
-	oldProv, err := oldApp.getProvisioner(ctx)
+	oldProv, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -473,7 +461,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		app.TeamOwner = team.Name
 		defer func() {
 			if err == nil {
-				app.Grant(ctx, team)
+				Grant(ctx, app, team)
 			}
 		}()
 	}
@@ -485,7 +473,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		return err
 	}
 
-	processesHasChanged, err := app.updateProcesses(ctx, args.UpdateData.Processes)
+	processesHasChanged, err := updateProcesses(ctx, app, args.UpdateData.Processes)
 	if err != nil {
 		return err
 	}
@@ -499,7 +487,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 
 	if platform != "" {
 		var p, v string
-		p, v, err = app.getPlatformNameAndVersion(ctx, platform)
+		p, v, err = getPlatformNameAndVersion(ctx, app, platform)
 		if err != nil {
 			return err
 		}
@@ -512,7 +500,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	if args.UpdateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
-	err = app.validate(ctx)
+	err = validate(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -552,7 +540,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	return action.NewPipeline(actions...).Execute(ctx, app, &oldApp, args.Writer)
 }
 
-func (app *App) updateProcesses(ctx context.Context, new []appTypes.Process) (changed bool, err error) {
+func updateProcesses(ctx context.Context, app *appTypes.App, new []appTypes.Process) (changed bool, err error) {
 	if len(app.Processes) == 0 && len(new) == 0 {
 		return false, nil
 	}
@@ -588,7 +576,7 @@ func (app *App) updateProcesses(ctx context.Context, new []appTypes.Process) (ch
 
 	}
 
-	app.pruneProcesses()
+	pruneProcesses(app)
 
 	newProcesses, err := json.Marshal(app.Processes)
 	if err != nil {
@@ -598,7 +586,7 @@ func (app *App) updateProcesses(ctx context.Context, new []appTypes.Process) (ch
 	return string(oldProcesses) != string(newProcesses), nil
 }
 
-func (app *App) pruneProcesses() {
+func pruneProcesses(app *appTypes.App) {
 	updated := []appTypes.Process{}
 	for _, process := range app.Processes {
 		if process.Plan == "$default" {
@@ -615,10 +603,9 @@ func (app *App) pruneProcesses() {
 	})
 
 	app.Processes = updated
-
 }
 
-func validateVolumes(ctx context.Context, app *App) error {
+func validateVolumes(ctx context.Context, app *appTypes.App) error {
 	volumes, err := servicemanager.Volume.ListByApp(ctx, app.Name)
 	if err != nil {
 		return err
@@ -629,13 +616,13 @@ func validateVolumes(ctx context.Context, app *App) error {
 	return nil
 }
 
-func (app *App) getPlatformNameAndVersion(ctx context.Context, platform string) (string, string, error) {
+func getPlatformNameAndVersion(ctx context.Context, app *appTypes.App, platform string) (string, string, error) {
 	repo, version := image.SplitImageName(platform)
 	p, err := servicemanager.Platform.FindByName(ctx, repo)
 	if err != nil {
 		return "", "", err
 	}
-	reg, err := app.GetRegistry(ctx)
+	reg, err := GetRegistry(ctx, app)
 	if err != nil {
 		return "", "", err
 	}
@@ -669,7 +656,7 @@ func processTags(tags []string) []string {
 // unbind takes all service instances that are bound to the app, and unbind
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
-func (app *App) unbind(ctx context.Context, evt *event.Event, requestID string) error {
+func unbind(ctx context.Context, app *appTypes.App, evt *event.Event, requestID string) error {
 	instances, err := service.GetServiceInstancesBoundToApp(ctx, app.Name)
 	if err != nil {
 		return err
@@ -699,7 +686,7 @@ func (app *App) unbind(ctx context.Context, evt *event.Event, requestID string) 
 	return nil
 }
 
-func (app *App) unbindVolumes(ctx context.Context) error {
+func unbindVolumes(ctx context.Context, app *appTypes.App) error {
 	volumes, err := servicemanager.Volume.ListByApp(ctx, app.Name)
 	if err != nil {
 		return errors.Wrap(err, "Unable to list volumes for unbind")
@@ -725,7 +712,7 @@ func (app *App) unbindVolumes(ctx context.Context) error {
 }
 
 // Delete deletes an app.
-func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) error {
+func Delete(ctx context.Context, app *appTypes.App, evt *event.Event, requestID string) error {
 	w := evt
 	appName := app.Name
 	fmt.Fprintf(w, "---- Removing application %q...\n", appName)
@@ -743,7 +730,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		log.Errorf("[delete-app: %s] %s", appName, msg)
 		hasErrors = true
 	}
-	prov, err := app.getProvisioner(ctx)
+	prov, err := pool.GetProvisionerForPool(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -756,11 +743,11 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
-	err = app.unbind(ctx, evt, requestID)
+	err = unbind(ctx, app, evt, requestID)
 	if err != nil {
 		logErr("Unable to unbind app", err)
 	}
-	routers := app.GetRouters()
+	routers := GetRouters(app)
 	for _, appRouter := range routers {
 		var r router.Router
 		r, err = router.Get(ctx, appRouter.Name)
@@ -771,7 +758,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 			logErr("Failed to remove router backend", err)
 		}
 	}
-	err = app.unbindVolumes(ctx)
+	err = unbindVolumes(ctx, app)
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
@@ -808,8 +795,8 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 }
 
 // DeleteVersion deletes an app version.
-func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr string) error {
-	w = app.withLogWriter(w)
+func DeleteVersion(ctx context.Context, app *appTypes.App, w io.Writer, versionStr string) error {
+	w = withLogWriter(app, w)
 	msg := fmt.Sprintf("\n ---> Deleting version %s of app %s", versionStr, app.Name)
 	fmt.Fprintf(w, "%s\n", msg)
 	var hasErrors bool
@@ -828,11 +815,11 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 		hasErrors = true
 	}
 
-	_, version, err := app.explicitVersion(ctx, versionStr)
+	_, version, err := explicitVersion(ctx, app, versionStr)
 	if err != nil {
 		return err
 	}
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -847,17 +834,17 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
+func AddUnits(ctx context.Context, app *appTypes.App, n uint, process, versionStr string, w io.Writer) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
 
-	err := app.ensureNoAutoscaler(ctx, process)
+	err := ensureNoAutoscaler(ctx, app, process)
 	if err != nil {
 		return err
 	}
 
-	units, err := app.Units(ctx)
+	units, err := AppUnits(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -866,11 +853,11 @@ func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string
 			return errors.New("Cannot add units to an app that has stopped units")
 		}
 	}
-	version, err := app.getVersion(ctx, versionStr)
+	version, err := getVersion(ctx, app, versionStr)
 	if err != nil {
 		return err
 	}
-	w = app.withLogWriter(w)
+	w = withLogWriter(app, w)
 	err = action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
@@ -885,8 +872,8 @@ func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string
 	return nil
 }
 
-func (app *App) ensureNoAutoscaler(ctx context.Context, process string) error {
-	prov, err := app.getProvisioner(ctx)
+func ensureNoAutoscaler(ctx context.Context, app *appTypes.App, process string) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -911,17 +898,17 @@ func (app *App) ensureNoAutoscaler(ctx context.Context, process string) error {
 //
 //  1. Remove units from the provisioner
 //  2. Update quota
-func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
-	err := app.ensureNoAutoscaler(ctx, process)
+func RemoveUnits(ctx context.Context, app *appTypes.App, n uint, process, versionStr string, w io.Writer) error {
+	err := ensureNoAutoscaler(ctx, app, process)
 	if err != nil {
 		return err
 	}
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
-	w = app.withLogWriter(w)
-	version, err := app.getVersion(ctx, versionStr)
+	w = withLogWriter(app, w)
+	version, err := getVersion(ctx, app, versionStr)
 	if err != nil {
 		return err
 	}
@@ -934,8 +921,8 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 	return err
 }
 
-func (app *App) KillUnit(ctx context.Context, unitName string, force bool) error {
-	prov, err := app.getProvisioner(ctx)
+func KillUnit(ctx context.Context, app *appTypes.App, unitName string, force bool) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -952,8 +939,8 @@ type UpdateUnitsResult struct {
 }
 
 // available returns true if at least one of N units is started or unreachable.
-func (app *App) available(ctx context.Context) bool {
-	units, err := app.Units(ctx)
+func available(ctx context.Context, app *appTypes.App) bool {
+	units, err := AppUnits(ctx, app)
 	if err != nil {
 		return false
 	}
@@ -965,7 +952,7 @@ func (app *App) available(ctx context.Context) bool {
 	return false
 }
 
-func (app *App) findTeam(team *authTypes.Team) (int, bool) {
+func findTeam(app *appTypes.App, team *authTypes.Team) (int, bool) {
 	for i, teamName := range app.Teams {
 		if teamName == team.Name {
 			return i, true
@@ -976,8 +963,8 @@ func (app *App) findTeam(team *authTypes.Team) (int, bool) {
 
 // Grant allows a team to have access to an app. It returns an error if the
 // team already have access to the app.
-func (app *App) Grant(ctx context.Context, team *authTypes.Team) error {
-	if _, found := app.findTeam(team); found {
+func Grant(ctx context.Context, app *appTypes.App, team *authTypes.Team) error {
+	if _, found := findTeam(app, team); found {
 		return ErrAlreadyHaveAccess
 	}
 	app.Teams = append(app.Teams, team.Name)
@@ -995,11 +982,11 @@ func (app *App) Grant(ctx context.Context, team *authTypes.Team) error {
 
 // Revoke removes the access from a team. It returns an error if the team do
 // not have access to the app.
-func (app *App) Revoke(ctx context.Context, team *authTypes.Team) error {
+func Revoke(ctx context.Context, app *appTypes.App, team *authTypes.Team) error {
 	if len(app.Teams) == 1 {
 		return ErrCannotOrphanApp
 	}
-	index, found := app.findTeam(team)
+	index, found := findTeam(app, team)
 	if !found {
 		return ErrNoAccess
 	}
@@ -1018,13 +1005,13 @@ func (app *App) Revoke(ctx context.Context, team *authTypes.Team) error {
 }
 
 // GetTeams returns a slice of teams that have access to the app.
-func (app *App) GetTeams(ctx context.Context) []authTypes.Team {
+func GetTeams(ctx context.Context, app *appTypes.App) []authTypes.Team {
 	t, _ := servicemanager.Team.FindByNames(ctx, app.Teams)
 	return t
 }
 
-func (app *App) SetPool(ctx context.Context) error {
-	poolName, err := app.getPoolForApp(ctx, app.Pool)
+func SetPool(ctx context.Context, app *appTypes.App) error {
+	poolName, err := getPoolForApp(ctx, app, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -1041,10 +1028,10 @@ func (app *App) SetPool(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return app.validateTeamOwner(ctx, p)
+	return validateTeamOwner(ctx, app, p)
 }
 
-func (app *App) getPoolForApp(ctx context.Context, poolName string) (string, error) {
+func getPoolForApp(ctx context.Context, app *appTypes.App, poolName string) (string, error) {
 	if poolName == "" {
 		pools, err := pool.ListPoolsForTeam(ctx, app.TeamOwner)
 		if err != nil {
@@ -1074,7 +1061,7 @@ func (app *App) getPoolForApp(ctx context.Context, poolName string) (string, err
 }
 
 // setEnv sets the given environment variable in the app.
-func (app *App) setEnv(env bindTypes.EnvVar) {
+func setEnv(app *appTypes.App, env bindTypes.EnvVar) {
 	if app.Env == nil {
 		app.Env = make(map[string]bindTypes.EnvVar)
 	}
@@ -1085,32 +1072,32 @@ func (app *App) setEnv(env bindTypes.EnvVar) {
 }
 
 // validateNew checks app name format, pool and plan
-func (app *App) validateNew(ctx context.Context) error {
+func validateNew(ctx context.Context, app *appTypes.App) error {
 	if !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
-	return app.validate(ctx)
+	return validate(ctx, app)
 }
 
 // validate checks app pool and plan
-func (app *App) validate(ctx context.Context) error {
-	err := app.validatePool(ctx)
+func validate(ctx context.Context, app *appTypes.App) error {
+	err := validatePool(ctx, app)
 	if err != nil {
 		return err
 	}
 
-	err = app.validateProcesses()
+	err = validateProcesses(app)
 	if err != nil {
 		return err
 	}
 
-	return app.validatePlan(ctx)
+	return validatePlan(ctx, app)
 }
 
-func (app *App) validatePlan(ctx context.Context) error {
+func validatePlan(ctx context.Context, app *appTypes.App) error {
 	cpuBurst := app.Plan.CPUBurst
 	planOverride := app.Plan.Override
 
@@ -1146,12 +1133,12 @@ func (app *App) validatePlan(ctx context.Context) error {
 	return nil
 }
 
-func (app *App) validatePool(ctx context.Context) error {
+func validatePool(ctx context.Context, app *appTypes.App) error {
 	pool, err := pool.GetPoolByName(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
-	err = app.validateTeamOwner(ctx, pool)
+	err = validateTeamOwner(ctx, app, pool)
 	if err != nil {
 		return err
 	}
@@ -1164,16 +1151,16 @@ func (app *App) validatePool(ctx context.Context) error {
 		for i, instance := range instances {
 			serviceNames[i] = instance.ServiceName
 		}
-		err = app.ValidateService(ctx, serviceNames...)
+		err = ValidateService(ctx, app, serviceNames...)
 		if err != nil {
 			return err
 		}
 	}
 
-	return pool.ValidateRouters(ctx, app.GetRouters())
+	return pool.ValidateRouters(ctx, GetRouters(app))
 }
 
-func (app *App) validateProcesses() error {
+func validateProcesses(app *appTypes.App) error {
 	namesUsed := map[string]bool{}
 
 	for _, p := range app.Processes {
@@ -1191,7 +1178,7 @@ func (app *App) validateProcesses() error {
 	return nil
 }
 
-func (app *App) validateTeamOwner(ctx context.Context, p *pool.Pool) error {
+func validateTeamOwner(ctx context.Context, app *appTypes.App, p *pool.Pool) error {
 	_, err := servicemanager.Team.FindByName(ctx, app.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
@@ -1210,7 +1197,7 @@ func (app *App) validateTeamOwner(ctx context.Context, p *pool.Pool) error {
 	return &tsuruErrors.ValidationError{Message: msg}
 }
 
-func (app *App) ValidateService(ctx context.Context, services ...string) error {
+func ValidateService(ctx context.Context, app *appTypes.App, services ...string) error {
 	_, err := pool.GetPoolByName(ctx, app.Pool)
 	if err != nil {
 		return err
@@ -1221,7 +1208,7 @@ func (app *App) ValidateService(ctx context.Context, services ...string) error {
 
 // InstanceEnvs returns a map of environment variables that belongs to the
 // given service and service instance.
-func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bindTypes.EnvVar {
+func InstanceEnvs(app *appTypes.App, serviceName, instanceName string) map[string]bindTypes.EnvVar {
 	envs := make(map[string]bindTypes.EnvVar)
 	for _, env := range app.ServiceEnvs {
 		if env.ServiceName == serviceName && env.InstanceName == instanceName {
@@ -1233,25 +1220,25 @@ func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bindTy
 
 // Run executes the command in app units, sourcing apprc before running the
 // command.
-func (app *App) Run(ctx context.Context, cmd string, w io.Writer, args provision.RunArgs) error {
-	if !args.Isolated && !app.available(ctx) {
+func Run(ctx context.Context, app *appTypes.App, cmd string, w io.Writer, args provision.RunArgs) error {
+	if !args.Isolated && !available(ctx, app) {
 		return errors.New("App must be available to run non-isolated commands")
 	}
 	logWriter := LogWriter{AppName: app.Name, Source: "app-run"}
 	logWriter.Async()
 	defer logWriter.Close()
 	logWriter.Write([]byte(fmt.Sprintf("running '%s'", cmd)))
-	return app.run(ctx, cmd, io.MultiWriter(w, &logWriter), args)
+	return run(ctx, app, cmd, io.MultiWriter(w, &logWriter), args)
 }
 
 func cmdsForExec(cmd string) []string {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
-	cd := fmt.Sprintf("[ -d %s ] && cd %s", defaultAppDir, defaultAppDir)
+	cd := fmt.Sprintf("[ -d %s ] && cd %s", appTypes.DefaultAppDir, appTypes.DefaultAppDir)
 	return []string{"/bin/sh", "-c", fmt.Sprintf("%s; %s; %s", source, cd, cmd)}
 }
 
-func (app *App) run(ctx context.Context, cmd string, w io.Writer, args provision.RunArgs) error {
-	prov, err := app.getProvisioner(ctx)
+func run(ctx context.Context, app *appTypes.App, cmd string, w io.Writer, args provision.RunArgs) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -1265,7 +1252,7 @@ func (app *App) run(ctx context.Context, cmd string, w io.Writer, args provision
 		Stderr: w,
 		Cmds:   cmdsForExec(cmd),
 	}
-	units, err := app.Units(ctx)
+	units, err := AppUnits(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -1280,18 +1267,18 @@ func (app *App) run(ctx context.Context, cmd string, w io.Writer, args provision
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
-func (app *App) Restart(ctx context.Context, process, versionStr string, w io.Writer) error {
-	w = app.withLogWriter(w)
+func Restart(ctx context.Context, app *appTypes.App, process, versionStr string, w io.Writer) error {
+	w = withLogWriter(app, w)
 	msg := fmt.Sprintf("---- Restarting process %q ----", process)
 	if process == "" {
 		msg = fmt.Sprintf("---- Restarting the app %q ----", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
-	version, err := app.getVersionAllowNil(ctx, versionStr)
+	version, err := getVersionAllowNil(ctx, app, versionStr)
 	if err != nil {
 		return err
 	}
@@ -1356,8 +1343,8 @@ func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []pro
 	return pastUnitsMap
 }
 
-func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion, process string) error {
-	provisioner, err := app.getProvisioner(ctx)
+func updatePastUnits(ctx context.Context, app *appTypes.App, version appTypes.AppVersion, process string) error {
+	provisioner, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -1370,7 +1357,7 @@ func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion
 
 	for vp, replicas := range vpMap {
 		versionStr := strconv.Itoa(vp.version)
-		v, err := app.getVersion(ctx, versionStr)
+		v, err := getVersion(ctx, app, versionStr)
 		if err != nil {
 			return err
 		}
@@ -1383,23 +1370,23 @@ func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion
 	return nil
 }
 
-func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr string) error {
-	w = app.withLogWriter(w)
+func Stop(ctx context.Context, app *appTypes.App, w io.Writer, process, versionStr string) error {
+	w = withLogWriter(app, w)
 	msg := fmt.Sprintf("\n ---> Stopping the process %q", process)
 	if process == "" {
 		msg = fmt.Sprintf("\n ---> Stopping the app %q", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
-	version, err := app.getVersionAllowNil(ctx, versionStr)
+	version, err := getVersionAllowNil(ctx, app, versionStr)
 	if err != nil {
 		return err
 	}
 
-	err = app.updatePastUnits(ctx, version, process)
+	err = updatePastUnits(ctx, app, version, process)
 	if err != nil {
 		return err
 	}
@@ -1412,54 +1399,8 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	return nil
 }
 
-// GetName returns the name of the app.
-func (app *App) GetName() string {
-	return app.Name
-}
-
-// GetUUID returns the app v4 UUID. An UUID will be generated
-// if it does not exist.
-func (app *App) GetUUID(ctx context.Context) (string, error) {
-	if app.UUID != "" {
-		return app.UUID, nil
-	}
-	uuidV4, err := uuid.NewV4()
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to generate uuid v4")
-	}
-	collection, err := storagev2.AppsCollection()
-	if err != nil {
-		return "", err
-	}
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"uuid": uuidV4.String()}})
-	if err != nil {
-		return "", err
-	}
-	app.UUID = uuidV4.String()
-	return app.UUID, nil
-}
-
-// GetPool returns the pool of the app.
-func (app *App) GetPool() string {
-	return app.Pool
-}
-
-// GetTeamOwner returns the team owner of the app.
-func (app *App) GetTeamOwner() string {
-	return app.TeamOwner
-}
-
-// GetTeamsName returns the names of the app teams.
-func (app *App) GetTeamsName() []string {
-	return app.Teams
-}
-
-func (app *App) GetPlan() appTypes.Plan {
-	return app.Plan
-}
-
-func (app *App) GetAddresses(ctx context.Context) ([]string, error) {
-	routers, err := app.GetRoutersWithAddr(ctx)
+func GetAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
+	routers, err := GetRoutersWithAddr(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -1470,32 +1411,8 @@ func (app *App) GetAddresses(ctx context.Context) ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetInternalBindableAddresses(ctx context.Context) ([]string, error) {
-	prov, err := app.getProvisioner(ctx)
-	if err != nil {
-		return nil, err
-	}
-	interAppProv, ok := prov.(provision.InterAppProvisioner)
-	if !ok {
-		return nil, nil
-	}
-	addrs, err := interAppProv.InternalAddresses(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	var addresses []string
-	for _, addr := range addrs {
-		// version addresses are so volatile, they change after every deploy, we don't use them to bind process
-		if addr.Version != "" {
-			continue
-		}
-		addresses = append(addresses, fmt.Sprintf("%s://%s:%d", strings.ToLower(addr.Protocol), addr.Domain, addr.Port))
-	}
-	return addresses, nil
-}
-
-func (app *App) GetQuotaInUse(ctx context.Context) (int, error) {
-	units, err := app.Units(ctx)
+func GetQuotaInUse(ctx context.Context, app *appTypes.App) (int, error) {
+	units, err := AppUnits(ctx, app)
 	if err != nil {
 		return 0, err
 	}
@@ -1509,77 +1426,16 @@ func (app *App) GetQuotaInUse(ctx context.Context) (int, error) {
 	return counter, nil
 }
 
-func (app *App) GetQuota(ctx context.Context) (*quota.Quota, error) {
+func GetQuota(ctx context.Context, app *appTypes.App) (*quota.Quota, error) {
 	return servicemanager.AppQuota.Get(ctx, app)
 }
 
-func (app *App) SetQuotaLimit(ctx context.Context, limit int) error {
+func SetQuotaLimit(ctx context.Context, app *appTypes.App, limit int) error {
 	return servicemanager.AppQuota.SetLimit(ctx, app, limit)
 }
 
-// GetCname returns the cnames of the app.
-func (app *App) GetCname() []string {
-	return app.CName
-}
-
-// GetPlatform returns the platform of the app.
-func (app *App) GetPlatform() string {
-	return app.Platform
-}
-
-// GetPlatformVersion returns the platform version of the app.
-func (app *App) GetPlatformVersion() string {
-	if app.PlatformVersion == "" {
-		return "latest"
-	}
-	return app.PlatformVersion
-}
-
-// GetDeploys returns the amount of deploys of an app.
-func (app *App) GetDeploys() uint {
-	return app.Deploys
-}
-
-// Envs returns a map representing the apps environment variables.
-func (app *App) Envs() map[string]bindTypes.EnvVar {
-	mergedEnvs := make(map[string]bindTypes.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
-	toInterpolate := make(map[string]string)
-	var toInterpolateKeys []string
-	for _, e := range app.Env {
-		mergedEnvs[e.Name] = e
-		if e.Alias != "" {
-			toInterpolate[e.Name] = e.Alias
-			toInterpolateKeys = append(toInterpolateKeys, e.Name)
-		}
-	}
-	for _, e := range app.ServiceEnvs {
-		envVar := e.EnvVar
-		envVar.ManagedBy = fmt.Sprintf("%s/%s", e.ServiceName, e.InstanceName)
-		mergedEnvs[e.Name] = envVar
-	}
-	sort.Strings(toInterpolateKeys)
-	for _, envName := range toInterpolateKeys {
-		tsuruEnvs.Interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
-	}
-	mergedEnvs[tsuruEnvs.TsuruServicesEnvVar] = tsuruEnvs.ServiceEnvsFromEnvVars(app.ServiceEnvs)
-
-	mergedEnvs["TSURU_APPNAME"] = bindTypes.EnvVar{
-		Name:      "TSURU_APPNAME",
-		Value:     app.Name,
-		ManagedBy: "tsuru",
-	}
-
-	mergedEnvs["TSURU_APPDIR"] = bindTypes.EnvVar{
-		Name:      "TSURU_APPDIR",
-		Value:     defaultAppDir,
-		ManagedBy: "tsuru",
-	}
-
-	return mergedEnvs
-}
-
 // SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(ctx context.Context, setEnvs bindTypes.SetEnvArgs) error {
+func SetEnvs(ctx context.Context, app *appTypes.App, setEnvs bindTypes.SetEnvArgs) error {
 	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
 		return nil
 	}
@@ -1617,7 +1473,7 @@ func (app *App) SetEnvs(ctx context.Context, setEnvs bindTypes.SetEnvArgs) error
 	}
 
 	for _, env := range setEnvs.Envs {
-		app.setEnv(env)
+		setEnv(app, env)
 	}
 
 	collection, err := storagev2.AppsCollection()
@@ -1631,13 +1487,13 @@ func (app *App) SetEnvs(ctx context.Context, setEnvs bindTypes.SetEnvArgs) error
 	}
 
 	if setEnvs.ShouldRestart {
-		return app.restartIfUnits(ctx, setEnvs.Writer)
+		return restartIfUnits(ctx, app, setEnvs.Writer)
 	}
 
 	return nil
 }
 
-func validateEnvConflicts(app *App, envNames []string) error {
+func validateEnvConflicts(app *appTypes.App, envNames []string) error {
 	serviceEnvs := map[string]bindTypes.ServiceEnvVar{}
 	for _, env := range app.ServiceEnvs {
 		serviceEnvs[env.Name] = env
@@ -1656,7 +1512,7 @@ func validateEnvConflicts(app *App, envNames []string) error {
 
 // UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bindTypes.UnsetEnvArgs) error {
+func UnsetEnvs(ctx context.Context, app *appTypes.App, unsetEnvs bindTypes.UnsetEnvArgs) error {
 	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}
@@ -1675,20 +1531,20 @@ func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bindTypes.UnsetEnvArgs)
 		return err
 	}
 	if unsetEnvs.ShouldRestart {
-		return app.restartIfUnits(ctx, unsetEnvs.Writer)
+		return restartIfUnits(ctx, app, unsetEnvs.Writer)
 	}
 	return nil
 }
 
-func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
-	units, err := app.Units(ctx)
+func restartIfUnits(ctx context.Context, app *appTypes.App, w io.Writer) error {
+	units, err := AppUnits(ctx, app)
 	if err != nil {
 		return err
 	}
 	if len(units) == 0 {
 		return nil
 	}
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -1703,7 +1559,7 @@ func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
 // calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change
 // in the database or add the CName on the provisioner.
-func (app *App) AddCName(ctx context.Context, cnames ...string) error {
+func AddCName(ctx context.Context, app *appTypes.App, cnames ...string) error {
 	actions := []*action.Action{
 		&validateNewCNames,
 		&saveCNames,
@@ -1717,7 +1573,7 @@ func (app *App) AddCName(ctx context.Context, cnames ...string) error {
 	return err
 }
 
-func (app *App) RemoveCName(ctx context.Context, cnames ...string) error {
+func RemoveCName(ctx context.Context, app *appTypes.App, cnames ...string) error {
 	actions := []*action.Action{
 		&checkCNameExists,
 		&removeCNameFromDatabase,
@@ -1727,7 +1583,7 @@ func (app *App) RemoveCName(ctx context.Context, cnames ...string) error {
 	return action.NewPipeline(actions...).Execute(ctx, app, cnames)
 }
 
-func (app *App) SetCertIssuer(ctx context.Context, cname, certIssuer string) error {
+func SetCertIssuer(ctx context.Context, app *appTypes.App, cname, certIssuer string) error {
 	actions := []*action.Action{
 		&checkSingleCNameExists,
 		&saveCertIssuer,
@@ -1736,7 +1592,7 @@ func (app *App) SetCertIssuer(ctx context.Context, cname, certIssuer string) err
 	return action.NewPipeline(actions...).Execute(ctx, app, cname, certIssuer)
 }
 
-func (app *App) UnsetCertIssuer(ctx context.Context, cname string) error {
+func UnsetCertIssuer(ctx context.Context, app *appTypes.App, cname string) error {
 	actions := []*action.Action{
 		&checkSingleCNameExists,
 		&removeCertIssuer,
@@ -1745,7 +1601,7 @@ func (app *App) UnsetCertIssuer(ctx context.Context, cname string) error {
 	return action.NewPipeline(actions...).Execute(ctx, app, cname)
 }
 
-func (app *App) AddInstance(ctx context.Context, addArgs bindTypes.AddInstanceArgs) error {
+func AddInstance(ctx context.Context, app *appTypes.App, addArgs bindTypes.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
 	}
@@ -1762,12 +1618,12 @@ func (app *App) AddInstance(ctx context.Context, addArgs bindTypes.AddInstanceAr
 		return err
 	}
 	if addArgs.ShouldRestart {
-		return app.restartIfUnits(ctx, addArgs.Writer)
+		return restartIfUnits(ctx, app, addArgs.Writer)
 	}
 	return nil
 }
 
-func (app *App) RemoveInstance(ctx context.Context, removeArgs bindTypes.RemoveInstanceArgs) error {
+func RemoveInstance(ctx context.Context, app *appTypes.App, removeArgs bindTypes.RemoveInstanceArgs) error {
 	lenBefore := len(app.ServiceEnvs)
 	for i := 0; i < len(app.ServiceEnvs); i++ {
 		se := app.ServiceEnvs[i]
@@ -1792,15 +1648,15 @@ func (app *App) RemoveInstance(ctx context.Context, removeArgs bindTypes.RemoveI
 		return err
 	}
 	if removeArgs.ShouldRestart {
-		return app.restartIfUnits(ctx, removeArgs.Writer)
+		return restartIfUnits(ctx, app, removeArgs.Writer)
 	}
 	return nil
 }
 
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
-func (app *App) LastLogs(ctx context.Context, logService appTypes.AppLogService, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	prov, err := app.getProvisioner(ctx)
+func LastLogs(ctx context.Context, app *appTypes.App, logService appTypes.AppLogService, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -1913,23 +1769,23 @@ type AppUnitsResponse struct {
 	Err   error
 }
 
-func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error) {
+func Units(ctx context.Context, apps []*appTypes.App) (map[string]AppUnitsResponse, error) {
 	poolProvMap := map[string]provision.Provisioner{}
-	provMap := map[provision.Provisioner][]provision.App{}
+	provMap := map[provision.Provisioner][]*appTypes.App{}
 	for i, a := range apps {
 		prov, ok := poolProvMap[a.Pool]
 		if !ok {
 			var err error
-			prov, err = a.getProvisioner(ctx)
+			prov, err = getProvisioner(ctx, a)
 			if err != nil {
 				return nil, err
 			}
 			poolProvMap[a.Pool] = prov
 		}
-		provMap[prov] = append(provMap[prov], &apps[i])
+		provMap[prov] = append(provMap[prov], apps[i])
 	}
 	type parallelRsp struct {
-		provApps []provision.App
+		provApps []*appTypes.App
 		units    []provTypes.Unit
 		err      error
 	}
@@ -1955,9 +1811,9 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 	for pRsp := range rspCh {
 		if pRsp.err != nil {
 			for _, a := range pRsp.provApps {
-				rsp := appUnits[a.GetName()]
+				rsp := appUnits[a.Name]
 				rsp.Err = errors.Wrap(pRsp.err, "unable to list app units")
-				appUnits[a.GetName()] = rsp
+				appUnits[a.Name] = rsp
 			}
 			continue
 		}
@@ -1971,8 +1827,8 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 }
 
 // List returns the list of apps filtered through the filter parameter.
-func List(ctx context.Context, filter *Filter) ([]App, error) {
-	apps := []App{}
+func List(ctx context.Context, filter *Filter) ([]*appTypes.App, error) {
+	apps := []*appTypes.App{}
 	query := filter.Query()
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
@@ -1990,17 +1846,17 @@ func List(ctx context.Context, filter *Filter) ([]App, error) {
 	}
 
 	if filter != nil && len(filter.Statuses) > 0 {
-		appsProvisionerMap := make(map[string][]provision.App)
+		appsProvisionerMap := make(map[string][]*appTypes.App)
 		var prov provision.Provisioner
 		for i := range apps {
-			a := &apps[i]
-			prov, err = a.getProvisioner(ctx)
+			a := apps[i]
+			prov, err = getProvisioner(ctx, a)
 			if err != nil {
 				return nil, err
 			}
 			appsProvisionerMap[prov.GetName()] = append(appsProvisionerMap[prov.GetName()], a)
 		}
-		var provisionApps []provision.App
+		var provisionApps []*appTypes.App
 		for provName, apps := range appsProvisionerMap {
 			prov, err = provision.Get(provName)
 			if err != nil {
@@ -2015,7 +1871,7 @@ func List(ctx context.Context, filter *Filter) ([]App, error) {
 			provisionApps = append(provisionApps, apps...)
 		}
 		for i := range provisionApps {
-			apps[i] = *(provisionApps[i].(*App))
+			apps[i] = provisionApps[i]
 		}
 		apps = apps[:len(provisionApps)]
 	}
@@ -2030,11 +1886,11 @@ func appRouterAddrKey(appName, routerName string) string {
 	return strings.Join([]string{"app-router-addr", appName, routerName}, "\x00")
 }
 
-func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
+func loadCachedAddrsInApps(ctx context.Context, apps []*appTypes.App) error {
 	keys := make([]string, 0, len(apps))
 	for i := range apps {
-		a := &apps[i]
-		a.Routers = a.GetRouters()
+		a := apps[i]
+		a.Routers = GetRouters(a)
 		for j := range a.Routers {
 			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
@@ -2048,7 +1904,7 @@ func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
 		entryMap[e.Key] = e
 	}
 	for i := range apps {
-		a := &apps[i]
+		a := apps[i]
 		hasEmpty := false
 		for j := range apps[i].Routers {
 			entry := entryMap[appRouterAddrKey(a.Name, a.Routers[j].Name)]
@@ -2064,8 +1920,8 @@ func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
 	return nil
 }
 
-func (app *App) hasMultipleVersions(ctx context.Context) (bool, error) {
-	prov, err := app.getProvisioner(ctx)
+func hasMultipleVersions(ctx context.Context, app *appTypes.App) (bool, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return false, err
 	}
@@ -2082,18 +1938,18 @@ func (app *App) hasMultipleVersions(ctx context.Context) (bool, error) {
 
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
-func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr string) error {
-	w = app.withLogWriter(w)
+func Start(ctx context.Context, app *appTypes.App, w io.Writer, process, versionStr string) error {
+	w = withLogWriter(app, w)
 	msg := fmt.Sprintf("\n ---> Starting the process %q", process)
 	if process == "" {
 		msg = fmt.Sprintf("\n ---> Starting the app %q", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	prov, err := app.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
-	version, err := app.getVersionAllowNil(ctx, versionStr)
+	version, err := getVersionAllowNil(ctx, app, versionStr)
 	if err != nil {
 		return err
 	}
@@ -2106,7 +1962,7 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	return err
 }
 
-func (app *App) SetUpdatePlatform(ctx context.Context, check bool) error {
+func SetUpdatePlatform(ctx context.Context, app *appTypes.App, check bool) error {
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -2120,18 +1976,14 @@ func (app *App) SetUpdatePlatform(ctx context.Context, check bool) error {
 	return err
 }
 
-func (app *App) GetUpdatePlatform() bool {
-	return app.UpdatePlatform
-}
-
-func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) error {
-	for _, r := range app.GetRouters() {
+func AddRouter(ctx context.Context, app *appTypes.App, appRouter appTypes.AppRouter) error {
+	for _, r := range GetRouters(app) {
 		if appRouter.Name == r.Name {
 			return ErrRouterAlreadyLinked
 		}
 	}
-	cnames := app.GetCname()
-	appCName := App{}
+	cnames := app.CName
+	appCName := &appTypes.App{}
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -2141,7 +1993,7 @@ func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) err
 		return err
 	}
 	if appCName.Name != "" {
-		for _, cname := range appCName.GetCname() {
+		for _, cname := range appCName.CName {
 			if cnameInSet(cname, cnames) {
 				return errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", cname, appCName.Name, appRouter.Name))
 			}
@@ -2153,7 +2005,7 @@ func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) err
 	}
 
 	// skip rebuild routes task if app has no units available
-	if app.available(ctx) {
+	if available(ctx, app) {
 		err = rebuild.RebuildRoutesInRouter(ctx, appRouter, rebuild.RebuildRoutesOpts{
 			App: app,
 		})
@@ -2162,8 +2014,8 @@ func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) err
 	if err != nil {
 		return err
 	}
-	routers := append(app.GetRouters(), appRouter)
-	err = app.updateRoutersDB(ctx, routers)
+	routers := append(GetRouters(app), appRouter)
+	err = updateRoutersDB(ctx, app, routers)
 	if err != nil {
 		rollbackErr := r.RemoveBackend(ctx, app)
 		if rollbackErr != nil {
@@ -2183,9 +2035,9 @@ func cnameInSet(cname string, cnames []string) bool {
 	return false
 }
 
-func (app *App) UpdateRouter(ctx context.Context, appRouter appTypes.AppRouter) error {
+func UpdateRouter(ctx context.Context, app *appTypes.App, appRouter appTypes.AppRouter) error {
 	var existing *appTypes.AppRouter
-	routers := app.GetRouters()
+	routers := GetRouters(app)
 	for i, r := range routers {
 		if r.Name == appRouter.Name {
 			existing = &routers[i]
@@ -2197,7 +2049,7 @@ func (app *App) UpdateRouter(ctx context.Context, appRouter appTypes.AppRouter) 
 	}
 
 	existing.Opts = appRouter.Opts
-	err := app.updateRoutersDB(ctx, routers)
+	err := updateRoutersDB(ctx, app, routers)
 	if err != nil {
 		return err
 	}
@@ -2212,9 +2064,9 @@ func (app *App) UpdateRouter(ctx context.Context, appRouter appTypes.AppRouter) 
 	return nil
 }
 
-func (app *App) RemoveRouter(ctx context.Context, name string) error {
+func RemoveRouter(ctx context.Context, app *appTypes.App, name string) error {
 	removed := false
-	routers := app.GetRouters()
+	routers := GetRouters(app)
 	for i, r := range routers {
 		if r.Name == name {
 			removed = true
@@ -2230,7 +2082,7 @@ func (app *App) RemoveRouter(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	err = app.updateRoutersDB(ctx, routers)
+	err = updateRoutersDB(ctx, app, routers)
 	if err != nil {
 		return err
 	}
@@ -2241,7 +2093,7 @@ func (app *App) RemoveRouter(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) updateRoutersDB(ctx context.Context, routers []appTypes.AppRouter) error {
+func updateRoutersDB(ctx context.Context, app *appTypes.App, routers []appTypes.AppRouter) error {
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -2260,7 +2112,7 @@ func (app *App) updateRoutersDB(ctx context.Context, routers []appTypes.AppRoute
 	return err
 }
 
-func (app *App) GetRouters() []appTypes.AppRouter {
+func GetRouters(app *appTypes.App) []appTypes.AppRouter {
 	routers := append([]appTypes.AppRouter{}, app.Routers...)
 	if app.Router != "" {
 		for _, r := range routers {
@@ -2276,12 +2128,8 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 	return routers
 }
 
-func (app *App) GetCertIssuers() map[string]string {
-	return app.CertIssuers
-}
-
-func (app *App) GetRoutersWithAddr(ctx context.Context) ([]appTypes.AppRouter, error) {
-	routers := app.GetRouters()
+func GetRoutersWithAddr(ctx context.Context, app *appTypes.App) ([]appTypes.AppRouter, error) {
+	routers := GetRouters(app)
 	multi := tsuruErrors.NewMultiError()
 	for i := range routers {
 		routerName := routers[i].Name
@@ -2324,8 +2172,8 @@ func (app *App) GetRoutersWithAddr(ctx context.Context) ([]appTypes.AppRouter, e
 	return routers, multi.ToError()
 }
 
-func (app *App) Shell(ctx context.Context, opts provision.ExecOptions) error {
-	prov, err := app.getProvisioner(ctx)
+func Shell(ctx context.Context, app *appTypes.App, opts provision.ExecOptions) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -2338,8 +2186,8 @@ func (app *App) Shell(ctx context.Context, opts provision.ExecOptions) error {
 	return execProv.ExecuteCommand(ctx, opts)
 }
 
-func (app *App) SetCertificate(ctx context.Context, name, certificate, key string) error {
-	err := app.validateNameForCert(ctx, name)
+func SetCertificate(ctx context.Context, app *appTypes.App, name, certificate, key string) error {
+	err := validateNameForCert(ctx, app, name)
 	if err != nil {
 		return err
 	}
@@ -2356,7 +2204,7 @@ func (app *App) SetCertificate(ctx context.Context, name, certificate, key strin
 		return err
 	}
 	addedAny := false
-	for _, appRouter := range app.GetRouters() {
+	for _, appRouter := range GetRouters(app) {
 		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return err
@@ -2377,13 +2225,13 @@ func (app *App) SetCertificate(ctx context.Context, name, certificate, key strin
 	return nil
 }
 
-func (app *App) RemoveCertificate(ctx context.Context, name string) error {
-	err := app.validateNameForCert(ctx, name)
+func RemoveCertificate(ctx context.Context, app *appTypes.App, name string) error {
+	err := validateNameForCert(ctx, app, name)
 	if err != nil {
 		return err
 	}
 	removedAny := false
-	for _, appRouter := range app.GetRouters() {
+	for _, appRouter := range GetRouters(app) {
 		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return err
@@ -2404,8 +2252,8 @@ func (app *App) RemoveCertificate(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) validateNameForCert(ctx context.Context, name string) error {
-	addrs, err := app.GetAddresses(ctx)
+func validateNameForCert(ctx context.Context, app *appTypes.App, name string) error {
+	addrs, err := GetAddresses(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -2422,8 +2270,8 @@ func (app *App) validateNameForCert(ctx context.Context, name string) error {
 	return nil
 }
 
-func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetInfo, error) {
-	addrs, err := app.GetAddresses(ctx)
+func GetCertificates(ctx context.Context, app *appTypes.App) (*appTypes.CertificateSetInfo, error) {
+	addrs, err := GetAddresses(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -2432,7 +2280,6 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 		Routers: make(map[string]appTypes.RouterCertificateInfo),
 	}
 
-	certIssuers := app.GetCertIssuers()
 	names := append([]string{}, app.CName...)
 
 	for _, addr := range addrs {
@@ -2441,12 +2288,10 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 			names = append(names, parsedURL.Hostname())
 		}
 	}
-
-	for _, appRouter := range app.GetRouters() {
+	for _, appRouter := range GetRouters(app) {
 		appRouterCertificates := appTypes.RouterCertificateInfo{
 			CNames: make(map[string]appTypes.CertificateInfo),
 		}
-
 		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return nil, err
@@ -2465,7 +2310,7 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 
 			certInfo := appTypes.CertificateInfo{
 				Certificate: cert,
-				Issuer:      certIssuers[n],
+				Issuer:      app.CertIssuers[n],
 			}
 
 			if certInfo != (appTypes.CertificateInfo{}) {
@@ -2485,15 +2330,15 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 	return certificateSet, nil
 }
 
-func (app *App) RoutableAddresses(ctx context.Context) ([]appTypes.RoutableAddresses, error) {
-	prov, err := app.getProvisioner(ctx)
+func RoutableAddresses(ctx context.Context, app *appTypes.App) ([]appTypes.RoutableAddresses, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
 	return prov.RoutableAddresses(ctx, app)
 }
 
-func (app *App) withLogWriter(w io.Writer) io.Writer {
+func withLogWriter(app *appTypes.App, w io.Writer) io.Writer {
 	logWriter := &LogWriter{AppName: app.Name}
 	if w != nil {
 		w = io.MultiWriter(w, logWriter)
@@ -2549,32 +2394,6 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 
 }
 
-func (app *App) GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error) {
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
-	if err != nil {
-		if err == appTypes.ErrNoVersionsAvailable {
-			err = nil
-		}
-		return routerTypes.HealthcheckData{}, err
-	}
-	yamlData, err := version.TsuruYamlData()
-	if err != nil {
-		return routerTypes.HealthcheckData{}, err
-	}
-	prov, err := app.getProvisioner(ctx)
-	if err != nil {
-		return routerTypes.HealthcheckData{}, err
-	}
-	if hcProv, ok := prov.(provision.HCProvisioner); ok {
-		if hcProv.HandlesHC() {
-			return routerTypes.HealthcheckData{
-				TCPOnly: true,
-			}, nil
-		}
-	}
-	return yamlData.ToRouterHC(), nil
-}
-
 func validateEnv(envName string) error {
 	if !envVarNameRegexp.MatchString(envName) {
 		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", envName)}
@@ -2582,8 +2401,8 @@ func validateEnv(envName string) error {
 	return nil
 }
 
-func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, isRoutable bool) error {
-	prov, err := app.getProvisioner(ctx)
+func SetRoutable(ctx context.Context, app *appTypes.App, version appTypes.AppVersion, isRoutable bool) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -2594,8 +2413,8 @@ func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, is
 	return rprov.ToggleRoutable(ctx, app, version, isRoutable)
 }
 
-func (app *App) DeployedVersions(ctx context.Context) ([]int, error) {
-	prov, err := app.getProvisioner(ctx)
+func DeployedVersions(ctx context.Context, app *appTypes.App) ([]int, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -2605,8 +2424,8 @@ func (app *App) DeployedVersions(ctx context.Context) ([]int, error) {
 	return nil, ErrNoVersionProvisioner
 }
 
-func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVersion, error) {
-	versionProv, v, err := app.explicitVersion(ctx, version)
+func getVersion(ctx context.Context, app *appTypes.App, version string) (appTypes.AppVersion, error) {
+	versionProv, v, err := explicitVersion(ctx, app, version)
 	if err != nil {
 		return nil, err
 	}
@@ -2628,16 +2447,16 @@ func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVer
 	return servicemanager.AppVersion.VersionByImageOrVersion(ctx, app, strconv.Itoa(versions[0]))
 }
 
-func (app *App) getVersionAllowNil(ctx context.Context, version string) (appTypes.AppVersion, error) {
+func getVersionAllowNil(ctx context.Context, app *appTypes.App, version string) (appTypes.AppVersion, error) {
 	if version == "" {
 		return nil, nil
 	}
-	_, v, err := app.explicitVersion(ctx, version)
+	_, v, err := explicitVersion(ctx, app, version)
 	return v, err
 }
 
-func (app *App) explicitVersion(ctx context.Context, version string) (provision.VersionsProvisioner, appTypes.AppVersion, error) {
-	prov, err := app.getProvisioner(ctx)
+func explicitVersion(ctx context.Context, app *appTypes.App, version string) (provision.VersionsProvisioner, appTypes.AppVersion, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2668,69 +2487,8 @@ func (app *App) explicitVersion(ctx context.Context, version string) (provision.
 	return versionProv, nil, nil
 }
 
-func (app *App) ListTags() []string {
-	return app.Tags
-}
-
-func (app *App) GetProcess(process string) *appTypes.Process {
-	for _, p := range app.Processes {
-		if p.Name == process {
-			return &p
-		}
-	}
-	return nil
-}
-
-func (app *App) GetMetadata(process string) appTypes.Metadata {
-	labels := map[string]string{}
-	annotations := map[string]string{}
-
-	for _, labelItem := range app.Metadata.Labels {
-		labels[labelItem.Name] = labelItem.Value
-	}
-	for _, annotationItem := range app.Metadata.Annotations {
-		annotations[annotationItem.Name] = annotationItem.Value
-	}
-
-	if process == "" {
-		goto buildResult
-	}
-
-	for _, p := range app.Processes {
-		if p.Name != process {
-			continue
-		}
-
-		for _, labelItem := range p.Metadata.Labels {
-			labels[labelItem.Name] = labelItem.Value
-		}
-		for _, annotationItem := range p.Metadata.Annotations {
-			annotations[annotationItem.Name] = annotationItem.Value
-		}
-	}
-
-buildResult:
-	result := appTypes.Metadata{}
-
-	for name, value := range labels {
-		result.Labels = append(result.Labels, appTypes.MetadataItem{
-			Name:  name,
-			Value: value,
-		})
-	}
-
-	for name, value := range annotations {
-		result.Annotations = append(result.Annotations, appTypes.MetadataItem{
-			Name:  name,
-			Value: value,
-		})
-	}
-
-	return result
-}
-
-func (app *App) AutoScaleInfo(ctx context.Context) ([]provTypes.AutoScaleSpec, error) {
-	prov, err := app.getProvisioner(ctx)
+func AutoScaleInfo(ctx context.Context, app *appTypes.App) ([]provTypes.AutoScaleSpec, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -2741,8 +2499,8 @@ func (app *App) AutoScaleInfo(ctx context.Context) ([]provTypes.AutoScaleSpec, e
 	return autoscaleProv.GetAutoScale(ctx, app)
 }
 
-func (app *App) VerticalAutoScaleRecommendations(ctx context.Context) ([]provTypes.RecommendedResources, error) {
-	prov, err := app.getProvisioner(ctx)
+func VerticalAutoScaleRecommendations(ctx context.Context, app *appTypes.App) ([]provTypes.RecommendedResources, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -2753,8 +2511,8 @@ func (app *App) VerticalAutoScaleRecommendations(ctx context.Context) ([]provTyp
 	return autoscaleProv.GetVerticalAutoScaleRecommendations(ctx, app)
 }
 
-func (app *App) UnitsMetrics(ctx context.Context) ([]provTypes.UnitMetric, error) {
-	prov, err := app.getProvisioner(ctx)
+func UnitsMetrics(ctx context.Context, app *appTypes.App) ([]provTypes.UnitMetric, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -2765,8 +2523,8 @@ func (app *App) UnitsMetrics(ctx context.Context) ([]provTypes.UnitMetric, error
 	return metricsProv.UnitsMetrics(ctx, app)
 }
 
-func (app *App) AutoScale(ctx context.Context, spec provTypes.AutoScaleSpec) error {
-	prov, err := app.getProvisioner(ctx)
+func AutoScale(ctx context.Context, app *appTypes.App, spec provTypes.AutoScaleSpec) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -2777,8 +2535,8 @@ func (app *App) AutoScale(ctx context.Context, spec provTypes.AutoScaleSpec) err
 	return autoscaleProv.SetAutoScale(ctx, app, spec)
 }
 
-func (app *App) RemoveAutoScale(ctx context.Context, process string) error {
-	prov, err := app.getProvisioner(ctx)
+func RemoveAutoScale(ctx context.Context, app *appTypes.App, process string) error {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -2798,8 +2556,8 @@ func envInSet(envName string, envs []bindTypes.EnvVar) bool {
 	return false
 }
 
-func (app *App) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, error) {
-	prov, err := app.getProvisioner(ctx)
+func GetRegistry(ctx context.Context, app *appTypes.App) (imgTypes.ImageRegistry, error) {
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return "", err
 	}

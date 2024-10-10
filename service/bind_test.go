@@ -342,7 +342,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -354,7 +354,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	c.Assert(err, check.Equals, service.ErrAppNotBound)
 }
 
-func newVersionForApp(c *check.C, a appTypes.AppInterface) appTypes.AppVersion {
+func newVersionForApp(c *check.C, a *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})
