@@ -1683,6 +1683,69 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *check.C) {
 	c.Assert(hasCName, check.Equals, false)
 }
 
+func (s *S) TestRemoveCNameAlsoRemovesCertIssuer(c *check.C) {
+	a := App{
+		Name:      "ktulu",
+		TeamOwner: s.team.Name,
+		CName:     []string{"ktulu.mycompany.com"},
+		CertIssuers: map[string]string{
+			"ktulu_dot_mycompany_dot_com": "issuer",
+		},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.RemoveCName(context.TODO(), "ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+	hasIssuer := routertest.FakeRouter.HasCertIssuerForCName(a.Name, "ktulu.mycompany.com", "issuer")
+	c.Assert(hasIssuer, check.Equals, false)
+}
+
+func (s *S) TestSetCertIssuer(c *check.C) {
+	a := App{
+		Name:      "ktulu",
+		TeamOwner: s.team.Name,
+		CName:     []string{"ktulu.mycompany.com"},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertIssuer(context.TODO(), "ktulu.mycompany.com", "issuer")
+	c.Assert(err, check.IsNil)
+	hasIssuer := routertest.FakeRouter.HasCertIssuerForCName(a.Name, "ktulu.mycompany.com", "issuer")
+	c.Assert(hasIssuer, check.Equals, true)
+}
+
+func (s *S) TestSetCertIssuerWithInvalidCName(c *check.C) {
+	a := App{
+		Name:      "ktulu",
+		TeamOwner: s.team.Name,
+		CName:     []string{"ktulu.mycompany.com"},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertIssuer(context.TODO(), "invalid.mycompany.com", "issuer")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cname does not exist in app")
+}
+
+func (s *S) TestUnsetCertIssuer(c *check.C) {
+	a := App{
+		Name:      "ktulu",
+		TeamOwner: s.team.Name,
+		CName:     []string{"ktulu.mycompany.com"},
+		CertIssuers: map[string]string{
+			"ktulu_dot_mycompany_dot_com": "issuer",
+		},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.UnsetCertIssuer(context.TODO(), "ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	hasIssuer := routertest.FakeRouter.HasCertIssuerForCName(a.Name, "ktulu.mycompany.com", "issuer")
+	c.Assert(hasIssuer, check.Equals, false)
+}
+
 func (s *S) TestAddInstanceFirst(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
@@ -3685,11 +3748,12 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 	})
 	c.Assert(apps, tsuruTest.JSONEquals, []App{
 		{
-			Name:      "app1",
-			CName:     []string{},
-			Teams:     []string{"tsuruteam"},
-			TeamOwner: "tsuruteam",
-			Owner:     "whydidifall@thewho.com",
+			Name:        "app1",
+			CName:       []string{},
+			CertIssuers: map[string]string{},
+			Teams:       []string{"tsuruteam"},
+			TeamOwner:   "tsuruteam",
+			Owner:       "whydidifall@thewho.com",
 			Env: map[string]bindTypes.EnvVar{
 				"TSURU_APPNAME": {Name: "TSURU_APPNAME", Value: "app1"},
 				"TSURU_APPDIR":  {Name: "TSURU_APPDIR", Value: "/home/application/current"},
@@ -3714,11 +3778,12 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Quota:     quota.UnlimitedQuota,
 		},
 		{
-			Name:      "app2",
-			CName:     []string{},
-			Teams:     []string{"tsuruteam"},
-			TeamOwner: "tsuruteam",
-			Owner:     "whydidifall@thewho.com",
+			Name:        "app2",
+			CName:       []string{},
+			CertIssuers: map[string]string{},
+			Teams:       []string{"tsuruteam"},
+			TeamOwner:   "tsuruteam",
+			Owner:       "whydidifall@thewho.com",
 			Env: map[string]bindTypes.EnvVar{
 				"TSURU_APPNAME": {Name: "TSURU_APPNAME", Value: "app2"},
 				"TSURU_APPDIR":  {Name: "TSURU_APPDIR", Value: "/home/application/current"},
@@ -3788,6 +3853,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 		{
 			Name:        "app1",
 			CName:       []string{},
+			CertIssuers: map[string]string{},
 			Teams:       []string{"tsuruteam"},
 			TeamOwner:   "tsuruteam",
 			Env:         map[string]bindTypes.EnvVar{},
@@ -4957,7 +5023,13 @@ func (s *S) TestGetCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
+	a := App{
+		Name:        "my-test-app",
+		TeamOwner:   s.team.Name,
+		Routers:     []appTypes.AppRouter{{Name: "fake-tls"}},
+		CName:       []string{cname},
+		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+	}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
@@ -4967,15 +5039,21 @@ func (s *S) TestGetCertificates(c *check.C) {
 
 	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	expectedCerts := map[string]string{
-		"app.io":                        string(cert),
-		"my-test-app.faketlsrouter.com": "",
+	expectedCerts := &appTypes.CertificateSetInfo{
+		Routers: map[string]appTypes.RouterCertificateInfo{
+			"fake-tls": {
+				CNames: map[string]appTypes.CertificateInfo{
+					"app.io": {
+						Certificate: string(cert),
+						Issuer:      "letsencrypt",
+					},
+				},
+			},
+		},
 	}
 	certs, err := a.GetCertificates(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
-		"fake-tls": expectedCerts,
-	})
+	c.Assert(certs, check.DeepEquals, expectedCerts)
 }
 
 func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
@@ -5847,6 +5925,27 @@ func (s *S) TestAppRemoveRouter(c *check.C) {
 	addrs, err := app.GetAddresses(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(addrs, check.DeepEquals, []string{"myapp.faketlsrouter.com"})
+}
+
+func (s *S) TestGetCertIssuers(c *check.C) {
+	app := App{
+		Name:      "myapp",
+		Platform:  "go",
+		TeamOwner: s.team.Name,
+		CName:     []string{"myapp.io", "myapp.another.io"},
+		CertIssuers: map[string]string{
+			"myapp_dot_io":             "myissuer",
+			"myapp_dot_another_dot_io": "myotherissuer",
+		},
+	}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+	issuers := app.GetCertIssuers()
+	c.Assert(err, check.IsNil)
+	c.Assert(issuers, check.DeepEquals, map[string]string{
+		"myapp.io":         "myissuer",
+		"myapp.another.io": "myotherissuer",
+	})
 }
 
 func (s *S) TestGetRoutersWithAddr(c *check.C) {

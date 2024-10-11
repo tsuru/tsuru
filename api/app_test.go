@@ -6515,7 +6515,13 @@ func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
 
 func (s *S) TestListCertificates(c *check.C) {
 	ctx := context.Background()
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
+	a := app.App{
+		Name:        "myapp",
+		TeamOwner:   s.team.Name,
+		Router:      "fake-tls",
+		CName:       []string{"app.io"},
+		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
@@ -6526,15 +6532,116 @@ func (s *S) TestListCertificates(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var certs map[string]map[string]string
+	var certs appTypes.CertificateSetInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
 	c.Assert(err, check.IsNil)
-	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
-		"fake-tls": {
-			"app.io":                  testCert,
-			"myapp.faketlsrouter.com": "",
+	c.Assert(certs, check.DeepEquals, appTypes.CertificateSetInfo{
+		Routers: map[string]appTypes.RouterCertificateInfo{
+			"fake-tls": {
+				CNames: map[string]appTypes.CertificateInfo{
+					"app.io": {
+						Certificate: string(testCert),
+						Issuer:      "letsencrypt",
+					},
+				},
+			},
 		},
 	})
+}
+
+func (s *S) TestSetCertIssuer(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("cname", "app.io")
+	v.Set("issuer", "letsencrypt")
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("PUT", "/apps/myapp/certissuer", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.certissuer.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "cname", "value": "app.io"},
+			{"name": "issuer", "value": "letsencrypt"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSetCertIssuerInvalidCname(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("cname", "app2.io")
+	v.Set("issuer", "letsencrypt")
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("PUT", "/apps/myapp/certissuer", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "cname does not exist in app (app2.io)\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestUnsetCertIssuer(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/myapp/certissuer?cname=app.io", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.certissuer.unset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "cname", "value": "app.io"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUnsetCertIssuerWithoutCName(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/myapp/certissuer", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide a cname.\n")
+}
+
+func (s *S) TestUnsetCertIssuerInvalidCName(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/myapp/certissuer?cname=myapp.io", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "cname does not exist in app (myapp.io)\n")
 }
 
 type fakeEncoder struct {
