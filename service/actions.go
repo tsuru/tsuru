@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -233,7 +234,7 @@ var notifyUpdateServiceInstance = action.Action{
 }
 
 type bindAppPipelineArgs struct {
-	app             bind.App
+	app             *appTypes.App
 	writer          io.Writer
 	serviceInstance *ServiceInstance
 	params          BindAppParameters
@@ -264,8 +265,8 @@ var bindAppDBAction = &action.Action{
 			return nil, err
 		}
 		si := args.serviceInstance
-		updateOp := mongoBSON.M{"$addToSet": mongoBSON.M{"apps": args.app.GetName()}}
-		result, err := collection.UpdateOne(ctx.Context, mongoBSON.M{"name": si.Name, "service_name": si.ServiceName, "apps": mongoBSON.M{"$ne": args.app.GetName()}}, updateOp)
+		updateOp := mongoBSON.M{"$addToSet": mongoBSON.M{"apps": args.app.Name}}
+		result, err := collection.UpdateOne(ctx.Context, mongoBSON.M{"name": si.Name, "service_name": si.ServiceName, "apps": mongoBSON.M{"$ne": args.app.Name}}, updateOp)
 		if err != nil {
 			if err == mongo.ErrNoDocuments {
 				return nil, ErrAppAlreadyBound
@@ -281,7 +282,7 @@ var bindAppDBAction = &action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		if err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"apps": args.app.GetName()}}); err != nil {
+		if err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"apps": args.app.Name}}); err != nil {
 			log.Errorf("[bind-app-db backward] could not remove app from service instance: %s", err)
 		}
 	},
@@ -518,11 +519,11 @@ var unbindAppDB = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
-		return nil, args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"apps": args.app.GetName()}})
+		return nil, args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$pull": mongoBSON.M{"apps": args.app.Name}})
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$addToSet": mongoBSON.M{"apps": args.app.GetName()}})
+		err := args.serviceInstance.updateData(ctx.Context, mongoBSON.M{"$addToSet": mongoBSON.M{"apps": args.app.Name}})
 		if err != nil {
 			log.Errorf("[unbind-app-db backward] failed to rebind app in db: %s", err)
 		}

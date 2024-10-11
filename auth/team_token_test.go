@@ -430,10 +430,10 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 func (s *S) Test_TeamToken_RemoveTokenWithApps(c *check.C) {
 	var appListCalled bool
 	servicemanager.App = &appTypes.MockAppService{
-		OnList: func(filter *appTypes.Filter) ([]appTypes.AppInterface, error) {
+		OnList: func(filter *appTypes.Filter) ([]*appTypes.App, error) {
 			appListCalled = true
 			c.Assert(filter, check.DeepEquals, &appTypes.Filter{UserOwner: "my-awesome-token@tsuru-team-token"})
-			return []appTypes.AppInterface{&appTypes.MockApp{Name: "my-app1"}}, nil
+			return []*appTypes.App{&appTypes.App{Name: "my-app1"}}, nil
 		},
 	}
 	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{TokenID: "my-awesome-token", Team: s.team.Name}, &userToken{user: s.user})

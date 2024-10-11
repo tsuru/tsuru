@@ -66,20 +66,20 @@ func appTarget(appName string) eventTypes.Target {
 	return eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: appName}
 }
 
-func getAppFromContext(name string, r *http.Request) (app.App, error) {
+func getAppFromContext(name string, r *http.Request) (*appTypes.App, error) {
 	var err error
 	a := context.GetApp(r)
 	if a == nil {
 		a, err = getApp(r.Context(), name)
 		if err != nil {
-			return app.App{}, err
+			return nil, err
 		}
 		context.SetApp(r, a)
 	}
-	return *a, nil
+	return a, nil
 }
 
-func getApp(ctx stdContext.Context, name string) (*app.App, error) {
+func getApp(ctx stdContext.Context, name string) (*appTypes.App, error) {
 	a, err := app.GetByName(ctx, name)
 	if err != nil {
 		if err == appTypes.ErrAppNotFound {
@@ -110,7 +110,7 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdate,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -121,8 +121,8 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(r.URL.Query()),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -136,7 +136,7 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.DeleteVersion(ctx, evt, versionString)
+	return app.DeleteVersion(ctx, a, evt, versionString)
 }
 
 // title: remove app
@@ -155,7 +155,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	canDelete := permission.Check(ctx, t, permission.PermAppDelete,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !canDelete {
 		return permission.ErrUnauthorized
@@ -166,7 +166,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -177,10 +177,10 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	return app.Delete(ctx, &a, evt, requestIDHeader(r))
+	return app.Delete(ctx, a, evt, requestIDHeader(r))
 }
 
-func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (appTypes.AppResume, error) {
+func minifyApp(app *appTypes.App, unitData app.AppUnitsResponse, extended bool) (appTypes.AppResume, error) {
 	var errorStr string
 	if unitData.Err != nil {
 		errorStr = unitData.Err.Error()
@@ -327,13 +327,13 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	canRead := permission.Check(ctx, t, permission.PermAppReadInfo,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
 
-	appInfo, err := app.AppInfo(ctx, &a)
+	appInfo, err := app.AppInfo(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -394,7 +394,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	a := app.App{
+	a := &appTypes.App{
 		TeamOwner:   ia.TeamOwner,
 		Platform:    ia.Platform,
 		Plan:        appTypes.Plan{Name: ia.Plan},
@@ -459,13 +459,13 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = app.CreateApp(ctx, &a, u)
+	err = app.CreateApp(ctx, a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
 		if _, ok := err.(appTypes.NoTeamsError); ok {
@@ -493,7 +493,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	msg := map[string]interface{}{
 		"status": "success",
 	}
-	addrs, err := a.GetAddresses(ctx)
+	addrs, err := app.GetAddresses(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -529,7 +529,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	imageReset, _ := strconv.ParseBool(InputValue(r, "imageReset"))
-	updateData := app.App{
+	updateData := &appTypes.App{
 		TeamOwner:      ia.TeamOwner,
 		Plan:           appTypes.Plan{Name: ia.Plan, Override: &ia.PlanOverride},
 		Pool:           ia.Pool,
@@ -606,7 +606,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	for _, perm := range wantedPerms {
 		allowed := permission.Check(ctx, t, perm,
-			contextsForApp(&a)...,
+			contextsForApp(a)...,
 		)
 		if !allowed {
 			return permission.ErrUnauthorized
@@ -633,8 +633,8 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -648,7 +648,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.Update(ctx, app.UpdateAppArgs{
+	err = app.Update(ctx, a, app.UpdateAppArgs{
 		UpdateData:    updateData,
 		Writer:        evt,
 		ShouldRestart: !noRestart,
@@ -705,7 +705,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAdd,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -716,8 +716,8 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -731,7 +731,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.AddUnits(ctx, n, processName, version, evt)
+	return app.AddUnits(ctx, a, n, processName, version, evt)
 }
 
 // title: remove units
@@ -759,7 +759,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitRemove,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -770,8 +770,8 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -785,7 +785,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.RemoveUnits(ctx, n, processName, version, evt)
+	return app.RemoveUnits(ctx, a, n, processName, version, evt)
 }
 
 // title: kill a running unit
@@ -839,7 +839,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 	defer func() { evt.Done(ctx, err) }()
 
-	err = a.KillUnit(ctx, unitName, force)
+	err = app.KillUnit(ctx, a, unitName, force)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -864,7 +864,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateGrant,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -875,7 +875,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -885,7 +885,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = a.Grant(ctx, team)
+	err = app.Grant(ctx, a, team)
 	if err == app.ErrAlreadyHaveAccess {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -910,7 +910,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateRevoke,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -921,7 +921,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -935,7 +935,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = a.Revoke(ctx, team)
+	err = app.Revoke(ctx, a, team)
 	switch err {
 	case app.ErrNoAccess:
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -971,7 +971,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppRun,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -982,7 +982,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -996,7 +996,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	onceBool, _ := strconv.ParseBool(once)
 	isolatedBool, _ := strconv.ParseBool(isolated)
 	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool}
-	return a.Run(ctx, command, evt, args)
+	return app.Run(ctx, a, command, evt, args)
 }
 
 // title: get envs
@@ -1020,16 +1020,16 @@ func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppReadEnv,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 
-	return writeEnvVars(w, &a, variables...)
+	return writeEnvVars(w, a, variables...)
 }
 
-func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error {
+func writeEnvVars(w http.ResponseWriter, a *appTypes.App, variables ...string) error {
 	var result []bindTypes.EnvVar
 	w.Header().Set("Content-Type", "application/json")
 	if len(variables) > 0 {
@@ -1039,7 +1039,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 			}
 		}
 	} else {
-		for _, v := range a.Envs() {
+		for _, v := range provision.EnvsForApp(a) {
 			result = append(result, v)
 		}
 	}
@@ -1085,7 +1085,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateEnvSet,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1104,7 +1104,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, toExclude...)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -1135,7 +1135,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(ctx, bind.SetEnvArgs{
+	err = app.SetEnvs(ctx, a, bind.SetEnvArgs{
 		Envs:          variables,
 		ManagedBy:     e.ManagedBy,
 		PruneUnused:   e.PruneUnused,
@@ -1218,7 +1218,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateEnvUnset,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1229,7 +1229,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -1241,7 +1241,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
+	return app.UnsetEnvs(ctx, a, bind.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
 		Writer:        evt,
@@ -1271,7 +1271,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateCnameAdd,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1282,13 +1282,13 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	if err = a.AddCName(ctx, cnames...); err == nil {
+	if err = app.AddCName(ctx, a, cnames...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
@@ -1319,7 +1319,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateCnameRemove,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1330,13 +1330,13 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	if err = a.RemoveCName(ctx, cnames...); err == nil {
+	if err = app.RemoveCName(ctx, a, cnames...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
@@ -1381,7 +1381,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppReadLog,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1400,7 +1400,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		InvertSource: invert,
 		Units:        units,
 	}
-	logs, err := a.LastLogs(ctx, logService, listArgs)
+	logs, err := app.LastLogs(ctx, a, logService, listArgs)
 	if err != nil {
 		return err
 	}
@@ -1456,7 +1456,7 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 	}
 }
 
-func getServiceInstance(ctx stdContext.Context, serviceName, instanceName, appName string) (*service.ServiceInstance, *app.App, error) {
+func getServiceInstance(ctx stdContext.Context, serviceName, instanceName, appName string) (*service.ServiceInstance, *appTypes.App, error) {
 	instance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return nil, nil, err
@@ -1518,7 +1518,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = a.ValidateService(ctx, serviceName)
+	err = app.ValidateService(ctx, a, serviceName)
 	if err != nil {
 		if err == pool.ErrPoolHasNoService {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -1562,7 +1562,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return fmt.Errorf("%v (%q is %v)", err, instanceName, status)
 	}
 	fmt.Fprintf(writer, "\nInstance %q is now bound to the app %q.\n", instanceName, appName)
-	envs := a.InstanceEnvs(serviceName, instanceName)
+	envs := app.InstanceEnvs(a, serviceName, instanceName)
 	if len(envs) > 0 {
 		fmt.Fprintf(writer, "The following environment variables are available for use in your app:\n\n")
 		for k := range envs {
@@ -1683,7 +1683,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateRestart,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1694,8 +1694,8 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -1709,7 +1709,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart(ctx, process, version, evt)
+	return app.Restart(ctx, a, process, version, evt)
 }
 
 // title: app log
@@ -1789,7 +1789,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateStart,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1800,8 +1800,8 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -1815,7 +1815,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Start(ctx, evt, process, version)
+	return app.Start(ctx, a, evt, process, version)
 }
 
 // title: app stop
@@ -1838,7 +1838,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateStop,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1849,8 +1849,8 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -1864,7 +1864,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Stop(ctx, evt, process, version)
+	return app.Stop(ctx, a, evt, process, version)
 }
 
 // title: app unlock
@@ -1893,7 +1893,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppAdminRoutes,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1905,14 +1905,14 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
 	return rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App: &a,
+		App: a,
 		Dry: dry,
 	})
 }
@@ -1934,7 +1934,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertificateSet,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1951,13 +1951,13 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, "key")),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = a.SetCertificate(ctx, cname, certificate, key)
+	err = app.SetCertificate(ctx, a, cname, certificate, key)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -1981,7 +1981,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertificateUnset,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -1996,13 +1996,13 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = a.RemoveCertificate(ctx, cname)
+	err = app.RemoveCertificate(ctx, a, cname)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -2025,20 +2025,20 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	allowed := permission.Check(ctx, t, permission.PermAppReadCertificate,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	result, err := a.GetCertificates(ctx)
+	result, err := app.GetCertificates(ctx, a)
 	if err != nil {
 		return err
 	}
 	return json.NewEncoder(w).Encode(&result)
 }
 
-func contextsForApp(a *app.App) []permTypes.PermissionContext {
+func contextsForApp(a *appTypes.App) []permTypes.PermissionContext {
 	return append(permission.Contexts(permTypes.CtxTeam, a.Teams),
 		permission.Context(permTypes.CtxApp, a.Name),
 		permission.Context(permTypes.CtxPool, a.Pool),

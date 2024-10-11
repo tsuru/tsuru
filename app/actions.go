@@ -36,10 +36,10 @@ var (
 var reserveTeamApp = action.Action{
 	Name: "reserve-team-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		default:
 			return nil, errors.New("first parameter must be *App.")
 		}
@@ -63,10 +63,10 @@ var reserveTeamApp = action.Action{
 var reserveUserApp = action.Action{
 	Name: "reserve-user-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
@@ -112,10 +112,10 @@ var reserveUserApp = action.Action{
 var insertApp = action.Action{
 	Name: "insert-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
@@ -126,13 +126,13 @@ var insertApp = action.Action{
 		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.FWResult.(*App)
+		app := ctx.FWResult.(*appTypes.App)
 		removeApp(ctx.Context, app)
 	},
 	MinParams: 1,
 }
 
-func createApp(ctx context.Context, app *App) error {
+func createApp(ctx context.Context, app *appTypes.App) error {
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func createApp(ctx context.Context, app *App) error {
 	return nil
 }
 
-func removeApp(ctx context.Context, app *App) error {
+func removeApp(ctx context.Context, app *appTypes.App) error {
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -167,16 +167,16 @@ func removeApp(ctx context.Context, app *App) error {
 var exportEnvironmentsAction = action.Action{
 	Name: "export-environments",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		app, err := GetByName(ctx.Context, app.Name)
 		if err != nil {
 			return nil, err
 		}
 		envVars := []bindTypes.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
-			{Name: "TSURU_APPDIR", Value: defaultAppDir},
+			{Name: "TSURU_APPDIR", Value: appTypes.DefaultAppDir},
 		}
-		err = app.SetEnvs(ctx.Context, bind.SetEnvArgs{
+		err = SetEnvs(ctx.Context, app, bind.SetEnvArgs{
 			Envs:          envVars,
 			ShouldRestart: false,
 		})
@@ -186,11 +186,11 @@ var exportEnvironmentsAction = action.Action{
 		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		app, err := GetByName(ctx.Context, app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR"}
-			app.UnsetEnvs(ctx.Context, bind.UnsetEnvArgs{
+			UnsetEnvs(ctx.Context, app, bind.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
@@ -202,14 +202,14 @@ var exportEnvironmentsAction = action.Action{
 var provisionApp = action.Action{
 	Name: "provision-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		prov, err := app.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, app)
 		if err != nil {
 			return nil, err
 		}
@@ -220,8 +220,8 @@ var provisionApp = action.Action{
 		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.FWResult.(*App)
-		prov, err := app.getProvisioner(ctx.Context)
+		app := ctx.FWResult.(*appTypes.App)
+		prov, err := getProvisioner(ctx.Context, app)
 		if err == nil {
 			prov.Destroy(ctx.Context, app)
 		}
@@ -232,10 +232,10 @@ var provisionApp = action.Action{
 var reserveUnitsToAdd = action.Action{
 	Name: "reserve-units-to-add",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
@@ -259,10 +259,10 @@ var reserveUnitsToAdd = action.Action{
 		return n, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		}
 		qty := ctx.FWResult.(int)
 		err := servicemanager.AppQuota.Inc(ctx.Context, app, -qty)
@@ -276,10 +276,10 @@ var reserveUnitsToAdd = action.Action{
 var provisionAddUnits = action.Action{
 	Name: "provision-add-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var app *appTypes.App
 		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
@@ -287,7 +287,7 @@ var provisionAddUnits = action.Action{
 		n := ctx.Previous.(int)
 		process := ctx.Params[3].(string)
 		version := ctx.Params[4].(appTypes.AppVersion)
-		prov, err := app.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, app)
 		if err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ var provisionAddUnits = action.Action{
 var saveApp = action.Action{
 	Name: "update-app-save-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
+		app, ok := ctx.Params[0].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
@@ -312,7 +312,7 @@ var saveApp = action.Action{
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
-		oldApp := ctx.Params[1].(*App)
+		oldApp := ctx.Params[1].(*appTypes.App)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to get database connection: %s", err)
@@ -329,17 +329,17 @@ var saveApp = action.Action{
 var restartApp = action.Action{
 	Name: "update-app-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
+		app, ok := ctx.Params[0].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
 		w, _ := ctx.Params[2].(io.Writer)
-		return nil, app.Restart(ctx.Context, "", "", w)
+		return nil, Restart(ctx.Context, app, "", "", w)
 	},
 	Backward: func(ctx action.BWContext) {
-		oldApp := ctx.Params[1].(*App)
+		oldApp := ctx.Params[1].(*appTypes.App)
 		w, _ := ctx.Params[2].(io.Writer)
-		err := oldApp.Restart(ctx.Context, "", "", w)
+		err := Restart(ctx.Context, oldApp, "", "", w)
 		if err != nil {
 			log.Errorf("BACKWARD update app - failed to restart app: %s", err)
 		}
@@ -349,19 +349,19 @@ var restartApp = action.Action{
 var provisionAppNewProvisioner = action.Action{
 	Name: "provision-app-new-provisioner",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
+		app, ok := ctx.Params[0].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
-		prov, err := app.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, app)
 		if err != nil {
 			return nil, err
 		}
 		return nil, prov.Provision(ctx.Context, app)
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
-		prov, err := app.getProvisioner(ctx.Context)
+		app := ctx.Params[0].(*appTypes.App)
+		prov, err := getProvisioner(ctx.Context, app)
 		if err != nil {
 			log.Errorf("BACKWARD provision app - failed to get provisioner: %s", err)
 		}
@@ -375,16 +375,16 @@ var provisionAppNewProvisioner = action.Action{
 var provisionAppAddUnits = action.Action{
 	Name: "provision-app-add-unit",
 	Forward: func(ctx action.FWContext) (result action.Result, err error) {
-		app, ok := ctx.Params[0].(*App)
+		app, ok := ctx.Params[0].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
-		oldApp, ok := ctx.Params[1].(*App)
+		oldApp, ok := ctx.Params[1].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
 		w, _ := ctx.Params[2].(io.Writer)
-		units, err := oldApp.Units(ctx.Context)
+		units, err := AppUnits(ctx.Context, oldApp)
 		if err != nil {
 			return nil, err
 		}
@@ -415,7 +415,7 @@ var provisionAppAddUnits = action.Action{
 			if processData.version > 0 {
 				version = strconv.Itoa(processData.version)
 			}
-			err = app.AddUnits(ctx.Context, count, processData.process, version, w)
+			err = AddUnits(ctx.Context, app, count, processData.process, version, w)
 			if err != nil {
 				return nil, err
 			}
@@ -423,7 +423,7 @@ var provisionAppAddUnits = action.Action{
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		rebuild.RebuildRoutesWithAppName(app.Name, nil)
 	},
 }
@@ -431,11 +431,11 @@ var provisionAppAddUnits = action.Action{
 var destroyAppOldProvisioner = action.Action{
 	Name: "destroy-app-old-provisioner",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		oldApp, ok := ctx.Params[1].(*App)
+		oldApp, ok := ctx.Params[1].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as second arg")
 		}
-		oldProv, err := oldApp.getProvisioner(ctx.Context)
+		oldProv, err := getProvisioner(ctx.Context, oldApp)
 		if err != nil {
 			return nil, err
 		}
@@ -446,15 +446,15 @@ var destroyAppOldProvisioner = action.Action{
 var updateAppProvisioner = action.Action{
 	Name: "update-app-provisioner",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
+		app, ok := ctx.Params[0].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
-		oldApp, ok := ctx.Params[1].(*App)
+		oldApp, ok := ctx.Params[1].(*appTypes.App)
 		if !ok {
 			return nil, errors.New("expected app ptr as second arg")
 		}
-		oldProv, err := oldApp.getProvisioner(ctx.Context)
+		oldProv, err := getProvisioner(ctx.Context, oldApp)
 		if err != nil {
 			return nil, err
 		}
@@ -465,9 +465,9 @@ var updateAppProvisioner = action.Action{
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
-		oldApp := ctx.Params[1].(*App)
-		newProv, err := app.getProvisioner(ctx.Context)
+		app := ctx.Params[0].(*appTypes.App)
+		oldApp := ctx.Params[1].(*appTypes.App)
+		newProv, err := getProvisioner(ctx.Context, app)
 		if err != nil {
 			log.Errorf("BACKWARDS update-app-provisioner - failed to get app provisioner: %v", err)
 			return
@@ -484,14 +484,14 @@ var updateAppProvisioner = action.Action{
 var validateNewCNames = action.Action{
 	Name: "validate-new-cnames",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 		cnames := ctx.Params[1].([]string)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
 			return nil, err
 		}
-		appRouters := app.GetRouters()
+		appRouters := GetRouters(app)
 		for _, cname := range cnames {
 			if !cnameRegexp.MatchString(cname) {
 				return nil, errors.New("Invalid cname")
@@ -511,7 +511,7 @@ var validateNewCNames = action.Action{
 				return nil, errors.New(fmt.Sprintf("cname %s already exists for this app", cname))
 			}
 
-			appCName := App{}
+			appCName := appTypes.App{}
 			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "routers": mongoBSON.M{"$in": appRouters}}).Decode(&appCName)
 			if err != nil && err != mongo.ErrNoDocuments {
 				return nil, err
@@ -519,7 +519,7 @@ var validateNewCNames = action.Action{
 			if appCName.Name != "" {
 				return nil, errors.New(fmt.Sprintf("cname %s already exists for app %s using same router", cname, appCName.Name))
 			}
-			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "teamowner": mongoBSON.M{"$ne": app.GetTeamOwner()}}).Decode(&appCName)
+			err = collection.FindOne(ctx.Context, mongoBSON.M{"cname": cname, "name": mongoBSON.M{"$ne": app.Name}, "teamowner": mongoBSON.M{"$ne": app.TeamOwner}}).Decode(&appCName)
 			if err != nil {
 				if err == mongo.ErrNoDocuments {
 					continue
@@ -535,7 +535,7 @@ var validateNewCNames = action.Action{
 var saveCNames = action.Action{
 	Name: "add-cname-save-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		cnames := ctx.Params[1].([]string)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
@@ -554,7 +554,7 @@ var saveCNames = action.Action{
 		return cnames, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		cnames := ctx.Params[1].([]string)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
@@ -579,7 +579,7 @@ var saveCNames = action.Action{
 var updateApp = action.Action{
 	Name: "add-cname-update-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		app.CName = append(app.CName, ctx.Params[1].([]string)...)
 		return app.CName, nil
 	},
@@ -609,7 +609,7 @@ var checkCNameExists = action.Action{
 var removeCNameFromDatabase = action.Action{
 	Name: "remove-cname-from-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		cnames := ctx.Params[1].([]string)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
@@ -640,7 +640,7 @@ var removeCNameFromDatabase = action.Action{
 		return cnamesDone, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 		cnames := ctx.Params[1].([]string)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
@@ -662,7 +662,7 @@ var removeCNameFromDatabase = action.Action{
 var rebuildRoutes = action.Action{
 	Name: "rebuild-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
+		app := ctx.Params[0].(*appTypes.App)
 
 		err := rebuild.RebuildRoutesWithAppName(app.Name, nil)
 		if err != nil {

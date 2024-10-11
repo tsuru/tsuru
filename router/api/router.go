@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	poolMultiCluster "github.com/tsuru/tsuru/provision/pool/multicluster"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 //go:generate bash -c "rm -f routeriface.go && go run ./generator/combinations.go -o routeriface.go"
@@ -117,8 +118,8 @@ func (r *apiRouter) GetType() string {
 	return routerType
 }
 
-func (r *apiRouter) EnsureBackend(ctx context.Context, app router.App, o router.EnsureBackendOpts) error {
-	path := fmt.Sprintf("backend/%s", app.GetName())
+func (r *apiRouter) EnsureBackend(ctx context.Context, app *appTypes.App, o router.EnsureBackendOpts) error {
+	path := fmt.Sprintf("backend/%s", app.Name)
 
 	o.Opts = addDefaultOpts(app, o.Opts)
 
@@ -138,8 +139,8 @@ func (r *apiRouter) EnsureBackend(ctx context.Context, app router.App, o router.
 	return err
 }
 
-func (r *apiRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {
-	path := fmt.Sprintf("backend/%s", app.GetName())
+func (r *apiRouter) RemoveBackend(ctx context.Context, app *appTypes.App) (err error) {
+	path := fmt.Sprintf("backend/%s", app.Name)
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
 		return err
@@ -156,8 +157,8 @@ func (r *apiRouter) RemoveBackend(ctx context.Context, app router.App) (err erro
 	return err
 }
 
-func (r *apiRouter) Addresses(ctx context.Context, app router.App) (addrs []string, err error) {
-	backendName := app.GetName()
+func (r *apiRouter) Addresses(ctx context.Context, app *appTypes.App) (addrs []string, err error) {
+	backendName := app.Name
 	path := fmt.Sprintf("backend/%s", backendName)
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
@@ -241,7 +242,7 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	return data, code, nil
 }
 
-func (r *apiRouterWithTLSSupport) AddCertificate(ctx context.Context, app router.App, cname, certificate, key string) error {
+func (r *apiRouterWithTLSSupport) AddCertificate(ctx context.Context, app *appTypes.App, cname, certificate, key string) error {
 	cert := certData{Certificate: certificate, Key: key}
 	b, err := json.Marshal(&cert)
 	if err != nil {
@@ -251,28 +252,28 @@ func (r *apiRouterWithTLSSupport) AddCertificate(ctx context.Context, app router
 	if err != nil {
 		return err
 	}
-	_, _, err = r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, bytes.NewReader(b))
+	_, _, err = r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/certificate/%s", app.Name, cname), headers, bytes.NewReader(b))
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) RemoveCertificate(ctx context.Context, app router.App, cname string) error {
+func (r *apiRouterWithTLSSupport) RemoveCertificate(ctx context.Context, app *appTypes.App, cname string) error {
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
 		return err
 	}
-	_, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, nil)
+	_, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/certificate/%s", app.Name, cname), headers, nil)
 	if code == http.StatusNotFound {
 		return router.ErrCertificateNotFound
 	}
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
+func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app *appTypes.App, cname string) (string, error) {
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
 		return "", err
 	}
-	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, nil)
+	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.Name, cname), headers, nil)
 	switch code {
 	case http.StatusNotFound:
 		return "", router.ErrCertificateNotFound
@@ -300,9 +301,9 @@ func (r *apiRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return result, nil
 }
 
-func (r *apiRouter) GetBackendStatus(ctx context.Context, app router.App) (router.RouterBackendStatus, error) {
+func (r *apiRouter) GetBackendStatus(ctx context.Context, app *appTypes.App) (router.RouterBackendStatus, error) {
 	rsp := router.RouterBackendStatus{}
-	backendName := app.GetName()
+	backendName := app.Name
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
 		return rsp, err
@@ -319,15 +320,15 @@ func (r *apiRouter) GetBackendStatus(ctx context.Context, app router.App) (route
 	return rsp, nil
 }
 
-func addDefaultOpts(app router.App, opts map[string]interface{}) map[string]interface{} {
+func addDefaultOpts(app *appTypes.App, opts map[string]interface{}) map[string]interface{} {
 	mergedOpts := make(map[string]interface{})
 	for k, v := range opts {
 		mergedOpts[k] = v
 	}
 	prefix := "tsuru.io/"
-	mergedOpts[prefix+"app-pool"] = app.GetPool()
-	mergedOpts[prefix+"app-teamowner"] = app.GetTeamOwner()
-	mergedOpts[prefix+"app-teams"] = app.GetTeamsName()
+	mergedOpts[prefix+"app-pool"] = app.Pool
+	mergedOpts[prefix+"app-teamowner"] = app.TeamOwner
+	mergedOpts[prefix+"app-teams"] = app.Teams
 	return mergedOpts
 }
 
@@ -353,12 +354,12 @@ func (r *apiRouter) checkAllCapabilities(ctx context.Context) map[capability]boo
 	return supports
 }
 
-func (r *apiRouter) getExtraHeadersFromApp(ctx context.Context, app router.App) (http.Header, error) {
+func (r *apiRouter) getExtraHeadersFromApp(ctx context.Context, app *appTypes.App) (http.Header, error) {
 	if !r.multiCluster {
 		return http.Header{}, nil
 	}
 
-	poolName := app.GetPool()
+	poolName := app.Pool
 	return poolMultiCluster.Header(ctx, poolName, nil)
 }
 

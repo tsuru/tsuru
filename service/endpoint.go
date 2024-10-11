@@ -19,13 +19,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision"
 	poolMultiCluster "github.com/tsuru/tsuru/provision/pool/multicluster"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
@@ -160,9 +159,9 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 	return err
 }
 
-func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
-		instance.Name, app.GetName(), instance.ServiceName)
+		instance.Name, app.Name, instance.ServiceName)
 	params, err := buildBindAppParams(ctx, evt, app, bindParams)
 	if err != nil {
 		log.Errorf("Ignoring some errors found while building the bind app parameters: %v", err)
@@ -174,14 +173,14 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	}
 	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, header)
 	if err != nil {
-		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
+		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.Name, instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
 		resp, err = c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, header)
 	}
 	if err != nil {
-		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
+		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.Name, instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 300 {
@@ -198,7 +197,7 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	case http.StatusNotFound:
 		return nil, ErrInstanceNotFoundInAPI
 	}
-	err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the app %q`, instance.ServiceName, instance.Name, app.GetName())
+	err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the app %q`, instance.ServiceName, instance.Name, app.Name)
 	return nil, log.WrapError(err)
 }
 
@@ -242,16 +241,16 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	return result, nil
 }
 
-func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
-	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
-	appAddrs, err := app.GetAddresses(ctx)
+func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, evt *event.Event, requestID string) error {
+	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.Name, instance.ServiceName)
+	appAddrs, err := servicemanager.App.GetAddresses(ctx, app)
 	if err != nil {
 		return err
 	}
 	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
 	params := map[string][]string{
 		"app-hosts": appAddrs,
-		"app-name":  {app.GetName()},
+		"app-name":  {app.Name},
 		"user":      {evt.Owner.Name},
 		"eventid":   {evt.UniqueID.Hex()},
 	}
@@ -540,18 +539,18 @@ func baseHeader(ctx context.Context, evt *event.Event, si *ServiceInstance, requ
 	return poolMultiCluster.Header(ctx, si.Pool, header)
 }
 
-func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bindParams BindAppParameters) (url.Values, error) {
+func buildBindAppParams(ctx context.Context, evt *event.Event, app *appTypes.App, bindParams BindAppParameters) (url.Values, error) {
 	if app == nil {
 		return nil, errors.New("app cannot be nil")
 	}
 	params := url.Values{}
 	addParameters(params, bindParams)
-	params.Set("app-name", app.GetName())
+	params.Set("app-name", app.Name)
 	if evt != nil {
 		params.Set("user", evt.Owner.Name)
 		params.Set("eventid", evt.UniqueID.Hex())
 	}
-	appAddrs, err := app.GetAddresses(ctx)
+	appAddrs, err := servicemanager.App.GetAddresses(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -559,16 +558,13 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bin
 	if len(appAddrs) > 0 {
 		params.Set("app-host", appAddrs[0])
 	}
-	internalAddrs, err := app.GetInternalBindableAddresses(ctx)
+	internalAddrs, err := servicemanager.App.GetInternalBindableAddresses(ctx, app)
 	if err != nil {
 		return nil, err
 	}
 	params["app-internal-hosts"] = internalAddrs
-	a, ok := app.(provision.App)
-	if !ok {
-		return params, nil
-	}
-	p, err := servicemanager.Pool.FindByName(ctx, a.GetPool())
+
+	p, err := servicemanager.Pool.FindByName(ctx, app.Pool)
 	if err != nil {
 		if err == provTypes.ErrPoolNotFound {
 			return params, nil

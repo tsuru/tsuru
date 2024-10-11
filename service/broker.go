@@ -13,11 +13,11 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -249,7 +249,7 @@ func (b *brokerClient) Destroy(ctx context.Context, instance *ServiceInstance, e
 	return err
 }
 
-func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	if instance.BrokerData == nil {
 		return nil, ErrInvalidBrokerData
 	}
@@ -257,7 +257,7 @@ func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, a
 	if err != nil {
 		return nil, err
 	}
-	appGUID, err := app.GetUUID(ctx)
+	appGUID, err := servicemanager.App.EnsureUUID(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -313,11 +313,11 @@ func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, a
 	if instance.BrokerData.Binds == nil {
 		instance.BrokerData.Binds = make(map[string]BrokerInstanceBind)
 	}
-	instance.BrokerData.Binds[app.GetName()] = bind
+	instance.BrokerData.Binds[app.Name] = bind
 	return envs, updateBrokerData(ctx, instance)
 }
 
-func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, evt *event.Event, requestID string) error {
 	if instance.BrokerData == nil {
 		return ErrInvalidBrokerData
 	}
@@ -327,7 +327,7 @@ func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance,
 	}
 	req := osb.UnbindRequest{
 		InstanceID:          instance.BrokerData.UUID,
-		BindingID:           instance.BrokerData.Binds[app.GetName()].UUID,
+		BindingID:           instance.BrokerData.Binds[app.Name].UUID,
 		ServiceID:           instance.BrokerData.ServiceID,
 		PlanID:              instance.BrokerData.PlanID,
 		OriginatingIdentity: id,
@@ -341,7 +341,7 @@ func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance,
 	if err != nil {
 		return err
 	}
-	delete(instance.BrokerData.Binds, app.GetName())
+	delete(instance.BrokerData.Binds, app.Name)
 	if resp != nil && resp.OperationKey != nil {
 		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
 		err = updateBrokerData(ctx, instance)

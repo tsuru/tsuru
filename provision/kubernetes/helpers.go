@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -54,8 +55,8 @@ var svcIgnoredLabels = []string{
 	tsuruLabelPrefix + "external-controller",
 }
 
-func serviceAccountNameForApp(a provision.App) string {
-	name := provision.ValidKubeName(a.GetName())
+func serviceAccountNameForApp(a *appTypes.App) string {
+	name := provision.ValidKubeName(a.Name)
 	return fmt.Sprintf("app-%s", name)
 }
 
@@ -64,40 +65,40 @@ func serviceAccountNameForJob(j jobTypes.Job) string {
 	return fmt.Sprintf("job-%s", name)
 }
 
-func deploymentNameForApp(a provision.App, process string, version int) string {
+func deploymentNameForApp(a *appTypes.App, process string, version int) string {
 	return provision.AppProcessName(a, process, version, "")
 }
 
-func deploymentNameForAppBase(a provision.App, process string) string {
+func deploymentNameForAppBase(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
-func serviceNameForApp(a provision.App, process string, version int) string {
+func serviceNameForApp(a *appTypes.App, process string, version int) string {
 	return provision.AppProcessName(a, process, version, "")
 }
 
-func serviceNameForAppBase(a provision.App, process string) string {
+func serviceNameForAppBase(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
-func headlessServiceName(a provision.App, process string) string {
+func headlessServiceName(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "units")
 }
 
-func hpaNameForApp(a provision.App, process string) string {
+func hpaNameForApp(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
-func vpaNameForApp(a provision.App, process string) string {
+func vpaNameForApp(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
-func pdbNameForApp(a provision.App, process string) string {
+func pdbNameForApp(a *appTypes.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
-func execCommandPodNameForApp(a provision.App) string {
-	name := provision.ValidKubeName(a.GetName())
+func execCommandPodNameForApp(a *appTypes.App) string {
+	name := provision.ValidKubeName(a.Name)
 	return fmt.Sprintf("%s-isolated-run", name)
 }
 
@@ -480,7 +481,7 @@ func cleanupReplicas(ctx context.Context, client *ClusterClient, dep *appsv1.Dep
 	return cleanupPods(ctx, client, listOpts, dep)
 }
 
-func baseVersionForApp(ctx context.Context, client *ClusterClient, a provision.App) (int, error) {
+func baseVersionForApp(ctx context.Context, client *ClusterClient, a *appTypes.App) (int, error) {
 	depData, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return 0, err
@@ -500,7 +501,7 @@ func baseVersionForApp(ctx context.Context, client *ClusterClient, a provision.A
 	return latestBase, nil
 }
 
-func allDeploymentsForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
+func allDeploymentsForApp(ctx context.Context, client *ClusterClient, a *appTypes.App) ([]appsv1.Deployment, error) {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -508,7 +509,7 @@ func allDeploymentsForApp(ctx context.Context, client *ClusterClient, a provisio
 	return allDeploymentsForAppNS(ctx, client, ns, a)
 }
 
-func allDeploymentsForAppNS(ctx context.Context, client *ClusterClient, ns string, a provision.App) ([]appsv1.Deployment, error) {
+func allDeploymentsForAppNS(ctx context.Context, client *ClusterClient, ns string, a *appTypes.App) ([]appsv1.Deployment, error) {
 	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -528,7 +529,7 @@ func allDeploymentsForAppNS(ctx context.Context, client *ClusterClient, ns strin
 	return deps.Items, nil
 }
 
-func allServicesForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]apiv1.Service, error) {
+func allServicesForApp(ctx context.Context, client *ClusterClient, a *appTypes.App) ([]apiv1.Service, error) {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -536,7 +537,7 @@ func allServicesForApp(ctx context.Context, client *ClusterClient, a provision.A
 	return allServicesForAppNS(ctx, client, ns, a)
 }
 
-func allServicesForAppNS(ctx context.Context, client *ClusterClient, ns string, a provision.App) ([]apiv1.Service, error) {
+func allServicesForAppNS(ctx context.Context, client *ClusterClient, ns string, a *appTypes.App) ([]apiv1.Service, error) {
 	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -556,7 +557,7 @@ func allServicesForAppNS(ctx context.Context, client *ClusterClient, ns string, 
 	return filterTsuruControlledServices(svcs.Items), nil
 }
 
-func allServicesForAppInformer(ctx context.Context, informer v1informers.ServiceInformer, ns string, a provision.App) ([]apiv1.Service, error) {
+func allServicesForAppInformer(ctx context.Context, informer v1informers.ServiceInformer, ns string, a *appTypes.App) ([]apiv1.Service, error) {
 	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -593,7 +594,7 @@ svcsLoop:
 	return result
 }
 
-func allDeploymentsForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]appsv1.Deployment, error) {
+func allDeploymentsForAppProcess(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) ([]appsv1.Deployment, error) {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -642,7 +643,7 @@ type deploymentInfo struct {
 	replicas   int
 }
 
-func deploymentsDataForProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
+func deploymentsDataForProcess(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) (groupedDeployments, error) {
 	deps, err := allDeploymentsForAppProcess(ctx, client, a, process)
 	if err != nil {
 		return groupedDeployments{}, err
@@ -659,7 +660,7 @@ func deploymentsDataForProcess(ctx context.Context, client *ClusterClient, a pro
 	}, nil
 }
 
-func deploymentsDataForApp(ctx context.Context, client *ClusterClient, a provision.App) (groupedDeploymentsAll, error) {
+func deploymentsDataForApp(ctx context.Context, client *ClusterClient, a *appTypes.App) (groupedDeploymentsAll, error) {
 	deps, err := allDeploymentsForApp(ctx, client, a)
 	if err != nil {
 		return groupedDeploymentsAll{}, err
@@ -699,7 +700,7 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeploymentsAll {
 	return result
 }
 
-func deploymentForVersion(ctx context.Context, client *ClusterClient, a provision.App, process string, versionNumber int) (*appsv1.Deployment, error) {
+func deploymentForVersion(ctx context.Context, client *ClusterClient, a *appTypes.App, process string, versionNumber int) (*appsv1.Deployment, error) {
 	groupedDeps, err := deploymentsDataForProcess(ctx, client, a, process)
 	if err != nil {
 		return nil, err
@@ -707,7 +708,7 @@ func deploymentForVersion(ctx context.Context, client *ClusterClient, a provisio
 
 	depsData := groupedDeps.versioned[versionNumber]
 	if len(depsData) == 0 {
-		return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.GetName(), process, versionNumber))
+		return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.Name, process, versionNumber))
 	}
 
 	if len(depsData) > 1 {
@@ -731,7 +732,7 @@ func cleanupSingleDeployment(ctx context.Context, client *ClusterClient, dep *ap
 	return cleanupReplicas(ctx, client, dep)
 }
 
-func cleanupDeployment(ctx context.Context, client *ClusterClient, a provision.App, process string, versionNumber int) error {
+func cleanupDeployment(ctx context.Context, client *ClusterClient, a *appTypes.App, process string, versionNumber int) error {
 	dep, err := deploymentForVersion(ctx, client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
@@ -750,7 +751,7 @@ func cleanupDeployment(ctx context.Context, client *ClusterClient, a provision.A
 	return cleanupReplicas(ctx, client, dep)
 }
 
-func allServicesForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]apiv1.Service, error) {
+func allServicesForAppProcess(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) ([]apiv1.Service, error) {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -778,7 +779,7 @@ func allServicesForAppProcess(ctx context.Context, client *ClusterClient, a prov
 	return svcs.Items, nil
 }
 
-func cleanupServices(ctx context.Context, client *ClusterClient, a provision.App, process string, versionNumber int) error {
+func cleanupServices(ctx context.Context, client *ClusterClient, a *appTypes.App, process string, versionNumber int) error {
 	svcs, err := allServicesForAppProcess(ctx, client, a, process)
 	if err != nil {
 		return err
@@ -867,7 +868,7 @@ var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
 
 type execOpts struct {
 	client       *ClusterClient
-	app          provision.App
+	app          *appTypes.App
 	image        string
 	unit         string
 	cmds         []string
@@ -897,7 +898,7 @@ func execCommand(ctx context.Context, opts execOpts) error {
 		return errors.WithStack(err)
 	}
 	l := labelSetFromMeta(&chosenPod.ObjectMeta)
-	if l.AppName() != opts.app.GetName() {
+	if l.AppName() != opts.app.Name {
 		return errors.Errorf("pod %q do not belong to app %q", chosenPod.Name, l.AppName())
 	}
 	containerName := chosenPod.Spec.Containers[0].Name
@@ -951,7 +952,7 @@ type runSinglePodArgs struct {
 	name         string
 	image        string
 	requirements apiv1.ResourceRequirements
-	app          provision.App
+	app          *appTypes.App
 }
 
 func runPod(ctx context.Context, args runSinglePodArgs) error {

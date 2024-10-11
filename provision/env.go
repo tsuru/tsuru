@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/tsuru/config"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
@@ -22,10 +23,48 @@ func WebProcessDefaultPort() string {
 	return fmt.Sprint(port)
 }
 
-func EnvsForApp(a App, process string, version appTypes.AppVersion) []bindTypes.EnvVar {
+// Envs returns a map representing the apps environment variables.
+func EnvsForApp(app *appTypes.App) map[string]bindTypes.EnvVar {
+	mergedEnvs := make(map[string]bindTypes.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
+	toInterpolate := make(map[string]string)
+	var toInterpolateKeys []string
+	for _, e := range app.Env {
+		mergedEnvs[e.Name] = e
+		if e.Alias != "" {
+			toInterpolate[e.Name] = e.Alias
+			toInterpolateKeys = append(toInterpolateKeys, e.Name)
+		}
+	}
+	for _, e := range app.ServiceEnvs {
+		envVar := e.EnvVar
+		envVar.ManagedBy = fmt.Sprintf("%s/%s", e.ServiceName, e.InstanceName)
+		mergedEnvs[e.Name] = envVar
+	}
+	sort.Strings(toInterpolateKeys)
+	for _, envName := range toInterpolateKeys {
+		tsuruEnvs.Interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
+	}
+	mergedEnvs[tsuruEnvs.TsuruServicesEnvVar] = tsuruEnvs.ServiceEnvsFromEnvVars(app.ServiceEnvs)
+
+	mergedEnvs["TSURU_APPNAME"] = bindTypes.EnvVar{
+		Name:      "TSURU_APPNAME",
+		Value:     app.Name,
+		ManagedBy: "tsuru",
+	}
+
+	mergedEnvs["TSURU_APPDIR"] = bindTypes.EnvVar{
+		Name:      "TSURU_APPDIR",
+		Value:     appTypes.DefaultAppDir,
+		ManagedBy: "tsuru",
+	}
+
+	return mergedEnvs
+}
+
+func EnvsForAppAndVersion(a *appTypes.App, process string, version appTypes.AppVersion) []bindTypes.EnvVar {
 	var envs []bindTypes.EnvVar
 
-	for _, envData := range a.Envs() {
+	for _, envData := range EnvsForApp(a) {
 		envs = append(envs, envData)
 	}
 	sort.Slice(envs, func(i int, j int) bool {

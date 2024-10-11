@@ -40,7 +40,7 @@ func init() {
 	builder.Register("kubernetes", &kubernetesBuilder{})
 }
 
-func (b *kubernetesBuilder) Build(ctx context.Context, app provision.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
+func (b *kubernetesBuilder) Build(ctx context.Context, app *apptypes.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
 		return nil, err
 	}
@@ -253,13 +253,13 @@ func (b *kubernetesBuilder) buildPlatformImage(ctx context.Context, bc buildpb.B
 	return images, nil
 }
 
-func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provision.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
+func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptypes.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
 	w := opts.Output
 	if w == nil {
 		w = io.Discard
 	}
 
-	c, err := servicemanager.Cluster.FindByPool(ctx, "kubernetes", app.GetPool())
+	c, err := servicemanager.Cluster.FindByPool(ctx, "kubernetes", app.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		return nil, err
 	}
 
-	bs, conn, err := cc.BuildServiceClient(app.GetPool())
+	bs, conn, err := cc.BuildServiceClient(app.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 	}
 
 	envs := make(map[string]string)
-	for k, v := range app.Envs() {
+	for k, v := range provision.EnvsForApp(app) {
 		envs[k] = v.Value
 	}
 
@@ -326,8 +326,8 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 	req := &buildpb.BuildRequest{
 		Kind: kindToBuildKind(opts),
 		App: &buildpb.TsuruApp{
-			Name:    app.GetName(),
-			Team:    app.GetTeamOwner(),
+			Name:    app.Name,
+			Team:    app.TeamOwner,
 			EnvVars: envs,
 		},
 		SourceImage:       baseImage,

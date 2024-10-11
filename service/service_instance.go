@@ -15,11 +15,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -228,7 +228,7 @@ func (si *ServiceInstance) updateData(ctx context.Context, update mongoBSON.M) e
 }
 
 // BindApp makes the bind between the service instance and an app.
-func (si *ServiceInstance) BindApp(ctx context.Context, app bind.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
+func (si *ServiceInstance) BindApp(ctx context.Context, app *appTypes.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
 	args := bindAppPipelineArgs{
 		serviceInstance: si,
 		app:             app,
@@ -297,7 +297,7 @@ func (si *ServiceInstance) UnbindJob(ctx context.Context, unbindArgs UnbindJobAr
 }
 
 type UnbindAppArgs struct {
-	App         bind.App
+	App         *appTypes.App
 	Restart     bool
 	ForceRemove bool
 	Event       *event.Event
@@ -306,7 +306,7 @@ type UnbindAppArgs struct {
 
 // UnbindApp makes the unbind between the service instance and an app.
 func (si *ServiceInstance) UnbindApp(ctx context.Context, unbindArgs UnbindAppArgs) error {
-	if si.FindApp(unbindArgs.App.GetName()) == -1 {
+	if si.FindApp(unbindArgs.App.Name) == -1 {
 		return ErrAppNotBound
 	}
 	args := bindAppPipelineArgs{

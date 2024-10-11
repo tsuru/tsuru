@@ -23,7 +23,6 @@ import (
 
 	fakekedaclientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
@@ -65,7 +64,7 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	AppNamespace(context.Context, appTypes.AppInterface) (string, error)
+	AppNamespace(context.Context, *appTypes.App) (string, error)
 	PoolNamespace(string) string
 	Namespace() string
 	GetCluster() *provTypes.Cluster
@@ -145,16 +144,16 @@ type StreamResult struct {
 	Urls   []url.URL
 }
 
-func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
+func (s *KubeMock) DefaultReactions(c *check.C) (*appTypes.App, func(), func()) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
-	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		return &app.App{
+	rebuild.Initialize(func(appName string) (*appTypes.App, error) {
+		return &appTypes.App{
 			Name:    appName,
 			Pool:    "test-default",
-			Routers: a.GetRouters(),
+			Routers: a.Routers,
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
@@ -176,7 +175,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 		}
 }
 
-func (s *KubeMock) NoNodeReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
+func (s *KubeMock) NoNodeReactions(c *check.C) (*appTypes.App, func(), func()) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -368,11 +367,11 @@ func (s *KubeMock) MockfakeNodes(urls ...string) {
 
 }
 
-func (s *KubeMock) AppReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
+func (s *KubeMock) AppReaction(a *appTypes.App, c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		if !s.IgnoreAppName {
 			app := action.(ktesting.CreateAction).GetObject().(*tsuruv1.App)
-			c.Assert(app.GetName(), check.Equals, a.GetName())
+			c.Assert(app.GetName(), check.Equals, a.Name)
 		}
 		return false, nil, nil
 	}
