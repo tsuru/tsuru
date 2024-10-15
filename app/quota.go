@@ -7,10 +7,11 @@ package app
 import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	quotaTypes "github.com/tsuru/tsuru/types/quota"
 )
 
-func QuotaService() (quotaTypes.QuotaService, error) {
+func QuotaService() (quotaTypes.QuotaService[*appTypes.App], error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()

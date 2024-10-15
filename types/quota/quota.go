@@ -31,11 +31,11 @@ type QuotaItemInUse interface {
 	GetQuotaInUse(ctx context.Context) (int, error)
 }
 
-type QuotaService interface {
-	Inc(ctx context.Context, item QuotaItem, delta int) error
-	Set(ctx context.Context, item QuotaItem, quantity int) error
-	SetLimit(ctx context.Context, item QuotaItem, limit int) error
-	Get(ctx context.Context, item QuotaItem) (*Quota, error)
+type QuotaService[T any] interface {
+	Inc(ctx context.Context, item T, delta int) error
+	Set(ctx context.Context, item T, quantity int) error
+	SetLimit(ctx context.Context, item T, limit int) error
+	Get(ctx context.Context, item T) (*Quota, error)
 }
 
 type QuotaStorage interface {

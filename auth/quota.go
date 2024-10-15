@@ -7,6 +7,7 @@ package auth
 import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/storage"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	quotaTypes "github.com/tsuru/tsuru/types/quota"
 )
 
@@ -21,7 +22,7 @@ func UserQuotaService() (quotaTypes.QuotaService, error) {
 	return &quota.QuotaService{Storage: dbDriver.UserQuotaStorage}, nil
 }
 
-func TeamQuotaService() (quotaTypes.QuotaService, error) {
+func TeamQuotaService() (quotaTypes.QuotaService[*authTypes.Team], error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
