@@ -2010,7 +2010,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 }
 
 // title: list app certificates
-// path: /apps/{app}/certificate
+// path: /1.24/apps/{app}/certificate
 // method: GET
 // consume: application/x-www-form-urlencoded
 // responses:
@@ -2036,6 +2036,44 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	return json.NewEncoder(w).Encode(&result)
+}
+
+// title: list app certificates
+// path: /apps/{app}/certificate
+// method: GET
+// consume: application/x-www-form-urlencoded
+// responses:
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
+func listCertificatesLegacy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(ctx, t, permission.PermAppReadCertificate,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	w.Header().Set("Content-Type", "application/json")
+	result, err := a.GetCertificates(ctx)
+	if err != nil {
+		return err
+	}
+
+	legacyResult := map[string]map[string]string{}
+	for router, certs := range result.Routers {
+		legacyResult[router] = map[string]string{}
+
+		for cname, cert := range certs.CNames {
+			legacyResult[router][cname] = cert.Certificate
+		}
+	}
+	return json.NewEncoder(w).Encode(&legacyResult)
 }
 
 // title: set app certificate issuer

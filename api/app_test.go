@@ -6532,6 +6532,65 @@ func (s *S) TestListCertificates(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	certs := map[string]map[string]string{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
+	c.Assert(err, check.IsNil)
+	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
+		"fake-tls": {
+			"app.io": string(testCert),
+		},
+	})
+}
+
+func (s *S) TestListCertificatesLegacy(c *check.C) {
+	ctx := context.Background()
+	a := app.App{
+		Name:        "myapp",
+		TeamOwner:   s.team.Name,
+		Router:      "fake-tls",
+		CName:       []string{"app.io"},
+		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/1.2/apps/myapp/certificate", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	certs := map[string]map[string]string{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
+	c.Assert(err, check.IsNil)
+	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
+		"fake-tls": {
+			"app.io": string(testCert),
+		},
+	})
+
+}
+
+func (s *S) TestListCertificatesNew(c *check.C) {
+	ctx := context.Background()
+	a := app.App{
+		Name:        "myapp",
+		TeamOwner:   s.team.Name,
+		Router:      "fake-tls",
+		CName:       []string{"app.io"},
+		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/1.24/apps/myapp/certificate", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var certs appTypes.CertificateSetInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
 	c.Assert(err, check.IsNil)
