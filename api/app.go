@@ -2064,7 +2064,7 @@ func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertIssuerSet,
+	allowed := permission.Check(ctx, t, permission.PermCertissuerSet,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -2073,7 +2073,7 @@ func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateCertIssuerSet,
+		Kind:       permission.PermCertissuerSet,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
@@ -2121,7 +2121,7 @@ func unsetCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 
-	allowed := permission.Check(ctx, t, permission.PermAppUpdateCertIssuerUnset,
+	allowed := permission.Check(ctx, t, permission.PermCertissuerUnset,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -2130,7 +2130,7 @@ func unsetCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error
 
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateCertIssuerUnset,
+		Kind:       permission.PermCertissuerUnset,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
