@@ -301,7 +301,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.4", http.MethodPut, "/apps/{app}/deploy/rollback/update", AuthorizationRequiredHandler(deployRollbackUpdate))
 	m.Add("1.3", http.MethodPost, "/apps/{app}/deploy/rebuild", AuthorizationRequiredHandler(deployRebuild))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/routes", AuthorizationRequiredHandler(appRebuildRoutes))
-	m.Add("1.2", http.MethodGet, "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificates))
+
+	m.Add("1.2", http.MethodGet, "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificatesLegacy))
+	m.Add("1.24", http.MethodGet, "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificates))
+
 	m.Add("1.2", http.MethodPut, "/apps/{app}/certificate", AuthorizationRequiredHandler(setCertificate))
 	m.Add("1.2", http.MethodDelete, "/apps/{app}/certificate", AuthorizationRequiredHandler(unsetCertificate))
 	m.Add("1.24", http.MethodPut, "/apps/{app}/certissuer", AuthorizationRequiredHandler(setCertIssuer))
