@@ -25,6 +25,7 @@ type RebuildApp interface {
 	GetCertIssuers() map[string]string
 	GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error)
 	RoutableAddresses(context.Context) ([]appTypes.RoutableAddresses, error)
+	ListTags() []string
 }
 
 type RebuildRoutesOpts struct {
@@ -73,6 +74,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		Opts:        map[string]interface{}{},
 		Prefixes:    []router.BackendPrefix{},
 		Team:        o.App.GetTeamOwner(),
+		Tags:        o.App.ListTags(),
 		CNames:      o.App.GetCname(),
 		CertIssuers: o.App.GetCertIssuers(),
 		Healthcheck: hcData,

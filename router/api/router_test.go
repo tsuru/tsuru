@@ -144,6 +144,7 @@ func (s *S) TestEnsureBackend(c *check.C) {
 		Opts: map[string]interface{}{
 			"myinfo.io/test": "test",
 		},
+		Tags: []string{"tag1", "tag2"},
 		Prefixes: []router.BackendPrefix{
 			{
 				Prefix: "",
@@ -164,6 +165,7 @@ func (s *S) TestEnsureBackend(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["myapp"].tags, check.DeepEquals, []string{"tag1", "tag2"})
 	c.Assert(s.apiRouter.backends["myapp"].opts, check.DeepEquals, map[string]interface{}{
 		"myinfo.io/test":         "test",
 		"tsuru.io/app-pool":      "mypool",
@@ -307,6 +309,7 @@ type backend struct {
 	addr        string
 	addresses   []string
 	cnames      []string
+	tags        []string
 	swapWith    string
 	cnameOnly   bool
 	healthcheck routerTypes.HealthcheckData
@@ -377,6 +380,7 @@ func (f *fakeRouterAPI) ensureBackendV2(w http.ResponseWriter, r *http.Request) 
 
 	f.backends[name] = &backend{
 		opts:        o.Opts,
+		tags:        o.Tags,
 		prefixAddrs: map[string]routesReq{},
 		addr:        name + ".apirouter.com",
 	}
