@@ -46,8 +46,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.unbind-volume",
 	"app.update.certificate.set",
 	"app.update.certificate.unset",
-	"app.update.certissuer.set",
-	"app.update.certissuer.unset",
 	"app.update.deploy.rollback",
 	"app.update.router.add",
 	"app.update.router.update",
@@ -76,6 +74,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.admin.routes",
 	"app.admin.quota",
 	"app.build",
+
+	"certissuer.set",
+	"certissuer.unset",
 ).addWithCtx(
 	"team", []permTypes.ContextType{permTypes.CtxTeam},
 ).addWithCtx(
