@@ -52,7 +52,7 @@ func ProcessCmdForVersion(processName string, cmdData ContainerCmdsData) ([]stri
 	return processCmd, processName, nil
 }
 
-func LeanContainerCmds(processName string, cmdData ContainerCmdsData, app provision.App) ([]string, string, error) {
+func LeanContainerCmds(processName string, cmdData ContainerCmdsData, app *appTypes.App) ([]string, string, error) {
 	processCmd, processName, err := ProcessCmdForVersion(processName, cmdData)
 	if err != nil {
 		return nil, "", err

@@ -6,74 +6,52 @@ package app
 
 import (
 	"context"
+	"errors"
 
-	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	"github.com/tsuru/tsuru/types/app/image"
+	"github.com/tsuru/tsuru/types/router"
 )
-
-type MockApp struct {
-	Name, TeamOwner, Platform, PlatformVersion, Pool string
-	Deploys                                          uint
-	UpdatePlatform                                   bool
-	TeamsName                                        []string
-	Registry                                         imgTypes.ImageRegistry
-}
-
-func (a *MockApp) GetName() string {
-	return a.Name
-}
-
-func (a *MockApp) GetPool() string {
-	return a.Pool
-}
-
-func (a *MockApp) GetTeamsName() []string {
-	return a.TeamsName
-}
-
-func (a *MockApp) GetTeamOwner() string {
-	return a.TeamOwner
-}
-
-func (a *MockApp) GetPlatform() string {
-	return a.Platform
-}
-
-func (a *MockApp) GetPlatformVersion() string {
-	return a.PlatformVersion
-}
-
-func (a *MockApp) GetDeploys() uint {
-	return a.Deploys
-}
-
-func (a *MockApp) GetUpdatePlatform() bool {
-	return a.UpdatePlatform
-}
-
-func (a *MockApp) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, error) {
-	return a.Registry, nil
-}
 
 var _ AppService = &MockAppService{}
 
 type MockAppService struct {
-	Apps   []AppInterface
-	OnList func(filter *Filter) ([]AppInterface, error)
+	Apps   []*App
+	OnList func(filter *Filter) ([]*App, error)
 }
 
-func (m *MockAppService) GetByName(ctx context.Context, name string) (AppInterface, error) {
+func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
 	for _, app := range m.Apps {
-		if app.GetName() == name {
+		if app.Name == name {
 			return app, nil
 		}
 	}
 	return nil, ErrAppNotFound
 }
 
-func (m *MockAppService) List(ctx context.Context, f *Filter) ([]AppInterface, error) {
+func (m *MockAppService) List(ctx context.Context, f *Filter) ([]*App, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 
 	return m.OnList(f)
+}
+
+func (m *MockAppService) GetHealthcheckData(ctx context.Context, app *App) (router.HealthcheckData, error) {
+	return router.HealthcheckData{}, errors.New("not implemented")
+}
+
+func (m *MockAppService) GetAddresses(ctx context.Context, app *App) ([]string, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *MockAppService) GetInternalBindableAddresses(ctx context.Context, app *App) ([]string, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
+	return "", errors.New("not implemented")
 }

@@ -43,7 +43,7 @@ type BuildOpts struct {
 
 // Builder is the basic interface of this package.
 type Builder interface {
-	Build(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
+	Build(ctx context.Context, app *appTypes.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
 	BuildJob(ctx context.Context, job *jobTypes.Job, opts BuildOpts) (string, error)
 }
 

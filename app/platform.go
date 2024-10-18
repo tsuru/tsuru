@@ -145,7 +145,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 			return multiErr.ToError()
 		}
 
-		var apps []App
+		var apps []*appTypes.App
 
 		appsCollection, err := storagev2.AppsCollection()
 		if err != nil {
@@ -162,7 +162,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		}
 
 		for _, app := range apps {
-			app.SetUpdatePlatform(ctx, true)
+			SetUpdatePlatform(ctx, app, true)
 		}
 	}
 
@@ -241,7 +241,7 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 	if err != nil {
 		return err
 	}
-	var apps []App
+	var apps []*appTypes.App
 	cursor, err := appsCollection.Find(ctx, mongoBSON.M{"framework": opts.Name})
 	if err != nil {
 		return err
@@ -252,7 +252,7 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 		return err
 	}
 	for _, app := range apps {
-		app.SetUpdatePlatform(ctx, true)
+		SetUpdatePlatform(ctx, app, true)
 	}
 	return nil
 }

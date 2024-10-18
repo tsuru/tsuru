@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/ugorji/go/codec"
 	apiv1 "k8s.io/api/core/v1"
@@ -35,8 +36,8 @@ func (opts *volumeOptions) isPersistent() bool {
 	return !allowedNonPersistentVolumes.Includes(opts.Plugin)
 }
 
-func createVolumesForApp(ctx context.Context, client *ClusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
-	volumes, err := servicemanager.Volume.ListByApp(ctx, app.GetName())
+func createVolumesForApp(ctx context.Context, client *ClusterClient, app *appTypes.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
+	volumes, err := servicemanager.Volume.ListByApp(ctx, app.Name)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -53,7 +54,7 @@ func createVolumesForApp(ctx context.Context, client *ClusterClient, app provisi
 				return nil, nil, err
 			}
 		}
-		volume, mounts, err := bindsForVolume(ctx, &volumes[i], opts, app.GetName())
+		volume, mounts, err := bindsForVolume(ctx, &volumes[i], opts, app.Name)
 		if err != nil {
 			return nil, nil, err
 		}

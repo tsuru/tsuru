@@ -30,7 +30,7 @@ var (
 	TeamToken                 auth.TeamTokenService
 	Job                       job.JobService
 	Webhook                   event.WebhookService
-	AppQuota                  quota.QuotaService
+	AppQuota                  quota.QuotaService[*app.App]
 	UserQuota                 quota.QuotaService
 	TeamQuota                 quota.QuotaService
 	Cluster                   provision.ClusterService
