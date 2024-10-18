@@ -6567,7 +6567,7 @@ func (s *S) TestSetCertIssuer(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.certissuer.set",
+		Kind:   "certissuer.set",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": a.Name},
 			{"name": "cname", "value": "app.io"},
@@ -6608,7 +6608,7 @@ func (s *S) TestUnsetCertIssuer(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.certissuer.unset",
+		Kind:   "certissuer.unset",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": a.Name},
 			{"name": "cname", "value": "app.io"},
