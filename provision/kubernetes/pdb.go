@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	policyv1 "k8s.io/api/policy/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func ensurePDB(ctx context.Context, client *ClusterClient, app provision.App, process string) error {
+func ensurePDB(ctx context.Context, client *ClusterClient, app *appTypes.App, process string) error {
 	pdb, err := newPDB(ctx, client, app, process)
 	if err != nil {
 		return err
@@ -40,7 +41,7 @@ func ensurePDB(ctx context.Context, client *ClusterClient, app provision.App, pr
 	return err
 }
 
-func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App) ([]policyv1.PodDisruptionBudget, error) {
+func allPDBsForApp(ctx context.Context, client *ClusterClient, app *appTypes.App) ([]policyv1.PodDisruptionBudget, error) {
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,7 @@ func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App
 	return pdbList.Items, nil
 }
 
-func removeAllPDBs(ctx context.Context, client *ClusterClient, app provision.App) error {
+func removeAllPDBs(ctx context.Context, client *ClusterClient, app *appTypes.App) error {
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
 		return err
@@ -76,13 +77,13 @@ func removeAllPDBs(ctx context.Context, client *ClusterClient, app provision.App
 	return nil
 }
 
-func newPDB(ctx context.Context, client *ClusterClient, app provision.App, process string) (*policyv1.PodDisruptionBudget, error) {
-	if client.disablePDB(app.GetPool()) {
+func newPDB(ctx context.Context, client *ClusterClient, app *appTypes.App, process string) (*policyv1.PodDisruptionBudget, error) {
+	if client.disablePDB(app.Pool) {
 		return nil, nil
 	}
 
 	maxUnavailable := "10%"
-	if value, ok := app.GetMetadata(process).Annotation("app.tsuru.io/k8s-pdb-max-unavailable"); ok {
+	if value, ok := provision.GetAppMetadata(app, process).Annotation("app.tsuru.io/k8s-pdb-max-unavailable"); ok {
 		maxUnavailable = value
 	}
 	maxUnavailableByProcess := intstr.FromString(maxUnavailable)
@@ -107,7 +108,7 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 	}, nil
 }
 
-func pdbLabels(app provision.App, process string) *provision.LabelSet {
+func pdbLabels(app *appTypes.App, process string) *provision.LabelSet {
 	return provision.PDBLabels(provision.PDBLabelsOpts{
 		App:     app,
 		Process: process,

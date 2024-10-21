@@ -79,7 +79,7 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 		}
 		apps := make([]string, len(appsList))
 		for i, a := range appsList {
-			apps[i] = a.GetName()
+			apps[i] = a.Name
 		}
 		rawFilter = mongoBSON.M{"target.value": mongoBSON.M{"$in": apps}}
 	}
@@ -167,7 +167,7 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 }
 
 type DeployOptions struct {
-	App              *App
+	App              *appTypes.App
 	Commit           string
 	BuildTag         string
 	ArchiveURL       string
@@ -242,7 +242,7 @@ func Build(ctx context.Context, opts DeployOptions) (string, error) {
 	logWriter.Async()
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
-	if opts.App.GetPlatform() == "" {
+	if opts.App.Platform == "" {
 		return "", errors.Errorf("can't build app without platform")
 	}
 	version, err := builderDeploy(ctx, &opts, opts.Event)
@@ -262,7 +262,7 @@ type errorWithLog struct {
 	logs   []appTypes.Applog
 }
 
-func newErrorWithLog(ctx context.Context, base error, app *App, action string) *errorWithLog {
+func newErrorWithLog(ctx context.Context, base error, app *appTypes.App, action string) *errorWithLog {
 	logErr := &errorWithLog{
 		err:    base,
 		action: action,
@@ -273,7 +273,7 @@ func newErrorWithLog(ctx context.Context, base error, app *App, action string) *
 			return logErr
 		}
 
-		logErr.logs, _ = app.LastLogs(ctx, servicemanager.LogService, appTypes.ListLogArgs{
+		logErr.logs, _ = LastLogs(ctx, app, servicemanager.LogService, appTypes.ListLogArgs{
 			Source:       "tsuru",
 			InvertSource: true,
 			Units:        startupErr.CrashedUnits,
@@ -311,7 +311,7 @@ func validateVersions(ctx context.Context, opts DeployOptions) error {
 	if opts.NewVersion || opts.OverrideVersions {
 		return nil
 	}
-	multi, err := opts.App.hasMultipleVersions(ctx)
+	multi, err := hasMultipleVersions(ctx, opts.App)
 	if err != nil {
 		return err
 	}
@@ -350,15 +350,15 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	}
 	if opts.Kind == provisionTypes.DeployImage || opts.Kind == provisionTypes.DeployRollback {
 		if !opts.App.UpdatePlatform {
-			opts.App.SetUpdatePlatform(ctx, true)
+			SetUpdatePlatform(ctx, opts.App, true)
 		}
 	} else if opts.App.UpdatePlatform {
-		opts.App.SetUpdatePlatform(ctx, false)
+		SetUpdatePlatform(ctx, opts.App, false)
 	}
 	return imageID, nil
 }
 
-func RollbackUpdate(ctx context.Context, app *App, imageID, reason string, disableRollback bool) error {
+func RollbackUpdate(ctx context.Context, app *appTypes.App, imageID, reason string, disableRollback bool) error {
 	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, app, imageID)
 	if err != nil {
 		return err
@@ -367,7 +367,7 @@ func RollbackUpdate(ctx context.Context, app *App, imageID, reason string, disab
 }
 
 func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Event) (string, error) {
-	prov, err := opts.App.getProvisioner(ctx)
+	prov, err := getProvisioner(ctx, opts.App)
 	if err != nil {
 		return "", err
 	}
@@ -375,7 +375,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		opts.GetKind()
 	}
 
-	if opts.App.GetPlatform() == "" && opts.Kind != provisionTypes.DeployImage && opts.Kind != provisionTypes.DeployRollback && opts.Kind != provisionTypes.DeployDockerfile {
+	if opts.App.Platform == "" && opts.Kind != provisionTypes.DeployImage && opts.Kind != provisionTypes.DeployRollback && opts.Kind != provisionTypes.DeployDockerfile {
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image, dockerfile or rollback")
 	}
 
@@ -386,7 +386,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 
 	var version appTypes.AppVersion
 	if opts.Kind == provisionTypes.DeployRollback {
-		version, err = servicemanager.AppVersion.VersionByImageOrVersion(ctx, opts.App, opts.Image)
+		version, err = servicemanager.AppVersion.VersionByImageOrVersion(ctx, (*appTypes.App)(opts.App), opts.Image)
 		if err != nil {
 			return "", err
 		}
@@ -425,7 +425,7 @@ func builderDeploy(ctx context.Context, opts *DeployOptions, evt *event.Event) (
 		Dockerfile:  opts.Dockerfile,
 	}
 
-	b, err := opts.App.getBuilder(ctx)
+	b, err := getBuilder(ctx, opts.App)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +450,7 @@ func ValidateOrigin(origin string) bool {
 	return false
 }
 
-func incrementDeploy(ctx context.Context, app *App) error {
+func incrementDeploy(ctx context.Context, app *appTypes.App) error {
 	collection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err

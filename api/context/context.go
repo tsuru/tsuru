@@ -12,9 +12,10 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type ctxKey int
@@ -55,17 +56,17 @@ func GetBody(r *http.Request) ([]byte, error) {
 	return data, nil
 }
 
-func GetApp(r *http.Request) *app.App {
+func GetApp(r *http.Request) *appTypes.App {
 	if r == nil {
 		return nil
 	}
-	if v, ok := r.Context().Value(appContextKey).(*app.App); ok {
+	if v, ok := r.Context().Value(appContextKey).(*appTypes.App); ok {
 		return v
 	}
 	return nil
 }
 
-func SetApp(r *http.Request, a *app.App) {
+func SetApp(r *http.Request, a *appTypes.App) {
 	newReq := r.WithContext(context.WithValue(r.Context(), appContextKey, a))
 	*r = *newReq
 }

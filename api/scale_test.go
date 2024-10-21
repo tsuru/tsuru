@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
@@ -26,7 +27,7 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 
-	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
@@ -72,7 +73,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("autoscaleProv")
-	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permTypes.Permission{
@@ -116,7 +117,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("autoscaleProv")
-	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AutoScale(ctx, provTypes.AutoScaleSpec{

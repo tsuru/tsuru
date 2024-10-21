@@ -48,13 +48,13 @@ func (s *S) TestProvisionAddUnitsName(c *check.C) {
 }
 
 func (s *S) TestInsertAppForward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey"}
+	app := &appTypes.App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := r.(*App)
+	a, ok := r.(*appTypes.App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(a.Platform, check.Equals, app.Platform)
@@ -66,7 +66,7 @@ func (s *S) TestInsertAppForward(c *check.C) {
 func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	config.Set("quota:units-per-app", 2)
 	defer config.Unset("quota:units-per-app")
-	app := &App{Name: "come", Platform: "beatles"}
+	app := &appTypes.App{Name: "come", Platform: "beatles"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
@@ -172,7 +172,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	envNames := []string{
 		"TSURU_APPNAME",
 	}
-	app := App{
+	app := appTypes.App{
 		Name:      "moon",
 		Platform:  "opeth",
 		Env:       make(map[string]bindTypes.EnvVar),

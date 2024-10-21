@@ -10,17 +10,13 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 )
 
-type QuotaService struct {
+type QuotaService[I quota.QuotaItem] struct {
 	Storage quota.QuotaStorage
 }
 
 // Inc implements Inc method from QuotaService interface
-func (s *QuotaService) Inc(ctx context.Context, item quota.QuotaItem, quantity int) error {
+func (s *QuotaService[I]) Inc(ctx context.Context, item I, quantity int) error {
 	quota, err := s.Storage.Get(ctx, item.GetName())
-	if err != nil {
-		return err
-	}
-	err = s.fixInUse(ctx, item, quota)
 	if err != nil {
 		return err
 	}
@@ -31,7 +27,7 @@ func (s *QuotaService) Inc(ctx context.Context, item quota.QuotaItem, quantity i
 	return s.Storage.Set(ctx, item.GetName(), quota.InUse+quantity)
 }
 
-func (s *QuotaService) checkLimit(q *quota.Quota, quantity int) error {
+func (s *QuotaService[I]) checkLimit(q *quota.Quota, quantity int) error {
 	if !q.IsUnlimited() && q.InUse+quantity > q.Limit {
 		return &quota.QuotaExceededError{
 			Available: uint(q.Limit - q.InUse),
@@ -49,12 +45,8 @@ func (s *QuotaService) checkLimit(q *quota.Quota, quantity int) error {
 // limit may be smaller than 0, which means that the app should have an
 // unlimited number of units. SetLimit implements SetLimit method from
 // QuotaService interface
-func (s *QuotaService) SetLimit(ctx context.Context, item quota.QuotaItem, limit int) error {
+func (s *QuotaService[I]) SetLimit(ctx context.Context, item I, limit int) error {
 	q, err := s.Storage.Get(ctx, item.GetName())
-	if err != nil {
-		return err
-	}
-	err = s.fixInUse(ctx, item, q)
 	if err != nil {
 		return err
 	}
@@ -69,7 +61,7 @@ func (s *QuotaService) SetLimit(ctx context.Context, item quota.QuotaItem, limit
 // Set redefines the inuse value for the named resource. This new value must be
 // smaller than or equal to the current limit. It also must be a non negative
 // number.
-func (s *QuotaService) Set(ctx context.Context, item quota.QuotaItem, inUse int) error {
+func (s *QuotaService[I]) Set(ctx context.Context, item I, inUse int) error {
 	q, err := s.Storage.Get(ctx, item.GetName())
 	if err != nil {
 		return err
@@ -86,22 +78,6 @@ func (s *QuotaService) Set(ctx context.Context, item quota.QuotaItem, inUse int)
 	return s.Storage.Set(ctx, item.GetName(), inUse)
 }
 
-func (s *QuotaService) Get(ctx context.Context, item quota.QuotaItem) (*quota.Quota, error) {
-	q, err := s.Storage.Get(ctx, item.GetName())
-	if err != nil {
-		return nil, err
-	}
-	err = s.fixInUse(ctx, item, q)
-	if err != nil {
-		return nil, err
-	}
-	return q, nil
-}
-
-func (s *QuotaService) fixInUse(ctx context.Context, item quota.QuotaItem, q *quota.Quota) error {
-	var err error
-	if inuse, ok := item.(quota.QuotaItemInUse); ok {
-		q.InUse, err = inuse.GetQuotaInUse(ctx)
-	}
-	return err
+func (s *QuotaService[I]) Get(ctx context.Context, item I) (*quota.Quota, error) {
+	return s.Storage.Get(ctx, item.GetName())
 }

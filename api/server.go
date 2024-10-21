@@ -537,7 +537,7 @@ func setupDatabase() error {
 	return nil
 }
 
-func appFinder(appName string) (rebuild.RebuildApp, error) {
+func appFinder(appName string) (*appTypes.App, error) {
 	a, err := app.GetByName(context.TODO(), appName)
 	if err == appTypes.ErrAppNotFound {
 		return nil, nil

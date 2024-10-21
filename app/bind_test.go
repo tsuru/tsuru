@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -19,10 +18,6 @@ import (
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
-
-func (s *S) TestAppIsABinderApp(c *check.C) {
-	var _ bind.App = &App{}
-}
 
 func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

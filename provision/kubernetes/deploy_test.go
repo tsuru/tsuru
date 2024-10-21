@@ -1287,7 +1287,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 	protocolType := strings.ToUpper(hc.Scheme)
 	expectedBackendConfig := backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Name:      *appTypes.AppProcessName(a, "web", 0, ""),
 			Namespace: "default",
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
@@ -1370,7 +1370,7 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 	protocolType := "HTTP"
 	expectedBackendConfig := backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Name:      *appTypes.AppProcessName(a, "web", 0, ""),
 			Namespace: "default",
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
@@ -1453,7 +1453,7 @@ func (s *S) TestEnsureBackendConfigWithMissingSlash(c *check.C) {
 	protocolType := "HTTP"
 	expectedBackendConfig := backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Name:      *appTypes.AppProcessName(a, "web", 0, ""),
 			Namespace: "default",
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
@@ -1516,7 +1516,7 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 	hcPath := "/"
 	expectedBackendConfig := backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Name:      *appTypes.AppProcessName(a, "web", 0, ""),
 			Namespace: "default",
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
@@ -1605,7 +1605,7 @@ func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
 	hcPath := "/"
 	expectedBackendConfig := backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Name:      *appTypes.AppProcessName(a, "web", 0, ""),
 			Namespace: "default",
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
@@ -3805,7 +3805,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 	tt := []struct {
 		name       string
-		app        provision.App
+		app        *appTypes.App
 		poolLabels map[string]string
 		customData map[string]string
 		assertion  func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C)

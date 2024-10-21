@@ -136,7 +136,7 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildHandler(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
 		c.Assert(opts.Tag, check.Equals, "mytag")
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
@@ -148,7 +148,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 		c.Assert(err, check.IsNil)
 		return version, nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		Router:    "fake",
@@ -197,7 +197,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App:            app,
@@ -208,7 +208,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 		c.Assert(err, check.IsNil)
 		return version, nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		Router:    "fake",
@@ -250,7 +250,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildWithoutTag(c *check.C) {
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)

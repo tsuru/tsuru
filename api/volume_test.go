@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -130,7 +131,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
 	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
@@ -231,7 +232,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
 	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
@@ -609,7 +610,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
@@ -678,7 +679,7 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 	}
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1/bind"
@@ -716,7 +717,7 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1/bind"
@@ -765,7 +766,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
@@ -829,7 +830,7 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
@@ -855,7 +856,7 @@ func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.Create(context.TODO(), &v1)

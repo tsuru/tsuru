@@ -11,11 +11,11 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -57,9 +57,9 @@ type ServiceClient interface {
 	Create(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
 	Update(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
 	Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
-	BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
+	BindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
 	BindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) (map[string]string, error)
-	UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
+	UnbindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, evt *event.Event, requestID string) error
 	UnbindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) error
 	Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error)
 	Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error)

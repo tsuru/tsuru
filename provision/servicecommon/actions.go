@@ -38,7 +38,7 @@ type ProcessSpec map[string]ProcessState
 
 type pipelineArgs struct {
 	manager          ServiceManager
-	app              provision.App
+	app              *appTypes.App
 	oldVersionNumber int
 	oldVersion       appTypes.AppVersion
 	newVersion       appTypes.AppVersion
@@ -54,14 +54,14 @@ type labelReplicas struct {
 }
 
 type ServiceManager interface {
-	RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error
-	CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
+	RemoveService(ctx context.Context, a *appTypes.App, processName string, versionNumber int) error
+	CurrentLabels(ctx context.Context, a *appTypes.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
 	DeployService(ctx context.Context, o DeployServiceOpts) error
-	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool) error
+	CleanupServices(ctx context.Context, a *appTypes.App, versionNumber int, preserveOldVersions bool) error
 }
 
 type DeployServiceOpts struct {
-	App              provision.App
+	App              *appTypes.App
 	ProcessName      string
 	Labels           *provision.LabelSet
 	Replicas         int
@@ -79,7 +79,7 @@ func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionN
 		if !appTypes.IsInvalidVersionError(err) {
 			return errors.WithStack(err)
 		}
-		log.Errorf("unable to find version %d for app %q: %v", oldVersionNumber, args.App.GetName(), err)
+		log.Errorf("unable to find version %d for app %q: %v", oldVersionNumber, args.App.Name, err)
 	}
 	newProcesses, err := args.Version.Processes()
 	if err != nil {
@@ -118,12 +118,12 @@ func rollbackAddedProcesses(ctx context.Context, args *pipelineArgs, processes m
 	for processName, oldLabels := range processes {
 		if oldLabels.labels == nil {
 			if err := args.manager.RemoveService(ctx, args.app, processName, args.newVersion.Version()); err != nil {
-				errors.Add(fmt.Errorf("error removing service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.newVersion.Version(), err))
+				errors.Add(fmt.Errorf("error removing service for %s[%s] [version %d]: %+v", args.app.Name, processName, args.newVersion.Version(), err))
 			}
 			continue
 		}
 		if args.oldVersion == nil {
-			errors.Add(fmt.Errorf("unable to rollback service for %s[%s] to version %d, version not found anymore", args.app.GetName(), processName, args.oldVersionNumber))
+			errors.Add(fmt.Errorf("unable to rollback service for %s[%s] to version %d, version not found anymore", args.app.Name, processName, args.oldVersionNumber))
 			continue
 		}
 		err := args.manager.DeployService(context.Background(), DeployServiceOpts{
@@ -136,7 +136,7 @@ func rollbackAddedProcesses(ctx context.Context, args *pipelineArgs, processes m
 		})
 
 		if err != nil {
-			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.oldVersionNumber, err))
+			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.Name, processName, args.oldVersionNumber, err))
 		}
 	}
 	return errors.ToError()
@@ -200,7 +200,7 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 		restartCount++
 		labels.SetRestarts(restartCount)
 	}
-	appMetadata := args.app.GetMetadata(processName)
+	appMetadata := provision.GetAppMetadata(args.app, processName)
 	for _, l := range appMetadata.Labels {
 		labels.RawLabels[l.Name] = l.Value
 	}
@@ -288,11 +288,11 @@ var removeOldServices = &action.Action{
 		args := ctx.Params[0].(*pipelineArgs)
 		err := removeOld(ctx.Context, args)
 		if err != nil {
-			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
+			log.Errorf("ignored error removing old services for app %s: %+v", args.app.Name, err)
 		}
 		err = args.manager.CleanupServices(ctx.Context, args.app, args.newVersion.Version(), args.preserveVersions)
 		if err != nil {
-			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
+			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.Name, err)
 		}
 		return nil, nil
 	},

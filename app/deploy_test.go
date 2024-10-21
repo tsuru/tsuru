@@ -139,7 +139,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
-func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+func newSuccessfulAppVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -153,7 +153,7 @@ func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion 
 	return version
 }
 
-func newUnsuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+func newUnsuccessfulAppVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})

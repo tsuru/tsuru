@@ -16,13 +16,14 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/tsurutest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/net/websocket"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAppShellWithAppName(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -64,7 +65,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 }
 
 func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -103,7 +104,7 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 }
 
 func (s *S) TestAppShellSpecifyUnit(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -150,7 +151,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 }
 
 func (s *S) TestAppShellIsolated(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -197,7 +198,7 @@ func (s *S) TestAppShellIsolated(c *check.C) {
 }
 
 func (s *S) TestAppShellUnauthorizedError(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
