@@ -48,13 +48,13 @@ func (s *S) TestProvisionAddUnitsName(c *check.C) {
 }
 
 func (s *S) TestInsertAppForward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey"}
+	app := &appTypes.App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := r.(*App)
+	a, ok := r.(*appTypes.App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(a.Platform, check.Equals, app.Platform)
@@ -66,7 +66,7 @@ func (s *S) TestInsertAppForward(c *check.C) {
 func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	config.Set("quota:units-per-app", 2)
 	defer config.Unset("quota:units-per-app")
-	app := &App{Name: "come", Platform: "beatles"}
+	app := &appTypes.App{Name: "come", Platform: "beatles"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
@@ -78,7 +78,7 @@ func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
 	expected := quota.Quota{Limit: 2}
-	a, ok := r.(*App)
+	a, ok := r.(*appTypes.App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(app.Quota, check.DeepEquals, expected)
 	c.Assert(a.Name, check.Equals, app.Name)
@@ -90,13 +90,13 @@ func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 }
 
 func (s *S) TestInsertAppForwardAppPointer(c *check.C) {
-	app := App{Name: "conviction", Platform: "evergrey"}
+	app := appTypes.App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{&app},
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := r.(*App)
+	a, ok := r.(*appTypes.App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(a.Platform, check.Equals, app.Platform)
@@ -105,7 +105,7 @@ func (s *S) TestInsertAppForwardAppPointer(c *check.C) {
 }
 
 func (s *S) TestInsertAppForwardInvalidValue(c *check.C) {
-	app := App{Name: "conviction", Platform: "evergrey"}
+	app := appTypes.App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
@@ -116,7 +116,7 @@ func (s *S) TestInsertAppForwardInvalidValue(c *check.C) {
 }
 
 func (s *S) TestInsertAppDuplication(c *check.C) {
-	app := App{Name: "come", Platform: "gotthard", TeamOwner: s.team.Name}
+	app := appTypes.App{Name: "come", Platform: "gotthard", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{
@@ -131,7 +131,7 @@ func (s *S) TestInsertAppBackward(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
+	app := appTypes.App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: &app,
@@ -151,17 +151,17 @@ func (s *S) TestInsertAppMinimumParams(c *check.C) {
 func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
+	app := appTypes.App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.FitsTypeOf, &app)
-	c.Assert(result.(*App).Name, check.Equals, app.Name)
+	c.Assert(result.(*appTypes.App).Name, check.Equals, app.Name)
 	gotApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	appEnv := gotApp.Envs()
+	appEnv := provision.EnvsForApp(gotApp)
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
 	c.Assert(appEnv["TSURU_APPDir"].Value, check.Not(check.Equals), "/home/application/current")
@@ -172,7 +172,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	envNames := []string{
 		"TSURU_APPNAME",
 	}
-	app := App{
+	app := appTypes.App{
 		Name:      "moon",
 		Platform:  "opeth",
 		Env:       make(map[string]bindTypes.EnvVar),
@@ -203,7 +203,7 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
@@ -213,7 +213,7 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := result.(*App)
+	a, ok := result.(*appTypes.App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(s.provisioner.Provisioned(&app), check.Equals, true)
@@ -223,7 +223,7 @@ func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
@@ -233,7 +233,7 @@ func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := result.(*App)
+	a, ok := result.(*appTypes.App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(s.provisioner.Provisioned(&app), check.Equals, true)
@@ -249,7 +249,7 @@ func (s *S) TestProvisionAppBackward(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "earthshine",
 		Platform: "django",
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
@@ -279,7 +279,7 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 	}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	app := App{
+	app := appTypes.App{
 		Name:     "clap",
 		Platform: "django",
 	}
@@ -300,7 +300,7 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 	}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	app := App{
+	app := appTypes.App{
 		Name:     "clap",
 		Platform: "django",
 	}
@@ -321,7 +321,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 	}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	app := App{
+	app := appTypes.App{
 		Name:     "clap",
 		Platform: "django",
 	}
@@ -340,7 +340,7 @@ func (s *S) TestReserveUserAppForwardInvalidApp(c *check.C) {
 }
 
 func (s *S) TestReserveUserAppForwardInvalidUser(c *check.C) {
-	app := App{
+	app := appTypes.App{
 		Name:     "clap",
 		Platform: "django",
 	}
@@ -361,7 +361,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 	}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	app := App{
+	app := appTypes.App{
 		Name:     "clap",
 		Platform: "django",
 	}
@@ -384,7 +384,7 @@ func (s *S) TestReserveUserAppBackward(c *check.C) {
 	}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	app := App{
+	app := appTypes.App{
 		Name:     "clap",
 		Platform: "django",
 	}
@@ -405,14 +405,14 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(a *appTypes.App, quantity int) error {
+		c.Assert(a.Name, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -427,14 +427,14 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(a *appTypes.App, quantity int) error {
+		c.Assert(a.Name, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -449,14 +449,14 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Quota{Limit: 1, InUse: 1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(a *appTypes.App, quantity int) error {
+		c.Assert(a.Name, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
@@ -479,7 +479,7 @@ func (s *S) TestReserveUnitsToAddForwardInvalidApp(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddAppNotFound(c *check.C) {
-	app := App{Name: "something"}
+	app := appTypes.App{Name: "something"}
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.NotNil)
@@ -487,7 +487,7 @@ func (s *S) TestReserveUnitsToAddAppNotFound(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *check.C) {
-	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&App{}, "what"}})
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&appTypes.App{}, "what"}})
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Second parameter must be int or uint.")
@@ -497,14 +497,14 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := App{
+	app := appTypes.App{
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Quota{Limit: 5, InUse: 4},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(a *appTypes.App, quantity int) error {
+		c.Assert(a.Name, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, -3)
 		return nil
 	}
@@ -518,7 +518,7 @@ func (s *S) TestReserveUnitsMinParams(c *check.C) {
 }
 
 func (s *S) TestProvisionAddUnits(c *check.C) {
-	app := App{
+	app := appTypes.App{
 		Name:      "visions",
 		Platform:  "django",
 		TeamOwner: s.team.Name,
@@ -535,7 +535,7 @@ func (s *S) TestProvisionAddUnits(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {
 	s.provisioner.PrepareFailure("AddUnits", errors.New("Failed to add units"))
-	app := App{
+	app := appTypes.App{
 		Name:      "visions",
 		Platform:  "django",
 		TeamOwner: s.team.Name,
@@ -571,26 +571,26 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	app := App{Name: "myapp", Platform: "django", Pool: "test", TeamOwner: s.team.Name}
+	app := appTypes.App{Name: "myapp", Platform: "django", Pool: "test", TeamOwner: s.team.Name}
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
+	newApp := appTypes.App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(ctx, 1, "web", "", nil)
+	err = AddUnits(ctx, &app, 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, io.Discard}}
 	_, err = updateAppProvisioner.Forward(fwctx)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := AppUnits(ctx, &app)
 	c.Assert(err, check.IsNil)
 	provApp, err := p1.GetAppFromUnitID(units[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(provApp.GetPlatform(), check.Equals, "python")
+	c.Assert(provApp.Platform, check.Equals, "python")
 	bwctx := action.BWContext{Params: []interface{}{&newApp, &app, io.Discard}}
 	updateAppProvisioner.Backward(bwctx)
-	units, err = app.Units(ctx)
+	units, err = AppUnits(ctx, &app)
 	c.Assert(err, check.IsNil)
 	provApp, err = p1.GetAppFromUnitID(units[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(provApp.GetPlatform(), check.Equals, "django")
+	c.Assert(provApp.Platform, check.Equals, "django")
 }

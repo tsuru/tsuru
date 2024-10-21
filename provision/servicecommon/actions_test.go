@@ -80,7 +80,7 @@ func (s *S) TearDownTest(c *check.C) {
 
 type managerCall struct {
 	action           string
-	app              provision.App
+	app              *appTypes.App
 	processName      string
 	version          appTypes.AppVersion
 	versionNumber    int
@@ -103,7 +103,7 @@ func (m *recordManager) reset() {
 	m.calls = nil
 }
 
-func (m *recordManager) CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (ls *provision.LabelSet, rep *int32, err error) {
+func (m *recordManager) CurrentLabels(ctx context.Context, a *appTypes.App, processName string, versionNumber int) (ls *provision.LabelSet, rep *int32, err error) {
 	key := fmt.Sprintf("%s-v%d", processName, versionNumber)
 	if m.lastLabels != nil {
 		ls = m.lastLabels[key]
@@ -131,7 +131,7 @@ func (m *recordManager) DeployService(ctx context.Context, opts DeployServiceOpt
 	return nil
 }
 
-func (m *recordManager) CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveVersions bool) error {
+func (m *recordManager) CleanupServices(ctx context.Context, a *appTypes.App, versionNumber int, preserveVersions bool) error {
 	call := managerCall{
 		action:           "cleanup",
 		app:              a,
@@ -142,7 +142,7 @@ func (m *recordManager) CleanupServices(ctx context.Context, a provision.App, ve
 	return nil
 }
 
-func (m *recordManager) RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error {
+func (m *recordManager) RemoveService(ctx context.Context, a *appTypes.App, processName string, versionNumber int) error {
 	call := managerCall{
 		action:        "remove",
 		processName:   processName,

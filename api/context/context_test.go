@@ -14,16 +14,16 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db/storagev2"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
 type S struct {
 	token auth.Token
-	app   *app.App
+	app   *appTypes.App
 }
 
 var _ = check.Suite(&S{})
@@ -45,7 +45,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	s.app = &app.App{Name: "app"}
+	s.app = &appTypes.App{Name: "app"}
 }
 
 func (s *S) TearDownSuite(c *check.C) {

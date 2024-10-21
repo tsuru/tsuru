@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -170,7 +171,7 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "test",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
@@ -201,7 +202,7 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 	err := newUser.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer newUser.Delete(context.TODO())
-	a := app.App{
+	a := appTypes.App{
 		Name:      "test",
 		Platform:  "python",
 		TeamOwner: s.team.Name,

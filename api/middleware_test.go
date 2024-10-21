@@ -19,12 +19,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
@@ -337,7 +337,7 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidAPIToken(c *check.C) {
 }
 
 func (s *S) TestAuthTokenMiddlewareUserTokenForApp(c *check.C) {
-	a := app.App{Name: "something", Teams: []string{s.team.Name}}
+	a := appTypes.App{Name: "something", Teams: []string{s.team.Name}}
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 

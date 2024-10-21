@@ -38,7 +38,7 @@ func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l URLList) Less(i, j int) bool { return l[i].String() < l[j].String() }
 
 func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
-	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "none"}
+	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, &a)
@@ -57,7 +57,7 @@ func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
 }
 
 func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
-	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{

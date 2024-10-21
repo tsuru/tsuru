@@ -43,10 +43,10 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	a1 := appTypes.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a1, s.user)
 	c.Assert(err, check.IsNil)
-	a2 := app.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
+	a2 := appTypes.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a2, s.user)
 	c.Assert(err, check.IsNil)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
@@ -123,10 +123,10 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	a1 := appTypes.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a1, s.user)
 	c.Assert(err, check.IsNil)
-	a2 := app.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
+	a2 := appTypes.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a2, s.user)
 	c.Assert(err, check.IsNil)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
@@ -189,7 +189,7 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 	c.StopTimer()
 	var apps []app.App
 	for i := 0; i < 100; i++ {
-		a := app.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
+		a := appTypes.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
 		apps = append(apps, a)
 		err := app.CreateApp(context.TODO(), &a, s.user)
 		c.Assert(err, check.IsNil)

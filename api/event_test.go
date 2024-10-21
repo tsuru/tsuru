@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	eventTypes "github.com/tsuru/tsuru/types/event"
@@ -80,7 +81,7 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 
 func (s *EventSuite) generateEventCustomData(appName string) *app.DeployOptions {
 	return &app.DeployOptions{
-		App: &app.App{
+		App: &appTypes.App{
 			Name: appName,
 			Env: map[string]bindTypes.EnvVar{
 				"MY_PASSWORD": {

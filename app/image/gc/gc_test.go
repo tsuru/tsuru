@@ -108,7 +108,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
 }
 
-func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int) {
+func insertTestVersions(c *check.C, a *appTypes.App, desiredNumberOfVersions int) {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            a,
 		EventID:        primitive.NewObjectID().Hex(),

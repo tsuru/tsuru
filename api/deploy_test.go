@@ -144,7 +144,7 @@ func (s *DeploySuite) TearDownTest(c *check.C) {
 	app.GetAppRouterUpdater().Shutdown(context.Background())
 }
 
-func newAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+func newAppVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -154,7 +154,7 @@ func newAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
 	return version
 }
 
-func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+func newSuccessfulAppVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version := newAppVersion(c, app)
 	err := version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
@@ -165,12 +165,12 @@ func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion 
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	var builderCalled bool
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		builderCalled = true
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
@@ -210,11 +210,11 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?origin=drag-and-drop", a.Name)
@@ -258,7 +258,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s&origin=drag", a.Name, a.Name)
@@ -274,10 +274,10 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?origin=app-deploy", a.Name)
@@ -314,10 +314,10 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
@@ -360,10 +360,10 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		Router:    "fake",
@@ -414,10 +414,10 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		Router:    "fake",
@@ -470,10 +470,10 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
@@ -517,10 +517,10 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
@@ -564,10 +564,10 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		TeamOwner: s.team.Name,
 		Router:    "fake",
@@ -587,10 +587,10 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
@@ -627,10 +627,10 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
@@ -671,7 +671,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
@@ -687,10 +687,10 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 }
 
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
@@ -713,7 +713,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployNoMandatoryFields(c *check.C) {
-	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", "/apps/abc/deploy", nil)
@@ -729,7 +729,7 @@ func (s *DeploySuite) TestDeployNoMandatoryFields(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeploySetBothFieldsArchiveURLAndImage(c *check.C) {
-	a := app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	values := url.Values{
@@ -749,7 +749,7 @@ func (s *DeploySuite) TestDeploySetBothFieldsArchiveURLAndImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeploySetBothFieldsImageAndDockerfile(c *check.C) {
-	a := app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	values := url.Values{
@@ -845,7 +845,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permTypes.CtxApp, "g1"),
 	})
-	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
+	a := appTypes.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	var result []app.DeployData
@@ -871,10 +871,10 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployList(c *check.C) {
-	app1 := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
+	app1 := appTypes.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "ge", Platform: "python", TeamOwner: s.team.Name}
+	app2 := appTypes.App{Name: "ge", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
 	var result []app.DeployData
@@ -903,7 +903,7 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployListByApp(c *check.C) {
-	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
@@ -929,7 +929,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
-	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
@@ -957,7 +957,7 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
-	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -970,7 +970,7 @@ func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
-	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1005,7 +1005,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
-	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1035,7 +1035,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
-	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
@@ -1081,7 +1081,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: team.Name}}, nil
 	}
-	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
+	a := appTypes.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
@@ -1105,7 +1105,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &a)
@@ -1148,7 +1148,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) {
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &a)
@@ -1191,7 +1191,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
@@ -1233,7 +1233,7 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 +	fmt.Println("Hello World!")
  }
 `
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -1274,7 +1274,7 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user1.Email, "password": "user123"})
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -1291,11 +1291,11 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.Rebuild, check.Equals, true)
 		return newAppVersion(c, app), nil
 	}
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -1335,7 +1335,7 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
-	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	fakeApp := appTypes.App{Name: "otherapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &fakeApp, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &fakeApp)
@@ -1364,7 +1364,7 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 }
 
 func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
-	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	fakeApp := appTypes.App{Name: "otherapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &fakeApp, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &fakeApp)
@@ -1389,7 +1389,7 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
-	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	fakeApp := appTypes.App{Name: "otherapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &fakeApp, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -1413,7 +1413,7 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 }
 
 func (s *DeploySuite) TestRollbackUpdateEmptyImage(c *check.C) {
-	fakeApp := app.App{Name: "rimworld", TeamOwner: s.team.Name}
+	fakeApp := appTypes.App{Name: "rimworld", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &fakeApp, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -1435,7 +1435,7 @@ func (s *DeploySuite) TestRollbackUpdateEmptyImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
-	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
+	fakeApp := appTypes.App{Name: "xayah", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &fakeApp, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -1462,7 +1462,7 @@ func (s *DeploySuite) TestRollbackUpdateErrNoPerms(c *check.C) {
 	user := &auth.User{Email: "janna@zaun.com", Password: "jannazaun123"}
 	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
-	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
+	fakeApp := appTypes.App{Name: "xayah", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &fakeApp, user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}

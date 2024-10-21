@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -546,7 +547,7 @@ func (s *S) TestRoleAssignValidateCtxAppFound(c *check.C) {
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	app1 := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
+	app1 := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err = app.CreateApp(context.TODO(), &app1, user)
 	c.Assert(err, check.IsNil)
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), appName))
@@ -1262,7 +1263,7 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 }
 
 func (s *S) TestAssignRoleToTeamToken(c *check.C) {
-	app1 := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
+	app1 := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole(context.TODO(), "newrole", "app", "")
@@ -1499,7 +1500,7 @@ func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 }
 
 func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
-	app1 := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
+	app1 := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole(context.TODO(), "newrole", "app", "")

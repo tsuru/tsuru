@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -376,7 +376,7 @@ func (s *S) TestDoubleProvision(c *check.C) {
 
 func (s *S) TestRestart(c *check.C) {
 	a := NewFakeApp("kid-gloves", "rush", 1)
-	nApp := app.App{
+	nApp := appTypes.App{
 		Name: a.name,
 	}
 
