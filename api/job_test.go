@@ -117,7 +117,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobDelete,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -195,7 +195,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -292,7 +292,7 @@ func (s *S) TestCreateManualJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -371,7 +371,7 @@ func (s *S) TestCreateCronjobNoName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -397,7 +397,7 @@ func (s *S) TestCreateCronjobAndManualReturnConflict(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1027,7 +1027,7 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 }
 
 func (s *S) TestJobListFilterByOwner(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1403,10 +1403,10 @@ func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxServiceInstance, "invalid-team"),
 	})
@@ -1492,10 +1492,10 @@ func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "invalid-team"),
 	})
@@ -2043,10 +2043,10 @@ func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *che
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxServiceInstance, "invalid-team"),
 	})
@@ -2100,10 +2100,10 @@ func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "invalid-team"),
 	})
@@ -2171,10 +2171,10 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) 
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -2466,7 +2466,7 @@ func (s *S) TestGetJobEnvUserDoesNotHaveAccessToTheJob(c *check.C) {
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobRead,
 		Context: permission.Context(permTypes.CtxJob, "-invalid-"),
 	})
@@ -2880,7 +2880,7 @@ func (s *S) TestSetJobEnvReturnsForbiddenIfTheUserDoesNotHaveAccessToTheJob(c *c
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxJob, "another-job"),
 	})
@@ -3212,7 +3212,7 @@ func (s *S) TestUnsetJobEnvReturnsForbiddenWhenUserDoesNotHaveAccessToTheJob(c *
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobUpdate,
 		Context: permission.Context(permTypes.CtxJob, "another-job"),
 	})
@@ -3243,7 +3243,7 @@ func (s *S) TestJobLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheJob(c 
 
 	_, err = jobsCollection.InsertOne(context.TODO(), j)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermJobRead,
 		Context: permission.Context(permTypes.CtxTeam, "no-access"),
 	})

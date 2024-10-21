@@ -154,17 +154,17 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
 		{Type: "app", Values: []string{"xapp2"}},
 	}, Sort: "_id"}, allEvts[0])
-	checkFilters(&event.Filter{Permissions: []permission.Permission{
+	checkFilters(&event.Filter{Permissions: []permTypes.Permission{
 		{Scheme: permission.PermAll, Context: permission.Context(permTypes.CtxGlobal, "")},
 	}, Sort: "_id"}, allEvts[:])
-	checkFilters(&event.Filter{Permissions: []permission.Permission{
+	checkFilters(&event.Filter{Permissions: []permTypes.Permission{
 		{Scheme: permission.PermAll},
 	}, Sort: "_id"}, allEvts[:0])
-	checkFilters(&event.Filter{Permissions: []permission.Permission{
+	checkFilters(&event.Filter{Permissions: []permTypes.Permission{
 		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "invalid-app")},
 	}, Sort: "_id"}, allEvts[:1])
-	checkFilters(&event.Filter{Permissions: []permission.Permission{
+	checkFilters(&event.Filter{Permissions: []permTypes.Permission{
 		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "invalid-app")},
 	}, Sort: "_id"}, allEvts[:0])
 }

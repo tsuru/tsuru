@@ -12,8 +12,8 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -639,6 +639,6 @@ func (t fakeToken) Engine() string {
 	return "fake"
 }
 
-func (t fakeToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
-	return []permission.Permission{}, nil
+func (t fakeToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return []permTypes.Permission{}, nil
 }

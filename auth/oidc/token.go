@@ -10,8 +10,8 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var _ authTypes.Token = &jwtToken{}
@@ -72,6 +72,6 @@ func (t *jwtToken) Engine() string {
 	return "oidc"
 }
 
-func (t *jwtToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (t *jwtToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return auth.BaseTokenPermission(ctx, t)
 }

@@ -84,7 +84,7 @@ var HasAccessTo check.Checker = &hasAccessToChecker{}
 func (s *S) createUserAndTeam(c *check.C) {
 	// TODO: remove this token from the suite, each test should create their
 	// own user with specific permissions.
-	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-root-toremove", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-root-toremove", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -203,7 +203,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
 }
 
-func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
+func userWithPermission(c *check.C, perm ...permTypes.Permission) auth.Token {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom", perm...)
 	return token
 }

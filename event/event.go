@@ -22,7 +22,6 @@ import (
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
@@ -210,7 +209,7 @@ type Event struct {
 type Opts struct {
 	Target        eventTypes.Target
 	ExtraTargets  []eventTypes.ExtraTarget
-	Kind          *permission.PermissionScheme
+	Kind          *permTypes.PermissionScheme
 	InternalKind  string
 	Owner         auth.Token
 	RawOwner      eventTypes.Owner
@@ -224,7 +223,7 @@ type Opts struct {
 	ExpireAt      *time.Time
 }
 
-func Allowed(scheme *permission.PermissionScheme, contexts ...permTypes.PermissionContext) eventTypes.AllowedPermission {
+func Allowed(scheme *permTypes.PermissionScheme, contexts ...permTypes.PermissionContext) eventTypes.AllowedPermission {
 	return eventTypes.AllowedPermission{
 		Scheme:   scheme.FullName(),
 		Contexts: contexts,
@@ -258,7 +257,7 @@ type Filter struct {
 	ErrorOnly      bool
 	Raw            mongoBSON.M
 	AllowedTargets []TargetFilter
-	Permissions    []permission.Permission
+	Permissions    []permTypes.Permission
 
 	Limit int
 	Skip  int

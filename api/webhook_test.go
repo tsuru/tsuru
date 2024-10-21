@@ -84,7 +84,7 @@ func (s *S) TestWebhookListEmpty(c *check.C) {
 }
 
 func (s *S) TestWebhookListByTeam(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermWebhookRead,
 		Context: permission.Context(permTypes.CtxTeam, "t2"),
 	})

@@ -54,13 +54,13 @@ func (s *BuildSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	s.token = userWithPermission(c, permission.Permission{
+	s.token = userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppBuild,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})

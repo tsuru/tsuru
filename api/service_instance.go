@@ -176,7 +176,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	var wantedPerms []*permission.PermissionScheme
+	var wantedPerms []*permTypes.PermissionScheme
 	if si.Description != updateData.Description {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 		si.Description = updateData.Description

@@ -84,11 +84,11 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	v2 := volumeTypes.Volume{Name: "v2", Pool: "otherpool", TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	err = servicemanager.Volume.Create(context.TODO(), &v2)
 	c.Assert(err, check.IsNil)
-	token1 := userWithPermission(c, permission.Permission{
+	token1 := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermVolumeRead,
 		Context: permission.Context(permTypes.CtxPool, "otherpool"),
 	})
-	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom2", permission.Permission{
+	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom2", permTypes.Permission{
 		Scheme:  permission.PermVolumeRead,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})

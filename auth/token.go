@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // Token type alias exists to ease refactoring while we move auth types to
@@ -53,7 +53,7 @@ func ParseToken(header string) (string, error) {
 	return value, ErrInvalidToken
 }
 
-func BaseTokenPermission(ctx context.Context, t Token) ([]permission.Permission, error) {
+func BaseTokenPermission(ctx context.Context, t Token) ([]permTypes.Permission, error) {
 	u, err := ConvertNewUser(t.User(ctx))
 	if err != nil {
 		return nil, err

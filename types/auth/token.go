@@ -7,7 +7,7 @@ package auth
 import (
 	"context"
 
-	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/types/permission"
 )
 
 type Token interface {

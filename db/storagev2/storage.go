@@ -53,7 +53,6 @@ func init() {
 	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreEncode)
 	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreDecode)
 	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreDecode)
-
 }
 
 func Reset() {

@@ -52,19 +52,19 @@ func (s *QuotaSuite) SetUpSuite(c *check.C) {
 func (s *QuotaSuite) SetUpTest(c *check.C) {
 	storagev2.ClearAllCollections(nil)
 	s.team = &authTypes.Team{Name: "superteam"}
-	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permTypes.Permission{
 		Scheme:  permission.PermAppAdminQuota,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermUserUpdateQuota,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermUserReadQuota,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermTeamReadQuota,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermTeamUpdateQuota,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -465,7 +465,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -574,7 +574,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	_, err = appsCollection.InsertOne(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": app.Name})
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "other", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "other", permTypes.Permission{
 		Scheme:  permission.PermAppAdminQuota,
 		Context: permission.Context(permTypes.CtxTeam, "-other-"),
 	})

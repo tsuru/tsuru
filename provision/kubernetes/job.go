@@ -455,7 +455,7 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 	ctx := context.Background()
 	defer wg.Done()
 	var evtErr error
-	var kind *permission.PermissionScheme
+	var kind *permTypes.PermissionScheme
 	switch evt.Reason {
 	case "Completed":
 		kind = permission.PermJobRun

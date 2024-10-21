@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/db/storagev2"
-	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -36,7 +36,7 @@ func (t *APIToken) Engine() string {
 	return "apikey"
 }
 
-func (t *APIToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (t *APIToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return BaseTokenPermission(ctx, t)
 }
 

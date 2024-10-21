@@ -22,7 +22,7 @@ import (
 
 type userToken struct {
 	user        *User
-	permissions []permission.Permission
+	permissions []permTypes.Permission
 }
 
 func (t *userToken) GetValue() string {
@@ -40,7 +40,7 @@ func (t *userToken) Engine() string {
 func (t *userToken) User(ctx context.Context) (*authTypes.User, error) {
 	return ConvertOldUser(t.user, nil)
 }
-func (t *userToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (t *userToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return t.permissions, nil
 }
 
@@ -258,7 +258,7 @@ func (s *S) Test_TeamTokenService_FindByUserToken_ValidatePermissions(c *check.C
 	c.Assert(err, check.IsNil)
 	userToken := &userToken{
 		user: s.user,
-		permissions: []permission.Permission{
+		permissions: []permTypes.Permission{
 			{
 				Scheme:  permission.PermAppDeploy,
 				Context: permission.Context(permTypes.CtxApp, "myapp"),
@@ -420,7 +420,7 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 3)
 	sort.Slice(perms, func(i, j int) bool { return perms[i].Scheme.FullName() < perms[j].Scheme.FullName() })
-	c.Assert(perms, check.DeepEquals, []permission.Permission{
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdate, Context: permission.Context(permTypes.CtxApp, "myapp")},

@@ -45,7 +45,7 @@ func (s *S) TestAddRole(c *check.C) {
 	role := bytes.NewBufferString("name=test&context=global")
 	req, err := http.NewRequest(http.MethodPost, "/roles", role)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -86,7 +86,7 @@ func (s *S) TestAddRoleInvalidName(c *check.C) {
 	role := bytes.NewBufferString("name=&context=global")
 	req, err := http.NewRequest(http.MethodPost, "/roles", role)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -107,7 +107,7 @@ func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
 	b := bytes.NewBufferString("name=ble&context=global")
 	req, err := http.NewRequest(http.MethodPost, "/roles", b)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -133,7 +133,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleDelete,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -169,7 +169,7 @@ func (s *S) TestRemoveRoleWithUsers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleDelete,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -219,7 +219,7 @@ func (s *S) TestListRoles(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/roles", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -242,7 +242,7 @@ func (s *S) TestRoleInfoNotFound(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/roles/xpto.update", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -263,7 +263,7 @@ func (s *S) TestRoleInfo(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/roles/majortomrole.update", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -283,7 +283,7 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	b := bytes.NewBufferString(`permission=app.update&permission=app.deploy`)
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/permissions", b)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -314,7 +314,7 @@ func (s *S) TestAddPermissionsToARolePermissionNotFound(c *check.C) {
 	b := bytes.NewBufferString(`permission=does.not.exists&permission=app.deploy`)
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/permissions", b)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -334,7 +334,7 @@ func (s *S) TestAddPermissionsToARoleInvalidName(c *check.C) {
 	b := bytes.NewBufferString(`permission=&permission=app.deploy`)
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/permissions", b)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -354,7 +354,7 @@ func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
 	b := bytes.NewBufferString(`permission=pool.create`)
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/permissions", b)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -370,7 +370,7 @@ func (s *S) TestRemovePermissionsRoleNotFound(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test/permissions/app.update", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -391,7 +391,7 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test/permissions/app.update", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -425,10 +425,10 @@ func (s *S) TestAssignRole(c *check.C) {
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -457,10 +457,10 @@ func (s *S) TestAssignRoleNotFound(c *check.C) {
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -477,10 +477,10 @@ func (s *S) TestRoleAssignEmptyContextValueAndGlobalContextType(c *check.C) {
 
 	_, err := permission.NewRole(ctx, "test", "global", "")
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -499,10 +499,10 @@ func (s *S) TestRoleAssignEmptyContextValueWithoutGlobalContextType(c *check.C) 
 	ctx := context.TODO()
 	_, err := permission.NewRole(ctx, "test", "team", "")
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -522,7 +522,7 @@ func (s *S) TestRoleAssignValidateCtxAppNotFound(c *check.C) {
 	appName := "myapp"
 	_, err := permission.NewRole(ctx, "test", "app", "")
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -542,7 +542,7 @@ func (s *S) TestRoleAssignValidateCtxAppFound(c *check.C) {
 	appName := "myapp"
 	_, err := permission.NewRole(ctx, "test", "app", "")
 	c.Assert(err, check.IsNil)
-	user, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	user, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -567,7 +567,7 @@ func (s *S) TestRoleAssignValidateCtxTeamNotFound(c *check.C) {
 	team := "myteam"
 	_, err := permission.NewRole(context.TODO(), "test", "team", "")
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -586,7 +586,7 @@ func (s *S) TestRoleAssignValidateCtxTeamFound(c *check.C) {
 	team := "myteam"
 	_, err := permission.NewRole(context.TODO(), "test", "team", "")
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -605,7 +605,7 @@ func (s *S) TestRoleAssignValidateCtxUserNotFound(c *check.C) {
 	user := "someuser@validemail.com"
 	_, err := permission.NewRole(context.TODO(), "test", "user", "")
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -621,7 +621,7 @@ func (s *S) TestRoleAssignValidateCtxUserNotFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxUserFound(c *check.C) {
-	user, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	user, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -639,7 +639,7 @@ func (s *S) TestRoleAssignValidateCtxUserFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxPoolNotFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -657,7 +657,7 @@ func (s *S) TestRoleAssignValidateCtxPoolNotFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxPoolFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -679,7 +679,7 @@ func (s *S) TestRoleAssignValidateCtxPoolFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxServiceNotFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -699,7 +699,7 @@ func (s *S) TestRoleAssignValidateCtxServiceNotFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxServiceFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -726,7 +726,7 @@ func (s *S) TestRoleAssignValidateCtxServiceFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxServiceInstanceNotFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -759,7 +759,7 @@ func (s *S) TestRoleAssignValidateCtxServiceInstanceFound(c *check.C) {
 
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -780,7 +780,7 @@ func (s *S) TestRoleAssignValidateCtxVolumeNotFound(c *check.C) {
 	s.mockService.VolumeService.OnGet = func(ctx context.Context, _ string) (*volume.Volume, error) {
 		return nil, errors.New("not found")
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -798,7 +798,7 @@ func (s *S) TestRoleAssignValidateCtxVolumeNotFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxVolumeFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -816,7 +816,7 @@ func (s *S) TestRoleAssignValidateCtxVolumeFound(c *check.C) {
 }
 
 func (s *S) TestRoleAssignValidateCtxRouterNotFound(c *check.C) {
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -843,7 +843,7 @@ func (s *S) TestRoleAssignValidateCtxRouterFound(c *check.C) {
 	s.mockService.DynamicRouter.OnGet = func(name string) (*routerTypes.DynamicRouter, error) {
 		return &dr, nil
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -869,10 +869,10 @@ func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
@@ -893,10 +893,10 @@ func (s *S) TestDissociateRoleNotFound(c *check.C) {
 	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -921,10 +921,10 @@ func (s *S) TestDissociateRole(c *check.C) {
 	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -961,10 +961,10 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
@@ -988,7 +988,7 @@ func (s *S) TestListPermissions(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/permissions", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1017,7 +1017,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 	body := bytes.NewBufferString("team-create=r1&team-create=r2&user-create=r3")
 	req, err := http.NewRequest(http.MethodPost, "/role/default", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleDefaultCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1071,7 +1071,7 @@ func (s *S) TestAddDefaultRoleIncompatibleContext(c *check.C) {
 	body := bytes.NewBufferString("user-create=r1")
 	req, err := http.NewRequest(http.MethodPost, "/role/default", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleDefaultCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1088,7 +1088,7 @@ func (s *S) TestAddDefaultRoleInvalidRole(c *check.C) {
 	body := bytes.NewBufferString("user-create=invalid")
 	req, err := http.NewRequest(http.MethodPost, "/role/default", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleDefaultCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1108,7 +1108,7 @@ func (s *S) TestRemoveDefaultRole(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodDelete, "/role/default?team-create=r1", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleDefaultDelete,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1130,7 +1130,7 @@ func (s *S) TestRemoveDefaultRole(c *check.C) {
 }
 
 func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1183,7 +1183,7 @@ func (s *S) TestRoleUpdateUnauthorized(c *check.C) {
 }
 
 func (s *S) TestRoleUpdateWithoutFields(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1199,7 +1199,7 @@ func (s *S) TestRoleUpdateWithoutFields(c *check.C) {
 }
 
 func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1222,7 +1222,7 @@ func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
 }
 
 func (s *S) TestRoleUpdateSingleField(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1274,10 +1274,10 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 	body := strings.NewReader(`context=myapp&token_id=` + teamToken.TokenID)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/token", body)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1312,10 +1312,10 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 	body := strings.NewReader(`context=myapp&token_id=` + teamToken.TokenID)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/rolenotfound/token", body)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1348,10 +1348,10 @@ func (s *S) TestAssignTokenRoleToEmptyTeam(c *check.C) {
 	body := strings.NewReader(`token_id=` + teamToken.TokenID)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/token", body)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1373,7 +1373,7 @@ func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
 	body := strings.NewReader(`context=myapp&token_id=` + teamToken.TokenID)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/token", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
@@ -1400,10 +1400,10 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 		nil,
 	)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1441,10 +1441,10 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 		nil,
 	)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1483,7 +1483,7 @@ func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 		nil,
 	)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1507,10 +1507,10 @@ func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
 	body := strings.NewReader(`context=myapp&group_name=g1&contextType=app`)
 	req, err := http.NewRequest(http.MethodPost, "/1.9/roles/newrole/group", body)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1549,10 +1549,10 @@ func (s *S) TestAssignRoleToAuthGroupRoleNotFound(c *check.C) {
 	body := strings.NewReader(`context=myapp&group_name=g1`)
 	req, err := http.NewRequest(http.MethodPost, "/1.9/roles/rolenotfound/group", body)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1581,7 +1581,7 @@ func (s *S) TestAssignRoleToAuthGroupNotAuthorized(c *check.C) {
 	body := strings.NewReader(`context=myapp&group_name=g1`)
 	req, err := http.NewRequest(http.MethodPost, "/1.9/roles/newrole/group", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
@@ -1604,10 +1604,10 @@ func (s *S) TestDissociateRoleFromAuthGroup(c *check.C) {
 		nil,
 	)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1646,10 +1646,10 @@ func (s *S) TestDissociateRoleFromAuthGroupRoleNotFound(c *check.C) {
 		nil,
 	)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
@@ -1694,7 +1694,7 @@ func (s *S) TestDissociateRoleFromAuthGroupNotAuthorized(c *check.C) {
 		nil,
 	)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})

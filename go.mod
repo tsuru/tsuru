@@ -46,7 +46,6 @@ require (
 	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.20.0
 	golang.org/x/term v0.20.0
-	golang.org/x/text v0.15.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -61,6 +60,8 @@ require (
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	sigs.k8s.io/yaml v1.3.0
 )
+
+require golang.org/x/text v0.15.0 // indirect
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect

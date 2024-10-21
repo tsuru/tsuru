@@ -81,7 +81,7 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.Res
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permTypes.Permission{
 		Scheme:  permission.PermService,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -267,11 +267,11 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeamUserWithMultiplePermissions
 	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	token := userWithPermission(c,
-		permission.Permission{
+		permTypes.Permission{
 			Scheme:  permission.PermService,
 			Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 		},
-		permission.Permission{
+		permTypes.Permission{
 			Scheme:  permission.PermService,
 			Context: permission.Context(permTypes.CtxTeam, "other-team"),
 		},

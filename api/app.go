@@ -357,7 +357,7 @@ type inputApp struct {
 	Processes []appTypes.Process
 }
 
-func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.PermissionScheme) (string, error) {
+func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permTypes.PermissionScheme) (string, error) {
 	team, err := permission.TeamForPermission(ctx, t, perm)
 	if err == nil {
 		return team, nil
@@ -550,7 +550,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	var wantedPerms []*permission.PermissionScheme
+	var wantedPerms []*permTypes.PermissionScheme
 	if updateData.Router != "" || len(updateData.RouterOpts) > 0 {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "updating router was deprecated, please add the wanted router and remove the old one"}
 	}

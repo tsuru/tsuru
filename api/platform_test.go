@@ -367,7 +367,7 @@ func (s *PlatformSuite) TestPlatformListGetOnlyEnabledPlatforms(c *check.C) {
 	}
 	request, err := http.NewRequest("GET", "/platforms", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})

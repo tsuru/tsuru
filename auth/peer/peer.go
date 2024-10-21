@@ -51,8 +51,8 @@ func (t *Token) Engine() string {
 	return "peer"
 }
 
-func (t *Token) Permissions(ctx context.Context) ([]permission.Permission, error) {
-	return []permission.Permission{
+func (t *Token) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return []permTypes.Permission{
 		{
 			Scheme:  permission.PermAppReadLog,
 			Context: permission.Context(permTypes.CtxGlobal, ""),

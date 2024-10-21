@@ -63,13 +63,13 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	s.token = userWithPermission(c, permission.Permission{
+	s.token = userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermJobDeploy,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -771,7 +771,7 @@ func (s *DeploySuite) TestDeploySetBothFieldsImageAndDockerfile(c *check.C) {
 func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 	var tests = []struct {
 		input    app.DeployOptions
-		expected *permission.PermissionScheme
+		expected *permTypes.PermissionScheme
 	}{
 		{
 			app.DeployOptions{Commit: "abc123"},
@@ -841,7 +841,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: team.Name}}, nil
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permTypes.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permTypes.CtxApp, "g1"),
 	})
@@ -985,7 +985,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permTypes.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1346,7 +1346,7 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permTypes.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1375,7 +1375,7 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permTypes.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1399,7 +1399,7 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permTypes.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1421,7 +1421,7 @@ func (s *DeploySuite) TestRollbackUpdateEmptyImage(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permTypes.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1445,7 +1445,7 @@ func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permTypes.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})

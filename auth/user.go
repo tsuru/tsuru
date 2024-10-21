@@ -169,8 +169,8 @@ func (u *User) reload(ctx context.Context) error {
 	return usersCollection.FindOne(ctx, mongoBSON.M{"email": u.Email}).Decode(u)
 }
 
-func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permission.Permission, error) {
-	var permissions []permission.Permission
+func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permTypes.Permission, error) {
+	var permissions []permTypes.Permission
 	roles := make(map[string]*permission.Role)
 	for _, roleData := range roleInstances {
 		role := roles[roleData.Name]
@@ -199,7 +199,7 @@ func (u *User) UserGroups() ([]authTypes.Group, error) {
 	return groups, nil
 }
 
-func (u *User) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (u *User) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	groups, err := u.UserGroups()
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func (u *User) Permissions(ctx context.Context) ([]permission.Permission, error)
 	if err != nil {
 		return nil, err
 	}
-	return append([]permission.Permission{{
+	return append([]permTypes.Permission{{
 		Scheme:  permission.PermUser,
 		Context: permission.Context(permTypes.CtxUser, u.Email),
 	}}, permissions...), nil

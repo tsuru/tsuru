@@ -9,8 +9,8 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
-	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/oauth2"
@@ -39,7 +39,7 @@ func (t *tokenWrapper) Engine() string {
 	return "oauth"
 }
 
-func (t *tokenWrapper) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (t *tokenWrapper) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return auth.BaseTokenPermission(ctx, t)
 }
 
