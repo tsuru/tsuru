@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -874,7 +873,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = job.SetEnvs(ctx, j, bind.SetEnvArgs{
+	err = job.SetEnvs(ctx, j, bindTypes.SetEnvArgs{
 		Envs:        variables,
 		ManagedBy:   e.ManagedBy,
 		PruneUnused: e.PruneUnused,
@@ -936,7 +935,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return job.UnsetEnvs(ctx, j, bind.UnsetEnvArgs{
+	return job.UnsetEnvs(ctx, j, bindTypes.UnsetEnvArgs{
 		VariableNames: variables,
 		Writer:        evt,
 	})

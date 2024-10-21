@@ -1383,7 +1383,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bindTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -1438,7 +1438,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bindTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -1498,7 +1498,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bindTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},

@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
@@ -493,7 +492,7 @@ func (*jobService) GetEnvs(ctx context.Context, job *jobTypes.Job) map[string]bi
 	return mergedEnvs
 }
 
-func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bind.SetEnvArgs) error {
+func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bindTypes.SetEnvArgs) error {
 	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
 		return nil
 	}
@@ -549,7 +548,7 @@ func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bind.SetEnvArgs) er
 
 }
 
-func UnsetEnvs(ctx context.Context, job *jobTypes.Job, unsetEnvs bind.UnsetEnvArgs) error {
+func UnsetEnvs(ctx context.Context, job *jobTypes.Job, unsetEnvs bindTypes.UnsetEnvArgs) error {
 	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}

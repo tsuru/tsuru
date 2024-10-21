@@ -23,7 +23,6 @@ import (
 
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
@@ -1073,7 +1072,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 		},
 	}
 	var buf bytes.Buffer
-	err = a.SetEnvs(ctx, bind.SetEnvArgs{
+	err = a.SetEnvs(ctx, bindTypes.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: true,
 		Writer:        &buf,
@@ -1127,7 +1126,7 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 			Public: true,
 		},
 	}
-	err = a.SetEnvs(ctx, bind.SetEnvArgs{
+	err = a.SetEnvs(ctx, bindTypes.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: false,
 	})
@@ -1178,7 +1177,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 			Public: true,
 		},
 	}
-	err = a.SetEnvs(ctx, bind.SetEnvArgs{
+	err = a.SetEnvs(ctx, bindTypes.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: true,
 	})
@@ -1232,7 +1231,7 @@ func (s *S) TestSetEnvsValidation(c *check.C) {
 				Value: "any value",
 			},
 		}
-		err = a.SetEnvs(ctx, bind.SetEnvArgs{Envs: envs})
+		err = a.SetEnvs(ctx, bindTypes.SetEnvArgs{Envs: envs})
 		if test.isValid {
 			c.Check(err, check.IsNil)
 		} else {
@@ -1272,7 +1271,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(ctx, 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
+	err = a.UnsetEnvs(ctx, bindTypes.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: true,
 	})
@@ -1333,7 +1332,7 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(ctx, 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
+	err = a.UnsetEnvs(ctx, bindTypes.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: false,
 	})
@@ -1364,7 +1363,7 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
+	err = a.UnsetEnvs(ctx, bindTypes.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: true,
 	})
@@ -1750,7 +1749,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1807,7 +1806,7 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	a := &App{Name: "sith", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ZMQ_PEER", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
@@ -1815,7 +1814,7 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	// inserts duplicated
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ZMQ_PEER", Value: "8.8.8.8"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
@@ -1851,7 +1850,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
@@ -1891,7 +1890,7 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
@@ -1927,21 +1926,21 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "host3"}, InstanceName: "instance3", ServiceName: "mongodb"},
 		},
@@ -1982,14 +1981,14 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	a := &App{Name: "fuchsia", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
@@ -2016,7 +2015,7 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 			}},
 		},
 	})
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "instance2",
 		ShouldRestart: true,
@@ -2044,14 +2043,14 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2078,13 +2077,13 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "ourdb"}, InstanceName: "ourdb", ServiceName: "mysql"},
 	}
 	for _, env := range toAdd {
-		err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+		err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 			Envs:          []bindTypes.ServiceEnvVar{env},
 			ShouldRestart: false,
 		})
 		c.Assert(err, check.IsNil)
 	}
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "hisdb",
 		ShouldRestart: true,
@@ -2121,12 +2120,12 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "yourdb",
 		ShouldRestart: true,
@@ -2156,12 +2155,12 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mongodb",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2194,12 +2193,12 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2224,12 +2223,12 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: false,

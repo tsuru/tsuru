@@ -8,7 +8,6 @@ package bind
 
 import (
 	"context"
-	"io"
 
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
@@ -27,35 +26,8 @@ type App interface {
 	GetUUID(ctx context.Context) (string, error)
 
 	// AddInstance adds an instance to the application.
-	AddInstance(ctx context.Context, args AddInstanceArgs) error
+	AddInstance(ctx context.Context, args bindTypes.AddInstanceArgs) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(ctx context.Context, args RemoveInstanceArgs) error
-}
-
-type SetEnvArgs struct {
-	Envs          []bindTypes.EnvVar
-	Writer        io.Writer
-	ManagedBy     string
-	PruneUnused   bool
-	ShouldRestart bool
-}
-
-type UnsetEnvArgs struct {
-	VariableNames []string
-	Writer        io.Writer
-	ShouldRestart bool
-}
-
-type AddInstanceArgs struct {
-	Envs          []bindTypes.ServiceEnvVar
-	Writer        io.Writer
-	ShouldRestart bool
-}
-
-type RemoveInstanceArgs struct {
-	ServiceName   string
-	InstanceName  string
-	Writer        io.Writer
-	ShouldRestart bool
+	RemoveInstance(ctx context.Context, args bindTypes.RemoveInstanceArgs) error
 }

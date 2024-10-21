@@ -18,7 +18,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
@@ -1135,7 +1134,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(ctx, bind.SetEnvArgs{
+	err = a.SetEnvs(ctx, bindTypes.SetEnvArgs{
 		Envs:          variables,
 		ManagedBy:     e.ManagedBy,
 		PruneUnused:   e.PruneUnused,
@@ -1241,7 +1240,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
+	return a.UnsetEnvs(ctx, bindTypes.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
 		Writer:        evt,

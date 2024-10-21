@@ -12,7 +12,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -310,7 +309,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},

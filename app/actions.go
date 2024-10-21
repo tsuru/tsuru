@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
@@ -178,7 +177,7 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 		}
-		err = app.SetEnvs(ctx.Context, bind.SetEnvArgs{
+		err = app.SetEnvs(ctx.Context, bindTypes.SetEnvArgs{
 			Envs:          envVars,
 			ShouldRestart: false,
 		})
@@ -192,7 +191,7 @@ var exportEnvironmentsAction = action.Action{
 		app, err := GetByName(ctx.Context, app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR"}
-			app.UnsetEnvs(ctx.Context, bind.UnsetEnvArgs{
+			app.UnsetEnvs(ctx.Context, bindTypes.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
