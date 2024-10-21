@@ -23,6 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	mongoprom "github.com/globocom/mongo-go-prometheus"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const (
@@ -49,10 +50,73 @@ func init() {
 		return nil
 	}
 
+	var certIssuersEncode bsoncodec.ValueEncoderFunc = func(ec bsoncodec.EncodeContext, vw bsonrw.ValueWriter, val reflect.Value) error {
+		documentWriter, err := vw.WriteDocument()
+		if err != nil {
+			return err
+		}
+
+		iter := val.MapRange()
+
+		for iter.Next() {
+			key := iter.Key().String()
+			value := iter.Value().String()
+			escapedKey := strings.ReplaceAll(key, ".", appTypes.CertIsssuerDotReplacement)
+
+			valueWriter, err := documentWriter.WriteDocumentElement(escapedKey)
+			if err != nil {
+				return err
+			}
+
+			valueWriter.WriteString(value)
+
+		}
+
+		documentWriter.WriteDocumentEnd()
+
+		return nil
+	}
+
+	var certIssuersDecode bsoncodec.ValueDecoderFunc = func(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val reflect.Value) error {
+		if vr.Type() != bson.TypeEmbeddedDocument {
+			vr.Skip()
+			return nil
+		}
+		documentReader, err := vr.ReadDocument()
+		if err != nil {
+			return err
+		}
+
+		val.Set(reflect.ValueOf(appTypes.CertIssuers{}))
+
+		for {
+
+			key, valueReader, err := documentReader.ReadElement()
+			if err == bsonrw.ErrEOD {
+				break
+			}
+			if err != nil {
+				return err
+			}
+
+			value, err := valueReader.ReadString()
+			if err != nil {
+				return err
+			}
+			unescappedKey := strings.ReplaceAll(key, appTypes.CertIsssuerDotReplacement, ".")
+			val.SetMapIndex(reflect.ValueOf(unescappedKey), reflect.ValueOf(value))
+		}
+
+		return nil
+	}
+
 	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreEncode)
 	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreEncode)
 	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreDecode)
 	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreDecode)
+
+	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(appTypes.CertIssuers{}), certIssuersEncode)
+	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(appTypes.CertIssuers{}), certIssuersDecode)
 }
 
 func Reset() {

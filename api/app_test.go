@@ -6520,7 +6520,7 @@ func (s *S) TestListCertificates(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Router:      "fake-tls",
 		CName:       []string{"app.io"},
-		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+		CertIssuers: map[string]string{"app.io": "letsencrypt"},
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -6549,7 +6549,7 @@ func (s *S) TestListCertificatesLegacy(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Router:      "fake-tls",
 		CName:       []string{"app.io"},
-		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+		CertIssuers: map[string]string{"app.io": "letsencrypt"},
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -6579,7 +6579,7 @@ func (s *S) TestListCertificatesNew(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Router:      "fake-tls",
 		CName:       []string{"app.io"},
-		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+		CertIssuers: map[string]string{"app.io": "letsencrypt"},
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)

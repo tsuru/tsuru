@@ -25,7 +25,7 @@ type App struct {
 	PlatformVersion string
 	Name            string
 	CName           []string
-	CertIssuers     map[string]string
+	CertIssuers     CertIssuers
 	Teams           []string
 	TeamOwner       string
 	Owner           string
@@ -48,6 +48,10 @@ type App struct {
 
 	Quota quota.Quota
 }
+
+var CertIsssuerDotReplacement = "_dot_"
+
+type CertIssuers map[string]string
 
 type AppInterface interface {
 	GetName() string

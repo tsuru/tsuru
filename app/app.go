@@ -2276,12 +2276,7 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 }
 
 func (app *App) GetCertIssuers() map[string]string {
-	certIssuers := make(map[string]string, len(app.CertIssuers))
-	for k, v := range app.CertIssuers {
-		key := strings.ReplaceAll(k, "_dot_", ".")
-		certIssuers[key] = v
-	}
-	return certIssuers
+	return app.CertIssuers
 }
 
 func (app *App) GetRoutersWithAddr(ctx context.Context) ([]appTypes.AppRouter, error) {
