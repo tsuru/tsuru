@@ -26,17 +26,14 @@ type QuotaItem interface {
 	GetName() string
 }
 
-type QuotaItemInUse interface {
-	QuotaItem
-	GetQuotaInUse(ctx context.Context) (int, error)
-}
-
 type QuotaService[T any] interface {
 	Inc(ctx context.Context, item T, delta int) error
 	Set(ctx context.Context, item T, quantity int) error
 	SetLimit(ctx context.Context, item T, limit int) error
 	Get(ctx context.Context, item T) (*Quota, error)
 }
+
+type LegacyQuotaService QuotaService[QuotaItem]
 
 type QuotaStorage interface {
 	SetLimit(ctx context.Context, name string, limit int) error

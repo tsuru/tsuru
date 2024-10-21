@@ -21,7 +21,7 @@ type UserQuotaSuite struct {
 	SuiteHooks
 	UserStorage      userStorage
 	UserQuotaStorage quota.QuotaStorage
-	UserQuotaService quota.QuotaService
+	UserQuotaService quota.LegacyQuotaService
 }
 
 func (s *UserQuotaSuite) TestGet(c *check.C) {

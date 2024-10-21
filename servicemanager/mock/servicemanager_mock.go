@@ -26,9 +26,9 @@ type MockService struct {
 	Platform                  *app.MockPlatformService
 	PlatformImage             *image.MockPlatformImageService
 	Team                      *auth.MockTeamService
-	UserQuota                 *quota.MockQuotaService
-	AppQuota                  *quota.MockQuotaService
-	TeamQuota                 *quota.MockQuotaService
+	UserQuota                 *quota.MockQuotaService[quota.QuotaItem]
+	AppQuota                  *quota.MockQuotaService[*app.App]
+	TeamQuota                 *quota.MockQuotaService[*auth.Team]
 	Cluster                   *provision.MockClusterService
 	ServiceBroker             *service.MockServiceBrokerService
 	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
@@ -47,9 +47,9 @@ func SetMockService(m *MockService) {
 	m.Platform = &app.MockPlatformService{}
 	m.PlatformImage = &image.MockPlatformImageService{}
 	m.Team = &auth.MockTeamService{}
-	m.UserQuota = &quota.MockQuotaService{}
-	m.AppQuota = &quota.MockQuotaService{}
-	m.TeamQuota = &quota.MockQuotaService{}
+	m.UserQuota = &quota.MockQuotaService[quota.QuotaItem]{}
+	m.AppQuota = &quota.MockQuotaService[*app.App]{}
+	m.TeamQuota = &quota.MockQuotaService[*auth.Team]{}
 	m.Cluster = &provision.MockClusterService{}
 	m.ServiceBroker = &service.MockServiceBrokerService{}
 	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}

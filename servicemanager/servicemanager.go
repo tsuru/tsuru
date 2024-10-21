@@ -31,8 +31,8 @@ var (
 	Job                       job.JobService
 	Webhook                   event.WebhookService
 	AppQuota                  quota.QuotaService[*app.App]
-	UserQuota                 quota.QuotaService
-	TeamQuota                 quota.QuotaService
+	UserQuota                 quota.LegacyQuotaService
+	TeamQuota                 quota.QuotaService[*auth.Team]
 	Cluster                   provision.ClusterService
 	ServiceBroker             service.ServiceBrokerService
 	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService

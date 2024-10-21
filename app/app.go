@@ -94,10 +94,6 @@ const (
 	routerNone = "none"
 )
 
-var (
-	_ quota.QuotaItemInUse = &App{} // TODO: solve this
-)
-
 func getBuilder(ctx context.Context, app *appTypes.App) (builder.Builder, error) {
 	p, err := getProvisioner(ctx, app)
 	if err != nil {
