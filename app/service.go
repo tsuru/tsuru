@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
@@ -33,6 +34,14 @@ func (a *appService) GetAddresses(ctx context.Context, app *appTypes.App) ([]str
 
 func (a *appService) GetRegistry(ctx context.Context, app *appTypes.App) (imgTypes.ImageRegistry, error) {
 	return GetRegistry(ctx, app)
+}
+
+func (a *appService) AddInstance(ctx context.Context, app *appTypes.App, addArgs bindTypes.AddInstanceArgs) error {
+	return AddInstance(ctx, app, addArgs)
+}
+
+func (a *appService) RemoveInstance(ctx context.Context, app *appTypes.App, removeArgs bindTypes.RemoveInstanceArgs) error {
+	return RemoveInstance(ctx, app, removeArgs)
 }
 
 func (a *appService) GetInternalBindableAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {

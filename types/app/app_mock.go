@@ -9,6 +9,7 @@ import (
 	"errors"
 
 	"github.com/tsuru/tsuru/types/app/image"
+	"github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/router"
 )
 
@@ -54,4 +55,12 @@ func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, erro
 
 func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
 	return "", errors.New("not implemented")
+}
+
+func (m *MockAppService) AddInstance(ctx context.Context, app *App, addArgs bind.AddInstanceArgs) error {
+	return errors.New("not implemented")
+
+}
+func (m *MockAppService) RemoveInstance(ctx context.Context, app *App, removeArgs bind.RemoveInstanceArgs) error {
+	return errors.New("not implemented")
 }

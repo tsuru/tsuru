@@ -426,11 +426,11 @@ var setBoundEnvsAction = &action.Action{
 			ShouldRestart: args.shouldRestart,
 			Writer:        args.writer,
 		}
-		return addArgs, args.app.AddInstance(ctx.Context, addArgs)
+		return addArgs, servicemanager.App.AddInstance(ctx.Context, args.app, addArgs)
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		err := args.app.RemoveInstance(ctx.Context, bindTypes.RemoveInstanceArgs{
+		err := servicemanager.App.RemoveInstance(ctx.Context, args.app, bindTypes.RemoveInstanceArgs{
 			ServiceName:   args.serviceInstance.ServiceName,
 			InstanceName:  args.serviceInstance.Name,
 			ShouldRestart: args.shouldRestart,
@@ -582,7 +582,7 @@ var removeBoundEnvs = action.Action{
 			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		si := args.serviceInstance
-		return nil, args.app.RemoveInstance(ctx.Context, bindTypes.RemoveInstanceArgs{
+		return nil, servicemanager.App.RemoveInstance(ctx.Context, args.app, bindTypes.RemoveInstanceArgs{
 			ServiceName:   si.ServiceName,
 			InstanceName:  si.Name,
 			ShouldRestart: args.shouldRestart,

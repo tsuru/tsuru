@@ -96,6 +96,9 @@ type AppService interface {
 	GetInternalBindableAddresses(ctx context.Context, app *App) ([]string, error)
 	EnsureUUID(ctx context.Context, app *App) (string, error)
 	GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error)
+
+	AddInstance(ctx context.Context, app *App, addArgs bind.AddInstanceArgs) error
+	RemoveInstance(ctx context.Context, app *App, removeArgs bind.RemoveInstanceArgs) error
 }
 
 type AppInfo struct {
