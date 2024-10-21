@@ -61,7 +61,7 @@ func init() {
 		for iter.Next() {
 			key := iter.Key().String()
 			value := iter.Value().String()
-			escapedKey := strings.ReplaceAll(key, ".", appTypes.CertIsssuerDotReplacement)
+			escapedKey := strings.ReplaceAll(key, ".", appTypes.CertIssuerDotReplacement)
 
 			valueWriter, err := documentWriter.WriteDocumentElement(escapedKey)
 			if err != nil {
@@ -103,7 +103,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			unescappedKey := strings.ReplaceAll(key, appTypes.CertIsssuerDotReplacement, ".")
+			unescappedKey := strings.ReplaceAll(key, appTypes.CertIssuerDotReplacement, ".")
 			val.SetMapIndex(reflect.ValueOf(unescappedKey), reflect.ValueOf(value))
 		}
 
