@@ -39,7 +39,7 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 	err = a.AutoScale(ctx, autoscaleSpec)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -75,7 +75,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -126,7 +126,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 		MinUnits:   2,
 	})
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})

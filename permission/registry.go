@@ -12,7 +12,7 @@ import (
 )
 
 type registry struct {
-	PermissionScheme
+	permTypes.PermissionScheme
 	children []*registry
 }
 
@@ -29,11 +29,11 @@ func (r *registry) addWithCtx(name string, contextTypes []permTypes.ContextType)
 	for i, part := range parts {
 		subR := parent.getSubRegistry(part)
 		if subR == nil {
-			subR = &registry{PermissionScheme: PermissionScheme{name: part}}
+			subR = &registry{PermissionScheme: permTypes.PermissionScheme{Name: part}}
 			parent.children = append(parent.children, subR)
 		}
 		if i == len(parts)-1 {
-			subR.PermissionScheme.contexts = contextTypes
+			subR.PermissionScheme.Contexts = contextTypes
 		}
 		parent = subR
 	}
@@ -50,9 +50,9 @@ func (r *registry) getSubRegistry(name string) *registry {
 	for len(parts) > 0 {
 		var currentElement *registry
 		for _, child := range children {
-			if child.name == parts[0] {
+			if child.Name == parts[0] {
 				if parent != nil {
-					child.PermissionScheme.parent = &parent.PermissionScheme
+					child.PermissionScheme.Parent = &parent.PermissionScheme
 				}
 				currentElement = child
 				parts = parts[1:]
@@ -68,9 +68,9 @@ func (r *registry) getSubRegistry(name string) *registry {
 	return parent
 }
 
-func (r *registry) PermissionsWithContextType(ctxType permTypes.ContextType) PermissionSchemeList {
+func (r *registry) PermissionsWithContextType(ctxType permTypes.ContextType) permTypes.PermissionSchemeList {
 	perms := r.Permissions()
-	var ret []*PermissionScheme
+	var ret []*permTypes.PermissionScheme
 	for _, p := range perms {
 		for _, ctx := range p.AllowedContexts() {
 			if ctx == ctxType {
@@ -82,8 +82,8 @@ func (r *registry) PermissionsWithContextType(ctxType permTypes.ContextType) Per
 	return ret
 }
 
-func (r *registry) Permissions() PermissionSchemeList {
-	var ret []*PermissionScheme
+func (r *registry) Permissions() permTypes.PermissionSchemeList {
+	var ret []*permTypes.PermissionScheme
 	stack := []*registry{r}
 	for len(stack) > 0 {
 		last := len(stack) - 1
@@ -92,14 +92,14 @@ func (r *registry) Permissions() PermissionSchemeList {
 		ret = append(ret, &el.PermissionScheme)
 		for i := len(el.children) - 1; i >= 0; i-- {
 			child := el.children[i]
-			child.parent = &el.PermissionScheme
+			child.Parent = &el.PermissionScheme
 			stack = append(stack, child)
 		}
 	}
 	return ret
 }
 
-func SafeGet(name string) (*PermissionScheme, error) {
+func SafeGet(name string) (*permTypes.PermissionScheme, error) {
 	subR := PermissionRegistry.getSubRegistry(name)
 	if subR == nil {
 		return nil, errors.New("unregistered permission")
@@ -107,7 +107,7 @@ func SafeGet(name string) (*PermissionScheme, error) {
 	return &subR.PermissionScheme, nil
 }
 
-func (r *registry) get(name string) *PermissionScheme {
+func (r *registry) get(name string) *permTypes.PermissionScheme {
 	subR := r.getSubRegistry(name)
 	if subR == nil {
 		panic("unregistered permission: " + name)

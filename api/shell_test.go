@@ -77,7 +77,7 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 	defer server.Close()
 	testServerURL, err := url.Parse(server.URL)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})

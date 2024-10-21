@@ -229,7 +229,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 
 	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.DeepEquals, []permission.Permission{
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
 
@@ -246,7 +246,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 
 	perms, err = u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.DeepEquals, []permission.Permission{
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},
@@ -276,7 +276,7 @@ func (s *S) TestUserPermissionsIncludeGroups(c *check.C) {
 
 	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.DeepEquals, []permission.Permission{
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},
@@ -301,7 +301,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.DeepEquals, []permission.Permission{
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
 	r1, err := permission.NewRole(context.TODO(), "r1", "app", "")
@@ -314,7 +314,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	perms, err = u.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.DeepEquals, []permission.Permission{
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},

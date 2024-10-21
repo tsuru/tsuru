@@ -69,7 +69,7 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
-	s.user, _ = permissiontest.CustomUserWithPermission(c, app.AuthScheme, "majortom", permission.Permission{
+	s.user, _ = permissiontest.CustomUserWithPermission(c, app.AuthScheme, "majortom", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})

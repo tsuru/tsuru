@@ -132,7 +132,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 
 func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	ctx := context.Background()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -168,7 +168,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByTags(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -703,7 +703,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
@@ -737,7 +737,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermissionAppInf
 	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadInfo,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -854,7 +854,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheA
 
 	_, err = appsCollection.InsertOne(context.TODO(), myApp)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppDelete,
 		Context: permission.Context(permTypes.CtxApp, "-other-app-"),
 	})
@@ -930,7 +930,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *c
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxApp, "-other-app-"),
 	})
@@ -961,7 +961,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1019,7 +1019,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1067,7 +1067,7 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1112,7 +1112,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &t1, nil
 	}
-	permissions := []permission.Permission{
+	permissions := []permTypes.Permission{
 		{
 			Scheme:  permission.PermAppCreate,
 			Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: t1.Name},
@@ -1222,7 +1222,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1269,7 +1269,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1313,7 +1313,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1370,7 +1370,7 @@ func (s *S) TestCreateAppWithTagsAndTagValidator(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1390,7 +1390,7 @@ func (s *S) TestCreateAppWithMetadata(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1444,7 +1444,7 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1490,7 +1490,7 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1527,7 +1527,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1570,10 +1570,10 @@ func (s *S) TestCreateAppTwoTeams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
@@ -1585,7 +1585,7 @@ func (s *S) TestCreateAppTwoTeams(c *check.C) {
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1628,7 +1628,7 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1675,7 +1675,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1686,10 +1686,10 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 }
 
 func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermPlatformUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -1750,7 +1750,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1764,7 +1764,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -1801,7 +1801,7 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -1840,7 +1840,7 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "myplatform", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -1884,7 +1884,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -1935,7 +1935,7 @@ func (s *S) TestUpdateAppWithTagsAndTagValidator(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -1956,7 +1956,7 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateDescription,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -1982,7 +1982,7 @@ func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -2027,7 +2027,7 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -2072,7 +2072,7 @@ func (s *S) TestUpdateAppWithCustomPlanByProcesNotFound(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -2108,7 +2108,7 @@ func (s *S) TestUpdateAppWithCustomPlanByProcess(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -2169,7 +2169,7 @@ func (s *S) TestUpdateAppWithResetPlanByProcess(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -2275,7 +2275,7 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdatePool,
 		Context: permission.Context(permTypes.CtxApp, "-other-"),
 	})
@@ -2447,7 +2447,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
@@ -2480,7 +2480,7 @@ func (s *S) TestUpdateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 
 func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	})
@@ -2533,7 +2533,7 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 
 func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	})
@@ -2649,7 +2649,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C)
 	body := strings.NewReader("units=1&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnitAdd,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -2812,7 +2812,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnitRemove,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -2943,7 +2943,7 @@ func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateGrant,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -3044,7 +3044,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRevoke,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -3298,7 +3298,7 @@ func (s *S) TestRunUserDoesNotHaveAccessToTheApp(c *check.C) {
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppRun,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -3434,7 +3434,7 @@ func (s *S) TestGetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadEnv,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -4119,7 +4119,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateEnvSet,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -4411,7 +4411,7 @@ func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateEnvUnset,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -4567,7 +4567,7 @@ func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateCname,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -4662,7 +4662,7 @@ func (s *S) TestRemoveCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateCnameRemove,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -4694,7 +4694,7 @@ func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c 
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, "no-access"),
 	})
@@ -4744,7 +4744,7 @@ func (s *S) TestAppLogFollow(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	request = request.WithContext(ctx)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4793,7 +4793,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	request = request.WithContext(ctx)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4839,7 +4839,7 @@ func (s *S) TestAppLogShouldHaveContentType(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4859,7 +4859,7 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	for i := 0; i < 15; i++ {
 		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4883,7 +4883,7 @@ func (s *S) TestAppLogAllowNegativeLines(c *check.C) {
 	for i := 0; i < 15; i++ {
 		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4907,7 +4907,7 @@ func (s *S) TestAppLogExplicitZeroLines(c *check.C) {
 	for i := 0; i < 15; i++ {
 		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4930,7 +4930,7 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.LogService.Add(a.Name, "mars log", "mars", "")
 	servicemanager.LogService.Add(a.Name, "earth log", "earth", "")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4956,7 +4956,7 @@ func (s *S) TestAppLogSelectBySourceInvert(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.LogService.Add(a.Name, "mars log", "mars", "")
 	servicemanager.LogService.Add(a.Name, "earth log", "earth", "")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -4983,7 +4983,7 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	servicemanager.LogService.Add(a.Name, "mars log", "mars", "prospero")
 	servicemanager.LogService.Add(a.Name, "mars log", "mars", "mahnmut")
 	servicemanager.LogService.Add(a.Name, "earth log", "earth", "caliban")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5015,7 +5015,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLatestEntries(c *check.C) {
 		err = servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "unit")
 		c.Assert(err, check.IsNil)
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5049,7 +5049,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 	err = app.CreateApp(context.TODO(), &app3, s.user)
 	c.Assert(err, check.IsNil)
 	servicemanager.LogService.Add(app3.Name, "app3 log", "tsuru", "")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5322,13 +5322,13 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, "anotherteam"),
 	})
@@ -5355,10 +5355,10 @@ func (s *S) TestBindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5402,10 +5402,10 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateBind,
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
 	})
@@ -5772,13 +5772,13 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermServiceUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5847,10 +5847,10 @@ func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5939,10 +5939,10 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -5967,13 +5967,13 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 }
 
 func (s *S) TestUnbindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, "anotherteam"),
 	})
@@ -6019,10 +6019,10 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
 	})
@@ -6140,7 +6140,7 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *ch
 
 	_, err = appsCollection.InsertOne(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRestart,
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
@@ -6169,7 +6169,7 @@ func (s *S) TestAddLog(c *check.C) {
 	v.Add("message", "message 1")
 	v.Add("message", "message 2")
 	v.Add("message", "message 3")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})

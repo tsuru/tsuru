@@ -16,8 +16,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/validation"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -60,7 +60,7 @@ func (t *Token) GetUserName() string {
 func (t *Token) Engine() string {
 	return "native"
 }
-func (t *Token) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (t *Token) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return auth.BaseTokenPermission(ctx, t)
 }
 

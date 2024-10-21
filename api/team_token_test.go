@@ -147,7 +147,7 @@ func (s *S) TestTeamTokenCreateNoPermission(c *check.C) {
 	body := strings.NewReader(`token_id=t1&description=desc&expires_in=60&team=` + s.team.Name)
 	request, err := http.NewRequest("POST", "/1.6/tokens", body)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermTeamTokenRead,
 		Context: permission.Context(permTypes.CtxTeam, "teamx"),
 	})
@@ -192,7 +192,7 @@ func (s *S) TestTeamTokenDelete(c *check.C) {
 }
 
 func (s *S) TestTeamTokenDeleteNoPermission(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermTeamTokenDelete,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})

@@ -242,8 +242,8 @@ func (r *Role) RemovePermissions(ctx context.Context, permNames ...string) error
 	return nil
 }
 
-func (r *Role) filterValidSchemes() PermissionSchemeList {
-	schemes := make(PermissionSchemeList, 0, len(r.SchemeNames))
+func (r *Role) filterValidSchemes() permTypes.PermissionSchemeList {
+	schemes := make(permTypes.PermissionSchemeList, 0, len(r.SchemeNames))
 	sort.Strings(r.SchemeNames)
 	for i := 0; i < len(r.SchemeNames); i++ {
 		schemeName := r.SchemeNames[i]
@@ -263,11 +263,11 @@ func (r *Role) filterValidSchemes() PermissionSchemeList {
 	return schemes
 }
 
-func (r *Role) PermissionsFor(contextValue string) []Permission {
+func (r *Role) PermissionsFor(contextValue string) []permTypes.Permission {
 	schemes := r.filterValidSchemes()
-	permissions := make([]Permission, len(schemes))
+	permissions := make([]permTypes.Permission, len(schemes))
 	for i, scheme := range schemes {
-		permissions[i] = Permission{
+		permissions[i] = permTypes.Permission{
 			Scheme: scheme,
 			Context: permTypes.PermissionContext{
 				CtxType: r.ContextType,

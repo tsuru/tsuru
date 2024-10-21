@@ -136,7 +136,7 @@ func (s *S) TestRoutersList(c *check.C) {
 }
 
 func (s *S) TestRoutersListRestrictedTokeNoConfig(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -177,7 +177,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
 	defer router.Unregister("foo")
 	defer router.Unregister("bar")
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -233,7 +233,7 @@ func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "my-team"),
 	})
@@ -274,7 +274,7 @@ func (s *S) TestListRoutersWithInfo(c *check.C) {
 }
 
 func (s *S) TestListAppRouters(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadRouter,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -300,7 +300,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 	routertest.FakeRouter.Status.Status = router.BackendStatusNotReady
 	routertest.FakeRouter.Status.Detail = "burn"
 	defer routertest.FakeRouter.Reset()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadRouter,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -327,7 +327,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 
 func (s *S) TestListAppRoutersEmpty(c *check.C) {
 	ctx := context.Background()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppReadRouter,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -346,7 +346,7 @@ func (s *S) TestListAppRoutersEmpty(c *check.C) {
 
 func (s *S) TestAddAppRouter(c *check.C) {
 	ctx := context.Background()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -372,7 +372,7 @@ func (s *S) TestAddAppRouter(c *check.C) {
 }
 
 func (s *S) TestAddAppRouterInvalidRouter(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -390,7 +390,7 @@ func (s *S) TestAddAppRouterInvalidRouter(c *check.C) {
 }
 
 func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -411,7 +411,7 @@ func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
 
 func (s *S) TestUpdateAppRouter(c *check.C) {
 	ctx := context.Background()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -437,7 +437,7 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 }
 
 func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -456,7 +456,7 @@ func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
 
 func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 	ctx := context.Background()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -479,7 +479,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 
 func (s *S) TestRemoveAppRouter(c *check.C) {
 	ctx := context.Background()
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
@@ -500,7 +500,7 @@ func (s *S) TestRemoveAppRouter(c *check.C) {
 }
 
 func (s *S) TestRemoveAppRouterNotFound(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})

@@ -63,7 +63,7 @@ func (t *teamToken) Engine() string {
 	return "team"
 }
 
-func (t *teamToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+func (t *teamToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return expandRolePermissions(ctx, t.Roles)
 }
 
@@ -296,7 +296,7 @@ func (s *teamTokenService) FindByUserToken(ctx context.Context, t authTypes.Toke
 	return teamTokens, nil
 }
 
-func canUseRole(ctx context.Context, userPerms []permission.Permission, roleName, contextValue string) (bool, error) {
+func canUseRole(ctx context.Context, userPerms []permTypes.Permission, roleName, contextValue string) (bool, error) {
 	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return false, err
@@ -310,7 +310,7 @@ func canUseRole(ctx context.Context, userPerms []permission.Permission, roleName
 	return true, nil
 }
 
-func canViewTokenValue(ctx context.Context, userPerms []permission.Permission, teamToken *authTypes.TeamToken) (bool, error) {
+func canViewTokenValue(ctx context.Context, userPerms []permTypes.Permission, teamToken *authTypes.TeamToken) (bool, error) {
 	for _, roleInstance := range teamToken.Roles {
 		canUse, err := canUseRole(ctx, userPerms, roleInstance.Name, roleInstance.ContextValue)
 		if err != nil {

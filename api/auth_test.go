@@ -97,7 +97,7 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 }
 
 func (s *AuthSuite) createUser(c *check.C) {
-	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-auth-toremove", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-auth-toremove", permTypes.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
@@ -441,7 +441,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermTeamDelete,
 		Context: permission.Context(permTypes.CtxTeam, "other-team"),
 	})
@@ -493,7 +493,7 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -517,10 +517,10 @@ func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
 	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermApp,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1171,7 +1171,7 @@ func (s *AuthSuite) TestShowAPITokenOtherUserWithoutPermission(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsers(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1194,7 +1194,7 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1215,7 +1215,7 @@ func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1239,10 +1239,10 @@ func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team2.Name),
 	})
@@ -1270,10 +1270,10 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team2.Name),
 	})
@@ -1300,7 +1300,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -1318,14 +1318,14 @@ func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 }
 
 func (s *AuthSuite) TestListUsersLimitedUserWithMoreRoles(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "jerry", permission.Permission{
+	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "jerry", permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "another-team"),
 	})
@@ -1496,7 +1496,7 @@ func (s *AuthSuite) TestUserInfoWithRolesFromGroups(c *check.C) {
 
 func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	c.StopTimer()
-	perm := permission.Permission{
+	perm := permTypes.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}
@@ -1536,11 +1536,11 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 }
 
 func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
-	perm1 := permission.Permission{
+	perm1 := permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}
-	perm2 := permission.Permission{
+	perm2 := permTypes.Permission{
 		Scheme:  permission.PermTeamCreate,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}

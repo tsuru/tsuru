@@ -81,10 +81,10 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 
 	storagev2.ClearAllCollections(nil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permTypes.Permission{
 		Scheme:  permission.PermServiceInstance,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
+	}, permTypes.Permission{
 		Scheme:  permission.PermServiceRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
@@ -264,7 +264,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
-	p := permission.Permission{
+	p := permTypes.Permission{
 		Scheme:  permission.PermServiceInstance,
 		Context: permission.Context(permTypes.CtxTeam, "anotherTeam"),
 	}
@@ -626,7 +626,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		"tags":        []string{},
 		"parameters":  map[string]interface{}{},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateDescription,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -676,7 +676,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		"tags":        []string{},
 		"parameters":  map[string]interface{}{},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTeamowner,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -725,7 +725,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		"tag":         []string{"tag b", "tag c"},
 		"parameters":  map[string]interface{}{},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -785,7 +785,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTagsAndTagValidator(
 		"tag":         []string{"tag b", "tag c"},
 		"parameters":  map[string]interface{}{},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -815,7 +815,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		"tag":         []string{},
 		"parameters":  map[string]interface{}{},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -895,7 +895,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 		"tags":        []string{},
 		"parameters":  map[string]interface{}{},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdatePlan,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -1023,7 +1023,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 			"replicas": "5",
 		},
 	}
-	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdatePlan,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})

@@ -600,7 +600,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	newName := InputValue(r, "newName")
 	contextType := InputValue(r, "contextType")
 	description := InputValue(r, "description")
-	var wantedPerms []*permission.PermissionScheme
+	var wantedPerms []*permTypes.PermissionScheme
 	if newName != "" {
 		wantedPerms = append(wantedPerms, permission.PermRoleUpdateName)
 	}

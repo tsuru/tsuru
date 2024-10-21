@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -248,7 +249,7 @@ func deployStatus(evt *event.Event) string {
 	return "success"
 }
 
-func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
+func permSchemeForDeploy(opts app.DeployOptions) *permTypes.PermissionScheme {
 	switch opts.GetKind() {
 	case provisionTypes.DeployGit:
 		return permission.PermAppDeployGit

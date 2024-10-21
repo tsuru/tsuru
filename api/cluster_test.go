@@ -165,7 +165,7 @@ func (s *S) TestListClusters(c *check.C) {
 }
 
 func (s *S) TestListClustersNonAdminUser(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermClusterRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})

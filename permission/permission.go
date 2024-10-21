@@ -6,29 +6,16 @@ package permission
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 var ErrUnauthorized = &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
 var ErrTooManyTeams = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team to execute this action."}
-
-type PermissionScheme struct {
-	name     string
-	parent   *PermissionScheme
-	contexts []permTypes.ContextType
-}
-
-type PermissionSchemeList []*PermissionScheme
 
 func Context(t permTypes.ContextType, v string) permTypes.PermissionContext {
 	return permTypes.PermissionContext{CtxType: t, Value: v}
@@ -55,91 +42,11 @@ func parseContext(ctx string) (permTypes.ContextType, error) {
 	return "", errors.Errorf("invalid context type %q", ctx)
 }
 
-func (l PermissionSchemeList) Len() int           { return len(l) }
-func (l PermissionSchemeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l PermissionSchemeList) Less(i, j int) bool { return l[i].FullName() < l[j].FullName() }
-
-func (s *PermissionScheme) nameParts() []string {
-	parent := s
-	var parts []string
-	for parent != nil {
-		if parent.name != "" {
-			parts = append(parts, parent.name)
-		}
-		parent = parent.parent
-	}
-	return parts
-}
-
-func (s *PermissionScheme) IsParent(other *PermissionScheme) bool {
-	root := other
-	myPointer := reflect.ValueOf(s).Pointer()
-	for root != nil {
-		if reflect.ValueOf(root).Pointer() == myPointer {
-			return true
-		}
-		root = root.parent
-	}
-	return false
-}
-
-func (s *PermissionScheme) FullName() string {
-	parts := s.nameParts()
-	var str string
-	for i := len(parts) - 1; i >= 0; i-- {
-		str += parts[i]
-		if i != 0 {
-			str += "."
-		}
-	}
-	return str
-}
-
-func (s *PermissionScheme) Identifier() string {
-	parts := s.nameParts()
-	var str string
-	for i := len(parts) - 1; i >= 0; i-- {
-		str += strings.Replace(cases.Title(language.English).String(parts[i]), "-", "", -1)
-	}
-	if str == "" {
-		return "All"
-	}
-	return str
-}
-
-func (s *PermissionScheme) AllowedContexts() []permTypes.ContextType {
-	contexts := []permTypes.ContextType{permTypes.CtxGlobal}
-	if s.contexts != nil {
-		return append(contexts, s.contexts...)
-	}
-	parent := s
-	for parent != nil {
-		if parent.contexts != nil {
-			return append(contexts, parent.contexts...)
-		}
-		parent = parent.parent
-	}
-	return contexts
-}
-
-type Permission struct {
-	Scheme  *PermissionScheme
-	Context permTypes.PermissionContext
-}
-
-func (p *Permission) String() string {
-	value := p.Context.Value
-	if value != "" {
-		value = " " + value
-	}
-	return fmt.Sprintf("%s(%s%s)", p.Scheme.FullName(), p.Context.CtxType, value)
-}
-
 type Token interface {
-	Permissions(ctx context.Context) ([]Permission, error)
+	Permissions(ctx context.Context) ([]permTypes.Permission, error)
 }
 
-func ListContextValues(ctx context.Context, t Token, scheme *PermissionScheme, failIfEmpty bool) ([]string, error) {
+func ListContextValues(ctx context.Context, t Token, scheme *permTypes.PermissionScheme, failIfEmpty bool) ([]string, error) {
 	contexts := ContextsForPermission(ctx, t, scheme)
 	if len(contexts) == 0 && failIfEmpty {
 		return nil, ErrUnauthorized
@@ -154,7 +61,7 @@ func ListContextValues(ctx context.Context, t Token, scheme *PermissionScheme, f
 	return values, nil
 }
 
-func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
+func ContextsFromListForPermission(perms []permTypes.Permission, scheme *permTypes.PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
 	var contexts []permTypes.PermissionContext
 	for _, perm := range perms {
 		if perm.Scheme.IsParent(scheme) {
@@ -173,7 +80,7 @@ func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme,
 	return contexts
 }
 
-func ContextsForPermission(ctx context.Context, token Token, scheme *PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
+func ContextsForPermission(ctx context.Context, token Token, scheme *permTypes.PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
 	perms, err := token.Permissions(ctx)
 	if err != nil {
 		return []permTypes.PermissionContext{}
@@ -181,7 +88,7 @@ func ContextsForPermission(ctx context.Context, token Token, scheme *PermissionS
 	return ContextsFromListForPermission(perms, scheme, ctxTypes...)
 }
 
-func Check(ctx context.Context, token Token, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
+func Check(ctx context.Context, token Token, scheme *permTypes.PermissionScheme, contexts ...permTypes.PermissionContext) bool {
 	perms, err := token.Permissions(ctx)
 	if err != nil {
 		log.Errorf("unable to read token permissions: %v", err)
@@ -190,7 +97,7 @@ func Check(ctx context.Context, token Token, scheme *PermissionScheme, contexts 
 	return CheckFromPermList(perms, scheme, contexts...)
 }
 
-func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
+func CheckFromPermList(perms []permTypes.Permission, scheme *permTypes.PermissionScheme, contexts ...permTypes.PermissionContext) bool {
 	for _, perm := range perms {
 		if perm.Scheme.IsParent(scheme) {
 			if perm.Context.CtxType == permTypes.CtxGlobal {
@@ -206,7 +113,7 @@ func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ..
 	return false
 }
 
-func TeamForPermission(ctx context.Context, t Token, scheme *PermissionScheme) (string, error) {
+func TeamForPermission(ctx context.Context, t Token, scheme *permTypes.PermissionScheme) (string, error) {
 	allContexts := ContextsForPermission(ctx, t, scheme)
 	teams := make([]string, 0, len(allContexts))
 	for _, ctx := range allContexts {

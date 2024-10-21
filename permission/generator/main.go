@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var fileTpl = `// AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
@@ -35,7 +36,7 @@ var (
 
 type context struct {
 	Time        time.Time
-	Permissions permission.PermissionSchemeList
+	Permissions permTypes.PermissionSchemeList
 }
 
 func main() {

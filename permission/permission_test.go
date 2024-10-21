@@ -13,46 +13,30 @@ import (
 
 func (s *S) TestPermissionSchemeFullName(c *check.C) {
 	table := []struct {
-		p      PermissionScheme
+		p      permTypes.PermissionScheme
 		result string
 	}{
-		{PermissionScheme{}, ""},
-		{PermissionScheme{name: "app"}, "app"},
-		{PermissionScheme{name: "app", parent: &PermissionScheme{}}, "app"},
-		{PermissionScheme{name: "env", parent: &PermissionScheme{name: "app"}}, "app.env"},
-		{PermissionScheme{name: "set", parent: &PermissionScheme{name: "en-nv", parent: &PermissionScheme{name: "app"}}}, "app.en-nv.set"},
+		{permTypes.PermissionScheme{}, ""},
+		{permTypes.PermissionScheme{Name: "app"}, "app"},
+		{permTypes.PermissionScheme{Name: "app", Parent: &permTypes.PermissionScheme{}}, "app"},
+		{permTypes.PermissionScheme{Name: "env", Parent: &permTypes.PermissionScheme{Name: "app"}}, "app.env"},
+		{permTypes.PermissionScheme{Name: "set", Parent: &permTypes.PermissionScheme{Name: "en-nv", Parent: &permTypes.PermissionScheme{Name: "app"}}}, "app.en-nv.set"},
 	}
 	for _, el := range table {
 		c.Check(el.p.FullName(), check.Equals, el.result)
 	}
 }
 
-func (s *S) TestPermissionSchemeIdentifier(c *check.C) {
-	table := []struct {
-		p      PermissionScheme
-		result string
-	}{
-		{PermissionScheme{}, "All"},
-		{PermissionScheme{name: "app"}, "App"},
-		{PermissionScheme{name: "app", parent: &PermissionScheme{}}, "App"},
-		{PermissionScheme{name: "env", parent: &PermissionScheme{name: "app"}}, "AppEnv"},
-		{PermissionScheme{name: "set", parent: &PermissionScheme{name: "en-nv", parent: &PermissionScheme{name: "app"}}}, "AppEnNvSet"},
-	}
-	for _, el := range table {
-		c.Check(el.p.Identifier(), check.Equals, el.result)
-	}
-}
-
 func (s *S) TestPermissionSchemeAllowedContexts(c *check.C) {
 	table := []struct {
-		p   PermissionScheme
+		p   permTypes.PermissionScheme
 		ctx []permTypes.ContextType
 	}{
-		{PermissionScheme{}, []permTypes.ContextType{permTypes.CtxGlobal}},
-		{PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp}},
-		{PermissionScheme{parent: &PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp}},
-		{PermissionScheme{contexts: []permTypes.ContextType{}, parent: &PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal}},
-		{PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxTeam}, parent: &PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxTeam}},
+		{permTypes.PermissionScheme{}, []permTypes.ContextType{permTypes.CtxGlobal}},
+		{permTypes.PermissionScheme{Contexts: []permTypes.ContextType{permTypes.CtxApp}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp}},
+		{permTypes.PermissionScheme{Parent: &permTypes.PermissionScheme{Contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp}},
+		{permTypes.PermissionScheme{Contexts: []permTypes.ContextType{}, Parent: &permTypes.PermissionScheme{Contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal}},
+		{permTypes.PermissionScheme{Contexts: []permTypes.ContextType{permTypes.CtxTeam}, Parent: &permTypes.PermissionScheme{Contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxTeam}},
 	}
 	for _, el := range table {
 		c.Check(el.p.AllowedContexts(), check.DeepEquals, el.ctx)
@@ -60,17 +44,17 @@ func (s *S) TestPermissionSchemeAllowedContexts(c *check.C) {
 }
 
 type userToken struct {
-	permissions []Permission
+	permissions []permTypes.Permission
 }
 
-func (t *userToken) Permissions(ctx context.Context) ([]Permission, error) {
+func (t *userToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return t.permissions, nil
 }
 
 func (s *S) TestCheck(c *check.C) {
 	ctx := context.TODO()
 	t := &userToken{
-		permissions: []Permission{
+		permissions: []permTypes.Permission{
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
 			{Scheme: PermAppDeploy, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team3"}},
 			{Scheme: PermAppUpdateEnvUnset, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal}},
@@ -89,7 +73,7 @@ func (s *S) TestCheck(c *check.C) {
 func (s *S) TestCheckSuperToken(c *check.C) {
 	ctx := context.TODO()
 	t := &userToken{
-		permissions: []Permission{
+		permissions: []permTypes.Permission{
 			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal}},
 		},
 	}
@@ -99,7 +83,7 @@ func (s *S) TestCheckSuperToken(c *check.C) {
 
 func (s *S) TestGetTeamForPermission(c *check.C) {
 	t := &userToken{
-		permissions: []Permission{
+		permissions: []permTypes.Permission{
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
 		},
 	}
@@ -110,7 +94,7 @@ func (s *S) TestGetTeamForPermission(c *check.C) {
 
 func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
 	t := &userToken{
-		permissions: []Permission{
+		permissions: []permTypes.Permission{
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
 			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team2"}},
 		},
@@ -122,7 +106,7 @@ func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
 
 func (s *S) TestGetTeamForPermissionGlobalMustSpecifyTeam(c *check.C) {
 	t := &userToken{
-		permissions: []Permission{
+		permissions: []permTypes.Permission{
 			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal, Value: ""}},
 		},
 	}

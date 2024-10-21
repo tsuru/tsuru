@@ -473,7 +473,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	for _, team := range teams {
 		teamsMap[team.Name] = team
 		teamCtx := permission.Context(permTypes.CtxTeam, team.Name)
-		var parent *permission.PermissionScheme
+		var parent *permTypes.PermissionScheme
 		for _, p := range permsForTeam {
 			if parent != nil && parent.IsParent(p) {
 				continue
@@ -760,7 +760,7 @@ type apiUser struct {
 	Groups      []string
 }
 
-func createAPIUser(ctx context.Context, perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
+func createAPIUser(ctx context.Context, perms []permTypes.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
 	if roleMap == nil {
 		roleMap = make(map[string]*permission.Role)
 	}
@@ -804,7 +804,7 @@ func createAPIUser(ctx context.Context, perms []permission.Permission, user *aut
 	return apiUsr, nil
 }
 
-func expandRoleData(ctx context.Context, perms []permission.Permission, userRole authTypes.RoleInstance, user *apiUser, roleMap map[string]*permission.Role, includeAll bool, group string) (bool, error) {
+func expandRoleData(ctx context.Context, perms []permTypes.Permission, userRole authTypes.RoleInstance, user *apiUser, roleMap map[string]*permission.Role, includeAll bool, group string) (bool, error) {
 	role := roleMap[userRole.Name]
 	if role == nil {
 		r, err := permission.FindRole(ctx, userRole.Name)

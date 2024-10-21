@@ -16,29 +16,29 @@ func (s *S) TestRecorderPermissions(c *check.C) {
 		addWithCtx("team", []permTypes.ContextType{permTypes.CtxTeam}).
 		addWithCtx("team.create", []permTypes.ContextType{}).
 		add("team.update")
-	expected := PermissionSchemeList{
+	expected := permTypes.PermissionSchemeList{
 		{},
-		{name: "app", contexts: []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool}},
-		{name: "update"},
-		{name: "env"},
-		{name: "set"},
-		{name: "unset"},
-		{name: "restart"},
-		{name: "deploy"},
-		{name: "team", contexts: []permTypes.ContextType{permTypes.CtxTeam}},
-		{name: "create", contexts: []permTypes.ContextType{}},
-		{name: "update"},
+		{Name: "app", Contexts: []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool}},
+		{Name: "update"},
+		{Name: "env"},
+		{Name: "set"},
+		{Name: "unset"},
+		{Name: "restart"},
+		{Name: "deploy"},
+		{Name: "team", Contexts: []permTypes.ContextType{permTypes.CtxTeam}},
+		{Name: "create", Contexts: []permTypes.ContextType{}},
+		{Name: "update"},
 	}
-	expected[1].parent = expected[0]
-	expected[2].parent = expected[1]
-	expected[3].parent = expected[2]
-	expected[4].parent = expected[3]
-	expected[5].parent = expected[3]
-	expected[6].parent = expected[2]
-	expected[7].parent = expected[1]
-	expected[8].parent = expected[0]
-	expected[9].parent = expected[8]
-	expected[10].parent = expected[8]
+	expected[1].Parent = expected[0]
+	expected[2].Parent = expected[1]
+	expected[3].Parent = expected[2]
+	expected[4].Parent = expected[3]
+	expected[5].Parent = expected[3]
+	expected[6].Parent = expected[2]
+	expected[7].Parent = expected[1]
+	expected[8].Parent = expected[0]
+	expected[9].Parent = expected[8]
+	expected[10].Parent = expected[8]
 	perms := r.Permissions()
 	c.Assert(perms, check.DeepEquals, expected)
 	c.Assert(perms[0].FullName(), check.Equals, "")

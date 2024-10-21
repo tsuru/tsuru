@@ -135,10 +135,10 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	r, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	perms := r.PermissionsFor("something")
-	c.Assert(perms, check.DeepEquals, []Permission{})
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{})
 	err = r.AddPermissions(context.TODO(), "app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
-	expected := []Permission{
+	expected := []permTypes.Permission{
 		{Scheme: PermissionRegistry.get("app.update"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
 		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
 	}
