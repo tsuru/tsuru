@@ -708,7 +708,7 @@ var saveCertIssuer = action.Action{
 			return nil, err
 		}
 
-		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		sanitizedCName := strings.ReplaceAll(cname, ".", appTypes.CertIsssuerDotReplacement)
 		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
 		_, err = collection.UpdateOne(
@@ -728,7 +728,7 @@ var saveCertIssuer = action.Action{
 			return
 		}
 
-		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		sanitizedCName := strings.ReplaceAll(cname, ".", appTypes.CertIsssuerDotReplacement)
 		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
 		_, err = collection.UpdateOne(
@@ -754,7 +754,7 @@ var removeCertIssuer = action.Action{
 			return nil, err
 		}
 
-		sanitizedCName := strings.ReplaceAll(cname, ".", "_dot_")
+		sanitizedCName := strings.ReplaceAll(cname, ".", appTypes.CertIsssuerDotReplacement)
 		certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
 		_, err = collection.UpdateOne(
@@ -778,7 +778,7 @@ var removeCertIssuersFromDatabase = action.Action{
 		}
 
 		for _, c := range cname {
-			sanitizedCName := strings.ReplaceAll(c, ".", "_dot_")
+			sanitizedCName := strings.ReplaceAll(c, ".", appTypes.CertIsssuerDotReplacement)
 			certIssuerCName := fmt.Sprintf("certissuers.%s", sanitizedCName)
 
 			_, err = collection.UpdateOne(

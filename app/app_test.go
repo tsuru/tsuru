@@ -1689,7 +1689,7 @@ func (s *S) TestRemoveCNameAlsoRemovesCertIssuer(c *check.C) {
 		TeamOwner: s.team.Name,
 		CName:     []string{"ktulu.mycompany.com"},
 		CertIssuers: map[string]string{
-			"ktulu_dot_mycompany_dot_com": "issuer",
+			"ktulu.mycompany.com": "issuer",
 		},
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
@@ -1735,7 +1735,7 @@ func (s *S) TestUnsetCertIssuer(c *check.C) {
 		TeamOwner: s.team.Name,
 		CName:     []string{"ktulu.mycompany.com"},
 		CertIssuers: map[string]string{
-			"ktulu_dot_mycompany_dot_com": "issuer",
+			"ktulu.mycompany.com": "issuer",
 		},
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
@@ -5028,7 +5028,7 @@ func (s *S) TestGetCertificates(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Routers:     []appTypes.AppRouter{{Name: "fake-tls"}},
 		CName:       []string{cname},
-		CertIssuers: map[string]string{"app_dot_io": "letsencrypt"},
+		CertIssuers: map[string]string{"app.io": "letsencrypt"},
 	}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -5934,8 +5934,8 @@ func (s *S) TestGetCertIssuers(c *check.C) {
 		TeamOwner: s.team.Name,
 		CName:     []string{"myapp.io", "myapp.another.io"},
 		CertIssuers: map[string]string{
-			"myapp_dot_io":             "myissuer",
-			"myapp_dot_another_dot_io": "myotherissuer",
+			"myapp.io":         "myissuer",
+			"myapp.another.io": "myotherissuer",
 		},
 	}
 	err := CreateApp(context.TODO(), &app, s.user)
