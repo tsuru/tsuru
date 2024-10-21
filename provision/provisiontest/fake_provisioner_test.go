@@ -12,7 +12,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -89,7 +88,7 @@ func (s *S) TestSetEnvs(c *check.C) {
 			Public: true,
 		},
 	}
-	app.SetEnvs(bind.SetEnvArgs{
+	app.SetEnvs(bindTypes.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: true,
 	})
@@ -126,7 +125,7 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
-	app.UnsetEnvs(bind.UnsetEnvArgs{
+	app.UnsetEnvs(bindTypes.UnsetEnvArgs{
 		VariableNames: []string{"http_proxy"},
 		ShouldRestart: true,
 	})
@@ -141,7 +140,7 @@ func (s *S) TestFakeAppGetCname(c *check.C) {
 
 func (s *S) TestFakeAppAddInstance(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err := app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
@@ -152,7 +151,7 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mongodb",
@@ -180,7 +179,7 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 
 func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err := app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
@@ -191,7 +190,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mongodb",
@@ -202,7 +201,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = app.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst1",
 		ShouldRestart: true,
@@ -220,7 +219,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 
 func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err := app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
@@ -231,7 +230,7 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = app.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst2",
 		ShouldRestart: true,
@@ -241,7 +240,7 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 
 func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err := app.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst2",
 		ShouldRestart: true,

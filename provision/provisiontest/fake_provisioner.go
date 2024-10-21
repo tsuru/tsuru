@@ -167,7 +167,7 @@ func (a *FakeApp) GetServiceEnvs() []bindTypes.ServiceEnvVar {
 	return a.serviceEnvs
 }
 
-func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bind.AddInstanceArgs) error {
+func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bindTypes.AddInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	a.serviceEnvs = append(a.serviceEnvs, instanceArgs.Envs...)
@@ -177,7 +177,7 @@ func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bind.AddInstance
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(ctx context.Context, instanceArgs bind.RemoveInstanceArgs) error {
+func (a *FakeApp) RemoveInstance(ctx context.Context, instanceArgs bindTypes.RemoveInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	lenBefore := len(a.serviceEnvs)
@@ -281,14 +281,14 @@ func (a *FakeApp) SetEnv(env bindTypes.EnvVar) {
 	a.env[env.Name] = env
 }
 
-func (a *FakeApp) SetEnvs(setEnvs bind.SetEnvArgs) error {
+func (a *FakeApp) SetEnvs(setEnvs bindTypes.SetEnvArgs) error {
 	for _, env := range setEnvs.Envs {
 		a.SetEnv(env)
 	}
 	return nil
 }
 
-func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
+func (a *FakeApp) UnsetEnvs(unsetEnvs bindTypes.UnsetEnvArgs) error {
 	for _, env := range unsetEnvs.VariableNames {
 		delete(a.env, env)
 	}

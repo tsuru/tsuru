@@ -25,7 +25,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
@@ -1578,7 +1577,7 @@ func (app *App) Envs() map[string]bindTypes.EnvVar {
 }
 
 // SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(ctx context.Context, setEnvs bind.SetEnvArgs) error {
+func (app *App) SetEnvs(ctx context.Context, setEnvs bindTypes.SetEnvArgs) error {
 	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
 		return nil
 	}
@@ -1655,7 +1654,7 @@ func validateEnvConflicts(app *App, envNames []string) error {
 
 // UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bind.UnsetEnvArgs) error {
+func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bindTypes.UnsetEnvArgs) error {
 	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}
@@ -1744,7 +1743,7 @@ func (app *App) UnsetCertIssuer(ctx context.Context, cname string) error {
 	return action.NewPipeline(actions...).Execute(ctx, app, cname)
 }
 
-func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) error {
+func (app *App) AddInstance(ctx context.Context, addArgs bindTypes.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
 	}
@@ -1766,7 +1765,7 @@ func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) e
 	return nil
 }
 
-func (app *App) RemoveInstance(ctx context.Context, removeArgs bind.RemoveInstanceArgs) error {
+func (app *App) RemoveInstance(ctx context.Context, removeArgs bindTypes.RemoveInstanceArgs) error {
 	lenBefore := len(app.ServiceEnvs)
 	for i := 0; i < len(app.ServiceEnvs); i++ {
 		se := app.ServiceEnvs[i]
