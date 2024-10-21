@@ -49,7 +49,7 @@ type App struct {
 	Quota quota.Quota
 }
 
-var CertIsssuerDotReplacement = "_dot_"
+var CertIssuerDotReplacement = "_dot_"
 
 type CertIssuers map[string]string
 
