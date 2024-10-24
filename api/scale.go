@@ -89,6 +89,13 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: fmt.Sprintf("unable to validate autoscale spec: %v", err),
 		}
 	}
+	err = provision.ValidateAutoScaleDownSpec(&spec)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("unable to validate autoscale down spec: %v", err),
+		}
+	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAutoscaleAdd,

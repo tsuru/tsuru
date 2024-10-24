@@ -15,6 +15,17 @@ type AutoScaleSpec struct {
 	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty"`
 	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty"`
 	Version    int                   `json:"version"`
+	Behavior   BehaviorAutoScaleSpec `json:"behavior,omitempty"`
+}
+
+type BehaviorAutoScaleSpec struct {
+	ScaleDown *ScaleDownPoliciy `json:"scaleDown"`
+}
+
+type ScaleDownPoliciy struct {
+	StabilizationWindow   *int32 `json:"stabilizationWindow"`
+	PercentagePolicyValue *int32 `json:"percentagePolicyValue"`
+	UnitsPolicyValue      *int32 `json:"unitsPolicyValue"`
 }
 
 type AutoScalePrometheus struct {

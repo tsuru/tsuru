@@ -405,7 +405,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 			// customize the behavior directly. Meanwhile, we'll use a safer
 			// default to prevent the autoscaler from scaling down too fast
 			// poossibly disrupting the app.
-			Behavior: buildHPABehavior(),
+			Behavior: buildHPABehavior(spec.Behavior.ScaleDown),
 			Metrics: []autoscalingv2.MetricSpec{
 				{
 					Type: autoscalingv2.ResourceMetricSourceType,
@@ -561,7 +561,7 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a provision.App, depInfo 
 			Triggers:        kedaTriggers,
 			Advanced: &kedav1alpha1.AdvancedConfig{
 				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
-					Behavior: buildHPABehavior(),
+					Behavior: buildHPABehavior(spec.Behavior.ScaleDown),
 				},
 			},
 		},
@@ -613,28 +613,59 @@ func buildDefaultPrometheusAddress(ns string) (string, error) {
 	return buf.String(), nil
 }
 
-func buildHPABehavior() *autoscalingv2.HorizontalPodAutoscalerBehavior {
-	// setting ground to allow user customization regarding Up/Down scale behavior
-	// should be a feature in the future
+func buildHPABehavior(behaviorSpec *provTypes.ScaleDownPoliciy) *autoscalingv2.HorizontalPodAutoscalerBehavior {
+	// setting ground to allow user customization regarding down scale behavior
 	policyMin := autoscalingv2.MinChangePolicySelect
-
-	return &autoscalingv2.HorizontalPodAutoscalerBehavior{
+	policies := getPoliciesFromBehavior(behaviorSpec)
+	behavior := &autoscalingv2.HorizontalPodAutoscalerBehavior{
 		ScaleDown: &autoscalingv2.HPAScalingRules{
 			SelectPolicy: &policyMin,
-			Policies: []autoscalingv2.HPAScalingPolicy{
-				{
-					Type:          autoscalingv2.PercentScalingPolicy,
-					Value:         10,
-					PeriodSeconds: 60,
-				},
-				{
-					Type:          autoscalingv2.PodsScalingPolicy,
-					Value:         3,
-					PeriodSeconds: 60,
-				},
-			},
+			Policies:     policies,
 		},
 	}
+	settingValueStabilizationWindow(behavior, behaviorSpec)
+	return behavior
+}
+
+func settingValueStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutoscalerBehavior, behaviorSpec *provTypes.ScaleDownPoliciy) {
+	if behaviorSpec != nil && behaviorSpec.StabilizationWindow != nil {
+		behavior.ScaleDown.StabilizationWindowSeconds = behaviorSpec.StabilizationWindow
+	}
+}
+
+func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPoliciy) (policies []autoscalingv2.HPAScalingPolicy) {
+	return []autoscalingv2.HPAScalingPolicy{
+		{
+			Type:          autoscalingv2.PercentScalingPolicy,
+			Value:         getBehaviorPercentageNoFail(behaviorSpec, 10),
+			PeriodSeconds: 60,
+		},
+		{
+			Type:          autoscalingv2.PodsScalingPolicy,
+			Value:         getBehaviorUnitsNoFail(behaviorSpec, 3),
+			PeriodSeconds: 60,
+		},
+	}
+}
+
+func getBehaviorPercentageNoFail(param *provTypes.ScaleDownPoliciy, valueDefault int32) int32 {
+	if param == nil {
+		return valueDefault
+	}
+	if param.PercentagePolicyValue == nil {
+		return valueDefault
+	}
+	return *param.PercentagePolicyValue
+}
+
+func getBehaviorUnitsNoFail(param *provTypes.ScaleDownPoliciy, valueDefault int32) int32 {
+	if param == nil {
+		return valueDefault
+	}
+	if param.UnitsPolicyValue == nil {
+		return valueDefault
+	}
+	return *param.UnitsPolicyValue
 }
 
 func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provision.App, process string) (*deploymentInfo, error) {
