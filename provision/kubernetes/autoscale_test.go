@@ -1377,6 +1377,61 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
 	c.Assert(scaledObject.GetAnnotations(), check.DeepEquals, map[string]string(nil))
 }
 
+func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	err = s.p.Stop(context.TODO(), a, "web", version, &bytes.Buffer{})
+	c.Assert(err, check.IsNil)
+
+	autoScaleSpec := provTypes.AutoScaleSpec{
+		MinUnits:   5,
+		MaxUnits:   20,
+		AverageCPU: "500m",
+		Schedules: []provTypes.AutoScaleSchedule{
+			{
+				MinReplicas: 2,
+				Start:       "0 6 * * *",
+				End:         "0 18 * * *",
+				Timezone:    "UTC",
+			},
+		},
+		Prometheus: []provTypes.AutoScalePrometheus{
+			{
+				Name:              "prometheus_metric",
+				Query:             "sum(some_metric{app='app_test'})",
+				PrometheusAddress: "test.prometheus.address.exemple",
+				Threshold:         10.0,
+			},
+		},
+		Behavior: provTypes.BehaviorAutoScaleSpec{
+			ScaleDown: &provTypes.ScaleDownPoliciy{
+				StabilizationWindow:   toInt32Ptr(300),
+				PercentagePolicyValue: toInt32Ptr(50),
+				UnitsPolicyValue:      toInt32Ptr(2),
+			},
+		},
+	}
+	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	scaleDown := scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleDown
+	c.Assert(*scaleDown.StabilizationWindowSeconds, check.DeepEquals, int32(300))
+	c.Assert(scaleDown.Policies[0].Value, check.Equals, int32(50))
+	c.Assert(scaleDown.Policies[1].Value, check.Equals, int32(2))
+}
+
 func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -1655,4 +1710,78 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
 	c.Assert(err, check.ErrorMatches, `autoscale cpu value cannot be greater than 95%`)
+}
+
+func (s *S) TestValidateBehaviorPercentageNoFail(c *check.C) {
+	tests := []struct {
+		params             *provTypes.ScaleDownPoliciy
+		defaultValue       int32
+		expectedPercentage int32
+	}{
+		{
+			params:             nil,
+			defaultValue:       50,
+			expectedPercentage: 50,
+		},
+		{
+			params:             &provTypes.ScaleDownPoliciy{},
+			defaultValue:       10,
+			expectedPercentage: 10,
+		},
+		{
+			params: &provTypes.ScaleDownPoliciy{
+				PercentagePolicyValue: toInt32Ptr(20),
+			},
+			defaultValue:       10,
+			expectedPercentage: 20,
+		},
+		{
+			params: &provTypes.ScaleDownPoliciy{
+				StabilizationWindow: toInt32Ptr(300),
+			},
+			defaultValue:       10,
+			expectedPercentage: 10,
+		},
+	}
+	for _, tt := range tests {
+		percentage := getBehaviorPercentageNoFail(tt.params, tt.defaultValue)
+		c.Assert(percentage, check.Equals, tt.expectedPercentage)
+	}
+}
+
+func (s *S) TestValidateBehaviorUnitsNoFail(c *check.C) {
+	tests := []struct {
+		params        *provTypes.ScaleDownPoliciy
+		defaultValue  int32
+		expectedUnits int32
+	}{
+		{
+			params:        nil,
+			defaultValue:  2,
+			expectedUnits: 2,
+		},
+		{
+			params:        &provTypes.ScaleDownPoliciy{},
+			defaultValue:  10,
+			expectedUnits: 10,
+		},
+		{
+			params: &provTypes.ScaleDownPoliciy{
+				UnitsPolicyValue: toInt32Ptr(20),
+			},
+			defaultValue:  10,
+			expectedUnits: 20,
+		},
+		{
+			params: &provTypes.ScaleDownPoliciy{
+				StabilizationWindow: toInt32Ptr(300),
+			},
+			defaultValue:  10,
+			expectedUnits: 10,
+		},
+	}
+	for _, tt := range tests {
+		units := getBehaviorUnitsNoFail(tt.params, tt.defaultValue)
+		c.Assert(units, check.Equals, tt.expectedUnits)
+	}
 }
