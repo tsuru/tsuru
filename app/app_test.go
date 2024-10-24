@@ -2769,7 +2769,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		},
 		"tags": []interface{}{"tag a", "tag b"},
 		"autoscale": []interface{}{
-			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "version": float64(0)},
+			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "version": float64(0), "behavior": map[string]interface{}{"scaleDown": nil}},
 		},
 		"autoscaleRecommendation": []interface{}{
 			map[string]interface{}{
