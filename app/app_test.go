@@ -1330,9 +1330,9 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(ctx, 1, "web", "", nil)
+	err = AddUnits(ctx, &a, 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(ctx, bindTypes.UnsetEnvArgs{
+	err = UnsetEnvs(ctx, &a, bindTypes.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: false,
 	})
@@ -1363,7 +1363,7 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(ctx, bindTypes.UnsetEnvArgs{
+	err = UnsetEnvs(ctx, &a, bindTypes.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: true,
 	})
@@ -1386,24 +1386,24 @@ func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *che
 		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root"},
 	}
 	a := appTypes.App{Name: "hi-there", ServiceEnvs: envs}
-	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, expected)
+	c.Assert(InstanceEnvs(&a, "srv1", "mysql"), check.DeepEquals, expected)
 }
 
 func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *check.C) {
 	a := appTypes.App{Name: "hi-there"}
-	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, map[string]bindTypes.EnvVar{})
+	c.Assert(InstanceEnvs(&a, "srv1", "mysql"), check.DeepEquals, map[string]bindTypes.EnvVar{})
 }
 
 func (s *S) TestAddCName(c *check.C) {
 	app := &appTypes.App{Name: "ktulu", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), app, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app, "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
 	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
-	err = app.AddCName(context.TODO(), "ktulu2.mycompany.com")
+	err = AddCName(context.TODO(), app, "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
 	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
@@ -1414,15 +1414,15 @@ func (s *S) TestAddCNameCantBeDuplicatedWithSameRouter(c *check.C) {
 	app := &appTypes.App{Name: "ktulu", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}, {Name: "fake-tls"}}}
 	err := CreateApp(context.TODO(), app, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app, "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	err = app.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app, "ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for this app")
 	app2 := &appTypes.App{Name: "ktulu2", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err = CreateApp(context.TODO(), app2, s.user)
 	c.Assert(err, check.IsNil)
-	err = app2.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app, "ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app ktulu using same router")
 }
@@ -1434,10 +1434,10 @@ func (s *S) TestAddCNameErrorForDifferentTeamOwners(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = CreateApp(context.TODO(), app2, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app, "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
 	app2.TeamOwner = "some-other-team"
-	err = app2.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app2, "ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for another app ktulu and belongs to a different team owner")
 }

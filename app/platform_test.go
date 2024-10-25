@@ -237,7 +237,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	args := make(map[string]string)
 	args["disabled"] = "true"
 	appName := "test-app-1"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}
@@ -276,7 +276,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 	args := make(map[string]string)
 	args["disabled"] = "true"
 	appName := "test-app-2"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}
@@ -316,7 +316,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 	args["dockerfile"] = ""
 	args["disabled"] = "true"
 	appName := "test-app2"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}
@@ -355,7 +355,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	args := make(map[string]string)
 	args["disabled"] = "false"
 	appName := "test-app3"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}
@@ -394,7 +394,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 	args := make(map[string]string)
 	args["disabled"] = "false"
 	appName := "test-app4"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}
@@ -453,7 +453,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	appName := "test-app"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}
@@ -526,7 +526,7 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 		},
 	}
 	appName := "test-another-app"
-	app := App{
+	app := appTypes.App{
 		Name:     appName,
 		Platform: name,
 	}

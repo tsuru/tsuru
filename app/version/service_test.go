@@ -25,7 +25,7 @@ func (s *S) TestNewAppVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-		App:            &appTypes.MockApp{Name: "myapp"},
+		App:            &appTypes.App{Name: "myapp"},
 		EventID:        "myevtid",
 		CustomBuildTag: "mybuildtag",
 		Description:    "mydesc",
@@ -44,7 +44,7 @@ func (s *S) TestNewAppVersion(c *check.C) {
 	})
 
 	version, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-		App: &appTypes.MockApp{Name: "myapp"},
+		App: &appTypes.App{Name: "myapp"},
 	})
 	c.Assert(err, check.IsNil)
 	vi = version.VersionInfo()
@@ -58,7 +58,7 @@ func (s *S) TestNewAppVersion(c *check.C) {
 }
 
 func (s *S) TestAppVersionService_LatestSuccessfulVersion(c *check.C) {
-	app := &appTypes.MockApp{Name: "myapp"}
+	app := &appTypes.App{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
@@ -95,7 +95,7 @@ func (s *S) TestAppVersionService_LatestSuccessfulVersion(c *check.C) {
 }
 
 func (s *S) TestAppVersionService_AppVersions(c *check.C) {
-	app := &appTypes.MockApp{Name: "myapp"}
+	app := &appTypes.App{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
@@ -122,7 +122,7 @@ func (s *S) TestAppVersionService_AppVersions(c *check.C) {
 }
 
 func (s *S) TestAppVersionService_DeleteVersions(c *check.C) {
-	app := &appTypes.MockApp{Name: "myapp"}
+	app := &appTypes.App{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
@@ -146,8 +146,8 @@ func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
 	allVersions, err := svc.AllAppVersions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(allVersions, check.HasLen, 0)
-	app1 := &appTypes.MockApp{Name: "myapp1"}
-	app2 := &appTypes.MockApp{Name: "myapp2"}
+	app1 := &appTypes.App{Name: "myapp1"}
+	app2 := &appTypes.App{Name: "myapp2"}
 	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app1})
 	c.Assert(err, check.IsNil)
 	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app2})
@@ -180,7 +180,7 @@ func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
 }
 
 func (s *S) TestAppVersionService_DeleteVersionIDs(c *check.C) {
-	app := &appTypes.MockApp{Name: "myapp"}
+	app := &appTypes.App{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
@@ -211,7 +211,7 @@ func (s *S) TestAppVersionService_DeleteVersionIDs(c *check.C) {
 }
 
 func (s *S) TestAppVersionService_VersionByPendingImage(c *check.C) {
-	app := &appTypes.MockApp{Name: "myapp"}
+	app := &appTypes.App{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
@@ -229,7 +229,7 @@ func (s *S) TestAppVersionService_VersionByPendingImage(c *check.C) {
 }
 
 func (s *S) TestAppVersionService_VersionByImageOrVersion(c *check.C) {
-	app := &appTypes.MockApp{Name: "myapp"}
+	app := &appTypes.App{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 

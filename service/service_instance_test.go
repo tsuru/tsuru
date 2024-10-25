@@ -21,13 +21,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -1641,7 +1641,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
-	var apps []bind.App
+	var apps []*appTypes.App
 	var expectedNames []string
 	for i := 0; i < 100; i++ {
 		name := fmt.Sprintf("myapp-%02d", i)
@@ -1652,7 +1652,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	wg := sync.WaitGroup{}
 	for _, app := range apps {
 		wg.Add(1)
-		go func(app bind.App) {
+		go func(app *appTypes.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
 			bindErr := si.BindApp(context.TODO(), app, nil, true, &buf, evt, "")
@@ -1694,7 +1694,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), si)
 	c.Assert(err, check.IsNil)
-	var apps []bind.App
+	var apps []*appTypes.App
 	evt := createEvt(c)
 	for i := 0; i < 20; i++ {
 		name := fmt.Sprintf("myapp-%02d", i)
@@ -1709,7 +1709,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	wg := sync.WaitGroup{}
 	for _, app := range apps {
 		wg.Add(1)
-		go func(app bind.App) {
+		go func(app *appTypes.App) {
 			defer wg.Done()
 			unbindErr := siDB.UnbindApp(context.TODO(), UnbindAppArgs{
 				App:   app,

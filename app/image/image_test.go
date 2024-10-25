@@ -78,51 +78,51 @@ func (s *S) TestGetBuildImage(c *check.C) {
 		name              string
 		registry          string
 		ns                string
-		app               appTypes.MockApp
+		app               appTypes.App
 		successfulVersion bool
 
 		expectedImage string
 	}{
 		{
 			name:          "no deploys",
-			app:           appTypes.MockApp{Platform: "python", PlatformVersion: "latest"},
+			app:           appTypes.App{Platform: "python", PlatformVersion: "latest"},
 			expectedImage: "tsuru/python:v1",
 		},
 		{
 			name:          "no deploys with platform version",
-			app:           appTypes.MockApp{Platform: "python", PlatformVersion: "v9"},
+			app:           appTypes.App{Platform: "python", PlatformVersion: "v9"},
 			expectedImage: "tsuru/python:v9",
 		},
 		{
 			name:              "no deploys with version",
 			successfulVersion: true,
-			app:               appTypes.MockApp{Platform: "python", PlatformVersion: "latest"},
+			app:               appTypes.App{Platform: "python", PlatformVersion: "latest"},
 			expectedImage:     "tsuru/python:v1",
 		},
 		{
 			name:              "more deploys with version",
 			successfulVersion: true,
-			app:               appTypes.MockApp{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
+			app:               appTypes.App{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
 			expectedImage:     "tsuru/app-myapp:v2",
 		},
 		{
 			name:              "more deploys with version with ns",
 			successfulVersion: true,
 			ns:                "other-tsuru",
-			app:               appTypes.MockApp{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
+			app:               appTypes.App{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
 			expectedImage:     "other-tsuru/app-myapp:v3",
 		},
 		{
 			name:              "multiple 10 deploys with version",
 			successfulVersion: true,
-			app:               appTypes.MockApp{Platform: "python", Deploys: 20, PlatformVersion: "latest"},
+			app:               appTypes.App{Platform: "python", Deploys: 20, PlatformVersion: "latest"},
 			expectedImage:     "tsuru/python:v1",
 		},
 		{
 			name:              "more deploys with registry",
 			registry:          "mock.registry.com",
 			successfulVersion: true,
-			app:               appTypes.MockApp{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
+			app:               appTypes.App{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
 			expectedImage:     "mock.registry.com/tsuru/app-myapp:v5",
 		},
 	}
@@ -134,7 +134,7 @@ func (s *S) TestGetBuildImage(c *check.C) {
 		tt.app.Name = "myapp"
 		if tt.successfulVersion {
 			version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-				App: &appTypes.MockApp{Name: "myapp"},
+				App: &appTypes.App{Name: "myapp"},
 			})
 			c.Assert(err, check.IsNil)
 			err = version.CommitBaseImage()

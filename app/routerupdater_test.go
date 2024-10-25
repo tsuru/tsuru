@@ -7,6 +7,7 @@ package app
 import (
 	"context"
 
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/cache"
 	check "gopkg.in/check.v1"
 )
@@ -17,7 +18,7 @@ func (s *S) TestAppRouterUpdaterUpdateWait(c *check.C) {
 			{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"},
 		}, nil
 	}
-	a := App{
+	a := appTypes.App{
 		Name:      "app1",
 		TeamOwner: s.team.Name,
 	}

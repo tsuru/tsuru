@@ -229,7 +229,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 
@@ -316,7 +316,7 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -397,7 +397,7 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -435,7 +435,7 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -473,7 +473,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
@@ -559,7 +559,7 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	var regDeleteCalls int
@@ -591,7 +591,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
