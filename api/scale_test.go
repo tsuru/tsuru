@@ -16,6 +16,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
+	"k8s.io/utils/ptr"
 )
 
 func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
@@ -146,6 +147,65 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": a.Name},
 			{"name": "process", "value": "p1"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestAddAutoScaleDown(c *check.C) {
+	ctx := context.Background()
+	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, "myapp")
+		return &quota.Quota{
+			Limit: 10,
+		}, nil
+	}
+	provision.DefaultProvisioner = "autoscaleProv"
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader(`{"process": "p1", "minUnits": 2, "maxUnits": 10, "averageCPU": "600m", "behavior": {"scaleDown": {"stabilizationWindow": 10,"percentagePolicyValue": 20, "unitsPolicyValue": 1}}}`)
+	request, err := http.NewRequest("POST", "/apps/myapp/units/autoscale", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		c.Assert(recorder.Body.String(), check.Equals, "check err")
+	}
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	spec, err := a.AutoScaleInfo(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(spec, check.DeepEquals, []provTypes.AutoScaleSpec{
+		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m", Behavior: provTypes.BehaviorAutoScaleSpec{
+			ScaleDown: &provTypes.ScaleDownPoliciy{
+				StabilizationWindow:   ptr.To(int32(10)),
+				PercentagePolicyValue: ptr.To(int32(20)),
+				UnitsPolicyValue:      ptr.To(int32(1)),
+			},
+		}},
+	})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update.unit.autoscale.add",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "averageCPU", "value": "600m"},
+			{"name": "process", "value": "p1"},
+			{"name": "minUnits", "value": "2"},
+			{"name": "maxUnits", "value": "10"},
+			{"name": "behavior.scaleDown.unitsPolicyValue", "value": "1"},
+			{"name": "behavior.scaleDown.percentagePolicyValue", "value": "20"},
+			{"name": "behavior.scaleDown.stabilizationWindow", "value": "10"},
 		},
 	}, eventtest.HasEvent)
 }
