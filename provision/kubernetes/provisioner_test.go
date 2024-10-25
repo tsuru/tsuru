@@ -221,14 +221,14 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	}))
 	s.mock.MockfakeNodes(srv.URL)
 	t0 := time.Now().UTC()
-	for _, a := range []provision.App{a1, a2} {
+	for _, a := range []*appTypes.App{a1, a2} {
 		for i := 1; i <= 2; i++ {
 			s.waitPodUpdate(c, func() {
 				_, err := s.client.CoreV1().Pods("default").Create(context.TODO(), &apiv1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: fmt.Sprintf("%s-%d", a.GetName(), i),
+						Name: fmt.Sprintf("%s-%d", a.Name, i),
 						Labels: map[string]string{
-							"tsuru.io/app-name":     a.GetName(),
+							"tsuru.io/app-name":     a.Name,
 							"tsuru.io/app-process":  "web",
 							"tsuru.io/app-platform": "python",
 						},
@@ -348,7 +348,7 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 		},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -390,7 +390,7 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 		},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -431,7 +431,7 @@ func (s *S) TestUnitsStarting(c *check.C) {
 		},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -476,7 +476,7 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 		},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -528,7 +528,7 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 		},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -585,7 +585,7 @@ func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
 		},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -796,7 +796,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 	})
 
 	evt1, err := event.New(context.TODO(), &event.Opts{
-		Target:   eventTypes.Target{Type: "app", Value: a.GetName()},
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
@@ -821,7 +821,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 	})
 
 	evt2, err := event.New(context.TODO(), &event.Opts{
-		Target:   eventTypes.Target{Type: "app", Value: a.GetName()},
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
@@ -902,7 +902,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -942,7 +942,7 @@ func (s *S) TestProvisionerDestroyVersion(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	deployEvent, err := event.New(context.TODO(), &event.Opts{
-		Target:      eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:      eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:        permission.PermAppDeploy,
 		Owner:       s.token,
 		Allowed:     event.Allowed(permission.PermAppDeploy),
@@ -1001,7 +1001,7 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1075,7 +1075,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1130,7 +1130,7 @@ func (s *S) TestDeploy(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1181,7 +1181,7 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 	err := s.p.Destroy(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1215,7 +1215,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		return false, nil, nil
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1276,7 +1276,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	})
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1308,7 +1308,7 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1343,7 +1343,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1448,7 +1448,7 @@ func (s *S) TestDeployRollback(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	deployEvt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1475,7 +1475,7 @@ func (s *S) TestDeployRollback(c *check.C) {
 	deployEvt.Done(context.TODO(), err)
 	c.Assert(err, check.IsNil)
 	rollbackEvt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeployRollback,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeployRollback),
@@ -1849,11 +1849,11 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 	crdList, err := s.client.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(crdList.Items, check.HasLen, 1)
-	c.Assert(crdList.Items[0].GetName(), check.DeepEquals, "apps.tsuru.io")
+	c.Assert(crdList.Items[0].Name, check.DeepEquals, "apps.tsuru.io")
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
+	c.Assert(appList.Items[0].Name, check.DeepEquals, a.Name)
 	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "default")
 }
 
@@ -1876,7 +1876,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -1898,7 +1898,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	var recreatedPods bool
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -1936,7 +1936,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
+	c.Assert(appList.Items[0].Name, check.DeepEquals, a.Name)
 	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "tsuru-test-pool-2")
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -1965,7 +1965,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -2013,7 +2013,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	c.Assert(contains("myapp-web-units", sList.Items), check.Equals, true)
 	c.Assert(contains("myapp-web-v1", sList.Items), check.Equals, true)
 	c.Assert(contains("myapp-web-v2", sList.Items), check.Equals, true)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
 	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
@@ -2038,7 +2038,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -2069,7 +2069,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 0)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.Stop(context.TODO(), a, "", version1, buf)
 	c.Assert(err, check.IsNil)
@@ -2116,7 +2116,7 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -2147,7 +2147,7 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		wait()
 	}
 
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), pool2, 0)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
@@ -2173,7 +2173,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -2192,7 +2192,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	sList, err := s.client.CoreV1().Services("default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -2220,7 +2220,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -2242,7 +2242,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -2264,7 +2264,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -2292,7 +2292,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -2344,14 +2344,14 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt1",
 		ReadOnly:   false,
 	})
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
@@ -2365,7 +2365,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 		},
 	}
 	version := newSuccessfulVersion(c, a, customData)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvcs.Items, check.HasLen, 1)
@@ -2429,7 +2429,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -2442,7 +2442,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	client1.TsuruClientset.PrependReactor("create", "apps", s.mock.AppReaction(a2, c))
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a2.GetName(),
+		AppName:    a2.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -2463,7 +2463,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	err = s.p.Restart(context.TODO(), a, "web", version, nil)
 	c.Assert(err, check.IsNil)
 
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), pool2, 0)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
 	// Check if old volume was not removed
@@ -2755,7 +2755,7 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
 	tclient, err := TsuruClientForConfig(s.clusterClient.restConfig)
 	c.Assert(err, check.IsNil)
 
-	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	foundTsuruApp.ObjectMeta.Annotations = map[string]string{
@@ -2768,7 +2768,7 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
 	err = ensureAppCustomResourceSynced(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 
-	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	c.Assert(appCRD.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
@@ -2811,7 +2811,7 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 	tclient, err := TsuruClientForConfig(s.clusterClient.restConfig)
 	c.Assert(err, check.IsNil)
 
-	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	foundTsuruApp.ObjectMeta.Annotations = map[string]string{
@@ -2825,7 +2825,7 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 	err = ensureAppCustomResourceSynced(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 
-	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	c.Assert(appCRD.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{

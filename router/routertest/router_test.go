@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/router"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -65,7 +66,7 @@ func (s *S) TearDownTest(c *check.C) {
 
 func (s *S) TestEnsureBackend(c *check.C) {
 	r := newFakeRouter()
-	app := FakeApp{Name: "foo"}
+	app := &appTypes.App{Name: "foo"}
 	err := r.EnsureBackend(context.TODO(), app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend(context.TODO(), app)
@@ -74,7 +75,7 @@ func (s *S) TestEnsureBackend(c *check.C) {
 
 func (s *S) TestRemoveBackend(c *check.C) {
 	r := newFakeRouter()
-	app := FakeApp{Name: "bar"}
+	app := &appTypes.App{Name: "bar"}
 	err := r.EnsureBackend(context.TODO(), app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	err = r.RemoveBackend(context.TODO(), app)
@@ -84,14 +85,14 @@ func (s *S) TestRemoveBackend(c *check.C) {
 
 func (s *S) TestRemoveUnknownBackend(c *check.C) {
 	r := newFakeRouter()
-	app := FakeApp{Name: "bar"}
+	app := &appTypes.App{Name: "bar"}
 	err := r.RemoveBackend(context.TODO(), app)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestReset(c *check.C) {
 	r := newFakeRouter()
-	app := FakeApp{Name: "name"}
+	app := &appTypes.App{Name: "name"}
 	err := r.EnsureBackend(context.TODO(), app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	r.Reset()
@@ -100,7 +101,7 @@ func (s *S) TestReset(c *check.C) {
 
 func (s *S) TestAddCertificate(c *check.C) {
 	r := TLSRouter
-	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", "cert", "key")
+	err := r.AddCertificate(context.TODO(), &appTypes.App{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Certs["example.com"], check.DeepEquals, "cert")
 	c.Assert(r.Keys["example.com"], check.DeepEquals, "key")
@@ -108,9 +109,9 @@ func (s *S) TestAddCertificate(c *check.C) {
 
 func (s *S) TestRemoveCertificate(c *check.C) {
 	r := TLSRouter
-	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", "cert", "key")
+	err := r.AddCertificate(context.TODO(), &appTypes.App{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	err = r.RemoveCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com")
+	err = r.RemoveCertificate(context.TODO(), &appTypes.App{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Certs["example.com"], check.Equals, "")
 	c.Assert(r.Keys["example.com"], check.Equals, "")
@@ -140,9 +141,9 @@ Wx1oQV8UD5KLQQRy9Xew/KRHVzOpdkK66/i/hgV7GdREy4aKNAEBRpheOzjLDQyG
 YRLI1QVj1Q==
 -----END CERTIFICATE-----`
 	r := TLSRouter
-	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", testCert, "key")
+	err := r.AddCertificate(context.TODO(), &appTypes.App{Name: "myapp"}, "example.com", testCert, "key")
 	c.Assert(err, check.IsNil)
-	cert, err := r.GetCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com")
+	cert, err := r.GetCertificate(context.TODO(), &appTypes.App{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(cert, check.DeepEquals, testCert)
 }

@@ -276,8 +276,8 @@ func (s *S) TestRestarts(c *check.C) {
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, restarts: map[string]int{"": 10, "web": 2}},
-		app2.GetName(): {app: app1, restarts: map[string]int{"": 0}},
+		app1.Name: {app: app1, restarts: map[string]int{"": 10, "web": 2}},
+		app2.Name: {app: app1, restarts: map[string]int{"": 0}},
 	}
 	c.Assert(p.Restarts(app1, ""), check.Equals, 10)
 	c.Assert(p.Restarts(app1, "web"), check.Equals, 2)
@@ -290,8 +290,8 @@ func (s *S) TestStarts(c *check.C) {
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
-		app2.GetName(): {app: app1, starts: map[string]int{"": 0}},
+		app1.Name: {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
+		app2.Name: {app: app1, starts: map[string]int{"": 0}},
 	}
 	c.Assert(p.Starts(app1, "web"), check.Equals, 10)
 	c.Assert(p.Starts(app1, "worker"), check.Equals, 1)
@@ -304,8 +304,8 @@ func (s *S) TestStops(c *check.C) {
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
-		app2.GetName(): {app: app1, stops: map[string]int{"": 0}},
+		app1.Name: {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
+		app2.Name: {app: app1, stops: map[string]int{"": 0}},
 	}
 	c.Assert(p.Stops(app1, "web"), check.Equals, 10)
 	c.Assert(p.Stops(app1, "worker"), check.Equals, 1)
@@ -321,7 +321,7 @@ func (s *S) TestGetUnits(c *check.C) {
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app.GetName(): {app: app, units: list},
+		app.Name: {app: app, units: list},
 	}
 	units := p.GetUnits(app)
 	c.Assert(units, check.DeepEquals, list)
@@ -349,10 +349,10 @@ func (s *S) TestProvision(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	pApp := p.apps[app.GetName()]
+	pApp := p.apps[app.Name]
 	c.Assert(pApp.app, check.DeepEquals, app)
 	c.Assert(pApp.units, check.HasLen, 0)
-	c.Assert(routertest.FakeRouter.HasBackend(app.GetName()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
 }
 
 func (s *S) TestProvisionWithPreparedFailure(c *check.C) {
@@ -743,7 +743,7 @@ func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	c.Assert(p.apps[app.GetName()].unitLen, check.Equals, 1)
+	c.Assert(p.apps[app.Name].unitLen, check.Equals, 1)
 }
 
 func (s *S) TestFakeProvisionerUnits(c *check.C) {
@@ -772,7 +772,7 @@ func (s *S) TestGetAppFromUnitID(c *check.C) {
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app.GetName(): {app: app, units: list},
+		app.Name: {app: app, units: list},
 	}
 	a, err := p.GetAppFromUnitID("chain-lighting-0")
 	c.Assert(err, check.IsNil)

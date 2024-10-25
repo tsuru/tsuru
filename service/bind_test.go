@@ -115,7 +115,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
@@ -139,7 +139,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
@@ -151,7 +151,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
 
-	c.Assert(instance.Apps, check.DeepEquals, []string{a.GetName()})
+	c.Assert(instance.Apps, check.DeepEquals, []string{a.Name})
 }
 
 func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
@@ -187,7 +187,7 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance2)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -243,7 +243,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
@@ -267,7 +267,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -306,7 +306,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), instance)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{

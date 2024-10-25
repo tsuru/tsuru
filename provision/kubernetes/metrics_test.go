@@ -26,7 +26,7 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -49,22 +49,22 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 			Items: []metricsv1beta1.PodMetrics{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      a.GetName() + "-123",
+						Name:      a.Name + "-123",
 						Namespace: "default",
 						Labels: map[string]string{
-							"tsuru.io/app-name": a.GetName(),
+							"tsuru.io/app-name": a.Name,
 						},
 					},
 					Containers: []metricsv1beta1.ContainerMetrics{
 						{
-							Name: a.GetName() + "-123-web",
+							Name: a.Name + "-123-web",
 							Usage: corev1.ResourceList{
 								"cpu":    resource.MustParse("2100m"),
 								"memory": resource.MustParse("100Mi"),
 							},
 						},
 						{
-							Name: a.GetName() + "-123-sidecar",
+							Name: a.Name + "-123-sidecar",
 							Usage: corev1.ResourceList{
 								"cpu":    resource.MustParse("100m"),
 								"memory": resource.MustParse("10Mi"),

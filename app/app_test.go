@@ -2363,7 +2363,7 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.Stop(context.TODO(), &buf, "", "")
 	c.Assert(err, check.IsNil)
-	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": a.GetName()}).Decode(&a)
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -3702,7 +3702,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 	apps, err := List(context.TODO(), &Filter{Locked: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
-	c.Assert(apps[0].GetName(), check.Equals, "othertestapp")
+	c.Assert(apps[0].Name, check.Equals, "othertestapp")
 }
 
 func (s *S) TestListAll(c *check.C) {
@@ -4027,8 +4027,8 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 	apps, err := List(context.TODO(), &Filter{Pool: s.Pool})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
-	c.Assert(apps[0].GetName(), check.Equals, a2.Name)
-	c.Assert(apps[0].GetPool(), check.Equals, a2.Pool)
+	c.Assert(apps[0].Name, check.Equals, a2.Name)
+	c.Assert(apps[0].Pool, check.Equals, a2.Pool)
 }
 
 func (s *S) TestListFilteringByPools(c *check.C) {
@@ -4063,13 +4063,13 @@ func (s *S) TestListFilteringByPools(c *check.C) {
 	apps, err := List(context.TODO(), &Filter{Pools: []string{s.Pool, "test2"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
-	appNames := []string{apps[0].GetName(), apps[1].GetName()}
+	appNames := []string{apps[0].Name, apps[1].Name}
 	sort.Strings(appNames)
 	c.Assert(appNames, check.DeepEquals, []string{"testapp", "testapp2"})
 }
 
 func (s *S) TestListFilteringByStatuses(c *check.C) {
-	var apps []*App
+	var apps []*appTypes.App
 	appNames := []string{"ta1", "ta2", "ta3"}
 	for _, name := range appNames {
 		a := appTypes.App{
@@ -4135,8 +4135,8 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), Greater, 0)
-	c.Assert(apps[0].GetName(), check.Equals, "testApp")
-	c.Assert(apps[0].GetTeamsName(), check.DeepEquals, []string{"notAdmin", "noSuperUser"})
+	c.Assert(apps[0].Name, check.Equals, "testApp")
+	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
 }
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
@@ -4174,7 +4174,7 @@ func (s *S) TestListFilteringExtraWithOr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var appNames []string
 	for _, a := range apps {
-		appNames = append(appNames, a.GetName())
+		appNames = append(appNames, a.Name)
 	}
 	sort.Strings(appNames)
 	c.Assert(appNames, check.DeepEquals, []string{a2.Name, a3.Name})
@@ -4182,12 +4182,12 @@ func (s *S) TestListFilteringExtraWithOr(c *check.C) {
 
 func (s *S) TestGetName(c *check.C) {
 	a := appTypes.App{Name: "something"}
-	c.Assert(a.GetName(), check.Equals, a.Name)
+	c.Assert(a.Name, check.Equals, a.Name)
 }
 
 func (s *S) TestGetQuota(c *check.C) {
-	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
-		c.Assert(item.GetName(), check.Equals, "app1")
+	s.mockService.AppQuota.OnGet = func(item *appTypes.App) (*quota.Quota, error) {
+		c.Assert(item.Name, check.Equals, "app1")
 		return &quota.Quota{InUse: 1, Limit: 2}, nil
 	}
 	a := appTypes.App{Name: "app1"}
@@ -4856,7 +4856,7 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 		Name:      "testapp",
 		TeamOwner: "tsuruteam",
 	}
-	err = a.SetPool(context.TODO())
+	err = SetPool(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	_, err = collection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -4884,7 +4884,7 @@ func (s *S) TestShellToUnit(c *check.C) {
 		Units:  []string{unit.ID},
 		Term:   "xterm",
 	}
-	err = a.Shell(context.TODO(), opts)
+	err = Shell(context.TODO(), &a, opts)
 	c.Assert(err, check.IsNil)
 	allExecs := s.provisioner.AllExecs()
 	c.Assert(allExecs, check.HasLen, 1)
@@ -4907,7 +4907,7 @@ func (s *S) TestShellNoUnits(c *check.C) {
 		Height: 40,
 		Term:   "xterm",
 	}
-	err = a.Shell(context.TODO(), opts)
+	err = Shell(context.TODO(), &a, opts)
 	c.Assert(err, check.IsNil)
 	allExecs := s.provisioner.AllExecs()
 	c.Assert(allExecs, check.HasLen, 1)
@@ -4924,7 +4924,7 @@ func (s *S) TestSetCertificateForApp(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, string(cert))
 	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, string(key))
@@ -4939,7 +4939,7 @@ func (s *S) TestSetCertificateForAppCName(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, string(cert))
 	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, string(key))
@@ -4953,7 +4953,7 @@ func (s *S) TestSetCertificateNonTLSRouter(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, CName: []string{"app.io"}}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), "app.io", string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, "app.io", string(cert), string(key))
 	c.Assert(err, check.ErrorMatches, "no router with tls support")
 }
 
@@ -4961,7 +4961,7 @@ func (s *S) TestSetCertificateInvalidCName(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), "example.com", "cert", "key")
+	err = SetCertificate(context.TODO(), &a, "example.com", "cert", "key")
 	c.Assert(err, check.ErrorMatches, "invalid name")
 	c.Assert(routertest.TLSRouter.Certs["example.com"], check.Equals, "")
 	c.Assert(routertest.TLSRouter.Keys["example.com"], check.Equals, "")
@@ -4976,7 +4976,7 @@ func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, cname, string(cert), string(key))
 	c.Assert(err, check.ErrorMatches, "*certificate is valid for app.io, not example.io*")
 	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
 	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
@@ -4991,9 +4991,9 @@ func (s *S) TestRemoveCertificate(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	err = a.RemoveCertificate(context.TODO(), cname)
+	err = RemoveCertificate(context.TODO(), &a, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
 	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
@@ -5008,9 +5008,9 @@ func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	err = a.RemoveCertificate(context.TODO(), cname)
+	err = RemoveCertificate(context.TODO(), &a, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
 	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
@@ -5034,10 +5034,10 @@ func (s *S) TestGetCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = AddUnits(context.TODO(), &a, 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 
-	err = a.SetCertificate(context.TODO(), cname, string(cert), string(key))
+	err = SetCertificate(context.TODO(), &a, cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
 	expectedCerts := &appTypes.CertificateSetInfo{
 		Routers: map[string]appTypes.RouterCertificateInfo{
@@ -5055,7 +5055,7 @@ func (s *S) TestGetCertificates(c *check.C) {
 			},
 		},
 	}
-	certs, err := a.GetCertificates(context.TODO())
+	certs, err := GetCertificates(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(certs, check.DeepEquals, expectedCerts)
 }
@@ -5135,7 +5135,7 @@ func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, CName: []string{"app.io"}}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	certs, err := a.GetCertificates(context.TODO())
+	certs, err := GetCertificates(context.TODO(), &a)
 	c.Assert(err, check.ErrorMatches, "no router with tls support")
 	c.Assert(certs, check.IsNil)
 }
@@ -5149,7 +5149,7 @@ func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	updateData := appTypes.App{Name: app.Name, Description: "bleble"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = Update(context.TODO(), &app, UpdateAppArgs{UpdateData: &updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
@@ -5161,7 +5161,7 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := appTypes.App{Name: "example", Description: "bleble"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = Update(context.TODO(), &app, UpdateAppArgs{UpdateData: &updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)

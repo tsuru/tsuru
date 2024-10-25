@@ -635,7 +635,7 @@ func (s *S) TestClustersForApps(c *check.C) {
 	c.Assert(cApps[1].client.Name, check.Equals, "c2")
 	for idx := range cApps {
 		sort.Slice(cApps[idx].apps, func(i, j int) bool {
-			return cApps[idx].apps[i].GetName() < cApps[idx].apps[j].GetName()
+			return cApps[idx].apps[i].Name < cApps[idx].apps[j].Name
 		})
 	}
 	c.Assert(cApps[0].apps, check.DeepEquals, []provision.App{a1, a4})

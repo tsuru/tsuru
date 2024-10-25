@@ -369,7 +369,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 
 func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
-	si := ServiceInstance{Name: "mysql", Apps: []string{a.GetName()}}
+	si := ServiceInstance{Name: "mysql", Apps: []string{a.Name}}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
@@ -503,7 +503,7 @@ func (s *S) TestUnbindAppDBForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
-	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, Apps: []string{a.GetName()}}
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, Apps: []string{a.Name}}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
@@ -548,7 +548,7 @@ func (s *S) TestUnbindAppDBBackward(c *check.C) {
 	unbindAppDB.Backward(ctx)
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(siDB.Apps, check.DeepEquals, []string{a.GetName()})
+	c.Assert(siDB.Apps, check.DeepEquals, []string{a.Name})
 }
 
 func (s *S) TestUnbindAppEndpointForward(c *check.C) {
