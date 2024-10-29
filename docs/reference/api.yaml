@@ -4727,6 +4727,22 @@ definitions:
           $ref: "#/definitions/AutoScalePrometheus"
       version:
         type: integer
+      behavior:
+        type: object
+        description: Behavior settings for scaling actions
+        properties:
+          scaleDown:
+            type: object
+            properties:
+              stabilizationWindow:
+                type: integer
+                description: Time in seconds for stabilization before scaling down
+              percentagePolicyValue:
+                type: integer
+                description: Percentage threshold for scaling down
+              unitsPolicyValue:
+                type: integer
+                description: Minimum number of units to scale down
   AutoScaleSchedule:
     description: Auto Scale schedules struct
     type: object
