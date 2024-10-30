@@ -5046,6 +5046,10 @@ func (s *S) TestGetCertificates(c *check.C) {
 						Certificate: string(cert),
 						Issuer:      "letsencrypt",
 					},
+
+					"my-test-app.faketlsrouter.com": {
+						Certificate: string("<mock cert>"),
+					},
 				},
 			},
 		},
@@ -5855,11 +5859,11 @@ func (s *S) TestAppAddRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Type: "fake", Status: "ready"},
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Addresses: []string{"myapp.faketlsrouter.com"}, Type: "fake-tls", Status: "ready"},
+		{Name: "fake-tls", Address: "https://myapp.faketlsrouter.com", Addresses: []string{"https://myapp.faketlsrouter.com"}, Type: "fake-tls", Status: "ready"},
 	})
 	addrs, err := app.GetAddresses(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.DeepEquals, []string{"myapp.fakerouter.com", "myapp.faketlsrouter.com"})
+	c.Assert(addrs, check.DeepEquals, []string{"myapp.fakerouter.com", "https://myapp.faketlsrouter.com"})
 }
 
 func (s *S) TestAppAddRouterWithAlreadyLinkedRouter(c *check.C) {
@@ -5915,15 +5919,15 @@ func (s *S) TestAppRemoveRouter(c *check.C) {
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{
 			Name:      "fake-tls",
-			Addresses: []string{"myapp.faketlsrouter.com"},
-			Address:   "myapp.faketlsrouter.com",
+			Addresses: []string{"https://myapp.faketlsrouter.com"},
+			Address:   "https://myapp.faketlsrouter.com",
 			Type:      "fake-tls",
 			Status:    "ready",
 		},
 	})
 	addrs, err := app.GetAddresses(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.DeepEquals, []string{"myapp.faketlsrouter.com"})
+	c.Assert(addrs, check.DeepEquals, []string{"https://myapp.faketlsrouter.com"})
 }
 
 func (s *S) TestGetCertIssuers(c *check.C) {
@@ -5961,7 +5965,7 @@ func (s *S) TestGetRoutersWithAddr(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.mockService.Cache.OnCreate = func(entry cache.CacheEntry) error {
-		if entry.Value != "myapp.fakerouter.com" && entry.Value != "myapp.faketlsrouter.com" {
+		if entry.Value != "myapp.fakerouter.com" && entry.Value != "https://myapp.faketlsrouter.com" {
 			c.Errorf("unexpected cache entry: %v", entry)
 		}
 		return nil
@@ -5970,7 +5974,7 @@ func (s *S) TestGetRoutersWithAddr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Type: "fake", Status: "ready"},
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Addresses: []string{"myapp.faketlsrouter.com"}, Type: "fake-tls", Status: "ready"},
+		{Name: "fake-tls", Address: "https://myapp.faketlsrouter.com", Addresses: []string{"https://myapp.faketlsrouter.com"}, Type: "fake-tls", Status: "ready"},
 	})
 }
 
@@ -5991,7 +5995,7 @@ func (s *S) TestGetRoutersWithAddrError(c *check.C) {
 	routertest.FakeRouter.FailuresByHost["fake:myapp"] = true
 
 	s.mockService.Cache.OnCreate = func(entry cache.CacheEntry) error {
-		if entry.Value != "myapp.faketlsrouter.com" {
+		if entry.Value != "https://myapp.faketlsrouter.com" {
 			c.Errorf("unexpected cache entry: %v", entry)
 		}
 		return nil
@@ -6000,7 +6004,7 @@ func (s *S) TestGetRoutersWithAddrError(c *check.C) {
 	c.Assert(strings.Contains(err.Error(), "Forced failure"), check.Equals, true)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Address: "", Type: "fake", Status: "not ready", StatusDetail: "Forced failure"},
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Addresses: []string{"myapp.faketlsrouter.com"}, Type: "fake-tls", Status: "ready"},
+		{Name: "fake-tls", Address: "https://myapp.faketlsrouter.com", Addresses: []string{"https://myapp.faketlsrouter.com"}, Type: "fake-tls", Status: "ready"},
 	})
 }
 

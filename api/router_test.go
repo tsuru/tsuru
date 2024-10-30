@@ -367,7 +367,7 @@ func (s *S) TestAddAppRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Status: "ready"},
-		{Name: "fake-tls", Opts: map[string]string{"x": "y", "z": "w"}, Type: "fake-tls", Address: "myapp.faketlsrouter.com", Addresses: []string{"myapp.faketlsrouter.com"}, Status: "ready"},
+		{Name: "fake-tls", Opts: map[string]string{"x": "y", "z": "w"}, Type: "fake-tls", Address: "https://myapp.faketlsrouter.com", Addresses: []string{"https://myapp.faketlsrouter.com"}, Status: "ready"},
 	})
 }
 

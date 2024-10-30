@@ -6537,7 +6537,8 @@ func (s *S) TestListCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
 		"fake-tls": {
-			"app.io": string(testCert),
+			"app.io":                  string(testCert),
+			"myapp.faketlsrouter.com": "<mock cert>",
 		},
 	})
 }
@@ -6566,7 +6567,8 @@ func (s *S) TestListCertificatesLegacy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
 		"fake-tls": {
-			"app.io": string(testCert),
+			"app.io":                  string(testCert),
+			"myapp.faketlsrouter.com": "<mock cert>",
 		},
 	})
 
@@ -6601,6 +6603,9 @@ func (s *S) TestListCertificatesNew(c *check.C) {
 					"app.io": {
 						Certificate: string(testCert),
 						Issuer:      "letsencrypt",
+					},
+					"myapp.faketlsrouter.com": {
+						Certificate: "<mock cert>",
 					},
 				},
 			},

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
@@ -2431,8 +2432,15 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 	}
 
 	certIssuers := app.GetCertIssuers()
+	names := append([]string{}, app.CName...)
 
-	names := append(addrs, app.CName...)
+	for _, addr := range addrs {
+		parsedURL, _ := url.Parse(addr)
+		if parsedURL != nil {
+			names = append(names, parsedURL.Hostname())
+		}
+	}
+
 	for _, appRouter := range app.GetRouters() {
 		appRouterCertificates := appTypes.RouterCertificateInfo{
 			CNames: make(map[string]appTypes.CertificateInfo),

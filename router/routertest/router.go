@@ -265,6 +265,9 @@ func (r *tlsRouter) RemoveCertificate(ctx context.Context, app router.App, cname
 }
 
 func (r *tlsRouter) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
+	if app.GetName()+".faketlsrouter.com" == cname {
+		return "<mock cert>", nil
+	}
 	data, ok := r.Certs[cname]
 	if !ok {
 		return "", router.ErrCertificateNotFound
@@ -278,7 +281,7 @@ func (r *tlsRouter) Addresses(ctx context.Context, app router.App) ([]string, er
 		return nil, err
 	}
 	for i := range addrs {
-		addrs[i] = strings.Replace(addrs[i], ".fakerouter.com", ".faketlsrouter.com", -1)
+		addrs[i] = "https://" + strings.Replace(addrs[i], ".fakerouter.com", ".faketlsrouter.com", -1)
 	}
 
 	return addrs, nil
