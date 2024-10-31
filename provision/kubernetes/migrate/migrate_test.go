@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db/storagev2"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
@@ -16,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
@@ -121,10 +121,10 @@ func (s *S) TearDownSuite(c *check.C) {
 
 func (s *S) TestMigrateAppsCRDs(c *check.C) {
 	apps := []any{
-		app.App{Name: "app-kube", Pool: "kube"},
-		app.App{Name: "app-kube2", Pool: "kube"},
-		app.App{Name: "app-kube-failed", Pool: "kube-failed"},
-		app.App{Name: "app-docker", Pool: "docker"},
+		appTypes.App{Name: "app-kube", Pool: "kube"},
+		appTypes.App{Name: "app-kube2", Pool: "kube"},
+		appTypes.App{Name: "app-kube-failed", Pool: "kube-failed"},
+		appTypes.App{Name: "app-docker", Pool: "docker"},
 	}
 	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provision.Cluster, error) {
 		if prov != s.cluster.Provisioner {

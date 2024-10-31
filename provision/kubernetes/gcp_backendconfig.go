@@ -28,7 +28,7 @@ func backendConfigCRDExists(ctx context.Context, client *ClusterClient) (bool, e
 }
 
 func backendConfigNameForApp(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func gcpHCToString(hc *backendconfigv1.HealthCheckConfig) string {

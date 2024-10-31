@@ -1683,7 +1683,7 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *check.C) {
 }
 
 func (s *S) TestRemoveCNameAlsoRemovesCertIssuer(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "ktulu",
 		TeamOwner: s.team.Name,
 		CName:     []string{"ktulu.mycompany.com"},
@@ -1702,7 +1702,7 @@ func (s *S) TestRemoveCNameAlsoRemovesCertIssuer(c *check.C) {
 }
 
 func (s *S) TestSetCertIssuer(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "ktulu",
 		TeamOwner: s.team.Name,
 		CName:     []string{"ktulu.mycompany.com"},
@@ -1716,7 +1716,7 @@ func (s *S) TestSetCertIssuer(c *check.C) {
 }
 
 func (s *S) TestSetCertIssuerWithInvalidCName(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "ktulu",
 		TeamOwner: s.team.Name,
 		CName:     []string{"ktulu.mycompany.com"},
@@ -1729,7 +1729,7 @@ func (s *S) TestSetCertIssuerWithInvalidCName(c *check.C) {
 }
 
 func (s *S) TestUnsetCertIssuer(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "ktulu",
 		TeamOwner: s.team.Name,
 		CName:     []string{"ktulu.mycompany.com"},
@@ -3601,11 +3601,11 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatformVersion(c *check.
 	c.Assert(err, check.IsNil)
 
 	apps := []any{
-		App{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
-		App{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
-		App{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
-		App{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
-		App{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
+		appTypes.App{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
+		appTypes.App{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
+		appTypes.App{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
+		appTypes.App{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
+		appTypes.App{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
 	}
 
 	_, err = collection.InsertMany(context.TODO(), apps)
@@ -3745,7 +3745,7 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Name < apps[j].Name
 	})
-	c.Assert(apps, tsuruTest.JSONEquals, []App{
+	c.Assert(apps, tsuruTest.JSONEquals, []appTypes.App{
 		{
 			Name:        "app1",
 			CName:       []string{},
@@ -3848,7 +3848,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
-	c.Assert(apps, tsuruTest.JSONEquals, []App{
+	c.Assert(apps, tsuruTest.JSONEquals, []appTypes.App{
 		{
 			Name:        "app1",
 			CName:       []string{},
@@ -4082,12 +4082,12 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 		err := CreateApp(context.TODO(), &a, s.user)
 		c.Assert(err, check.IsNil)
 		newSuccessfulAppVersion(c, &a)
-		err = a.AddUnits(context.TODO(), 1, "", "", nil)
+		err = AddUnits(context.TODO(), &a, 1, "", "", nil)
 		c.Assert(err, check.IsNil)
 		apps = append(apps, &a)
 	}
 	var buf bytes.Buffer
-	err := apps[1].Stop(context.TODO(), &buf, "", "")
+	err := Stop(context.TODO(), apps[1], &buf, "", "")
 	c.Assert(err, check.IsNil)
 	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped"}})
 	c.Assert(err, check.IsNil)
@@ -4122,7 +4122,7 @@ func (s *S) TestListFilteringByTag(c *check.C) {
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(apps, check.DeepEquals, []App{})
+	c.Assert(apps, check.DeepEquals, []*appTypes.App{})
 }
 
 func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
@@ -4194,21 +4194,6 @@ func (s *S) TestGetQuota(c *check.C) {
 	q, err := a.GetQuota(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(q, check.DeepEquals, &quota.Quota{InUse: 1, Limit: 2})
-}
-
-func (s *S) TestGetCname(c *check.C) {
-	a := appTypes.App{CName: []string{"cname1", "cname2"}}
-	c.Assert(a.GetCname(), check.DeepEquals, a.CName)
-}
-
-func (s *S) TestGetPlatform(c *check.C) {
-	a := appTypes.App{Platform: "django"}
-	c.Assert(a.GetPlatform(), check.Equals, a.Platform)
-}
-
-func (s *S) TestGetDeploys(c *check.C) {
-	a := appTypes.App{Deploys: 3}
-	c.Assert(a.GetDeploys(), check.Equals, a.Deploys)
 }
 
 func (s *S) TestGetMetadata(c *check.C) {
@@ -5064,7 +5049,7 @@ func (s *S) TestGetCertificatesWithCertNotReady(c *check.C) {
 	cname1 := "certissuer-not-ready.io"
 	cname2 := "app.io" // cert without certissuer
 
-	a := App{
+	a := appTypes.App{
 		Name:        "my-test-app",
 		TeamOwner:   s.team.Name,
 		Routers:     []appTypes.AppRouter{{Name: "fake-tls"}},
@@ -5492,7 +5477,7 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanNotFound(c *check.C) {
-	var app App
+	var app appTypes.App
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		return nil, appTypes.ErrPlanNotFound
 	}
@@ -5718,7 +5703,7 @@ func (s *S) TestUpdateMetadataAnnotationValidation(c *check.C) {
 		Annotations: []appTypes.MetadataItem{{Name: "_invalidName", Value: "asdf"}},
 		Labels:      []appTypes.MetadataItem{{Name: "tsuru.io/app-name", Value: "asdf"}},
 	}}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = Update(context.TODO(), &app, UpdateAppArgs{UpdateData: &updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "multiple errors reported (2):\n"+
 		"error #0: metadata.annotations: Invalid value: \"_invalidName\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')\n"+
@@ -5730,14 +5715,14 @@ func (s *S) TestRenameTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	apps := []any{
-		App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
-		App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+		appTypes.App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
+		appTypes.App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
 	_, err = collection.InsertMany(context.TODO(), apps)
 	c.Assert(err, check.IsNil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
-	var dbApps []App
+	var dbApps []appTypes.App
 
 	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, options.Find().SetSort(mongoBSON.M{"name": 1}))
 	c.Assert(err, check.IsNil)
@@ -5761,8 +5746,8 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	apps := []any{
-		App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
-		App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+		appTypes.App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
+		appTypes.App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
 	_, err = collection.InsertMany(context.TODO(), apps)
 	c.Assert(err, check.IsNil)
@@ -5777,7 +5762,7 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 	defer evt.Done(context.TODO(), nil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.ErrorMatches, `unable to create event: event locked: app\(test2\).*`)
-	var dbApps []App
+	var dbApps []appTypes.App
 
 	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, options.Find().SetSort(mongoBSON.M{"name": 1}))
 	c.Assert(err, check.IsNil)
@@ -5801,9 +5786,9 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	apps := []any{
-		App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
-		App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
-		App{Name: "test3", TeamOwner: "t3", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+		appTypes.App{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
+		appTypes.App{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
+		appTypes.App{Name: "test3", TeamOwner: "t3", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
 	}
 	_, err = collection.InsertMany(context.TODO(), apps)
 	c.Assert(err, check.IsNil)
@@ -5818,7 +5803,7 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 	defer evt.Done(context.TODO(), nil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
-	var dbApps []App
+	var dbApps []appTypes.App
 
 	cursor, err := collection.Find(context.TODO(), mongoBSON.M{}, options.Find().SetSort(mongoBSON.M{"name": 1}))
 	c.Assert(err, check.IsNil)
@@ -6003,7 +5988,7 @@ func (s *S) TestAppRemoveRouter(c *check.C) {
 }
 
 func (s *S) TestGetCertIssuers(c *check.C) {
-	app := App{
+	app := appTypes.App{
 		Name:      "myapp",
 		Platform:  "go",
 		TeamOwner: s.team.Name,
@@ -6015,7 +6000,7 @@ func (s *S) TestGetCertIssuers(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	issuers := app.GetCertIssuers()
+	issuers := app.CertIssuers
 	c.Assert(err, check.IsNil)
 	c.Assert(issuers, check.DeepEquals, map[string]string{
 		"myapp.io":         "myissuer",
@@ -6213,7 +6198,7 @@ func (s *S) TestGetUUID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(uuid, check.Not(check.DeepEquals), "")
 	c.Assert(uuid, check.DeepEquals, app.UUID)
-	var storedApp App
+	var storedApp appTypes.App
 	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": app.Name}).Decode(&storedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(storedApp.UUID, check.Not(check.DeepEquals), "")

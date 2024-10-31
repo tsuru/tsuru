@@ -437,7 +437,7 @@ func (s *S) TestSimplifiedAppList(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
@@ -492,7 +492,7 @@ func (s *S) TestExtendedAppList(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
@@ -545,7 +545,7 @@ func (s *S) TestAppList(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
@@ -603,7 +603,7 @@ func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
@@ -654,7 +654,7 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
@@ -722,7 +722,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
@@ -756,7 +756,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermissionAppInf
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []appTypes.App
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
@@ -777,7 +777,7 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *check.C) {
 
 func (s *S) TestDelete(c *check.C) {
 	ctx := context.TODO()
-	myApp := &app.App{
+	myApp := &appTypes.App{
 		Name:      "myapptodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -811,7 +811,7 @@ func (s *S) TestDelete(c *check.C) {
 
 func (s *S) TestDeleteVersion(c *check.C) {
 	ctx := context.TODO()
-	myApp := &app.App{
+	myApp := &appTypes.App{
 		Name:      "myversiontodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -877,7 +877,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestDeleteAdminAuthorized(c *check.C) {
-	myApp := &app.App{
+	myApp := &appTypes.App{
 		Name:      "myapptodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -990,7 +990,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1039,7 +1039,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1083,7 +1083,7 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1133,7 +1133,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1177,7 +1177,7 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1237,7 +1237,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1284,7 +1284,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
@@ -1328,7 +1328,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1409,7 +1409,7 @@ func (s *S) TestCreateAppWithMetadata(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1459,7 +1459,7 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1505,7 +1505,7 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1542,7 +1542,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1716,7 +1716,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1777,7 +1777,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1815,7 +1815,7 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1859,7 +1859,7 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	var gotApp app.App
+	var gotApp appTypes.App
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
@@ -1903,7 +1903,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	var gotApp app.App
+	var gotApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2", "tag3"})
@@ -2001,7 +2001,7 @@ func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	var gotApp app.App
+	var gotApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}})
@@ -2046,7 +2046,7 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	var gotApp app.App
+	var gotApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}, {Name: "z", Value: "ground"}})
@@ -2127,7 +2127,7 @@ func (s *S) TestUpdateAppWithCustomPlanByProcess(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	var gotApp app.App
+	var gotApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Processes, check.DeepEquals, []appTypes.Process{{Name: "web", Plan: "c1m1", Metadata: appTypes.Metadata{Labels: []appTypes.MetadataItem{}, Annotations: []appTypes.MetadataItem{}}}})
@@ -2188,7 +2188,7 @@ func (s *S) TestUpdateAppWithResetPlanByProcess(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	var gotApp app.App
+	var gotApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "myapp"}).Decode(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Processes, check.DeepEquals, []appTypes.Process{})
@@ -2216,7 +2216,7 @@ func (s *S) TestUpdateAppImageReset(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
+	var dbApp appTypes.App
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
@@ -3963,7 +3963,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) {
-	a := &app.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, ServiceEnvs: []bindTypes.ServiceEnvVar{
+	a := &appTypes.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, ServiceEnvs: []bindTypes.ServiceEnvVar{
 		{
 			EnvVar: bindTypes.EnvVar{
 				Name:  "DATABASE_HOST",

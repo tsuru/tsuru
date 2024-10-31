@@ -174,7 +174,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 			defer waitDep()
 			m := serviceManager{client: s.clusterClient}
 			appName := fmt.Sprintf("myapp%d", i)
-			a := &app.App{Name: appName, TeamOwner: s.team.Name}
+			a := &appTypes.App{Name: appName, TeamOwner: s.team.Name}
 			err := app.CreateApp(context.TODO(), a, s.user)
 			c.Assert(err, check.IsNil)
 			for j, step := range tt.steps {

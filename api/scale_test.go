@@ -165,7 +165,7 @@ func (s *S) TestAddAutoScaleDown(c *check.C) {
 		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("autoscaleProv")
-	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permTypes.Permission{

@@ -187,7 +187,7 @@ loop:
 
 func (s *S) BenchmarkScanLogs(c *check.C) {
 	c.StopTimer()
-	var apps []app.App
+	var apps []appTypes.App
 	for i := 0; i < 100; i++ {
 		a := appTypes.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
 		apps = append(apps, a)

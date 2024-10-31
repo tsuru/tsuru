@@ -642,7 +642,7 @@ func (s *S) TestUnitsEmpty(c *check.C) {
 		w.Write([]byte(output))
 	}))
 	defer srv.Close()
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(context.TODO(), a)
@@ -1867,11 +1867,11 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		return &app.App{
+	rebuild.Initialize(func(appName string) (*appTypes.App, error) {
+		return &appTypes.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
-			Routers: a.GetRouters(),
+			Routers: a.Routers,
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
@@ -1898,15 +1898,15 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	var recreatedPods bool
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.GetPool(),
+			"tsuru.io/pool": newApp.Pool,
 		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
 		recreatedPods = true
 		return true, nil, nil
 	})
@@ -1956,11 +1956,11 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		return &app.App{
+	rebuild.Initialize(func(appName string) (*appTypes.App, error) {
+		return &appTypes.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
-			Routers: a.GetRouters(),
+			Routers: a.Routers,
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
@@ -2013,7 +2013,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	c.Assert(contains("myapp-web-units", sList.Items), check.Equals, true)
 	c.Assert(contains("myapp-web-v1", sList.Items), check.Equals, true)
 	c.Assert(contains("myapp-web-v2", sList.Items), check.Equals, true)
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
 	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
@@ -2029,11 +2029,11 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		return &app.App{
+	rebuild.Initialize(func(appName string) (*appTypes.App, error) {
+		return &appTypes.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
-			Routers: a.GetRouters(),
+			Routers: a.Routers,
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
@@ -2069,7 +2069,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 0)
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.Stop(context.TODO(), a, "", version1, buf)
 	c.Assert(err, check.IsNil)
@@ -2147,13 +2147,13 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		wait()
 	}
 
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), pool2, 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
 			"tsuru.io/pool": newApp.GetPool(),
 		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
 		return true, nil, nil
 	})
 	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
@@ -2192,14 +2192,14 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	sList, err := s.client.CoreV1().Services("default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.GetPool(),
+			"tsuru.io/pool": newApp.Pool,
 		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
 		return true, nil, nil
 	})
 	v := volumeTypes.Volume{
@@ -2264,14 +2264,14 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), "test-pool-2", 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.GetPool(),
+			"tsuru.io/pool": newApp.Pool,
 		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
 		return true, nil, nil
 	})
 	v := volumeTypes.Volume{
@@ -2463,7 +2463,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	err = s.p.Restart(context.TODO(), a, "web", version, nil)
 	c.Assert(err, check.IsNil)
 
-	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.GetPlatform(), pool2, 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
 	// Check if old volume was not removed
@@ -2517,7 +2517,7 @@ func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
 }
 
 func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2542,7 +2542,7 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 }
 
 func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{

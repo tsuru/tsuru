@@ -66,35 +66,35 @@ func serviceAccountNameForJob(j jobTypes.Job) string {
 }
 
 func deploymentNameForApp(a *appTypes.App, process string, version int) string {
-	return *appTypes.AppProcessName(a, process, version, "")
+	return provision.AppProcessName(a, process, version, "")
 }
 
 func deploymentNameForAppBase(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func serviceNameForApp(a *appTypes.App, process string, version int) string {
-	return *appTypes.AppProcessName(a, process, version, "")
+	return provision.AppProcessName(a, process, version, "")
 }
 
 func serviceNameForAppBase(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func headlessServiceName(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "units")
+	return provision.AppProcessName(a, process, 0, "units")
 }
 
 func hpaNameForApp(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func vpaNameForApp(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func pdbNameForApp(a *appTypes.App, process string) string {
-	return *appTypes.AppProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func execCommandPodNameForApp(a *appTypes.App) string {

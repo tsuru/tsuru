@@ -455,7 +455,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, "civil")
 		return &quota.Quota{Limit: 4, InUse: 2}, nil
 	}
-	app := &app.App{
+	app := &appTypes.App{
 		Name:  "civil",
 		Teams: []string{s.team.Name},
 	}
@@ -484,7 +484,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
-	app := &app.App{
+	app := &appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 	}
@@ -528,7 +528,7 @@ func (s *QuotaSuite) TestGetAppQuotaAppNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
-	a := &app.App{
+	a := &appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
@@ -641,7 +641,7 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := &app.App{
+	a := &appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},

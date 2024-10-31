@@ -47,7 +47,7 @@ func (s *S) TestNewPDB(c *check.C) {
 			},
 		},
 		"with custom maxUnavailable": {
-			app: &app.App{
+			app: &appTypes.App{
 				Name:      "myapp-02",
 				TeamOwner: s.team.Name,
 				Metadata: appTypes.Metadata{
@@ -83,7 +83,7 @@ func (s *S) TestNewPDB(c *check.C) {
 			},
 		},
 		"when disable PDB for cluster/pool": {
-			app: &app.App{Name: "myapp-03", TeamOwner: s.team.Name},
+			app: &appTypes.App{Name: "myapp-03", TeamOwner: s.team.Name},
 			setup: func() (teardown func()) {
 				s.clusterClient.CustomData["test-default:disable-pdb"] = "true"
 				return func() {
