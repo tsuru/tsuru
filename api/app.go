@@ -2069,7 +2069,9 @@ func listCertificatesLegacy(w http.ResponseWriter, r *http.Request, t auth.Token
 		legacyResult[router] = map[string]string{}
 
 		for cname, cert := range certs.CNames {
-			legacyResult[router][cname] = cert.Certificate
+			if cert.Certificate != "" {
+				legacyResult[router][cname] = cert.Certificate
+			}
 		}
 	}
 	return json.NewEncoder(w).Encode(&legacyResult)

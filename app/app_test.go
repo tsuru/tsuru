@@ -5059,6 +5059,44 @@ func (s *S) TestGetCertificates(c *check.C) {
 	c.Assert(certs, check.DeepEquals, expectedCerts)
 }
 
+func (s *S) TestGetCertificatesWithCertNotReady(c *check.C) {
+	cname := "app-not-ready.io"
+
+	a := App{
+		Name:        "my-test-app",
+		TeamOwner:   s.team.Name,
+		Routers:     []appTypes.AppRouter{{Name: "fake-tls"}},
+		CName:       []string{cname},
+		CertIssuers: map[string]string{cname: "letsencrypt"},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	newSuccessfulAppVersion(c, &a)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	c.Assert(err, check.IsNil)
+
+	expectedCerts := &appTypes.CertificateSetInfo{
+		Routers: map[string]appTypes.RouterCertificateInfo{
+			"fake-tls": {
+				CNames: map[string]appTypes.CertificateInfo{
+					cname: {
+						Certificate: "",
+						Issuer:      "letsencrypt",
+					},
+
+					"my-test-app.faketlsrouter.com": {
+						Certificate: string("<mock cert>"),
+					},
+				},
+			},
+		},
+	}
+	certs, err := a.GetCertificates(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(certs, check.DeepEquals, expectedCerts)
+}
+
 func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, CName: []string{"app.io"}}
 	err := CreateApp(context.TODO(), &a, s.user)

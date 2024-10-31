@@ -2462,11 +2462,9 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}
 
-			if cert != "" {
-				appRouterCertificates.CNames[n] = appTypes.CertificateInfo{
-					Certificate: cert,
-					Issuer:      certIssuers[n],
-				}
+			appRouterCertificates.CNames[n] = appTypes.CertificateInfo{
+				Certificate: cert,
+				Issuer:      certIssuers[n],
 			}
 		}
 
