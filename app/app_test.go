@@ -5060,14 +5060,15 @@ func (s *S) TestGetCertificates(c *check.C) {
 }
 
 func (s *S) TestGetCertificatesWithCertNotReady(c *check.C) {
-	cname := "app-not-ready.io"
+	cname1 := "certissuer-not-ready.io"
+	cname2 := "app.io" // cert without certissuer
 
 	a := App{
 		Name:        "my-test-app",
 		TeamOwner:   s.team.Name,
 		Routers:     []appTypes.AppRouter{{Name: "fake-tls"}},
-		CName:       []string{cname},
-		CertIssuers: map[string]string{cname: "letsencrypt"},
+		CName:       []string{cname1, cname2},
+		CertIssuers: map[string]string{cname1: "letsencrypt"},
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -5080,7 +5081,7 @@ func (s *S) TestGetCertificatesWithCertNotReady(c *check.C) {
 		Routers: map[string]appTypes.RouterCertificateInfo{
 			"fake-tls": {
 				CNames: map[string]appTypes.CertificateInfo{
-					cname: {
+					cname1: {
 						Certificate: "",
 						Issuer:      "letsencrypt",
 					},
@@ -5093,6 +5094,38 @@ func (s *S) TestGetCertificatesWithCertNotReady(c *check.C) {
 		},
 	}
 	certs, err := a.GetCertificates(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(certs, check.DeepEquals, expectedCerts)
+
+	cert, err := os.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := os.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+
+	err = a.SetCertificate(context.TODO(), cname2, string(cert), string(key))
+	c.Assert(err, check.IsNil)
+
+	expectedCerts = &appTypes.CertificateSetInfo{
+		Routers: map[string]appTypes.RouterCertificateInfo{
+			"fake-tls": {
+				CNames: map[string]appTypes.CertificateInfo{
+					cname1: {
+						Certificate: "",
+						Issuer:      "letsencrypt",
+					},
+
+					cname2: {
+						Certificate: string(cert),
+					},
+
+					"my-test-app.faketlsrouter.com": {
+						Certificate: string("<mock cert>"),
+					},
+				},
+			},
+		},
+	}
+	certs, err = a.GetCertificates(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(certs, check.DeepEquals, expectedCerts)
 }

@@ -286,3 +286,9 @@ func (r *tlsRouter) Addresses(ctx context.Context, app router.App) ([]string, er
 
 	return addrs, nil
 }
+
+func (r *tlsRouter) Reset() {
+	r.fakeRouter.Reset()
+	r.Certs = make(map[string]string)
+	r.Keys = make(map[string]string)
+}
