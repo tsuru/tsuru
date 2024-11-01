@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
-	"k8s.io/utils/ptr"
 	k8sutilsptr "k8s.io/utils/ptr"
 )
 
@@ -658,7 +657,7 @@ func settingValueStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutosc
 		behavior.ScaleDown.StabilizationWindowSeconds = behaviorSpec.StabilizationWindow
 		return
 	}
-	behavior.ScaleDown.StabilizationWindowSeconds = ptr.To(int32(300))
+	behavior.ScaleDown.StabilizationWindowSeconds = k8sutilsptr.To(int32(300))
 }
 
 func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPoliciy) (policies []autoscalingv2.HPAScalingPolicy) {
