@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/utils/ptr"
 )
 
 func toInt32Ptr(i int32) *int32 {
@@ -69,7 +70,8 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 			},
 			Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
 				ScaleDown: &autoscalingv2.HPAScalingRules{
-					SelectPolicy: &policyMin,
+					SelectPolicy:               &policyMin,
+					StabilizationWindowSeconds: toInt32Ptr(300),
 					Policies: []autoscalingv2.HPAScalingPolicy{
 						{
 							Type:          autoscalingv2.PercentScalingPolicy,
@@ -166,7 +168,8 @@ func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs 
 				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
 					Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
 						ScaleDown: &autoscalingv2.HPAScalingRules{
-							SelectPolicy: &policyMin,
+							StabilizationWindowSeconds: ptr.To(int32(300)),
+							SelectPolicy:               &policyMin,
 							Policies: []autoscalingv2.HPAScalingPolicy{
 								{
 									Type:          autoscalingv2.PercentScalingPolicy,
@@ -1102,6 +1105,13 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			AverageCPU: "500m",
 			Version:    1,
 			Process:    "web",
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   ptr.To(int32(300)),
+					PercentagePolicyValue: ptr.To(int32(10)),
+					UnitsPolicyValue:      ptr.To(int32(3)),
+				},
+			},
 		},
 		{
 			MinUnits:   2,
@@ -1109,6 +1119,13 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			AverageCPU: "200m",
 			Version:    1,
 			Process:    "worker",
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   ptr.To(int32(300)),
+					PercentagePolicyValue: ptr.To(int32(10)),
+					UnitsPolicyValue:      ptr.To(int32(3)),
+				},
+			},
 		},
 	})
 }
