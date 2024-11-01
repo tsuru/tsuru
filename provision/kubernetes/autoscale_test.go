@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
-	"k8s.io/utils/ptr"
 )
 
 func toInt32Ptr(i int32) *int32 {
@@ -168,7 +167,7 @@ func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs 
 				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
 					Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
 						ScaleDown: &autoscalingv2.HPAScalingRules{
-							StabilizationWindowSeconds: ptr.To(int32(300)),
+							StabilizationWindowSeconds: toInt32Ptr(300),
 							SelectPolicy:               &policyMin,
 							Policies: []autoscalingv2.HPAScalingPolicy{
 								{
@@ -1107,9 +1106,9 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			Process:    "web",
 			Behavior: provTypes.BehaviorAutoScaleSpec{
 				ScaleDown: &provTypes.ScaleDownPoliciy{
-					StabilizationWindow:   ptr.To(int32(300)),
-					PercentagePolicyValue: ptr.To(int32(10)),
-					UnitsPolicyValue:      ptr.To(int32(3)),
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(10),
+					UnitsPolicyValue:      toInt32Ptr(3),
 				},
 			},
 		},
@@ -1121,9 +1120,9 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			Process:    "worker",
 			Behavior: provTypes.BehaviorAutoScaleSpec{
 				ScaleDown: &provTypes.ScaleDownPoliciy{
-					StabilizationWindow:   ptr.To(int32(300)),
-					PercentagePolicyValue: ptr.To(int32(10)),
-					UnitsPolicyValue:      ptr.To(int32(3)),
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(10),
+					UnitsPolicyValue:      toInt32Ptr(3),
 				},
 			},
 		},
