@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
+	"k8s.io/utils/ptr"
 	k8sutilsptr "k8s.io/utils/ptr"
 )
 
@@ -235,6 +236,13 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 		MaxUnits: uint(hpa.Spec.MaxReplicas),
 		Process:  ls.AppProcess(),
 		Version:  ls.AppVersion(),
+		Behavior: provTypes.BehaviorAutoScaleSpec{
+			ScaleDown: &provTypes.ScaleDownPoliciy{
+				PercentagePolicyValue: getPercentagePolicy(hpa.Spec.Behavior.ScaleDown.Policies),
+				UnitsPolicyValue:      getUnitPolicy(hpa.Spec.Behavior.ScaleDown.Policies),
+				StabilizationWindow:   hpa.Spec.Behavior.ScaleDown.StabilizationWindowSeconds,
+			},
+		},
 	}
 	if hpa.Spec.MinReplicas != nil {
 		spec.MinUnits = uint(*hpa.Spec.MinReplicas)
@@ -255,6 +263,24 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 	}
 
 	return spec
+}
+
+func getPercentagePolicy(policies []autoscalingv2.HPAScalingPolicy) *int32 {
+	for _, policy := range policies {
+		if policy.Type == autoscalingv2.PercentScalingPolicy {
+			return &policy.Value
+		}
+	}
+	return nil
+}
+
+func getUnitPolicy(policies []autoscalingv2.HPAScalingPolicy) *int32 {
+	for _, policy := range policies {
+		if policy.Type == autoscalingv2.PodsScalingPolicy {
+			return &policy.Value
+		}
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provision.App) error {
@@ -630,7 +656,9 @@ func buildHPABehavior(behaviorSpec *provTypes.ScaleDownPoliciy) *autoscalingv2.H
 func settingValueStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutoscalerBehavior, behaviorSpec *provTypes.ScaleDownPoliciy) {
 	if behaviorSpec != nil && behaviorSpec.StabilizationWindow != nil {
 		behavior.ScaleDown.StabilizationWindowSeconds = behaviorSpec.StabilizationWindow
+		return
 	}
+	behavior.ScaleDown.StabilizationWindowSeconds = ptr.To(int32(300))
 }
 
 func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPoliciy) (policies []autoscalingv2.HPAScalingPolicy) {
