@@ -21,6 +21,7 @@ import (
 	"sync"
 	"text/template"
 
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -50,6 +51,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -427,7 +429,7 @@ func Update(ctx context.Context, app *appTypes.App, args UpdateAppArgs) (err err
 	if err != nil {
 		return err
 	}
-	oldProv, err := getProvisioner(ctx, app)
+	oldProv, err := getProvisioner(ctx, &oldApp)
 	if err != nil {
 		return err
 	}
@@ -726,7 +728,7 @@ func Delete(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 		log.Errorf("[delete-app: %s] %s", appName, msg)
 		hasErrors = true
 	}
-	prov, err := pool.GetProvisionerForPool(ctx, app.Pool)
+	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -1395,6 +1397,26 @@ func Stop(ctx context.Context, app *appTypes.App, w io.Writer, process, versionS
 	return nil
 }
 
+func EnsureUUID(ctx context.Context, app *appTypes.App) (string, error) {
+	if app.UUID != "" {
+		return app.UUID, nil
+	}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to generate uuid v4")
+	}
+	collection, err := storagev2.AppsCollection()
+	if err != nil {
+		return "", err
+	}
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"uuid": uuidV4.String()}})
+	if err != nil {
+		return "", err
+	}
+	app.UUID = uuidV4.String()
+	return app.UUID, nil
+}
+
 func GetAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
 	routers, err := GetRoutersWithAddr(ctx, app)
 	if err != nil {
@@ -1403,6 +1425,30 @@ func GetAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
 	addresses := make([]string, len(routers))
 	for i := range routers {
 		addresses[i] = routers[i].Address
+	}
+	return addresses, nil
+}
+
+func GetInternalBindableAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
+	prov, err := getProvisioner(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	interAppProv, ok := prov.(provision.InterAppProvisioner)
+	if !ok {
+		return nil, nil
+	}
+	addrs, err := interAppProv.InternalAddresses(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	var addresses []string
+	for _, addr := range addrs {
+		// version addresses are so volatile, they change after every deploy, we don't use them to bind process
+		if addr.Version != "" {
+			continue
+		}
+		addresses = append(addresses, fmt.Sprintf("%s://%s:%d", strings.ToLower(addr.Protocol), addr.Domain, addr.Port))
 	}
 	return addresses, nil
 }
@@ -2388,6 +2434,33 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 	_, err = collection.BulkWrite(ctx, updates)
 	return err
 
+}
+
+func GetHealthcheckData(ctx context.Context, app *appTypes.App) (routerTypes.HealthcheckData, error) {
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
+	if err != nil {
+		if err == appTypes.ErrNoVersionsAvailable {
+			err = nil
+		}
+		return routerTypes.HealthcheckData{}, err
+	}
+	yamlData, err := version.TsuruYamlData()
+	if err != nil {
+		return routerTypes.HealthcheckData{}, err
+	}
+
+	prov, err := pool.GetProvisionerForPool(ctx, app.Pool)
+	if err != nil {
+		return routerTypes.HealthcheckData{}, err
+	}
+	if hcProv, ok := prov.(provision.HCProvisioner); ok {
+		if hcProv.HandlesHC() {
+			return routerTypes.HealthcheckData{
+				TCPOnly: true,
+			}, nil
+		}
+	}
+	return yamlData.ToRouterHC(), nil
 }
 
 func validateEnv(envName string) error {

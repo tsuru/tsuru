@@ -6179,7 +6179,7 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestGetUUID(c *check.C) {
+func (s *S) TestEnsureUUID(c *check.C) {
 	collection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
@@ -6187,7 +6187,7 @@ func (s *S) TestGetUUID(c *check.C) {
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.UUID, check.DeepEquals, "")
-	uuid, err := app.GetUUID(context.TODO())
+	uuid, err := EnsureUUID(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	c.Assert(uuid, check.Not(check.DeepEquals), "")
 	c.Assert(uuid, check.DeepEquals, app.UUID)
@@ -6237,11 +6237,11 @@ func (s *S) TestGetHealthcheckData(c *check.C) {
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	hcData, err := a.GetHealthcheckData(context.TODO())
+	hcData, err := GetHealthcheckData(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{})
 	newSuccessfulAppVersion(c, &a)
-	hcData, err = a.GetHealthcheckData(context.TODO())
+	hcData, err = GetHealthcheckData(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{
 		Path: "/",
@@ -6272,7 +6272,7 @@ func (s *S) TestGetHealthcheckDataHCProvisioner(c *check.C) {
 	_, err = collection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	hcData, err := a.GetHealthcheckData(context.TODO())
+	hcData, err := GetHealthcheckData(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{
 		TCPOnly: true,
@@ -6312,7 +6312,7 @@ func (s *S) TestGetInternalBindableAddresses(c *check.C) {
 	app := appTypes.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	addresses, err := InternalBindableAddresses(context.TODO(), &app)
+	addresses, err := GetInternalBindableAddresses(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	c.Assert(addresses, check.DeepEquals, []string{
 		"tcp://myapp-web.fake-cluster.local:80",
