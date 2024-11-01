@@ -132,6 +132,11 @@ func (s *S) TestGetBuildImage(c *check.C) {
 		config.Set("docker:repository-namespace", tt.ns)
 		config.Set("docker:registry", tt.registry)
 		tt.app.Name = "myapp"
+
+		s.mockService.App.OnRegistry = func(app *appTypes.App) (imgTypes.ImageRegistry, error) {
+			return imgTypes.ImageRegistry(tt.registry), nil
+		}
+
 		if tt.successfulVersion {
 			version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 				App: &appTypes.App{Name: "myapp"},

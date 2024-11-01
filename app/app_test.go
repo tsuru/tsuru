@@ -1422,7 +1422,7 @@ func (s *S) TestAddCNameCantBeDuplicatedWithSameRouter(c *check.C) {
 	app2 := &appTypes.App{Name: "ktulu2", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err = CreateApp(context.TODO(), app2, s.user)
 	c.Assert(err, check.IsNil)
-	err = AddCName(context.TODO(), app, "ktulu.mycompany.com")
+	err = AddCName(context.TODO(), app2, "ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app ktulu using same router")
 }
@@ -5995,7 +5995,7 @@ func (s *S) TestGetCertIssuers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	issuers := app.CertIssuers
 	c.Assert(err, check.IsNil)
-	c.Assert(issuers, check.DeepEquals, map[string]string{
+	c.Assert(issuers, check.DeepEquals, appTypes.CertIssuers{
 		"myapp.io":         "myissuer",
 		"myapp.another.io": "myotherissuer",
 	})

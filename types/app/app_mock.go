@@ -16,8 +16,9 @@ import (
 var _ AppService = &MockAppService{}
 
 type MockAppService struct {
-	Apps   []*App
-	OnList func(filter *Filter) ([]*App, error)
+	Apps       []*App
+	OnList     func(filter *Filter) ([]*App, error)
+	OnRegistry func(app *App) (image.ImageRegistry, error)
 }
 
 func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
@@ -54,7 +55,10 @@ func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, erro
 }
 
 func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
-	return "", errors.New("not implemented")
+	if m.OnRegistry == nil {
+		return "", nil
+	}
+	return m.OnRegistry(app)
 }
 
 func (m *MockAppService) AddInstance(ctx context.Context, app *App, addArgs bind.AddInstanceArgs) error {
