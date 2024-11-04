@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -376,15 +375,12 @@ func (s *S) TestDoubleProvision(c *check.C) {
 
 func (s *S) TestRestart(c *check.C) {
 	a := NewFakeApp("kid-gloves", "rush", 1)
-	nApp := appTypes.App{
-		Name: a.name,
-	}
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	_, err = appsCollection.InsertOne(context.TODO(), nApp)
-	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": nApp.Name})
+	_, err = appsCollection.InsertOne(context.TODO(), a)
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
 	p.Provision(context.TODO(), a)

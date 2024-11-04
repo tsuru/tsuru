@@ -80,14 +80,14 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app1}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(ctx, &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -119,14 +119,14 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app1}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(ctx, &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -156,14 +156,14 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app1}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(ctx, &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -236,14 +236,14 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app2}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(context.TODO(), &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -276,14 +276,14 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app2}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(ctx, &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -333,14 +333,14 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app1, app2}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(ctx, &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -385,14 +385,14 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []appTypes.App{app2}
 	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
+	for i, a := range apps {
+		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.AppUnits(ctx, &a)
 		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
+		expectedUnits, err := app.AppUnits(ctx, &expected[i])
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
+		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -443,7 +443,7 @@ func (s *S) TestSimplifiedAppList(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 	c.Assert(apps[0].Platform, check.Equals, "")
-	app1u, _ := apps[0].Units(ctx)
+	app1u, _ := app.AppUnits(ctx, &apps[0])
 	c.Assert(app1u, check.HasLen, 0)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(app1u, check.HasLen, 0)
@@ -499,7 +499,7 @@ func (s *S) TestExtendedAppList(c *check.C) {
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 	c.Assert(apps[0].Description, check.Equals, app1.Description)
 	c.Assert(apps[0].Platform, check.Equals, app1.Platform)
-	app1u, _ := apps[0].Units(ctx)
+	app1u, _ := app.AppUnits(ctx, &apps[0])
 	c.Assert(app1u, check.HasLen, 0)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].Description, check.Equals, app2.Description)
@@ -2565,8 +2565,8 @@ func (s *S) TestAddUnits(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item *appTypes.App, quantity int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -2578,9 +2578,9 @@ func (s *S) TestAddUnits(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	app1, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := app.AppUnits(ctx, app1)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	c.Assert(eventtest.EventDesc{
@@ -2598,8 +2598,8 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item *appTypes.App, quantity int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -2611,9 +2611,9 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	app1, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := app.AppUnits(ctx, app1)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	c.Assert(eventtest.EventDesc{
@@ -2682,8 +2682,8 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item *appTypes.App, quantity int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -2695,9 +2695,9 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	app1, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := app.AppUnits(ctx, app1)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
@@ -2731,8 +2731,8 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item *appTypes.App, quantity int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return &quota.QuotaExceededError{Available: 2, Requested: 3}
 	}
@@ -2759,8 +2759,8 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item *appTypes.App, quantity int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
 	}
@@ -2772,12 +2772,12 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	app1, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := app.AppUnits(ctx, app1)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(app1), check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("velha"),
 		Owner:  s.token.GetUserName(),
@@ -2844,8 +2844,8 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
-		c.Assert(item.GetName, check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item *appTypes.App, quantity int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
 	}
@@ -2855,12 +2855,12 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	app, err := app.GetByName(context.TODO(), a.Name)
+	app1, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := app.AppUnits(ctx, app1)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(app1), check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("velha"),
 		Owner:  s.token.GetUserName(),
@@ -3142,7 +3142,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	units, err := a.Units(ctx)
+	units, err := app.AppUnits(ctx, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	allExecs := s.provisioner.AllExecs()
@@ -3180,7 +3180,7 @@ func (s *S) TestRun(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	units, err := a.Units(ctx)
+	units, err := app.AppUnits(ctx, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	allExecs := s.provisioner.AllExecs()
@@ -3999,7 +3999,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	a, err = app.GetByName(context.TODO(), "losers")
 	c.Assert(err, check.IsNil)
-	envs := a.Envs()
+	envs := provision.EnvsForApp(a)
 	delete(envs, tsuruEnvs.TsuruServicesEnvVar)
 	delete(envs, "TSURU_APPNAME")
 	delete(envs, "TSURU_APPDIR")
@@ -4586,7 +4586,7 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddCName(ctx, "foo.bar.com")
+	err = app.AddCName(ctx, &a, "foo.bar.com")
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname?cname=foo.bar.com", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -4618,9 +4618,9 @@ func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddCName(ctx, "foo.bar.com")
+	err = app.AddCName(ctx, &a, "foo.bar.com")
 	c.Assert(err, check.IsNil)
-	err = a.AddCName(ctx, "bar.com")
+	err = app.AddCName(ctx, &a, "bar.com")
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname?cname=foo.bar.com&cname=bar.com", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -5173,7 +5173,7 @@ func (s *S) TestBindHandler(c *check.C) {
 
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	allEnvs := provision.EnvsForApp(&a)
 	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, ManagedBy: "mysql/my-mysql"})
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, ManagedBy: "mysql/my-mysql"})
 	parts := strings.Split(recorder.Body.String(), "\n")
@@ -5493,7 +5493,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&a)
 	c.Assert(err, check.IsNil)
 
-	allEnvs := a.Envs()
+	allEnvs := provision.EnvsForApp(&a)
 	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, ManagedBy: "mysql2/my-mysql"})
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, ManagedBy: "mysql2/my-mysql"})
 	parts := strings.Split(recorder.Body.String(), "\n")
@@ -5585,7 +5585,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	allEnvs := otherApp.Envs()
+	allEnvs := provision.EnvsForApp(otherApp)
 	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
 	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
@@ -5683,7 +5683,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	allEnvs := otherApp.Envs()
+	allEnvs := provision.EnvsForApp(otherApp)
 	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
 	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
@@ -5793,7 +5793,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	allEnvs := otherApp.Envs()
+	allEnvs := provision.EnvsForApp(otherApp)
 	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
 	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
@@ -6205,7 +6205,7 @@ func (s *S) TestAddLog(c *check.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := app.LastLogs(context.TODO(), &a, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 5,
 	})
 	c.Assert(err, check.IsNil)
@@ -6231,7 +6231,7 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := getAppFromContext(a.Name, r)
 	c.Assert(err, check.IsNil)
-	c.Assert(app, check.DeepEquals, *expected)
+	c.Assert(app, check.DeepEquals, expected)
 }
 
 func (s *S) TestSwapDeprecated(c *check.C) {
@@ -6459,7 +6459,7 @@ func (s *S) TestUnsetCertificate(c *check.C) {
 	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	err = app.SetCertificate(ctx, &a, "app.io", testCert, testKey)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/myapp/certificate?cname=app.io", nil)
 	c.Assert(err, check.IsNil)
@@ -6484,7 +6484,7 @@ func (s *S) TestUnsetCertificateWithoutCName(c *check.C) {
 	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	err = app.SetCertificate(ctx, &a, "app.io", testCert, testKey)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/myapp/certificate", nil)
 	c.Assert(err, check.IsNil)
@@ -6501,7 +6501,7 @@ func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
 	a := appTypes.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	err = app.SetCertificate(ctx, &a, "app.io", testCert, testKey)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/myapp/certificate?cname=myapp.io", nil)
 	c.Assert(err, check.IsNil)
@@ -6524,7 +6524,7 @@ func (s *S) TestListCertificates(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	err = app.SetCertificate(ctx, &a, "app.io", testCert, testKey)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps/myapp/certificate", nil)
 	c.Assert(err, check.IsNil)
@@ -6554,7 +6554,7 @@ func (s *S) TestListCertificatesLegacy(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	err = app.SetCertificate(ctx, &a, "app.io", testCert, testKey)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.2/apps/myapp/certificate", nil)
 	c.Assert(err, check.IsNil)
@@ -6585,7 +6585,7 @@ func (s *S) TestListCertificatesNew(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.SetCertificate(ctx, "app.io", testCert, testKey)
+	err = app.SetCertificate(ctx, &a, "app.io", testCert, testKey)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.24/apps/myapp/certificate", nil)
 	c.Assert(err, check.IsNil)

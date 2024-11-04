@@ -38,7 +38,7 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 		MaxUnits:   10,
 		MinUnits:   2,
 	}
-	err = a.AutoScale(ctx, autoscaleSpec)
+	err = app.AutoScale(ctx, &a, autoscaleSpec)
 	c.Assert(err, check.IsNil)
 
 	token := userWithPermission(c, permTypes.Permission{
@@ -63,8 +63,8 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 
 func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	ctx := context.Background()
-	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
-		c.Assert(item.GetName(), check.Equals, "myapp")
+	s.mockService.AppQuota.OnGet = func(item *appTypes.App) (*quota.Quota, error) {
+		c.Assert(item.Name, check.Equals, "myapp")
 		return &quota.Quota{
 			Limit: 10,
 		}, nil
@@ -92,7 +92,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 		c.Assert(recorder.Body.String(), check.Equals, "check err")
 	}
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo(ctx)
+	spec, err := app.AutoScaleInfo(ctx, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m"},
@@ -121,7 +121,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	a := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AutoScale(ctx, provTypes.AutoScaleSpec{
+	err = app.AutoScale(ctx, &a, provTypes.AutoScaleSpec{
 		Process:    "p1",
 		AverageCPU: "300m",
 		MaxUnits:   10,
@@ -138,7 +138,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo(ctx)
+	spec, err := app.AutoScaleInfo(ctx, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.IsNil)
 	c.Assert(eventtest.EventDesc{
@@ -154,8 +154,8 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 
 func (s *S) TestAddAutoScaleDown(c *check.C) {
 	ctx := context.Background()
-	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
-		c.Assert(item.GetName(), check.Equals, "myapp")
+	s.mockService.AppQuota.OnGet = func(item *appTypes.App) (*quota.Quota, error) {
+		c.Assert(item.Name, check.Equals, "myapp")
 		return &quota.Quota{
 			Limit: 10,
 		}, nil
@@ -183,7 +183,7 @@ func (s *S) TestAddAutoScaleDown(c *check.C) {
 		c.Assert(recorder.Body.String(), check.Equals, "check err")
 	}
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo(ctx)
+	spec, err := app.AutoScaleInfo(ctx, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m", Behavior: provTypes.BehaviorAutoScaleSpec{

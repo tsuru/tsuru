@@ -80,11 +80,11 @@ loop:
 			logs1 []appTypes.Applog
 			logs2 []appTypes.Applog
 		)
-		logs1, err = a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+		logs1, err = app.LastLogs(context.TODO(), &a1, servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: 3,
 		})
 		c.Assert(err, check.IsNil)
-		logs2, err = a2.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+		logs2, err = app.LastLogs(context.TODO(), &a2, servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: 2,
 		})
 		c.Assert(err, check.IsNil)
@@ -98,7 +98,7 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := app.LastLogs(context.TODO(), &a1, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 3,
 	})
 	c.Assert(err, check.IsNil)
@@ -108,7 +108,7 @@ loop:
 		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", Name: "myapp1", Unit: "unit3"},
 		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", Name: "myapp1", Unit: "unit3"},
 	})
-	logs, err = a2.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err = app.LastLogs(context.TODO(), &a2, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 2,
 	})
 	c.Assert(err, check.IsNil)
@@ -162,7 +162,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 loop:
 	for {
 		var logs1 []appTypes.Applog
-		logs1, err = a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+		logs1, err = app.LastLogs(context.TODO(), &a1, servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: nConcurrency,
 		})
 		c.Assert(err, check.IsNil)
@@ -176,7 +176,7 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := app.LastLogs(context.TODO(), &a1, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
