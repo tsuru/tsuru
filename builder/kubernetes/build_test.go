@@ -22,7 +22,6 @@ import (
 	"google.golang.org/grpc/status"
 	check "gopkg.in/check.v1"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
@@ -226,9 +225,10 @@ func (s *S) TestBuild_BuildWithSourceCode(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	app.SetEnv(a, bindTypes.EnvVar{Name: "MY_ENV1", Value: "value 1"})
-	app.SetEnv(a, bindTypes.EnvVar{Name: "MY_ENV2", Value: "value 2"})
-
+	a.Env = map[string]bindTypes.EnvVar{
+		"MY_ENV1": {Name: "MY_ENV1", Value: "value 1"},
+		"MY_ENV2": {Name: "MY_ENV2", Value: "value 2"},
+	}
 	s.mockService.PlatformImage.OnCurrentImage = func(registry imagetypes.ImageRegistry, platform string) (string, error) {
 		if c.Check(registry, check.DeepEquals, imagetypes.ImageRegistry("")) &&
 			c.Check(platform, check.DeepEquals, "python") {
@@ -245,8 +245,11 @@ func (s *S) TestBuild_BuildWithSourceCode(c *check.C) {
 			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
 				Name: "myapp",
 				EnvVars: map[string]string{
-					"MY_ENV1": "value 1",
-					"MY_ENV2": "value 2",
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+					"MY_ENV1":        "value 1",
+					"MY_ENV2":        "value 2",
 				},
 			})
 			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD)
@@ -362,7 +365,14 @@ func (s *S) TestBuild_BuildWithContainerImage(c *check.C) {
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
 			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
 			// provoke a deadlock on RPC client and server.
-			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
+				Name: "myapp",
+				EnvVars: map[string]string{
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+				},
+			})
 			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE)
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
 			c.Check(req.GetData(), check.IsNil)
@@ -714,7 +724,14 @@ func (s *S) TestBuild_BuildWithArchiveURL(c *check.C) {
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
 			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
 			// provoke an deadlock on RPC client and server.
-			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
+				Name: "myapp",
+				EnvVars: map[string]string{
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+				},
+			})
 			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD)
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
 			c.Check(req.GetData(), check.DeepEquals, []byte(`awesome tarball with source code`))
@@ -769,7 +786,14 @@ func (s *S) TestBuild_BuildWithDockerfile(c *check.C) {
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
 			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
 			// provoke an deadlock on RPC client and server.
-			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
+				Name: "myapp",
+				EnvVars: map[string]string{
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+				},
+			})
 			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_FILE)
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
 			c.Check(req.GetContainerfile(), check.Equals, `FROM alpine:latest
