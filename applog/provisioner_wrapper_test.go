@@ -50,7 +50,7 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 
 	s.provisionerWrapper = &provisionerWrapper{
 		logService: s.tsuruLogService,
-		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -196,7 +196,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw := &provisionerWrapper{
 		logService: memoryService,
-		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -209,7 +209,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw = &provisionerWrapper{
 		logService: aggregatorService,
-		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
