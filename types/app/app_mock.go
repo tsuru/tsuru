@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 
+	uuid "github.com/nu7hatch/gouuid"
+	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/router"
@@ -16,9 +18,13 @@ import (
 var _ AppService = &MockAppService{}
 
 type MockAppService struct {
-	Apps       []*App
-	OnList     func(filter *Filter) ([]*App, error)
-	OnRegistry func(app *App) (image.ImageRegistry, error)
+	Apps                           []*App
+	OnList                         func(filter *Filter) ([]*App, error)
+	OnRegistry                     func(app *App) (image.ImageRegistry, error)
+	OnGetAddresses                 func(app *App) ([]string, error)
+	OnAddInstance                  func(app *App, addArgs bind.AddInstanceArgs) error
+	OnRemoveInstance               func(app *App, removeArgs bind.RemoveInstanceArgs) error
+	OnGetInternalBindableAddresses func(app *App) ([]string, error)
 }
 
 func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
@@ -39,19 +45,34 @@ func (m *MockAppService) List(ctx context.Context, f *Filter) ([]*App, error) {
 }
 
 func (m *MockAppService) GetHealthcheckData(ctx context.Context, app *App) (router.HealthcheckData, error) {
-	return router.HealthcheckData{}, errors.New("not implemented")
+	return router.HealthcheckData{}, errors.New("MockAppService.GetHealthcheckData is not implemented")
 }
 
 func (m *MockAppService) GetAddresses(ctx context.Context, app *App) ([]string, error) {
-	return nil, errors.New("not implemented")
+	if m.OnGetAddresses != nil {
+		return m.OnGetAddresses(app)
+	}
+
+	return nil, errors.New("MockAppService.GetAddresses is not implemented")
 }
 
 func (m *MockAppService) GetInternalBindableAddresses(ctx context.Context, app *App) ([]string, error) {
-	return nil, errors.New("not implemented")
+	if m.OnGetInternalBindableAddresses != nil {
+		return m.OnGetInternalBindableAddresses(app)
+	}
+	return nil, errors.New("MockAppService.GetInternalBindableAddresses is not implemented")
 }
 
 func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, error) {
-	return "", errors.New("not implemented")
+	if app.UUID != "" {
+		return app.UUID, nil
+	}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return "", pkgErrors.WithMessage(err, "failed to generate uuid v4")
+	}
+	app.UUID = uuidV4.String()
+	return app.UUID, nil
 }
 
 func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
@@ -62,9 +83,17 @@ func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.Image
 }
 
 func (m *MockAppService) AddInstance(ctx context.Context, app *App, addArgs bind.AddInstanceArgs) error {
-	return errors.New("not implemented")
+	if m.OnAddInstance != nil {
+		return m.OnAddInstance(app, addArgs)
+	}
+
+	return errors.New("MockAppService.AddInstance is not implemented")
 
 }
 func (m *MockAppService) RemoveInstance(ctx context.Context, app *App, removeArgs bind.RemoveInstanceArgs) error {
-	return errors.New("not implemented")
+	if m.OnRemoveInstance != nil {
+		return m.OnRemoveInstance(app, removeArgs)
+	}
+
+	return errors.New("MockAppService.RemoveInstance is not implemented")
 }

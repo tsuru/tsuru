@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/servicemanager"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -465,7 +466,7 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 		},
 	}
 	c.Assert(result, check.DeepEquals, args)
-	envs := a.GetServiceEnvs()
+	envs := a.ServiceEnvs
 	c.Assert(envs, check.DeepEquals, args.Envs)
 }
 
@@ -478,7 +479,7 @@ func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
-	err := a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
+	err := servicemanager.App.AddInstance(context.TODO(), a, bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -492,7 +493,7 @@ func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 		FWResult: nil,
 	}
 	setBoundEnvsAction.Backward(ctx)
-	instances := a.GetServiceEnvs()
+	instances := a.ServiceEnvs
 	c.Assert(instances, check.HasLen, 0)
 }
 
@@ -664,7 +665,7 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
+	err = servicemanager.App.AddInstance(context.TODO(), a, bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bindTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -683,7 +684,7 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{&args}}
 	_, err = removeBoundEnvs.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	envs := a.GetServiceEnvs()
+	envs := a.ServiceEnvs
 	c.Assert(envs, check.DeepEquals, []bindTypes.ServiceEnvVar{})
 }
 

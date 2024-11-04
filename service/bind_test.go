@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -73,6 +74,21 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 		return []string{"mysql"}, nil
 	}
 
+	s.mockService.App.OnGetAddresses = func(a *appTypes.App) ([]string, error) {
+		return routertest.FakeRouter.Addresses(context.TODO(), a)
+	}
+
+	s.mockService.App.OnAddInstance = func(a *appTypes.App, addArgs bindTypes.AddInstanceArgs) error {
+		return app.AddInstance(context.TODO(), a, addArgs)
+	}
+	s.mockService.App.OnRemoveInstance = func(a *appTypes.App, removeArgs bindTypes.RemoveInstanceArgs) error {
+		return app.RemoveInstance(context.TODO(), a, removeArgs)
+	}
+
+	s.mockService.App.OnGetInternalBindableAddresses = func(a *appTypes.App) ([]string, error) {
+		return []string{}, nil
+	}
+
 	plan := appTypes.Plan{
 		Name:    "default",
 		Default: true,
@@ -119,7 +135,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = app.AddUnits(context.TODO(), a, 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
@@ -143,7 +159,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = app.AddUnits(context.TODO(), a, 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
@@ -195,7 +211,7 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = instance2.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
-	envs := a.Envs()
+	envs := provision.EnvsForApp(a)
 	c.Assert(envs["SRV1"], check.DeepEquals, bindTypes.EnvVar{
 		Name:      "SRV1",
 		Value:     "val1",
@@ -216,7 +232,7 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 		Event:   evt,
 	})
 	c.Assert(err, check.IsNil)
-	envs = a.Envs()
+	envs = provision.EnvsForApp(a)
 	c.Assert(envs["SRV1"], check.DeepEquals, bindTypes.EnvVar{})
 	c.Assert(envs["SRV2"], check.DeepEquals, bindTypes.EnvVar{
 		Name:      "SRV2",
@@ -247,7 +263,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = app.AddUnits(context.TODO(), a, 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
@@ -273,7 +289,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	evt := createEvt(c)
 	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
-	envs := a.Envs()
+	envs := provision.EnvsForApp(a)
 	c.Assert(envs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{
 		Name:      "DATABASE_USER",
 		Value:     "root",
@@ -289,6 +305,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 }
 
 func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -309,7 +326,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	a := &appTypes.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
+	err = app.AddInstance(context.TODO(), a, bindTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
