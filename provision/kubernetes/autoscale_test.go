@@ -280,8 +280,8 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				a.MilliCPU = 700
-				defer func() { a.MilliCPU = 0 }()
+				a.Plan.CPUMilli = 700
+				defer func() { a.Plan.CPUMilli = 0 }()
 				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
@@ -296,8 +296,8 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				a.MilliCPU = 700
-				defer func() { a.MilliCPU = 0 }()
+				a.Plan.CPUMilli = 700
+				defer func() { a.Plan.CPUMilli = 0 }()
 				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
@@ -312,8 +312,8 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				a.MilliCPU = 700
-				defer func() { a.MilliCPU = 0 }()
+				a.Plan.CPUMilli = 700
+				defer func() { a.Plan.CPUMilli = 0 }()
 				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
@@ -436,7 +436,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				a.MilliCPU = 700
+				a.Plan.CPUMilli = 700
 				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
@@ -585,7 +585,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				a.MilliCPU = 700
+				a.Plan.CPUMilli = 700
 				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
@@ -1737,7 +1737,7 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	a.MilliCPU = 2000
+	a.Plan.CPUMilli = 2000
 
 	cpu := resource.MustParse("800m")
 	_ = cpu.String()
@@ -1783,7 +1783,7 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	a.MilliCPU = 2000
+	a.Plan.CPUMilli = 2000
 
 	cpu := resource.MustParse("80000m")
 	_ = cpu.String()

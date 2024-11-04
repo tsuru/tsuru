@@ -204,7 +204,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 					waitDep()
 					a.Deploys++
 					if step.deployStep.routable {
-						err = a.SetRoutable(context.TODO(), version, true)
+						err = app.SetRoutable(context.TODO(), a, version, true)
 						c.Assert(err, check.IsNil)
 					}
 				}

@@ -43,7 +43,9 @@ func (s *S) TestWebProcessDefaultPortWithConfig(c *check.C) {
 
 func (s *S) TestEnvsForApp(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
-	a.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
+	a.Env = map[string]bindTypes.EnvVar{
+		"e1": {Name: "e1", Value: "v1"},
+	}
 	envs := provision.EnvsForAppAndVersion(a, "p1", nil)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
@@ -56,7 +58,9 @@ func (s *S) TestEnvsForApp(c *check.C) {
 
 func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
-	a.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
+	a.Env = map[string]bindTypes.EnvVar{
+		"e1": {Name: "e1", Value: "v1"},
+	}
 
 	svc, err := version.AppVersionService()
 	c.Assert(err, check.IsNil)
@@ -81,7 +85,9 @@ func (s *S) TestEnvsForAppCustomConfig(c *check.C) {
 	defer config.Unset("host")
 	defer config.Unset("docker:run-cmd:port")
 	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
-	a.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
+	a.Env = map[string]bindTypes.EnvVar{
+		"e1": {Name: "e1", Value: "v1"},
+	}
 	envs := provision.EnvsForAppAndVersion(a, "p1", nil)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},

@@ -1699,8 +1699,8 @@ func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	a.MilliCPU = 250000
-	a.Memory = 100000
+	a.Plan.CPUMilli = 250000
+	a.Plan.Memory = 100000
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	shouldFail := true
@@ -1708,16 +1708,16 @@ func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		shouldFail = false
 		var ephemeral resource.Quantity
-		ephemeral, err = s.clusterClient.ephemeralStorage(a.GetPool())
+		ephemeral, err = s.clusterClient.ephemeralStorage(a.Pool)
 		c.Assert(err, check.IsNil)
 		expectedLimits := &apiv1.ResourceList{
-			apiv1.ResourceMemory:           *resource.NewQuantity(a.GetMemory(), resource.BinarySI),
-			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.GetMilliCPU()), resource.DecimalSI),
+			apiv1.ResourceMemory:           *resource.NewQuantity(a.Plan.Memory, resource.BinarySI),
+			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.Plan.CPUMilli), resource.DecimalSI),
 			apiv1.ResourceEphemeralStorage: ephemeral,
 		}
 		expectedRequests := &apiv1.ResourceList{
-			apiv1.ResourceMemory:           *resource.NewQuantity(a.GetMemory(), resource.BinarySI),
-			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.GetMilliCPU()), resource.DecimalSI),
+			apiv1.ResourceMemory:           *resource.NewQuantity(a.Plan.Memory, resource.BinarySI),
+			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.Plan.CPUMilli), resource.DecimalSI),
 			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 		}
 		c.Assert(pod.Spec.Containers[0].Resources.Limits, check.DeepEquals, *expectedLimits)
@@ -2151,7 +2151,7 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.GetPool(),
+			"tsuru.io/pool": newApp.Pool,
 		})
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
 		return true, nil, nil
@@ -2516,31 +2516,6 @@ func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
-	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python proc1.py",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	fa := provisiontest.NewFakeApp("myapp", "java", 1)
-	fa.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
-
-	envs := EnvsForApp(fa, "web", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
-		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "web"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
-		{Name: "PORT_web", Value: "8888"},
-	})
-}
-
 func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
@@ -2594,10 +2569,17 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
-	fa.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
+
+	if fa.Env == nil {
+		fa.Env = make(map[string]bindTypes.EnvVar, 0)
+	}
+	fa.Env["e1"] = bindTypes.EnvVar{Name: "e1", Value: "v1"}
 
 	envs := EnvsForApp(fa, "proc1", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -2607,6 +2589,9 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 
 	envs = EnvsForApp(fa, "proc2", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -2616,6 +2601,9 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 
 	envs = EnvsForApp(fa, "proc3", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -2625,6 +2613,9 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 
 	envs = EnvsForApp(fa, "proc4", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -2636,6 +2627,9 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 
 	envs = EnvsForApp(fa, "proc5", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -2644,6 +2638,9 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 
 	envs = EnvsForApp(fa, "proc6", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc6"},
 		{Name: "TSURU_APPVERSION", Value: "1"},

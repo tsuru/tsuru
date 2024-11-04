@@ -40,6 +40,13 @@ func (s *S) Test_LogsProvisioner_parsek8sLogLine(c *check.C) {
 	c.Check(tsuruLog.Message, check.Equals, "its a log line")
 }
 
+func loggableApp(a *appTypes.App) *logTypes.LogabbleObject {
+	return &logTypes.LogabbleObject{
+		Name: a.Name,
+		Pool: a.Pool,
+	}
+}
+
 func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		tailLines, _ := strconv.Atoi(r.URL.Query().Get("tailLines"))
@@ -66,7 +73,7 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -107,7 +114,7 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -146,7 +153,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -160,7 +167,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	c.Assert(logs[0].Name, check.Equals, a.Name)
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
-	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err = s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -196,7 +203,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:   a.Name,
 		Type:   "app",
 		Limit:  10,
@@ -210,7 +217,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 	c.Assert(logs[0].Name, check.Equals, a.Name)
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
-	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err = s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:   a.Name,
 		Type:   "app",
 		Limit:  10,
@@ -261,7 +268,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 		}
 	})
 
-	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -305,7 +312,7 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
+	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -367,7 +374,7 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
+	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -431,7 +438,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
+	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
@@ -513,7 +520,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 		}
 	})
 
-	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
+	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
