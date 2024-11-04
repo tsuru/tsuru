@@ -28,7 +28,7 @@ func (n namedItem) GetName() string {
 
 func (s *S) TestInc(c *check.C) {
 	inUse := 0
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnSet: func(name string, quantity int) error {
 				c.Assert(name, check.Equals, "myname")
@@ -52,7 +52,7 @@ func (s *S) TestInc(c *check.C) {
 
 func (s *S) TestIncAppNotFound(c *check.C) {
 	myerr := errors.New("myerr")
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnGet: func(name string) (*quota.Quota, error) {
 				c.Assert(name, check.Equals, "myname")
@@ -65,7 +65,7 @@ func (s *S) TestIncAppNotFound(c *check.C) {
 }
 
 func (s *S) TestIncQuotaExceeded(c *check.C) {
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnSet: func(name string, quantity int) error {
 				c.Assert(name, check.Equals, "myname")
@@ -88,7 +88,7 @@ func (s *S) TestIncQuotaExceeded(c *check.C) {
 
 func (s *S) TestIncUnlimitedQuota(c *check.C) {
 	inUse := 0
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnSet: func(name string, quantity int) error {
 				c.Assert(name, check.Equals, "myname")
@@ -113,7 +113,7 @@ func (s *S) TestIncUnlimitedQuota(c *check.C) {
 
 func (s *S) TestIncNegative(c *check.C) {
 	inUse := 7
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnSet: func(name string, quantity int) error {
 				c.Assert(name, check.Equals, "myname")
@@ -136,7 +136,7 @@ func (s *S) TestIncNegative(c *check.C) {
 }
 
 func (s *S) TestIncNegativeTooLarge(c *check.C) {
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnGet: func(name string) (*quota.Quota, error) {
 				c.Assert(name, check.Equals, "myname")
@@ -151,7 +151,7 @@ func (s *S) TestIncNegativeTooLarge(c *check.C) {
 
 func (s *S) TestIncNegativeAppNotFound(c *check.C) {
 	myerr := errors.New("myerr")
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnGet: func(name string) (*quota.Quota, error) {
 				return nil, myerr
@@ -164,7 +164,7 @@ func (s *S) TestIncNegativeAppNotFound(c *check.C) {
 
 func (s *S) TestSetLimit(c *check.C) {
 	quotaLimit := 3
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnSetLimit: func(name string, limit int) error {
 				c.Assert(name, check.Equals, "myname")
@@ -188,7 +188,7 @@ func (s *S) TestSetLimit(c *check.C) {
 
 func (s *S) TestSetLimitToUnlimited(c *check.C) {
 	quotaLimit := 3
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnSetLimit: func(name string, limit int) error {
 				c.Assert(name, check.Equals, "myname")
@@ -212,7 +212,7 @@ func (s *S) TestSetLimitToUnlimited(c *check.C) {
 
 func (s *S) TestSetLimitAppNotFound(c *check.C) {
 	myerr := errors.New("myerr")
-	qs := &QuotaService{
+	qs := &QuotaService[quota.QuotaItem]{
 		Storage: &quota.MockQuotaStorage{
 			OnGet: func(name string) (*quota.Quota, error) {
 				return nil, myerr

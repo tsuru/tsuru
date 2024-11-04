@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -188,9 +189,9 @@ func (s *S) TestIncreaseDecreaseQuotaForJob(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
-	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+	s.mockService.TeamQuota.OnInc = func(item *auth.Team, quantity int) error {
 		*teaminUseNow += quantity
-		c.Assert(item.GetName(), check.Equals, s.team.Name)
+		c.Assert(item.Name, check.Equals, s.team.Name)
 		return nil
 	}
 	newJob := jobTypes.Job{
