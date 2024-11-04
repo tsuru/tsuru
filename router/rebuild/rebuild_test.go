@@ -44,14 +44,14 @@ func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
 	version := newVersion(c, &a)
 	err = provisiontest.ProvisionerInstance.AddUnits(context.TODO(), &a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
-	oldAddrs, err := a.GetAddresses(context.TODO())
+	oldAddrs, err := app.GetAddresses(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	a.Router = "fake"
 	err = rebuild.RebuildRoutes(context.TODO(), rebuild.RebuildRoutesOpts{
 		App: &a,
 	})
 	c.Assert(err, check.IsNil)
-	newAddrs, err := a.GetAddresses(context.TODO())
+	newAddrs, err := app.GetAddresses(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(newAddrs, check.Not(check.DeepEquals), oldAddrs)
 }

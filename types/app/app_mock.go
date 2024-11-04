@@ -25,6 +25,7 @@ type MockAppService struct {
 	OnAddInstance                  func(app *App, addArgs bind.AddInstanceArgs) error
 	OnRemoveInstance               func(app *App, removeArgs bind.RemoveInstanceArgs) error
 	OnGetInternalBindableAddresses func(app *App) ([]string, error)
+	OnGetHealthcheckData           func(app *App) (router.HealthcheckData, error)
 }
 
 func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
@@ -45,6 +46,9 @@ func (m *MockAppService) List(ctx context.Context, f *Filter) ([]*App, error) {
 }
 
 func (m *MockAppService) GetHealthcheckData(ctx context.Context, app *App) (router.HealthcheckData, error) {
+	if m.OnGetHealthcheckData != nil {
+		return m.OnGetHealthcheckData(app)
+	}
 	return router.HealthcheckData{}, errors.New("MockAppService.GetHealthcheckData is not implemented")
 }
 
