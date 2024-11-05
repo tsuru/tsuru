@@ -33,7 +33,7 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 			wg.Done()
 		}()
 		go func() {
-			fake.RemoveBackend(ctx, app)
+			fake.RemoveBackend(ctx, &app)
 			wg.Done()
 		}()
 	}
