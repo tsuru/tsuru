@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -26,9 +27,9 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	for i := 1; i < 256; i++ {
 		wg.Add(2)
 		name := fmt.Sprintf("route-%d", i)
-		app := FakeApp{Name: name}
+		app := appTypes.App{Name: name}
 		go func() {
-			fake.EnsureBackend(ctx, app, router.EnsureBackendOpts{})
+			fake.EnsureBackend(ctx, &app, router.EnsureBackendOpts{})
 			wg.Done()
 		}()
 		go func() {

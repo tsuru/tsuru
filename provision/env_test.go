@@ -12,13 +12,16 @@ import (
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	check "gopkg.in/check.v1"
 )
 
-type S struct{}
+type S struct {
+	mockService servicemock.MockService
+}
 
 var _ = check.Suite(&S{})
 
@@ -27,6 +30,8 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:name", "provision_tests_2_s")
 	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
+
+	servicemock.SetMockService(&s.mockService)
 }
 
 func (s *S) TestWebProcessDefaultPort(c *check.C) {
@@ -48,6 +53,9 @@ func (s *S) TestEnvsForApp(c *check.C) {
 	}
 	envs := provision.EnvsForAppAndVersion(a, "p1", nil)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_HOST", Value: ""},
@@ -69,6 +77,9 @@ func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 
 	envs := provision.EnvsForAppAndVersion(a, "p1", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -90,6 +101,9 @@ func (s *S) TestEnvsForAppCustomConfig(c *check.C) {
 	}
 	envs := provision.EnvsForAppAndVersion(a, "p1", nil)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_HOST", Value: "cloud.tsuru.io"},

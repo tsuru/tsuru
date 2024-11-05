@@ -14,11 +14,13 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
 type S struct {
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -42,6 +44,8 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
+
+	servicemock.SetMockService(&s.mockService)
 }
 
 func newVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
