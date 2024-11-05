@@ -1912,9 +1912,7 @@ func List(ctx context.Context, filter *Filter) ([]*appTypes.App, error) {
 			}
 			provisionApps = append(provisionApps, apps...)
 		}
-		for i := range provisionApps {
-			apps[i] = provisionApps[i]
-		}
+		copy(apps, provisionApps)
 		apps = apps[:len(provisionApps)]
 	}
 	err = loadCachedAddrsInApps(ctx, apps)
