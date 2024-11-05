@@ -69,7 +69,8 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 			},
 			Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
 				ScaleDown: &autoscalingv2.HPAScalingRules{
-					SelectPolicy: &policyMin,
+					SelectPolicy:               &policyMin,
+					StabilizationWindowSeconds: toInt32Ptr(300),
 					Policies: []autoscalingv2.HPAScalingPolicy{
 						{
 							Type:          autoscalingv2.PercentScalingPolicy,
@@ -166,7 +167,8 @@ func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs 
 				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
 					Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
 						ScaleDown: &autoscalingv2.HPAScalingRules{
-							SelectPolicy: &policyMin,
+							StabilizationWindowSeconds: toInt32Ptr(300),
+							SelectPolicy:               &policyMin,
 							Policies: []autoscalingv2.HPAScalingPolicy{
 								{
 									Type:          autoscalingv2.PercentScalingPolicy,
@@ -1102,6 +1104,13 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			AverageCPU: "500m",
 			Version:    1,
 			Process:    "web",
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(10),
+					UnitsPolicyValue:      toInt32Ptr(3),
+				},
+			},
 		},
 		{
 			MinUnits:   2,
@@ -1109,6 +1118,13 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			AverageCPU: "200m",
 			Version:    1,
 			Process:    "worker",
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(10),
+					UnitsPolicyValue:      toInt32Ptr(3),
+				},
+			},
 		},
 	})
 }
