@@ -183,11 +183,19 @@ func kedaScaledObjectName(hpa autoscalingv2.HorizontalPodAutoscaler) string {
 
 func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provTypes.AutoScaleSpec {
 	ls := labelSetFromMeta(&scaledObject.ObjectMeta)
+	behavior := getBehaviorNoFail(scaledObject)
 	spec := provTypes.AutoScaleSpec{
 		MaxUnits: uint(*scaledObject.Spec.MaxReplicaCount),
 		MinUnits: uint(*scaledObject.Spec.MinReplicaCount),
 		Process:  ls.AppProcess(),
 		Version:  ls.AppVersion(),
+		Behavior: provTypes.BehaviorAutoScaleSpec{
+			ScaleDown: &provTypes.ScaleDownPoliciy{
+				PercentagePolicyValue: getPercentagePolicy(behavior),
+				UnitsPolicyValue:      getUnitPolicy(behavior),
+				StabilizationWindow:   getStabilizationWindow(behavior),
+			},
+		},
 	}
 
 	for _, metric := range scaledObject.Spec.Triggers {
@@ -237,9 +245,9 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 		Version:  ls.AppVersion(),
 		Behavior: provTypes.BehaviorAutoScaleSpec{
 			ScaleDown: &provTypes.ScaleDownPoliciy{
-				PercentagePolicyValue: getPercentagePolicy(hpa.Spec.Behavior.ScaleDown.Policies),
-				UnitsPolicyValue:      getUnitPolicy(hpa.Spec.Behavior.ScaleDown.Policies),
-				StabilizationWindow:   hpa.Spec.Behavior.ScaleDown.StabilizationWindowSeconds,
+				PercentagePolicyValue: getPercentagePolicy(hpa.Spec.Behavior),
+				UnitsPolicyValue:      getUnitPolicy(hpa.Spec.Behavior),
+				StabilizationWindow:   getStabilizationWindow(hpa.Spec.Behavior),
 			},
 		},
 	}
@@ -262,24 +270,6 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 	}
 
 	return spec
-}
-
-func getPercentagePolicy(policies []autoscalingv2.HPAScalingPolicy) *int32 {
-	for _, policy := range policies {
-		if policy.Type == autoscalingv2.PercentScalingPolicy {
-			return &policy.Value
-		}
-	}
-	return nil
-}
-
-func getUnitPolicy(policies []autoscalingv2.HPAScalingPolicy) *int32 {
-	for _, policy := range policies {
-		if policy.Type == autoscalingv2.PodsScalingPolicy {
-			return &policy.Value
-		}
-	}
-	return nil
 }
 
 func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provision.App) error {
@@ -673,26 +663,6 @@ func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPoliciy) (policies
 			PeriodSeconds: 60,
 		},
 	}
-}
-
-func getBehaviorPercentageNoFail(param *provTypes.ScaleDownPoliciy, valueDefault int32) int32 {
-	if param == nil {
-		return valueDefault
-	}
-	if param.PercentagePolicyValue == nil {
-		return valueDefault
-	}
-	return *param.PercentagePolicyValue
-}
-
-func getBehaviorUnitsNoFail(param *provTypes.ScaleDownPoliciy, valueDefault int32) int32 {
-	if param == nil {
-		return valueDefault
-	}
-	if param.UnitsPolicyValue == nil {
-		return valueDefault
-	}
-	return *param.UnitsPolicyValue
 }
 
 func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provision.App, process string) (*deploymentInfo, error) {

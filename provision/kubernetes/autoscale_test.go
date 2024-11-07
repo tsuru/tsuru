@@ -1174,6 +1174,13 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 				Timezone:    "UTC",
 			},
 		},
+		Behavior: provTypes.BehaviorAutoScaleSpec{
+			ScaleDown: &provTypes.ScaleDownPoliciy{
+				StabilizationWindow:   toInt32Ptr(60),
+				PercentagePolicyValue: toInt32Ptr(20),
+				UnitsPolicyValue:      toInt32Ptr(10),
+			},
+		},
 	})
 	c.Assert(err, check.IsNil)
 
@@ -1206,6 +1213,13 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 					Timezone:    "UTC",
 				},
 			},
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(10),
+					UnitsPolicyValue:      toInt32Ptr(3),
+				},
+			},
 		},
 		{
 			MinUnits:   2,
@@ -1219,6 +1233,13 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 					Start:       "0 12 * * *",
 					End:         "0 15 * * *",
 					Timezone:    "UTC",
+				},
+			},
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   toInt32Ptr(60),
+					PercentagePolicyValue: toInt32Ptr(20),
+					UnitsPolicyValue:      toInt32Ptr(10),
 				},
 			},
 		},
@@ -1256,6 +1277,12 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 				Query:             "some_query_1",
 				PrometheusAddress: "test.prometheus.address.exemple",
 				Threshold:         10.0,
+			},
+		},
+		Behavior: provTypes.BehaviorAutoScaleSpec{
+			ScaleDown: &provTypes.ScaleDownPoliciy{
+				PercentagePolicyValue: toInt32Ptr(21),
+				UnitsPolicyValue:      toInt32Ptr(15),
 			},
 		},
 	})
@@ -1311,6 +1338,13 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 					Threshold:         10.0,
 				},
 			},
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(21),
+					UnitsPolicyValue:      toInt32Ptr(15),
+				},
+			},
 		},
 		{
 			MinUnits:   2,
@@ -1330,6 +1364,13 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 					Query:             "some_query_3",
 					PrometheusAddress: "test.prometheus.address3.exemple",
 					Threshold:         30.0,
+				},
+			},
+			Behavior: provTypes.BehaviorAutoScaleSpec{
+				ScaleDown: &provTypes.ScaleDownPoliciy{
+					StabilizationWindow:   toInt32Ptr(300),
+					PercentagePolicyValue: toInt32Ptr(10),
+					UnitsPolicyValue:      toInt32Ptr(3),
 				},
 			},
 		},
