@@ -4737,12 +4737,15 @@ definitions:
               stabilizationWindow:
                 type: integer
                 description: Time in seconds for stabilization before scaling down
+                x-go-custom-type: "*int32"
               percentagePolicyValue:
                 type: integer
                 description: Percentage threshold for scaling down
+                x-go-custom-type: "*int32"
               unitsPolicyValue:
                 type: integer
                 description: Minimum number of units to scale down
+                x-go-custom-type: "*int32"
   AutoScaleSchedule:
     description: Auto Scale schedules struct
     type: object

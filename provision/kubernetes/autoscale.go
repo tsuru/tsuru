@@ -190,7 +190,7 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provTypes.AutoSc
 		Process:  ls.AppProcess(),
 		Version:  ls.AppVersion(),
 		Behavior: provTypes.BehaviorAutoScaleSpec{
-			ScaleDown: &provTypes.ScaleDownPoliciy{
+			ScaleDown: &provTypes.ScaleDownPolicy{
 				PercentagePolicyValue: getPercentagePolicy(behavior),
 				UnitsPolicyValue:      getUnitPolicy(behavior),
 				StabilizationWindow:   getStabilizationWindow(behavior),
@@ -244,7 +244,7 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 		Process:  ls.AppProcess(),
 		Version:  ls.AppVersion(),
 		Behavior: provTypes.BehaviorAutoScaleSpec{
-			ScaleDown: &provTypes.ScaleDownPoliciy{
+			ScaleDown: &provTypes.ScaleDownPolicy{
 				PercentagePolicyValue: getPercentagePolicy(hpa.Spec.Behavior),
 				UnitsPolicyValue:      getUnitPolicy(hpa.Spec.Behavior),
 				StabilizationWindow:   getStabilizationWindow(hpa.Spec.Behavior),
@@ -628,7 +628,7 @@ func buildDefaultPrometheusAddress(ns string) (string, error) {
 	return buf.String(), nil
 }
 
-func buildHPABehavior(behaviorSpec *provTypes.ScaleDownPoliciy) *autoscalingv2.HorizontalPodAutoscalerBehavior {
+func buildHPABehavior(behaviorSpec *provTypes.ScaleDownPolicy) *autoscalingv2.HorizontalPodAutoscalerBehavior {
 	// setting ground to allow user customization regarding down scale behavior
 	policyMin := autoscalingv2.MinChangePolicySelect
 	policies := getPoliciesFromBehavior(behaviorSpec)
@@ -642,7 +642,7 @@ func buildHPABehavior(behaviorSpec *provTypes.ScaleDownPoliciy) *autoscalingv2.H
 	return behavior
 }
 
-func settingValueStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutoscalerBehavior, behaviorSpec *provTypes.ScaleDownPoliciy) {
+func settingValueStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutoscalerBehavior, behaviorSpec *provTypes.ScaleDownPolicy) {
 	if behaviorSpec != nil && behaviorSpec.StabilizationWindow != nil {
 		behavior.ScaleDown.StabilizationWindowSeconds = behaviorSpec.StabilizationWindow
 		return
@@ -650,7 +650,7 @@ func settingValueStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutosc
 	behavior.ScaleDown.StabilizationWindowSeconds = k8sutilsptr.To(int32(300))
 }
 
-func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPoliciy) (policies []autoscalingv2.HPAScalingPolicy) {
+func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPolicy) (policies []autoscalingv2.HPAScalingPolicy) {
 	return []autoscalingv2.HPAScalingPolicy{
 		{
 			Type:          autoscalingv2.PercentScalingPolicy,

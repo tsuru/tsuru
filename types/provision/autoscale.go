@@ -19,10 +19,10 @@ type AutoScaleSpec struct {
 }
 
 type BehaviorAutoScaleSpec struct {
-	ScaleDown *ScaleDownPoliciy `json:"scaleDown,omitempty"`
+	ScaleDown *ScaleDownPolicy `json:"scaleDown,omitempty"`
 }
 
-type ScaleDownPoliciy struct {
+type ScaleDownPolicy struct {
 	StabilizationWindow   *int32 `json:"stabilizationWindow,omitempty"`
 	PercentagePolicyValue *int32 `json:"percentagePolicyValue,omitempty"`
 	UnitsPolicyValue      *int32 `json:"unitsPolicyValue,omitempty"`

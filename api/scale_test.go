@@ -186,7 +186,7 @@ func (s *S) TestAddAutoScaleDown(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m", Behavior: provTypes.BehaviorAutoScaleSpec{
-			ScaleDown: &provTypes.ScaleDownPoliciy{
+			ScaleDown: &provTypes.ScaleDownPolicy{
 				StabilizationWindow:   ptr.To(int32(10)),
 				PercentagePolicyValue: ptr.To(int32(20)),
 				UnitsPolicyValue:      ptr.To(int32(1)),

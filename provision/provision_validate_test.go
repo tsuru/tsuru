@@ -13,19 +13,19 @@ func (s *S) TestValidateAutoScaleUpSpec_ReturnError(c *check.C) {
 		expectErr string
 	}{
 		{
-			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{
+			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{
 				StabilizationWindow: ptr.To(int32(-1)),
 			}}},
 			expectErr: "not enough stabilization window to scale down",
 		},
 		{
-			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{
+			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{
 				PercentagePolicyValue: ptr.To(int32(-1)),
 			}}},
 			expectErr: "not enough percentage to scale down",
 		},
 		{
-			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{
+			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{
 				UnitsPolicyValue: ptr.To(int32(-1)),
 			}}},
 			expectErr: "not enough units to scale down",
@@ -59,27 +59,27 @@ func (s *S) TestValidateAutoScaleDownSpec_NotReturnError(c *check.C) {
 			expectErr: nil,
 		},
 		{
-			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{}}},
+			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{}}},
 			expectErr: nil,
 		},
 		{
-			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{StabilizationWindow: new(int32)}}},
+			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{StabilizationWindow: new(int32)}}},
 			expectErr: nil,
 		},
 		{
-			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{PercentagePolicyValue: new(int32)}}},
+			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{PercentagePolicyValue: new(int32)}}},
 			expectErr: nil,
 		},
 		{
-			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{UnitsPolicyValue: new(int32)}}},
+			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{UnitsPolicyValue: new(int32)}}},
 			expectErr: nil,
 		},
 		{
-			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{StabilizationWindow: new(int32), PercentagePolicyValue: new(int32), UnitsPolicyValue: new(int32)}}},
+			param:     &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{StabilizationWindow: new(int32), PercentagePolicyValue: new(int32), UnitsPolicyValue: new(int32)}}},
 			expectErr: nil,
 		},
 		{
-			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{
+			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{
 				StabilizationWindow:   ptr.To(int32(50)),
 				PercentagePolicyValue: ptr.To(int32(27)),
 				UnitsPolicyValue:      ptr.To(int32(3)),
@@ -87,7 +87,7 @@ func (s *S) TestValidateAutoScaleDownSpec_NotReturnError(c *check.C) {
 			expectErr: nil,
 		},
 		{
-			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPoliciy{
+			param: &provTypes.AutoScaleSpec{Behavior: provTypes.BehaviorAutoScaleSpec{ScaleDown: &provTypes.ScaleDownPolicy{
 				StabilizationWindow:   ptr.To(int32(0)),
 				PercentagePolicyValue: ptr.To(int32(0)),
 				UnitsPolicyValue:      ptr.To(int32(0)),

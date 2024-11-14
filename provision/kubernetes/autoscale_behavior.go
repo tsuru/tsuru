@@ -65,7 +65,7 @@ func getStabilizationWindow(behavior *autoscalingv2.HorizontalPodAutoscalerBehav
 	return behavior.ScaleDown.StabilizationWindowSeconds
 }
 
-func getBehaviorPercentageNoFail(param *provTypes.ScaleDownPoliciy, valueDefault int32) int32 {
+func getBehaviorPercentageNoFail(param *provTypes.ScaleDownPolicy, valueDefault int32) int32 {
 	if param == nil {
 		return valueDefault
 	}
@@ -75,7 +75,7 @@ func getBehaviorPercentageNoFail(param *provTypes.ScaleDownPoliciy, valueDefault
 	return *param.PercentagePolicyValue
 }
 
-func getBehaviorUnitsNoFail(param *provTypes.ScaleDownPoliciy, valueDefault int32) int32 {
+func getBehaviorUnitsNoFail(param *provTypes.ScaleDownPolicy, valueDefault int32) int32 {
 	if param == nil {
 		return valueDefault
 	}

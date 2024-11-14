@@ -1105,7 +1105,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			Version:    1,
 			Process:    "web",
 			Behavior: provTypes.BehaviorAutoScaleSpec{
-				ScaleDown: &provTypes.ScaleDownPoliciy{
+				ScaleDown: &provTypes.ScaleDownPolicy{
 					StabilizationWindow:   toInt32Ptr(300),
 					PercentagePolicyValue: toInt32Ptr(10),
 					UnitsPolicyValue:      toInt32Ptr(3),
@@ -1119,7 +1119,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			Version:    1,
 			Process:    "worker",
 			Behavior: provTypes.BehaviorAutoScaleSpec{
-				ScaleDown: &provTypes.ScaleDownPoliciy{
+				ScaleDown: &provTypes.ScaleDownPolicy{
 					StabilizationWindow:   toInt32Ptr(300),
 					PercentagePolicyValue: toInt32Ptr(10),
 					UnitsPolicyValue:      toInt32Ptr(3),
@@ -1175,7 +1175,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 			},
 		},
 		Behavior: provTypes.BehaviorAutoScaleSpec{
-			ScaleDown: &provTypes.ScaleDownPoliciy{
+			ScaleDown: &provTypes.ScaleDownPolicy{
 				StabilizationWindow:   toInt32Ptr(60),
 				PercentagePolicyValue: toInt32Ptr(20),
 				UnitsPolicyValue:      toInt32Ptr(10),
@@ -1214,7 +1214,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 				},
 			},
 			Behavior: provTypes.BehaviorAutoScaleSpec{
-				ScaleDown: &provTypes.ScaleDownPoliciy{
+				ScaleDown: &provTypes.ScaleDownPolicy{
 					StabilizationWindow:   toInt32Ptr(300),
 					PercentagePolicyValue: toInt32Ptr(10),
 					UnitsPolicyValue:      toInt32Ptr(3),
@@ -1236,7 +1236,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 				},
 			},
 			Behavior: provTypes.BehaviorAutoScaleSpec{
-				ScaleDown: &provTypes.ScaleDownPoliciy{
+				ScaleDown: &provTypes.ScaleDownPolicy{
 					StabilizationWindow:   toInt32Ptr(60),
 					PercentagePolicyValue: toInt32Ptr(20),
 					UnitsPolicyValue:      toInt32Ptr(10),
@@ -1280,7 +1280,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 			},
 		},
 		Behavior: provTypes.BehaviorAutoScaleSpec{
-			ScaleDown: &provTypes.ScaleDownPoliciy{
+			ScaleDown: &provTypes.ScaleDownPolicy{
 				PercentagePolicyValue: toInt32Ptr(21),
 				UnitsPolicyValue:      toInt32Ptr(15),
 			},
@@ -1339,7 +1339,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 				},
 			},
 			Behavior: provTypes.BehaviorAutoScaleSpec{
-				ScaleDown: &provTypes.ScaleDownPoliciy{
+				ScaleDown: &provTypes.ScaleDownPolicy{
 					StabilizationWindow:   toInt32Ptr(300),
 					PercentagePolicyValue: toInt32Ptr(21),
 					UnitsPolicyValue:      toInt32Ptr(15),
@@ -1367,7 +1367,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 				},
 			},
 			Behavior: provTypes.BehaviorAutoScaleSpec{
-				ScaleDown: &provTypes.ScaleDownPoliciy{
+				ScaleDown: &provTypes.ScaleDownPolicy{
 					StabilizationWindow:   toInt32Ptr(300),
 					PercentagePolicyValue: toInt32Ptr(10),
 					UnitsPolicyValue:      toInt32Ptr(3),
@@ -1470,7 +1470,7 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
 			},
 		},
 		Behavior: provTypes.BehaviorAutoScaleSpec{
-			ScaleDown: &provTypes.ScaleDownPoliciy{
+			ScaleDown: &provTypes.ScaleDownPolicy{
 				StabilizationWindow:   toInt32Ptr(300),
 				PercentagePolicyValue: toInt32Ptr(50),
 				UnitsPolicyValue:      toInt32Ptr(2),
@@ -1771,7 +1771,7 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 
 func (s *S) TestValidateBehaviorPercentageNoFail(c *check.C) {
 	tests := []struct {
-		params             *provTypes.ScaleDownPoliciy
+		params             *provTypes.ScaleDownPolicy
 		defaultValue       int32
 		expectedPercentage int32
 	}{
@@ -1781,19 +1781,19 @@ func (s *S) TestValidateBehaviorPercentageNoFail(c *check.C) {
 			expectedPercentage: 50,
 		},
 		{
-			params:             &provTypes.ScaleDownPoliciy{},
+			params:             &provTypes.ScaleDownPolicy{},
 			defaultValue:       10,
 			expectedPercentage: 10,
 		},
 		{
-			params: &provTypes.ScaleDownPoliciy{
+			params: &provTypes.ScaleDownPolicy{
 				PercentagePolicyValue: toInt32Ptr(20),
 			},
 			defaultValue:       10,
 			expectedPercentage: 20,
 		},
 		{
-			params: &provTypes.ScaleDownPoliciy{
+			params: &provTypes.ScaleDownPolicy{
 				StabilizationWindow: toInt32Ptr(300),
 			},
 			defaultValue:       10,
@@ -1808,7 +1808,7 @@ func (s *S) TestValidateBehaviorPercentageNoFail(c *check.C) {
 
 func (s *S) TestValidateBehaviorUnitsNoFail(c *check.C) {
 	tests := []struct {
-		params        *provTypes.ScaleDownPoliciy
+		params        *provTypes.ScaleDownPolicy
 		defaultValue  int32
 		expectedUnits int32
 	}{
@@ -1818,19 +1818,19 @@ func (s *S) TestValidateBehaviorUnitsNoFail(c *check.C) {
 			expectedUnits: 2,
 		},
 		{
-			params:        &provTypes.ScaleDownPoliciy{},
+			params:        &provTypes.ScaleDownPolicy{},
 			defaultValue:  10,
 			expectedUnits: 10,
 		},
 		{
-			params: &provTypes.ScaleDownPoliciy{
+			params: &provTypes.ScaleDownPolicy{
 				UnitsPolicyValue: toInt32Ptr(20),
 			},
 			defaultValue:  10,
 			expectedUnits: 20,
 		},
 		{
-			params: &provTypes.ScaleDownPoliciy{
+			params: &provTypes.ScaleDownPolicy{
 				StabilizationWindow: toInt32Ptr(300),
 			},
 			defaultValue:  10,
