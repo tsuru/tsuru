@@ -7,6 +7,10 @@ package permission
 import (
 	"fmt"
 	"reflect"
+	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -80,6 +84,18 @@ func (s *PermissionScheme) IsParent(other *PermissionScheme) bool {
 		root = root.Parent
 	}
 	return false
+}
+
+func (s *PermissionScheme) Identifier() string {
+	parts := s.nameParts()
+	var str string
+	for i := len(parts) - 1; i >= 0; i-- {
+		str += strings.Replace(cases.Title(language.English).String(parts[i]), "-", "", -1)
+	}
+	if str == "" {
+		return "All"
+	}
+	return str
 }
 
 func (s *PermissionScheme) FullName() string {

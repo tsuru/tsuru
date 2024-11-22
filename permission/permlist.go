@@ -74,7 +74,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.admin.routes",
 	"app.admin.quota",
 	"app.build",
-
+).addWithCtx(
+	"certissuer", []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool},
+).add(
 	"certissuer.set",
 	"certissuer.unset",
 ).addWithCtx(
