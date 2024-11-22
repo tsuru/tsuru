@@ -1226,7 +1226,94 @@ paths:
       - app
       security:
       - Bearer: []
-
+  /1.24/apps/{app}/certificate:
+    parameters:
+    - in: path
+      name: app
+      type: string
+      description: Application name
+      required: true
+    get:
+      operationId: AppGetCertificates
+      description: Get the certificate for the app.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Certificate found
+          schema:
+            $ref: "#/definitions/AppCertificates"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
+  /1.24/apps/{app}/certissuer:
+    parameters:
+    - in: path
+      name: app
+      type: string
+      description: Application name
+      required: true
+    put:
+      operationId: AppSetCertIssuer
+      description: Set the certificate issuer for the app.
+      produces:
+      - application/json
+      consumes:
+      - application/json
+      parameters:
+      - in: body
+        name: certIssuerData
+        required: true
+        schema:
+          $ref: "#/definitions/CertIssuerSetData"
+      responses:
+        "200":
+          description: Certificate issuer set
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
+    delete:
+      operationId: AppUnsetCertIssuer
+      description: Unset the certificate issuer for the app.
+      parameters:
+        - in: query
+          name: cname
+          type: string
+          description: Certificate CNAME
+          required: true
+      responses:
+        "200":
+          description: Certificate issuer unset
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
   /1.5/apps/{app}/build:
     parameters:
     - in: path
@@ -5553,6 +5640,37 @@ definitions:
         type: string
         format: byte
         x-go-custom-type: "[]byte"
+  AppCertificates:
+    type: object
+    properties:
+      routers:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            cnames:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  certificate:
+                    type: string
+                  issuer:
+                    type: string
+                required:
+                  - certificate
+                  - issuer
+          required:
+            - cnames
+    required:
+      - routers
+  CertIssuerSetData:
+    type: object
+    properties:
+      cname:
+        type: string
+      issuer:
+        type: string
   UpdateApp:
     type: object
     properties:
