@@ -1294,11 +1294,11 @@ paths:
       operationId: AppUnsetCertIssuer
       description: Unset the certificate issuer for the app.
       parameters:
-        - in: query
-          name: cname
-          type: string
-          description: Certificate CNAME
-          required: true
+      - in: query
+        name: cname
+        type: string
+        description: Certificate CNAME
+        required: true
       responses:
         "200":
           description: Certificate issuer unset
@@ -5658,12 +5658,12 @@ definitions:
                   issuer:
                     type: string
                 required:
-                  - certificate
-                  - issuer
+                - certificate
+                - issuer
           required:
-            - cnames
+          - cnames
     required:
-      - routers
+    - routers
   CertIssuerSetData:
     type: object
     properties:
