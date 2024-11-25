@@ -183,12 +183,27 @@ func (ProvisionSuite) TestValidate(c *check.C) {
 				MinUnits: 1,
 				MaxUnits: 2,
 				Prometheus: []provTypes.AutoScalePrometheus{{
-					Name: "valid-name",
+					Name:      "valid-name",
+					Threshold: 10,
 				}, {
-					Name: "another$invalid",
+					Name:      "another$invalid",
+					Threshold: 10,
 				}},
 			},
 			"\"another$invalid\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter",
+		},
+		{
+			provTypes.AutoScaleSpec{
+				MinUnits: 1,
+				MaxUnits: 2,
+				Prometheus: []provTypes.AutoScalePrometheus{{
+					Name:      "valid-name",
+					Threshold: 10,
+				}, {
+					Name: "valid-name2",
+				}},
+			},
+			"prometheus threshold of name \"valid-name2\" must be greater than 0",
 		},
 	}
 

@@ -349,6 +349,10 @@ func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a App) er
 		if !validation.ValidateName(prometheus.Name) {
 			return fmt.Errorf("\"%s\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter", prometheus.Name)
 		}
+
+		if prometheus.Threshold <= 0 {
+			return fmt.Errorf("prometheus threshold of name %q must be greater than 0", prometheus.Name)
+		}
 	}
 	return nil
 }
