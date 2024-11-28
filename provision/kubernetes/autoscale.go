@@ -593,8 +593,18 @@ func buildPrometheusTrigger(ns string, prometheus provTypes.AutoScalePrometheus)
 		prometheus.PrometheusAddress = defaultPrometheusAddress
 	}
 
+	var authenticationRef *kedav1alpha1.ScaledObjectAuthRef
+	if strings.HasPrefix(prometheus.PrometheusAddress, "https://monitoring.googleapis.com") {
+		authenticationRef = &kedav1alpha1.ScaledObjectAuthRef{
+			Kind: "ClusterTriggerAuthentication",
+			Name: "gcp-credentials",
+		}
+
+	}
+
 	return &kedav1alpha1.ScaleTriggers{
-		Type: "prometheus",
+		Type:              "prometheus",
+		AuthenticationRef: authenticationRef,
 		Metadata: map[string]string{
 			"serverAddress":        prometheus.PrometheusAddress,
 			"query":                prometheus.Query,
