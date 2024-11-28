@@ -98,11 +98,11 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 	}
 }
 
-func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provTypes.AutoScaleSchedule, prometheusSpecs []provTypes.AutoScalePrometheus, ns string) *kedav1alpha1.ScaledObject {
+func testKEDAScaledObject(trigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provTypes.AutoScaleSchedule, prometheusSpecs []provTypes.AutoScalePrometheus, ns string) *kedav1alpha1.ScaledObject {
 	triggers := []kedav1alpha1.ScaleTriggers{}
 
-	if cpuTrigger != nil {
-		triggers = append(triggers, *cpuTrigger)
+	if trigger != nil {
+		triggers = append(triggers, *trigger)
 	}
 
 	for _, schedule := range scheduleSpecs {
@@ -513,11 +513,17 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 			PrometheusAddress: "test.prometheus.address.exemple",
 			Threshold:         30.0,
 		},
+		{
+			Name:              "prometheus_metric_gcp",
+			Query:             "some_gcp_query",
+			PrometheusAddress: "https://monitoring.googleapis.com/v1/projects/my-gcp-project/location/global/prometheus/api/v1/query",
+			Threshold:         1.0,
+		},
 	}
 
 	tests := []struct {
 		scenario        func()
-		cpuTrigger      *kedav1alpha1.ScaleTriggers
+		trigger         *kedav1alpha1.ScaleTriggers
 		prometheusSpecs []provTypes.AutoScalePrometheus
 	}{
 		{
@@ -530,7 +536,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
 				MetricType: autoscalingv2.AverageValueMetricType,
 				Metadata: map[string]string{
@@ -549,7 +555,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
 				MetricType: autoscalingv2.AverageValueMetricType,
 				Metadata: map[string]string{
@@ -568,7 +574,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
 				MetricType: autoscalingv2.AverageValueMetricType,
 				Metadata: map[string]string{
@@ -588,7 +594,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
 				MetricType: autoscalingv2.UtilizationMetricType,
 				Metadata: map[string]string{
@@ -606,8 +612,34 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTrigger:      nil,
+			trigger:         nil,
 			prometheusSpecs: prometheusList[:1],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
+					MinUnits: 1,
+					MaxUnits: 2,
+					Prometheus: []provTypes.AutoScalePrometheus{
+						prometheusList[3],
+					},
+				})
+				c.Assert(err, check.IsNil)
+			},
+			trigger: &kedav1alpha1.ScaleTriggers{
+				Type: "prometheus",
+				AuthenticationRef: &kedav1alpha1.ScaledObjectAuthRef{
+					Name: "gcp-credentials",
+					Kind: "ClusterTriggerAuthentication",
+				},
+				Metadata: map[string]string{
+					"serverAddress":        "https://monitoring.googleapis.com/v1/projects/my-gcp-project/location/global/prometheus/api/v1/query",
+					"query":                "some_gcp_query",
+					"threshold":            "1",
+					"activationThreshold":  "0",
+					"prometheusMetricName": "prometheus_metric_gcp",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -617,7 +649,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		c.Assert(err, check.IsNil)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		expected := testKEDAScaledObject(tt.cpuTrigger, []provTypes.AutoScaleSchedule{}, tt.prometheusSpecs, "default")
+		expected := testKEDAScaledObject(tt.trigger, []provTypes.AutoScaleSchedule{}, tt.prometheusSpecs, "default")
 		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
 	}
 }

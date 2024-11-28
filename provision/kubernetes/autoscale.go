@@ -599,7 +599,6 @@ func buildPrometheusTrigger(ns string, prometheus provTypes.AutoScalePrometheus)
 			Kind: "ClusterTriggerAuthentication",
 			Name: "gcp-credentials",
 		}
-
 	}
 
 	return &kedav1alpha1.ScaleTriggers{
