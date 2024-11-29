@@ -70,6 +70,7 @@ var (
 	ErrDisabledPlatform  = errors.New("Disabled Platform, only admin users can create applications with the platform")
 
 	ErrRouterAlreadyLinked = errors.New("router already linked to this app")
+	ErrNoRouterWithTLS     = errors.New("no router with tls support")
 
 	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
 	ErrKillUnitProvisioner  = errors.New("The current app provisioner does not support killing a unit")
@@ -2371,7 +2372,7 @@ func (app *App) SetCertificate(ctx context.Context, name, certificate, key strin
 		}
 	}
 	if !addedAny {
-		return errors.New("no router with tls support")
+		return ErrNoRouterWithTLS
 	}
 	return nil
 }
@@ -2398,7 +2399,7 @@ func (app *App) RemoveCertificate(ctx context.Context, name string) error {
 		}
 	}
 	if !removedAny {
-		return errors.New("no router with tls support")
+		return ErrNoRouterWithTLS
 	}
 	return nil
 }
@@ -2478,7 +2479,7 @@ func (app *App) GetCertificates(ctx context.Context) (*appTypes.CertificateSetIn
 	}
 
 	if certificateSet.IsEmpty() {
-		return nil, errors.New("no router with tls support")
+		return nil, ErrNoRouterWithTLS
 	}
 
 	return certificateSet, nil

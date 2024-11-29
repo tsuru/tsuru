@@ -2031,6 +2031,9 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	}
 	w.Header().Set("Content-Type", "application/json")
 	result, err := a.GetCertificates(ctx)
+	if err == app.ErrNoRouterWithTLS {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
 	if err != nil {
 		return err
 	}
@@ -2060,6 +2063,11 @@ func listCertificatesLegacy(w http.ResponseWriter, r *http.Request, t auth.Token
 	}
 	w.Header().Set("Content-Type", "application/json")
 	result, err := a.GetCertificates(ctx)
+
+	if err == app.ErrNoRouterWithTLS {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+
 	if err != nil {
 		return err
 	}
