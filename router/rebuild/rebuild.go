@@ -86,6 +86,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		Prefixes:    []router.BackendPrefix{},
 		Team:        o.App.TeamOwner,
 		CertIssuers: o.App.CertIssuers,
+		Tags:        o.App.Tags,
 		CNames:      o.App.CName,
 		Healthcheck: hcData,
 	}
