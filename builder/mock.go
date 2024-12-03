@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
@@ -17,13 +16,13 @@ var _ Builder = &MockBuilder{}
 var _ PlatformBuilder = &MockBuilder{}
 
 type MockBuilder struct {
-	OnBuild          func(provision.App, *event.Event, BuildOpts) (appTypes.AppVersion, error)
+	OnBuild          func(*appTypes.App, *event.Event, BuildOpts) (appTypes.AppVersion, error)
 	OnBuildJob       func(*jobTypes.Job, BuildOpts) (string, error)
 	OnPlatformBuild  func(appTypes.PlatformOptions) ([]string, error)
 	OnPlatformRemove func(string) error
 }
 
-func (b *MockBuilder) Build(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error) {
+func (b *MockBuilder) Build(ctx context.Context, app *appTypes.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error) {
 	if b.OnBuild == nil {
 		return nil, nil
 	}

@@ -18,9 +18,9 @@ const (
 	LogTypeJob = LogType("job")
 )
 
-type LogabbleObject interface {
-	GetName() string
-	GetPool() string
+type LogabbleObject struct {
+	Name string
+	Pool string
 }
 
 type LogWatcher interface {

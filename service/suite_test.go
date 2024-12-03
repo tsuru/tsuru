@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
@@ -19,12 +20,12 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/bind"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
 
 type S struct {
-	//conn        *db.Storage
 	service     *Service
 	team        *authTypes.Team
 	user        *auth.User
@@ -86,6 +87,39 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.LogService = &appTypes.MockAppLogService{}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
+
+	s.mockService.App.OnGetAddresses = func(a *appTypes.App) ([]string, error) {
+		return routertest.FakeRouter.Addresses(context.TODO(), a)
+	}
+	s.mockService.App.OnAddInstance = func(a *appTypes.App, instanceArgs bind.AddInstanceArgs) error {
+		a.ServiceEnvs = append(a.ServiceEnvs, instanceArgs.Envs...)
+		if instanceArgs.Writer != nil {
+			instanceArgs.Writer.Write([]byte("add instance"))
+		}
+
+		return nil
+	}
+	s.mockService.App.OnRemoveInstance = func(a *appTypes.App, instanceArgs bind.RemoveInstanceArgs) error {
+		lenBefore := len(a.ServiceEnvs)
+		for i := 0; i < len(a.ServiceEnvs); i++ {
+			se := a.ServiceEnvs[i]
+			if se.ServiceName == instanceArgs.ServiceName && se.InstanceName == instanceArgs.InstanceName {
+				a.ServiceEnvs = append(a.ServiceEnvs[:i], a.ServiceEnvs[i+1:]...)
+				i--
+			}
+		}
+		if len(a.ServiceEnvs) == lenBefore {
+			return errors.New("instance not found")
+		}
+		if instanceArgs.Writer != nil {
+			instanceArgs.Writer.Write([]byte("remove instance"))
+		}
+		return nil
+	}
+
+	s.mockService.App.OnGetInternalBindableAddresses = func(a *appTypes.App) ([]string, error) {
+		return []string{}, nil
+	}
 }
 
 func (s *S) TearDownSuite(c *check.C) {

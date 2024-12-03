@@ -9,13 +9,13 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (p *kubernetesProvisioner) KillUnit(ctx context.Context, app provision.App, unitName string, force bool) error {
-	clusterClient, err := clusterForPool(ctx, app.GetPool())
+func (p *kubernetesProvisioner) KillUnit(ctx context.Context, app *appTypes.App, unitName string, force bool) error {
+	clusterClient, err := clusterForPool(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (p *kubernetesProvisioner) KillUnit(ctx context.Context, app provision.App,
 		return errors.Wrap(err, "Unable to find pod")
 	}
 
-	appName := app.GetName()
+	appName := app.Name
 	if pod.Labels["tsuru.io/app-name"] != appName {
 		return fmt.Errorf("Unit %q does not belong to app %q", unitName, appName)
 	}

@@ -10,15 +10,14 @@ import (
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type updatePipelineParams struct {
 	p        *kubernetesProvisioner
-	new      provision.App
-	old      provision.App
+	new      *appTypes.App
+	old      *appTypes.App
 	versions []appTypes.AppVersion
 	w        io.Writer
 }
@@ -66,7 +65,7 @@ var rebuildAppRoutes = action.Action{
 	Name: "rebuild-routes-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		rebuild.RebuildRoutesWithAppName(params.new.GetName(), nil)
+		rebuild.RebuildRoutesWithAppName(params.new.Name, nil)
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
@@ -75,7 +74,7 @@ var rebuildAppRoutes = action.Action{
 			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 			return
 		}
-		rebuild.RebuildRoutesWithAppName(params.old.GetName(), nil)
+		rebuild.RebuildRoutesWithAppName(params.old.Name, nil)
 	},
 }
 
@@ -95,11 +94,11 @@ var updateAppCR = action.Action{
 	Name: "update-app-custom-resource",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		client, err := clusterForPool(ctx.Context, params.old.GetPool())
+		client, err := clusterForPool(ctx.Context, params.old.Pool)
 		if err != nil {
 			return nil, err
 		}
-		return nil, updateAppNamespace(ctx.Context, client, params.old.GetName(), client.PoolNamespace(params.new.GetPool()))
+		return nil, updateAppNamespace(ctx.Context, client, params.old.Name, client.PoolNamespace(params.new.Pool))
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
@@ -110,28 +109,28 @@ var updateAppCR = action.Action{
 }
 
 func backwardCR(ctx context.Context, params updatePipelineParams) error {
-	client, err := clusterForPool(ctx, params.old.GetPool())
+	client, err := clusterForPool(ctx, params.old.Pool)
 	if err != nil {
 		return err
 	}
-	return updateAppNamespace(ctx, client, params.old.GetName(), client.PoolNamespace(params.old.GetPool()))
+	return updateAppNamespace(ctx, client, params.old.Name, client.PoolNamespace(params.old.Pool))
 }
 
 var removeOldAppResources = action.Action{
 	Name: "remove-old-app-resources",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		client, err := clusterForPool(ctx.Context, params.old.GetPool())
+		client, err := clusterForPool(ctx.Context, params.old.Pool)
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)
 			return nil, nil
 		}
-		oldAppCR, err := getAppCR(ctx.Context, client, params.old.GetName())
+		oldAppCR, err := getAppCR(ctx.Context, client, params.old.Name)
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)
 			return nil, nil
 		}
-		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.old.GetPool())
+		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.old.Pool)
 		err = params.p.removeResources(ctx.Context, client, oldAppCR, params.old)
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)

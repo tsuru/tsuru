@@ -9,7 +9,9 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,6 +30,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:repository-namespace", "tsuru")
 
 	storagev2.Reset()
+
+	servicemanager.App = &appTypes.MockAppService{}
 }
 
 func (s *S) TearDownTest(c *check.C) {

@@ -8,28 +8,53 @@ import (
 	"context"
 
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 type appService struct{}
 
-func (a *appService) GetByName(ctx context.Context, name string) (appTypes.AppInterface, error) {
+func (a *appService) GetByName(ctx context.Context, name string) (*appTypes.App, error) {
 	return GetByName(ctx, name)
 }
 
-func (a *appService) List(ctx context.Context, filter *appTypes.Filter) ([]appTypes.AppInterface, error) {
+func (a *appService) GetAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
+	return GetAddresses(ctx, app)
+}
+
+func (a *appService) GetRegistry(ctx context.Context, app *appTypes.App) (imgTypes.ImageRegistry, error) {
+	return GetRegistry(ctx, app)
+}
+
+func (a *appService) AddInstance(ctx context.Context, app *appTypes.App, addArgs bindTypes.AddInstanceArgs) error {
+	return AddInstance(ctx, app, addArgs)
+}
+
+func (a *appService) RemoveInstance(ctx context.Context, app *appTypes.App, removeArgs bindTypes.RemoveInstanceArgs) error {
+	return RemoveInstance(ctx, app, removeArgs)
+}
+
+func (a *appService) GetInternalBindableAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
+	return GetInternalBindableAddresses(ctx, app)
+}
+
+// GetUUID returns the app v4 UUID. An UUID will be generated
+// if it does not exist.
+func (a *appService) EnsureUUID(ctx context.Context, app *appTypes.App) (string, error) {
+	return EnsureUUID(ctx, app)
+}
+
+func (a *appService) List(ctx context.Context, filter *appTypes.Filter) ([]*appTypes.App, error) {
 	var f *Filter
 	if filter != nil {
 		f = func(f Filter) *Filter { return &f }(Filter(*filter))
 	}
-	apps, err := List(ctx, f)
-	if err != nil {
-		return nil, err
-	}
-	as := make([]appTypes.AppInterface, 0, len(apps))
-	for i := range apps {
-		as = append(as, &apps[i])
-	}
-	return as, nil
+	return List(ctx, f)
+}
+
+func (a *appService) GetHealthcheckData(ctx context.Context, app *appTypes.App) (routerTypes.HealthcheckData, error) {
+	return GetHealthcheckData(ctx, app)
 }
 
 func AppService() (appTypes.AppService, error) {

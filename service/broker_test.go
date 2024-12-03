@@ -203,8 +203,7 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 func (s *S) TestBrokerClientBindApp(c *check.C) {
 	ev := createEvt(c)
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
-	appGUID, err := a.GetUUID(context.TODO())
-	c.Assert(err, check.IsNil)
+	a.UUID = "090e0824-4837-4a3c-b16c-44b0809f4413"
 	var bindID string
 	reaction := func(req *osb.BindRequest) (*osb.BindResponse, error) {
 		exID, errMarshal := json.Marshal(map[string]interface{}{
@@ -219,9 +218,9 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 			InstanceID:        "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:         "s1",
 			PlanID:            "p1",
-			AppGUID:           &appGUID,
+			AppGUID:           &a.UUID,
 			BindResource: &osb.BindResource{
-				AppGUID: &appGUID,
+				AppGUID: &a.UUID,
 			},
 			OriginatingIdentity: &osb.OriginatingIdentity{
 				Platform: "tsuru",

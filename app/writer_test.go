@@ -19,7 +19,7 @@ func (s *S) TestLogWriter(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -27,10 +27,10 @@ func (s *S) TestLogWriter(c *check.C) {
 	data := []byte("ble")
 	_, err = writer.Write(data)
 	c.Assert(err, check.IsNil)
-	instance := App{}
+	instance := appTypes.App{}
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := LastLogs(context.TODO(), &instance, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -42,7 +42,7 @@ func (s *S) TestLogWriterCustomSource(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
@@ -51,10 +51,10 @@ func (s *S) TestLogWriterCustomSource(c *check.C) {
 	data := []byte("ble")
 	_, err = writer.Write(data)
 	c.Assert(err, check.IsNil)
-	instance := App{}
+	instance := appTypes.App{}
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := LastLogs(context.TODO(), &instance, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -66,7 +66,7 @@ func (s *S) TestLogWriterShouldReturnTheDataSize(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -81,7 +81,7 @@ func (s *S) TestLogWriterAsync(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -93,10 +93,10 @@ func (s *S) TestLogWriterAsync(c *check.C) {
 	writer.Close()
 	err = writer.Wait(5 * time.Second)
 	c.Assert(err, check.IsNil)
-	instance := App{}
+	instance := appTypes.App{}
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := LastLogs(context.TODO(), &instance, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -108,7 +108,7 @@ func (s *S) TestLogWriterAsyncTimeout(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -125,7 +125,7 @@ func (s *S) TestLogWriterAsyncCopySlice(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -140,10 +140,10 @@ func (s *S) TestLogWriterAsyncCopySlice(c *check.C) {
 	writer.Close()
 	err = writer.Wait(5 * time.Second)
 	c.Assert(err, check.IsNil)
-	instance := App{}
+	instance := appTypes.App{}
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := LastLogs(context.TODO(), &instance, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 100,
 	})
 	c.Assert(err, check.IsNil)
@@ -158,7 +158,7 @@ func (s *S) TestLogWriterAsyncCloseWritingStress(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	writeFn := func(writer *LogWriter) {
@@ -183,7 +183,7 @@ func (s *S) TestLogWriterAsyncWriteClosed(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -195,10 +195,10 @@ func (s *S) TestLogWriterAsyncWriteClosed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = writer.Wait(5 * time.Second)
 	c.Assert(err, check.IsNil)
-	instance := App{}
+	instance := appTypes.App{}
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := LastLogs(context.TODO(), &instance, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -209,7 +209,7 @@ func (s *S) TestLogWriterWriteClosed(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{Name: "down"}
+	a := appTypes.App{Name: "down"}
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
@@ -220,10 +220,10 @@ func (s *S) TestLogWriterWriteClosed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = writer.Wait(5 * time.Second)
 	c.Assert(err, check.IsNil)
-	instance := App{}
+	instance := appTypes.App{}
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
+	logs, err := LastLogs(context.TODO(), &instance, servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)

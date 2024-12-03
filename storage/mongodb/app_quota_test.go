@@ -7,16 +7,16 @@ package mongodb
 import (
 	"context"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/storage/storagetest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
 type appStorage struct{}
 
-func (s *appStorage) Create(ctx context.Context, app *app.App) error {
+func (s *appStorage) Create(ctx context.Context, app *appTypes.App) error {
 	appCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -25,7 +25,7 @@ func (s *appStorage) Create(ctx context.Context, app *app.App) error {
 	return err
 }
 
-func (s *appStorage) Remove(ctx context.Context, app *app.App) error {
+func (s *appStorage) Remove(ctx context.Context, app *appTypes.App) error {
 	appCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err

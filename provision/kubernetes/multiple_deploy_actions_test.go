@@ -317,7 +317,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			defer waitDep()
 			m := serviceManager{client: s.clusterClient}
 			appName := fmt.Sprintf("myapp%d", i)
-			a := &app.App{Name: appName, TeamOwner: s.team.Name}
+			a := &appTypes.App{Name: appName, TeamOwner: s.team.Name}
 			err := app.CreateApp(context.TODO(), a, s.user)
 			c.Assert(err, check.IsNil)
 			for j, step := range tt.steps {
@@ -347,7 +347,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					waitDep()
 					a.Deploys++
 					if step.deployStep.routable {
-						err = a.SetRoutable(context.TODO(), version, true)
+						err = app.SetRoutable(context.TODO(), a, version, true)
 						c.Assert(err, check.IsNil)
 					}
 				}

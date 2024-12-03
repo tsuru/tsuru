@@ -12,7 +12,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func newEmptyVersion(c *check.C, app appTypes.AppInterface) appTypes.AppVersion {
+func newEmptyVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -20,7 +20,7 @@ func newEmptyVersion(c *check.C, app appTypes.AppInterface) appTypes.AppVersion 
 	return version
 }
 
-func newVersion(c *check.C, app appTypes.AppInterface, customData map[string]interface{}) appTypes.AppVersion {
+func newVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
 	version := newEmptyVersion(c, app)
 	err := version.CommitBuildImage()
 	c.Assert(err, check.IsNil)
@@ -31,14 +31,14 @@ func newVersion(c *check.C, app appTypes.AppInterface, customData map[string]int
 	return version
 }
 
-func newCommittedVersion(c *check.C, app appTypes.AppInterface, customData map[string]interface{}) appTypes.AppVersion {
+func newCommittedVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
 	version := newVersion(c, app, customData)
 	err := version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	return version
 }
 
-func newSuccessfulVersion(c *check.C, app appTypes.AppInterface, customData map[string]interface{}) appTypes.AppVersion {
+func newSuccessfulVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
 	version := newCommittedVersion(c, app, customData)
 	err := version.CommitSuccessful()
 	c.Assert(err, check.IsNil)

@@ -146,7 +146,7 @@ func basicImageName(reg imgTypes.ImageRegistry, repoName string) (string, error)
 // * the container have an empty image name;
 // * the deploy number is multiple of 10.
 // in all other cases the app image name will be returned.
-func GetBuildImage(ctx context.Context, app appTypes.AppInterface) (string, error) {
+func GetBuildImage(ctx context.Context, app *appTypes.App) (string, error) {
 	if usePlatformImage(app) {
 		return getPlatformImage(ctx, app)
 	}
@@ -157,23 +157,31 @@ func GetBuildImage(ctx context.Context, app appTypes.AppInterface) (string, erro
 	return version.VersionInfo().DeployImage, nil
 }
 
-func usePlatformImage(app appTypes.AppInterface) bool {
+func usePlatformImage(app *appTypes.App) bool {
 	maxLayers, _ := config.GetUint("docker:max-layers")
 	if maxLayers == 0 {
 		maxLayers = 10
 	}
-	deploys := app.GetDeploys()
-	return deploys%maxLayers == 0 || app.GetUpdatePlatform()
+	deploys := app.Deploys
+	return deploys%maxLayers == 0 || app.UpdatePlatform
 }
 
-func getPlatformImage(ctx context.Context, app appTypes.AppInterface) (string, error) {
-	reg, err := app.GetRegistry(ctx)
+func getPlatformImage(ctx context.Context, app *appTypes.App) (string, error) {
+	reg, err := servicemanager.App.GetRegistry(ctx, app)
 	if err != nil {
 		return "", err
 	}
-	version := app.GetPlatformVersion()
+	version := GetPlatformVersion(app)
 	if version != "latest" {
-		return servicemanager.PlatformImage.FindImage(ctx, reg, app.GetPlatform(), version)
+		return servicemanager.PlatformImage.FindImage(ctx, reg, app.Platform, version)
 	}
-	return servicemanager.PlatformImage.CurrentImage(ctx, reg, app.GetPlatform())
+	return servicemanager.PlatformImage.CurrentImage(ctx, reg, app.Platform)
+}
+
+// GetPlatformVersion returns the platform version of the app.
+func GetPlatformVersion(app *appTypes.App) string {
+	if app.PlatformVersion == "" {
+		return "latest"
+	}
+	return app.PlatformVersion
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -328,8 +329,8 @@ func (s *QuotaSuite) TestChangeTeamQuota(c *check.C) {
 	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
 		return team, nil
 	}
-	s.mockService.TeamQuota.OnSetLimit = func(qi quota.QuotaItem, i int) error {
-		c.Assert(qi.GetName(), check.Equals, team.Name)
+	s.mockService.TeamQuota.OnSetLimit = func(qi *authTypes.Team, i int) error {
+		c.Assert(qi.Name, check.Equals, team.Name)
 		c.Assert(i, check.Equals, 40)
 		return nil
 	}
@@ -408,8 +409,8 @@ func (s *QuotaSuite) TestChangeTeamQuotaLimitLowerThanAllocated(c *check.C) {
 	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
 		return team, nil
 	}
-	s.mockService.TeamQuota.OnSetLimit = func(qi quota.QuotaItem, i int) error {
-		c.Assert(qi.GetName(), check.Equals, team.Name)
+	s.mockService.TeamQuota.OnSetLimit = func(qi *authTypes.Team, i int) error {
+		c.Assert(qi.Name, check.Equals, team.Name)
 		c.Assert(i, check.Equals, 4)
 		return quota.ErrLimitLowerThanAllocated
 	}
@@ -450,11 +451,11 @@ func (s *QuotaSuite) TestChangeTeamQuotaTeamNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
-	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
-		c.Assert(item.GetName(), check.Equals, "civil")
+	s.mockService.AppQuota.OnGet = func(item *appTypes.App) (*quota.Quota, error) {
+		c.Assert(item.Name, check.Equals, "civil")
 		return &quota.Quota{Limit: 4, InUse: 2}, nil
 	}
-	app := &app.App{
+	app := &appTypes.App{
 		Name:  "civil",
 		Teams: []string{s.team.Name},
 	}
@@ -483,7 +484,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
-	app := &app.App{
+	app := &appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 	}
@@ -527,13 +528,13 @@ func (s *QuotaSuite) TestGetAppQuotaAppNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
-	a := &app.App{
+	a := &appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnSetLimit = func(item quota.QuotaItem, limit int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnSetLimit = func(item *appTypes.App, limit int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
@@ -566,7 +567,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := app.App{
+	app := appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
@@ -592,7 +593,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	app := app.App{
+	app := appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
@@ -640,13 +641,13 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := &app.App{
+	a := &appTypes.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnSetLimit = func(item quota.QuotaItem, limit int) error {
-		c.Assert(item.GetName(), check.Equals, a.Name)
+	s.mockService.AppQuota.OnSetLimit = func(item *appTypes.App, limit int) error {
+		c.Assert(item.Name, check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
 	}

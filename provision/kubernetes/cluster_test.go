@@ -15,8 +15,8 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	corev1 "k8s.io/api/core/v1"
@@ -625,7 +625,7 @@ func (s *S) TestClustersForApps(c *check.C) {
 	a4.Pool = "abc"
 	a5 := provisiontest.NewFakeApp("myapp5", "python", 0)
 	a5.Pool = "deleted-pool"
-	cApps, err := clustersForApps(context.TODO(), []provision.App{a1, a2, a3, a4, a5})
+	cApps, err := clustersForApps(context.TODO(), []*appTypes.App{a1, a2, a3, a4, a5})
 	c.Assert(err, check.IsNil)
 	c.Assert(cApps, check.HasLen, 2)
 	sort.Slice(cApps, func(i, j int) bool {
@@ -635,11 +635,11 @@ func (s *S) TestClustersForApps(c *check.C) {
 	c.Assert(cApps[1].client.Name, check.Equals, "c2")
 	for idx := range cApps {
 		sort.Slice(cApps[idx].apps, func(i, j int) bool {
-			return cApps[idx].apps[i].GetName() < cApps[idx].apps[j].GetName()
+			return cApps[idx].apps[i].Name < cApps[idx].apps[j].Name
 		})
 	}
-	c.Assert(cApps[0].apps, check.DeepEquals, []provision.App{a1, a4})
-	c.Assert(cApps[1].apps, check.DeepEquals, []provision.App{a2, a3})
+	c.Assert(cApps[0].apps, check.DeepEquals, []*appTypes.App{a1, a4})
+	c.Assert(cApps[1].apps, check.DeepEquals, []*appTypes.App{a2, a3})
 }
 
 func (s *S) TestClusterDisablePDB(c *check.C) {

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/tsuru/tsuru/api/shutdown"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const appBackgroudRouterUpdaterLimit = 20
@@ -33,13 +34,13 @@ func GetAppRouterUpdater() *appRouterUpdater {
 	return globalAppRouterUpdater.updater
 }
 
-func (u *appRouterUpdater) update(ctx context.Context, a *App) {
+func (u *appRouterUpdater) update(ctx context.Context, a *appTypes.App) {
 	u.wg.Add(1)
 	go func() {
 		u.limiter <- struct{}{}
 		defer func() { <-u.limiter }()
 		defer u.wg.Done()
-		a.GetRoutersWithAddr(ctx)
+		GetRoutersWithAddr(ctx, a)
 	}()
 }
 

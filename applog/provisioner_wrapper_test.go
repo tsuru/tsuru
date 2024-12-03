@@ -50,13 +50,13 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 
 	s.provisionerWrapper = &provisionerWrapper{
 		logService: s.tsuruLogService,
-		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
 	servicemanager.App = &appTypes.MockAppService{
-		Apps: []appTypes.AppInterface{
-			&appTypes.MockApp{Name: "myapp", Pool: "mypool"},
+		Apps: []*appTypes.App{
+			{Name: "myapp", Pool: "mypool"},
 		},
 	}
 	servicemanager.Job, err = job.JobService()
@@ -196,7 +196,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw := &provisionerWrapper{
 		logService: memoryService,
-		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -209,7 +209,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw = &provisionerWrapper{
 		logService: aggregatorService,
-		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj *logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}

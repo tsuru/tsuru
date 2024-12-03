@@ -397,17 +397,11 @@ func (s *S) TestBindAppWithParams(c *check.C) {
 	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeAppWithPool("her-app", "python", "her-pool", 1)
-	a.InternalAddresses = []appTypes.AppInternalAddress{
-		{
-			Protocol: "TCP",
-			Domain:   "aclfromhell-web.tsuru.svc.cluster.local",
-			Port:     int32(8888),
-		},
-		{
-			Protocol: "TCP",
-			Domain:   "aclfromhell-web-v1.tsuru.svc.cluster.local",
-			Port:     int32(8888),
-		},
+	s.mockService.App.OnGetInternalBindableAddresses = func(app *appTypes.App) ([]string, error) {
+		return []string{
+			"tcp://aclfromhell-web.tsuru.svc.cluster.local:8888",
+			"tcp://aclfromhell-web-v1.tsuru.svc.cluster.local:8888",
+		}, nil
 	}
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)

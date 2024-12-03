@@ -22,28 +22,28 @@ func (s *S) TestAppVersionImpl_ImageNames(c *check.C) {
 		emptyRepoNS bool
 	}{
 		{
-			spec:        appVersionImpl{app: &appTypes.MockApp{Name: "myapp"}, versionInfo: &appTypes.AppVersionInfo{Version: 1}},
+			spec:        appVersionImpl{app: &appTypes.App{Name: "myapp"}, versionInfo: &appTypes.AppVersionInfo{Version: 1}},
 			wantedBase:  "tsuru/app-myapp:v1",
 			wantedBuild: "tsuru/app-myapp:v1-builder",
 		},
 		{
-			spec:        appVersionImpl{app: &appTypes.MockApp{Name: "myapp"}, versionInfo: &appTypes.AppVersionInfo{Version: 2}},
+			spec:        appVersionImpl{app: &appTypes.App{Name: "myapp"}, versionInfo: &appTypes.AppVersionInfo{Version: 2}},
 			registry:    "localhost:3030",
 			wantedBase:  "localhost:3030/tsuru/app-myapp:v2",
 			wantedBuild: "localhost:3030/tsuru/app-myapp:v2-builder",
 		},
 		{
-			spec:        appVersionImpl{app: &appTypes.MockApp{Name: "myapp", TeamOwner: "myteam"}, versionInfo: &appTypes.AppVersionInfo{Version: 9}},
+			spec:        appVersionImpl{app: &appTypes.App{Name: "myapp", TeamOwner: "myteam"}, versionInfo: &appTypes.AppVersionInfo{Version: 9}},
 			wantedBase:  "tsuru/app-myapp:v9",
 			wantedBuild: "tsuru/app-myapp:v9-builder",
 		},
 		{
-			spec:        appVersionImpl{app: &appTypes.MockApp{Name: "myapp", TeamOwner: "myteam"}, versionInfo: &appTypes.AppVersionInfo{Version: 9, CustomBuildTag: "mytag"}},
+			spec:        appVersionImpl{app: &appTypes.App{Name: "myapp", TeamOwner: "myteam"}, versionInfo: &appTypes.AppVersionInfo{Version: 9, CustomBuildTag: "mytag"}},
 			wantedBase:  "tsuru/app-myapp:v9",
 			wantedBuild: "tsuru/app-myapp:mytag",
 		},
 		{
-			spec:        appVersionImpl{app: &appTypes.MockApp{Name: "myapp", TeamOwner: "myteam"}, versionInfo: &appTypes.AppVersionInfo{Version: 9}},
+			spec:        appVersionImpl{app: &appTypes.App{Name: "myapp", TeamOwner: "myteam"}, versionInfo: &appTypes.AppVersionInfo{Version: 9}},
 			emptyRepoNS: true,
 			wantedBase:  "tsuru/app-myapp:v9",
 			wantedBuild: "myteam/app-myapp:v9-builder",
@@ -245,7 +245,7 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		func() {
 			c.Log("test", tt.name)
 			version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-				App: &appTypes.MockApp{Name: "myapp"},
+				App: &appTypes.App{Name: "myapp"},
 			})
 			c.Assert(err, check.IsNil)
 			err = version.AddData(tt.addData)
@@ -301,7 +301,7 @@ func (s *S) TestAppVersionImpl_WebProcess(c *check.C) {
 		c.Logf("test %d", i)
 		svc.DeleteVersions(context.TODO(), "myapp")
 		version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-			App: &appTypes.MockApp{Name: "myapp"},
+			App: &appTypes.App{Name: "myapp"},
 		})
 		c.Assert(err, check.IsNil)
 		err = version.AddData(appTypes.AddVersionDataArgs{
@@ -318,7 +318,7 @@ func (s *S) TestAppVersionImpl_ToggleEnabled(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 	version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-		App: &appTypes.MockApp{Name: "myapp"},
+		App: &appTypes.App{Name: "myapp"},
 	})
 	c.Assert(err, check.IsNil)
 	err = version.ToggleEnabled(false, "my reason")

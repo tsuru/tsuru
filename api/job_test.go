@@ -3317,7 +3317,10 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
-	logWatcher, err := s.provisioner.WatchLogs(context.TODO(), &j, appTypes.ListLogArgs{
+	logWatcher, err := s.provisioner.WatchLogs(context.TODO(), &logTypes.LogabbleObject{
+		Name: j.Name,
+		Pool: j.Pool,
+	}, appTypes.ListLogArgs{
 		Name: j.Name,
 		Type: logTypes.LogTypeJob,
 	})

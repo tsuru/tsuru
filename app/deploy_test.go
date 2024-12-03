@@ -56,7 +56,7 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 }
 
 func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
-	a := App{Name: "g1", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "g1", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
@@ -89,7 +89,7 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 }
 
 func (s *S) TestListAppDeploys(c *check.C) {
-	a := App{Name: "g1", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "g1", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
@@ -115,7 +115,7 @@ func (s *S) TestListAppDeploys(c *check.C) {
 }
 
 func (s *S) TestListAppDeploysWithImage(c *check.C) {
-	a := App{Name: "g1", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "g1", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
@@ -139,7 +139,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
-func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+func newSuccessfulAppVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -153,7 +153,7 @@ func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion 
 	return version
 }
 
-func newUnsuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+func newUnsuccessfulAppVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -168,7 +168,7 @@ func newUnsuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersio
 }
 
 func (s *S) TestListFilteredDeploys(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "g1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -182,7 +182,7 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
-	a = App{
+	a = appTypes.App{
 		Name:      "ge",
 		Platform:  "zend",
 		TeamOwner: team.Name,
@@ -222,7 +222,7 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 }
 
 func (s *S) TestListFilteredDeploysWithDisabledRollback(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "g1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -236,7 +236,7 @@ func (s *S) TestListFilteredDeploysWithDisabledRollback(c *check.C) {
 	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
-	a = App{
+	a = appTypes.App{
 		Name:      "ge",
 		Platform:  "zend",
 		TeamOwner: team.Name,
@@ -292,7 +292,7 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	team := &authTypes.Team{Name: "team"}
 	c.Assert(err, check.IsNil)
-	a := App{
+	a := appTypes.App{
 		Name:      "app1",
 		Platform:  "zend",
 		Teams:     []string{team.Name},
@@ -319,7 +319,7 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 }
 
 func (s *S) TestGetDeploy(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "g1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -352,7 +352,7 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 }
 
 func (s *S) TestBuildApp(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -384,7 +384,7 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -412,7 +412,7 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -422,7 +422,7 @@ func (s *S) TestDeployAppImage(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -449,7 +449,7 @@ func (s *S) TestDeployAppImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -459,7 +459,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:           "some-app",
 		Platform:       "django",
 		Teams:          []string{s.team.Name},
@@ -488,7 +488,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -498,7 +498,7 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:           "some-app",
 		Platform:       "django",
 		Teams:          []string{s.team.Name},
@@ -526,14 +526,14 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
 	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "some-app"}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:           "some-app",
 		Teams:          []string{s.team.Name},
 		UpdatePlatform: true,
@@ -562,7 +562,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -587,7 +587,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
@@ -597,7 +597,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -624,7 +624,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
@@ -634,7 +634,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -659,7 +659,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
@@ -669,7 +669,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -696,7 +696,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
@@ -706,7 +706,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -733,7 +733,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": a.Name}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
@@ -741,7 +741,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	s.provisioner.PrepareFailure("Deploy", errors.New("deploy error"))
-	a := App{
+	a := appTypes.App{
 		Name:      "testerrorapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -769,7 +769,7 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 
 func (s *S) TestDeployAppShowLogLinesOnStartupError(c *check.C) {
 	s.provisioner.PrepareFailure("Deploy", provision.ErrUnitStartup{Err: errors.New("deploy error")})
-	a := App{
+	a := appTypes.App{
 		Name:      "testerrorapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -809,7 +809,7 @@ func (s *S) TestDeployAppShowLogEmbeddedLinesOnStartupError(c *check.C) {
 			},
 		},
 	})
-	a := App{
+	a := appTypes.App{
 		Name:      "testerrorapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -850,7 +850,7 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -866,7 +866,7 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 }
 
 func (s *S) TestDeployToProvisioner(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -890,7 +890,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 }
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -914,7 +914,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 }
 
 func (s *S) TestDeployToProvisionerUpload(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -939,7 +939,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 }
 
 func (s *S) TestDeployToProvisionerImage(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "some-app",
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
@@ -966,7 +966,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -996,7 +996,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, testBaseImage)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "otherapp"}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -1006,7 +1006,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -1036,14 +1036,14 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, testBaseImage)
-	var updatedApp App
+	var updatedApp appTypes.App
 	err = appsCollection.FindOne(context.TODO(), mongoBSON.M{"name": "otherapp"}).Decode(&updatedApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -1077,7 +1077,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 }
 
 func (s *S) TestRollbackWithVersionMarkedToRemoved(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -1148,7 +1148,7 @@ func (s *S) TestDeployKind(c *check.C) {
 }
 
 func (s *S) TestRebuild(c *check.C) {
-	a := App{
+	a := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -1176,7 +1176,7 @@ func (s *S) TestRebuild(c *check.C) {
 }
 
 func (s *S) TestRollbackUpdate(c *check.C) {
-	app := App{
+	app := appTypes.App{
 		Name:      "myapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
@@ -1209,7 +1209,7 @@ func (s *S) TestRollbackUpdate(c *check.C) {
 }
 
 func (s *S) TestRollbackUpdateInvalidApp(c *check.C) {
-	invalidApp := App{
+	invalidApp := appTypes.App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},

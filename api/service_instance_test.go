@@ -39,6 +39,7 @@ import (
 	tsuruTest "github.com/tsuru/tsuru/test"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
@@ -148,6 +149,17 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		}
 		return nil, stdErrors.New("No cluster for pool: " + pool)
 	}
+	s.mockService.App.OnGetAddresses = func(a *appTypes.App) ([]string, error) {
+		return routertest.FakeRouter.Addresses(stdContext.TODO(), a)
+	}
+	s.mockService.App.OnRemoveInstance = func(a *appTypes.App, removeArgs bindTypes.RemoveInstanceArgs) error {
+		return app.RemoveInstance(stdContext.TODO(), a, removeArgs)
+	}
+
+	s.mockService.App.OnAddInstance = func(a *appTypes.App, addArgs bindTypes.AddInstanceArgs) error {
+		return app.AddInstance(stdContext.TODO(), a, addArgs)
+	}
+
 	s.service = &service.Service{
 		Name:       "mysql",
 		Teams:      []string{s.team.Name},
@@ -1121,7 +1133,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err := pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	a := app.App{
+	a := appTypes.App{
 		Name:      "app-instance",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -1229,7 +1241,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	a := app.App{
+	a := appTypes.App{
 		Name:      "painkiller",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -1277,7 +1289,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	a := app.App{
+	a := appTypes.App{
 		Name:      "app1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -1317,12 +1329,12 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	a := app.App{
+	a := appTypes.App{
 		Name:      "app",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	ab := app.App{
+	ab := appTypes.App{
 		Name:      "app2",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,

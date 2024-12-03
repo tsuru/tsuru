@@ -6,74 +6,98 @@ package app
 
 import (
 	"context"
+	"errors"
 
-	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	uuid "github.com/nu7hatch/gouuid"
+	pkgErrors "github.com/pkg/errors"
+	"github.com/tsuru/tsuru/types/app/image"
+	"github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/router"
 )
-
-type MockApp struct {
-	Name, TeamOwner, Platform, PlatformVersion, Pool string
-	Deploys                                          uint
-	UpdatePlatform                                   bool
-	TeamsName                                        []string
-	Registry                                         imgTypes.ImageRegistry
-}
-
-func (a *MockApp) GetName() string {
-	return a.Name
-}
-
-func (a *MockApp) GetPool() string {
-	return a.Pool
-}
-
-func (a *MockApp) GetTeamsName() []string {
-	return a.TeamsName
-}
-
-func (a *MockApp) GetTeamOwner() string {
-	return a.TeamOwner
-}
-
-func (a *MockApp) GetPlatform() string {
-	return a.Platform
-}
-
-func (a *MockApp) GetPlatformVersion() string {
-	return a.PlatformVersion
-}
-
-func (a *MockApp) GetDeploys() uint {
-	return a.Deploys
-}
-
-func (a *MockApp) GetUpdatePlatform() bool {
-	return a.UpdatePlatform
-}
-
-func (a *MockApp) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, error) {
-	return a.Registry, nil
-}
 
 var _ AppService = &MockAppService{}
 
 type MockAppService struct {
-	Apps   []AppInterface
-	OnList func(filter *Filter) ([]AppInterface, error)
+	Apps                           []*App
+	OnList                         func(filter *Filter) ([]*App, error)
+	OnRegistry                     func(app *App) (image.ImageRegistry, error)
+	OnGetAddresses                 func(app *App) ([]string, error)
+	OnAddInstance                  func(app *App, addArgs bind.AddInstanceArgs) error
+	OnRemoveInstance               func(app *App, removeArgs bind.RemoveInstanceArgs) error
+	OnGetInternalBindableAddresses func(app *App) ([]string, error)
+	OnGetHealthcheckData           func(app *App) (router.HealthcheckData, error)
 }
 
-func (m *MockAppService) GetByName(ctx context.Context, name string) (AppInterface, error) {
+func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
 	for _, app := range m.Apps {
-		if app.GetName() == name {
+		if app.Name == name {
 			return app, nil
 		}
 	}
 	return nil, ErrAppNotFound
 }
 
-func (m *MockAppService) List(ctx context.Context, f *Filter) ([]AppInterface, error) {
+func (m *MockAppService) List(ctx context.Context, f *Filter) ([]*App, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 
 	return m.OnList(f)
+}
+
+func (m *MockAppService) GetHealthcheckData(ctx context.Context, app *App) (router.HealthcheckData, error) {
+	if m.OnGetHealthcheckData != nil {
+		return m.OnGetHealthcheckData(app)
+	}
+	return router.HealthcheckData{}, errors.New("MockAppService.GetHealthcheckData is not implemented")
+}
+
+func (m *MockAppService) GetAddresses(ctx context.Context, app *App) ([]string, error) {
+	if m.OnGetAddresses != nil {
+		return m.OnGetAddresses(app)
+	}
+
+	return nil, errors.New("MockAppService.GetAddresses is not implemented")
+}
+
+func (m *MockAppService) GetInternalBindableAddresses(ctx context.Context, app *App) ([]string, error) {
+	if m.OnGetInternalBindableAddresses != nil {
+		return m.OnGetInternalBindableAddresses(app)
+	}
+	return nil, errors.New("MockAppService.GetInternalBindableAddresses is not implemented")
+}
+
+func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, error) {
+	if app.UUID != "" {
+		return app.UUID, nil
+	}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return "", pkgErrors.WithMessage(err, "failed to generate uuid v4")
+	}
+	app.UUID = uuidV4.String()
+	return app.UUID, nil
+}
+
+func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
+	if m.OnRegistry == nil {
+		return "", nil
+	}
+	return m.OnRegistry(app)
+}
+
+func (m *MockAppService) AddInstance(ctx context.Context, app *App, addArgs bind.AddInstanceArgs) error {
+	if m.OnAddInstance != nil {
+		return m.OnAddInstance(app, addArgs)
+	}
+
+	return errors.New("MockAppService.AddInstance is not implemented")
+
+}
+func (m *MockAppService) RemoveInstance(ctx context.Context, app *App, removeArgs bind.RemoveInstanceArgs) error {
+	if m.OnRemoveInstance != nil {
+		return m.OnRemoveInstance(app, removeArgs)
+	}
+
+	return errors.New("MockAppService.RemoveInstance is not implemented")
 }

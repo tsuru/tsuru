@@ -41,14 +41,14 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
@@ -171,14 +171,14 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistentEmptyDir(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
@@ -249,14 +249,14 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistentEphemeral(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
@@ -343,7 +343,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -411,7 +411,7 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appCR := tsuruv1.App{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: a.GetName(),
+			Name: a.Name,
 		},
 		Spec: tsuruv1.AppSpec{
 			NamespaceName: "custom-namespace",
@@ -435,7 +435,7 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -481,7 +481,7 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -523,7 +523,7 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -567,7 +567,7 @@ func (s *S) TestVolumeExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})

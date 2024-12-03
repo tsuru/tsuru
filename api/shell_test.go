@@ -16,13 +16,14 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/tsurutest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/net/websocket"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAppShellWithAppName(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -53,7 +54,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 		return len(shells) == 1
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(shells[0].App.GetName(), check.Equals, a.Name)
+	c.Assert(shells[0].App.Name, check.Equals, a.Name)
 	c.Assert(shells[0].Width, check.Equals, 140)
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
@@ -64,7 +65,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 }
 
 func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -103,7 +104,7 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 }
 
 func (s *S) TestAppShellSpecifyUnit(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -135,7 +136,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(shells, check.HasLen, 1)
-	c.Assert(shells[0].App.GetName(), check.Equals, a.Name)
+	c.Assert(shells[0].App.Name, check.Equals, a.Name)
 	c.Assert(shells[0].Width, check.Equals, 140)
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
@@ -150,7 +151,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 }
 
 func (s *S) TestAppShellIsolated(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
@@ -182,7 +183,7 @@ func (s *S) TestAppShellIsolated(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(shells, check.HasLen, 1)
-	c.Assert(shells[0].App.GetName(), check.Equals, a.Name)
+	c.Assert(shells[0].App.Name, check.Equals, a.Name)
 	c.Assert(shells[0].Width, check.Equals, 140)
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
@@ -197,7 +198,7 @@ func (s *S) TestAppShellIsolated(c *check.C) {
 }
 
 func (s *S) TestAppShellUnauthorizedError(c *check.C) {
-	a := app.App{
+	a := appTypes.App{
 		Name:      "someapp",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,

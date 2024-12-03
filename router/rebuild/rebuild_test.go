@@ -19,7 +19,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func newVersion(c *check.C, a appTypes.AppInterface) appTypes.AppVersion {
+func newVersion(c *check.C, a *appTypes.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})
@@ -38,26 +38,26 @@ func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l URLList) Less(i, j int) bool { return l[i].String() < l[j].String() }
 
 func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
-	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "none"}
+	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, &a)
 	err = provisiontest.ProvisionerInstance.AddUnits(context.TODO(), &a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
-	oldAddrs, err := a.GetAddresses(context.TODO())
+	oldAddrs, err := app.GetAddresses(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	a.Router = "fake"
 	err = rebuild.RebuildRoutes(context.TODO(), rebuild.RebuildRoutesOpts{
 		App: &a,
 	})
 	c.Assert(err, check.IsNil)
-	newAddrs, err := a.GetAddresses(context.TODO())
+	newAddrs, err := app.GetAddresses(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(newAddrs, check.Not(check.DeepEquals), oldAddrs)
 }
 
 func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
-	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{

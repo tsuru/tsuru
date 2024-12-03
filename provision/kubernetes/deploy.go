@@ -355,7 +355,7 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 	return result, nil
 }
 
-func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app provision.App) error {
+func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app *appTypes.App) error {
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
 		return err
@@ -423,7 +423,7 @@ func ensureServiceAccount(ctx context.Context, client *ClusterClient, name strin
 	return nil
 }
 
-func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a provision.App) error {
+func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a *appTypes.App) error {
 	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
 		App:    a,
 		Prefix: tsuruLabelPrefix,
@@ -432,7 +432,7 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	if err != nil {
 		return err
 	}
-	appMeta := a.GetMetadata("")
+	appMeta := provision.GetAppMetadata(a, "")
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns, &appMeta)
 }
 
@@ -448,7 +448,7 @@ func getClusterNodeSelectorFlag(client *ClusterClient) (bool, error) {
 	return shouldDisable, nil
 }
 
-func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
+func defineSelectorAndAffinity(ctx context.Context, a *appTypes.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
 	singlePool, err := client.SinglePool()
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
@@ -457,7 +457,7 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 		return nil, nil, nil
 	}
 
-	pool, err := pool.GetPoolByName(ctx, a.GetPool())
+	pool, err := pool.GetPoolByName(ctx, a.Pool)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -478,12 +478,12 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 	}
 
 	return provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   a.GetPool(),
+		Pool:   a.Pool,
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a *appTypes.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
@@ -515,7 +515,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		}
 	}
 
-	sleepSec := client.preStopSleepSeconds(a.GetPool())
+	sleepSec := client.preStopSleepSeconds(a.Pool)
 	terminationGracePeriod := int64(30 + sleepSec)
 
 	var lifecycle apiv1.Lifecycle
@@ -542,8 +542,8 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 			},
 		}
 	}
-	maxSurge := client.maxSurge(a.GetPool())
-	maxUnavailable := client.maxUnavailable(a.GetPool())
+	maxSurge := client.maxSurge(a.Pool)
+	maxUnavailable := client.maxUnavailable(a.Pool)
 	dnsConfig := dnsConfigNdots(client, a)
 	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, a, client)
 	if err != nil {
@@ -551,19 +551,19 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 
 	_, uid := dockercommon.UserForContainer()
-	overCommit, err := client.OvercommitFactor(a.GetPool())
+	overCommit, err := client.OvercommitFactor(a.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
-	cpuOverCommit, err := client.CPUOvercommitFactor(a.GetPool())
+	cpuOverCommit, err := client.CPUOvercommitFactor(a.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster cpu overcommit factor")
 	}
-	poolCPUBurst, err := client.CPUBurstFactor(a.GetPool())
+	poolCPUBurst, err := client.CPUBurstFactor(a.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster cpu burst factor")
 	}
-	memoryOverCommit, err := client.MemoryOvercommitFactor(a.GetPool())
+	memoryOverCommit, err := client.MemoryOvercommitFactor(a.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
 	}
@@ -573,7 +573,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		return false, nil, nil, err
 	}
 
-	resourceRequirements, err := resourceRequirements(&plan, a.GetPool(), client, requirementsFactors{
+	resourceRequirements, err := resourceRequirements(&plan, a.Pool, client, requirementsFactors{
 		overCommit:       overCommit,
 		cpuOverCommit:    cpuOverCommit,
 		poolCPUBurst:     poolCPUBurst,
@@ -596,7 +596,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		return false, nil, nil, err
 	}
 
-	metadata := a.GetMetadata(process)
+	metadata := provision.GetAppMetadata(a, process)
 	podLabels := labels.PodLabels()
 
 	for _, l := range metadata.Labels {
@@ -620,12 +620,12 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 	serviceLinks := false
 
-	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, client.TopologySpreadConstraints(a.GetPool()))
+	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, client.TopologySpreadConstraints(a.Pool))
 	if err != nil {
 		return false, nil, nil, err
 	}
 
-	routers := a.GetRouters()
+	routers := a.Routers
 	conditionSet := set.Set{}
 	for _, r := range routers {
 		var planRouter routerTypes.PlanRouter
@@ -740,7 +740,7 @@ func annotationsUnchanged(new, old map[string]string) bool {
 	return true
 }
 
-func appEnvs(a provision.App, process string, version appTypes.AppVersion) []apiv1.EnvVar {
+func appEnvs(a *appTypes.App, process string, version appTypes.AppVersion) []apiv1.EnvVar {
 	appEnvs := EnvsForApp(a, process, version)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
@@ -759,7 +759,7 @@ type serviceManager struct {
 
 var _ servicecommon.ServiceManager = &serviceManager{}
 
-func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, deployedVersion int, preserveOldVersions bool) error {
+func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, deployedVersion int, preserveOldVersions bool) error {
 	depGroups, err := deploymentsDataForApp(ctx, m.client, a)
 	if err != nil {
 		return err
@@ -845,7 +845,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) RemoveService(ctx context.Context, a provision.App, process string, versionNumber int) error {
+func (m *serviceManager) RemoveService(ctx context.Context, a *appTypes.App, process string, versionNumber int) error {
 	multiErrors := tsuruErrors.NewMultiError()
 	err := cleanupDeployment(ctx, m.client, a, process, versionNumber)
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -858,7 +858,7 @@ func (m *serviceManager) RemoveService(ctx context.Context, a provision.App, pro
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) CurrentLabels(ctx context.Context, a provision.App, process string, versionNumber int) (*provision.LabelSet, *int32, error) {
+func (m *serviceManager) CurrentLabels(ctx context.Context, a *appTypes.App, process string, versionNumber int) (*provision.LabelSet, *int32, error) {
 	dep, err := deploymentForVersion(ctx, m.client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
@@ -971,7 +971,7 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	)
 }
 
-func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string, version appTypes.AppVersion) (string, error) {
+func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a *appTypes.App, processName string, w io.Writer, evtResourceVersion string, version appTypes.AppVersion) (string, error) {
 	revision := dep.Annotations[replicaDepRevision]
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
@@ -1175,7 +1175,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 	if opts.OverrideVersions {
 		var deps *appsv1.DeploymentList
-		processSelector := fmt.Sprintf("tsuru.io/app-name=%s, tsuru.io/app-process=%s, tsuru.io/is-routable=true", opts.App.GetName(), opts.ProcessName)
+		processSelector := fmt.Sprintf("tsuru.io/app-name=%s, tsuru.io/app-process=%s, tsuru.io/is-routable=true", opts.App.Name, opts.ProcessName)
 		deps, err = m.client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{
 			LabelSelector: processSelector,
 		})
@@ -1271,7 +1271,7 @@ type baseDepArgs struct {
 	baseDep  *deploymentInfo
 }
 
-func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
+func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a *appTypes.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
 	var result baseDepArgs
 	if !preserveVersions {
 		labels.SetIsRoutable()
@@ -1342,8 +1342,8 @@ func syncAnnotationMap(toAdd map[string]string, metadata map[string]string) {
 	}
 }
 
-func syncServiceAnnotations(app provision.App, svcData *svcCreateData) {
-	metadata := app.GetMetadata(svcData.process)
+func syncServiceAnnotations(app *appTypes.App, svcData *svcCreateData) {
+	metadata := provision.GetAppMetadata(app, svcData.process)
 	annotationsToAdd := make(map[string]string)
 	annotationsRaw, ok := metadata.Annotation(ResourceMetadataPrefix + "service")
 	if ok {
@@ -1355,7 +1355,7 @@ func syncServiceAnnotations(app provision.App, svcData *svcCreateData) {
 	}
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD, preserveOldVersions bool) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a *appTypes.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD, preserveOldVersions bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -1538,8 +1538,8 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 	return nil
 }
 
-func (m *serviceManager) createHeadlessService(ctx context.Context, svcPorts []apiv1.ServicePort, ns string, a provision.App, process string, labels *provision.LabelSet) error {
-	enabled, err := m.client.headlessEnabled(a.GetPool())
+func (m *serviceManager) createHeadlessService(ctx context.Context, svcPorts []apiv1.ServicePort, ns string, a *appTypes.App, process string, labels *provision.LabelSet) error {
+	enabled, err := m.client.headlessEnabled(a.Pool)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1737,8 +1737,8 @@ func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortCo
 	}
 }
 
-func dnsConfigNdots(client *ClusterClient, app provision.App) *apiv1.PodDNSConfig {
-	dnsConfigNdots := client.dnsConfigNdots(app.GetPool())
+func dnsConfigNdots(client *ClusterClient, app *appTypes.App) *apiv1.PodDNSConfig {
+	dnsConfigNdots := client.dnsConfigNdots(app.Pool)
 	var dnsConfig *apiv1.PodDNSConfig
 	if dnsConfigNdots.IntVal > 0 {
 		ndots := dnsConfigNdots.String()

@@ -12,11 +12,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provTypes.UnitMetric, error) {
-	clusterClient, err := clusterForPool(ctx, a.GetPool())
+func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a *appTypes.App) ([]provTypes.UnitMetric, error) {
+	clusterClient, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return nil, err
 	}

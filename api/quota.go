@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -121,12 +122,12 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(ctx, t, permission.PermAppRead, contextsForApp(&a)...)
+	canRead := permission.Check(ctx, t, permission.PermAppRead, contextsForApp(a)...)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	quota, err := a.GetQuota(ctx)
+	quota, err := app.GetQuota(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -151,7 +152,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermAppAdminQuota, contextsForApp(&a)...)
+	allowed := permission.Check(ctx, t, permission.PermAppAdminQuota, contextsForApp(a)...)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -161,7 +162,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
@@ -174,7 +175,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "Invalid limit",
 		}
 	}
-	err = a.SetQuotaLimit(ctx, limit)
+	err = app.SetQuotaLimit(ctx, a, limit)
 	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,

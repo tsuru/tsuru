@@ -17,12 +17,12 @@ import (
 
 func (s *S) TestNewPDB(c *check.C) {
 	tests := map[string]struct {
-		app      *app.App
+		app      *appTypes.App
 		setup    func() (teardown func())
 		expected *policyv1.PodDisruptionBudget
 	}{
 		"with default values": {
-			app: &app.App{Name: "myapp-01", TeamOwner: s.team.Name},
+			app: &appTypes.App{Name: "myapp-01", TeamOwner: s.team.Name},
 			expected: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myapp-01-p1",
@@ -47,7 +47,7 @@ func (s *S) TestNewPDB(c *check.C) {
 			},
 		},
 		"with custom maxUnavailable": {
-			app: &app.App{
+			app: &appTypes.App{
 				Name:      "myapp-02",
 				TeamOwner: s.team.Name,
 				Metadata: appTypes.Metadata{
@@ -83,7 +83,7 @@ func (s *S) TestNewPDB(c *check.C) {
 			},
 		},
 		"when disable PDB for cluster/pool": {
-			app: &app.App{Name: "myapp-03", TeamOwner: s.team.Name},
+			app: &appTypes.App{Name: "myapp-03", TeamOwner: s.team.Name},
 			setup: func() (teardown func()) {
 				s.clusterClient.CustomData["test-default:disable-pdb"] = "true"
 				return func() {

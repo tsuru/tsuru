@@ -49,7 +49,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -315,7 +315,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 		delete(s.clusterClient.CustomData, baseServicesAnnotations)
 		delete(s.clusterClient.CustomData, allServicesAnnotations)
 	}()
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -348,7 +348,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotations(c
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
 		Annotations: []appTypes.MetadataItem{
 			{
 				Name:  AnnotationServiceAccountAppAnnotations,
@@ -398,7 +398,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotationsWi
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
 		Annotations: []appTypes.MetadataItem{
 			{
 				Name:  ResourceMetadataPrefix + "service-account",
@@ -448,7 +448,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotationsFromDeployment(c
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
 		Annotations: []appTypes.MetadataItem{
 			{
 				Name:  ResourceMetadataPrefix + "service",
@@ -491,7 +491,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
 	m := serviceManager{client: s.clusterClient}
 	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}})
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -540,7 +540,7 @@ func (s *S) TestServiceManagerDeployServiceWithPodAffinity(c *check.C) {
 	m := serviceManager{client: s.clusterClient}
 	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"podAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S1"]}]},"topologyKey":"topology.kubernetes.io/zone"}]}}`}})
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -590,7 +590,7 @@ func (s *S) TestServiceManagerDeployServiceWithAffinityAndClusterNodeSelectorDis
 	m.client.CustomData[disableDefaultNodeSelectorKey] = "true"
 	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"podAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S1"]}]},"topologyKey":"topology.kubernetes.io/zone"}]}}`}})
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -638,7 +638,7 @@ func (s *S) TestServiceManagerDeployServiceRaceWithHPA(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -686,7 +686,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	var counter int32
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		new := atomic.AddInt32(&counter, 1)
@@ -725,7 +725,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, nil)
@@ -850,7 +850,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -890,7 +890,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -943,7 +943,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1046,7 +1046,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	tests := []struct {
@@ -1257,7 +1257,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	expectedReadiness := &apiv1.Probe{
@@ -1342,7 +1342,7 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	expectedReadiness := &apiv1.Probe{
@@ -1425,7 +1425,7 @@ func (s *S) TestEnsureBackendConfigWithMissingSlash(c *check.C) {
 	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	expectedReadiness := &apiv1.Probe{
@@ -1508,7 +1508,7 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 
@@ -1573,7 +1573,7 @@ func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
 	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1628,7 +1628,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1730,7 +1730,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1763,7 +1763,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1889,7 +1889,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1930,7 +1930,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -1979,7 +1979,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2051,7 +2051,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	watchPodCalled := make(chan struct{})
 	watchRepCalled := make(chan struct{})
 	watchDepCalled := make(chan struct{})
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -2113,11 +2113,11 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	defer waitDep()
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -2185,11 +2185,11 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	defer waitDep()
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -2257,7 +2257,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2286,7 +2286,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2317,7 +2317,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -2357,7 +2357,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	defer waitDep()
 	s.clusterClient.CustomData[overcommitClusterKey] = "3"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -2399,7 +2399,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	s.clusterClient.CustomData[overcommitClusterKey] = "3"
 	s.clusterClient.CustomData["test-default:"+overcommitClusterKey] = "2"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -2520,7 +2520,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 	}
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2559,7 +2559,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	s.clusterClient.CustomData[maxSurgeKey] = "30%"
 	s.clusterClient.CustomData[maxUnavailableKey] = "2"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -2594,7 +2594,7 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	defer waitDep()
 	s.clusterClient.CustomData[singlePoolKey] = "true"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2623,7 +2623,7 @@ func (s *S) TestServiceManagerDeployDnsConfigNdotsEnable(c *check.C) {
 	defer waitDep()
 	s.clusterClient.CustomData[dnsConfigNdotsKey] = "1"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2653,7 +2653,7 @@ func (s *S) TestServiceManagerDeployTopologySpreadConstraintEnable(c *check.C) {
 	defer waitDep()
 	s.clusterClient.CustomData[topologySpreadConstraintsKey] = "[{\"maxskew\":1, \"topologykey\":\"kubernetes.io/hostname\"}, {\"maxskew\":2, \"topologykey\":\"kubernetes.io/zone\"}]"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -2694,7 +2694,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version1 := newCommittedVersion(c, a, map[string]interface{}{
@@ -2946,7 +2946,7 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version1 := newCommittedVersion(c, a, map[string]interface{}{
@@ -3025,7 +3025,7 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version1 := newCommittedVersion(c, a, map[string]interface{}{
@@ -3117,7 +3117,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	a.Env = map[string]bindTypes.EnvVar{
 		"env1": {
 			Name:  "env1",
@@ -3167,7 +3167,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3196,7 +3196,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
-		AppName:    a.GetName(),
+		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
@@ -3242,7 +3242,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	defer waitDep()
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version1 := newCommittedVersion(c, a, map[string]interface{}{
@@ -3338,7 +3338,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 	defer waitDep()
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3411,7 +3411,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	defer waitDep()
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version1 := newCommittedVersion(c, a, map[string]interface{}{
@@ -3510,7 +3510,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	defer waitDep()
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version1 := newCommittedVersion(c, a, map[string]interface{}{
@@ -3584,7 +3584,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	defer config.Unset("kubernetes:deployment-progress-timeout")
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3647,7 +3647,7 @@ func (s *S) TestServiceManagerDeployServiceNoChanges(c *check.C) {
 	defer config.Unset("kubernetes:deployment-progress-timeout")
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3697,7 +3697,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3717,13 +3717,13 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/is-stopped":      "false",
 		"tsuru.io/is-service":      "true",
 		"tsuru.io/is-isolated-run": "false",
-		"tsuru.io/app-name":        a.GetName(),
-		"tsuru.io/app-team":        a.GetTeamOwner(),
+		"tsuru.io/app-name":        a.Name,
+		"tsuru.io/app-team":        a.TeamOwner,
 		"tsuru.io/app-process":     "p1",
 		"tsuru.io/app-version":     "1",
 		"tsuru.io/restarts":        "0",
-		"tsuru.io/app-platform":    a.GetPlatform(),
-		"tsuru.io/app-pool":        a.GetPool(),
+		"tsuru.io/app-platform":    a.Platform,
+		"tsuru.io/app-pool":        a.Pool,
 	}
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -3772,7 +3772,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3805,7 +3805,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 	tt := []struct {
 		name       string
-		app        provision.App
+		app        *appTypes.App
 		poolLabels map[string]string
 		customData map[string]string
 		assertion  func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C)
@@ -3813,7 +3813,7 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 		{
 			name:       "when cluster has a single pool",
 			customData: map[string]string{singlePoolKey: "true"},
-			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			app:        &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
 			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(selector, check.IsNil)
@@ -3822,7 +3822,7 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 		},
 		{
 			name:       "when pool has node affinity",
-			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			app:        &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
 			poolLabels: map[string]string{"affinity": `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`},
 			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
 				c.Assert(err, check.IsNil)
@@ -3847,7 +3847,7 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 		},
 		{
 			name:       "when pool does not have node affinity and cluster disables default node selector",
-			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			app:        &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
 			customData: map[string]string{disableDefaultNodeSelectorKey: "true"},
 			poolLabels: map[string]string{"affinity": `{"empty-affinity":"some-value"}`},
 			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
@@ -3858,7 +3858,7 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 		},
 		{
 			name: "when pool affinity is nil and cluster has default node selector",
-			app:  &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			app:  &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
 			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(selector, check.DeepEquals, map[string]string{"tsuru.io/pool": "test-default"})
@@ -3867,7 +3867,7 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 		},
 		{
 			name: "when app pool does not exist",
-			app:  &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "invalid pool"},
+			app:  &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "invalid pool"},
 			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
 				c.Assert(selector, check.IsNil)
 				c.Assert(affinity, check.IsNil)
@@ -3876,7 +3876,7 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 		},
 		{
 			name:       "when cluster default node selector key in custom data is invalid",
-			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			app:        &appTypes.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
 			customData: map[string]string{disableDefaultNodeSelectorKey: "invalid"},
 			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
 				c.Assert(selector, check.IsNil)
@@ -3976,7 +3976,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 	defer waitDep()
 	s.clusterClient.CustomData[disableHeadlessKey] = "true"
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -4075,7 +4075,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	}
 	s.client.PrependReactor("create", "deployments", f1)
 	s.client.PrependReactor("update", "deployments", f1)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -4084,7 +4084,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -4146,7 +4146,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	}
 	s.client.PrependReactor("create", "deployments", f1)
 	s.client.PrependReactor("update", "deployments", f1)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
@@ -4155,7 +4155,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -4191,7 +4191,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *che
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{
+	a := &appTypes.App{
 		Name:      "myapp",
 		TeamOwner: s.team.Name,
 		Metadata: appTypes.Metadata{
@@ -4228,7 +4228,7 @@ func (s *S) TestServiceManagerDeployServiceWithVPA(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -4267,7 +4267,7 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
@@ -4344,7 +4344,7 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 

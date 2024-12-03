@@ -21,14 +21,15 @@ import (
 
 // MockService is a struct to use in tests
 type MockService struct {
+	App                       *app.MockAppService
 	Cache                     *cache.MockAppCacheService
 	Plan                      *app.MockPlanService
 	Platform                  *app.MockPlatformService
 	PlatformImage             *image.MockPlatformImageService
 	Team                      *auth.MockTeamService
-	UserQuota                 *quota.MockQuotaService
-	AppQuota                  *quota.MockQuotaService
-	TeamQuota                 *quota.MockQuotaService
+	UserQuota                 *quota.MockQuotaService[quota.QuotaItem]
+	AppQuota                  *quota.MockQuotaService[*app.App]
+	TeamQuota                 *quota.MockQuotaService[*auth.Team]
 	Cluster                   *provision.MockClusterService
 	ServiceBroker             *service.MockServiceBrokerService
 	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
@@ -42,14 +43,15 @@ type MockService struct {
 
 // SetMockService return a new MockService and set as a servicemanager
 func SetMockService(m *MockService) {
+	m.App = &app.MockAppService{}
 	m.Cache = &cache.MockAppCacheService{}
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.PlatformImage = &image.MockPlatformImageService{}
 	m.Team = &auth.MockTeamService{}
-	m.UserQuota = &quota.MockQuotaService{}
-	m.AppQuota = &quota.MockQuotaService{}
-	m.TeamQuota = &quota.MockQuotaService{}
+	m.UserQuota = &quota.MockQuotaService[quota.QuotaItem]{}
+	m.AppQuota = &quota.MockQuotaService[*app.App]{}
+	m.TeamQuota = &quota.MockQuotaService[*auth.Team]{}
 	m.Cluster = &provision.MockClusterService{}
 	m.ServiceBroker = &service.MockServiceBrokerService{}
 	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}
@@ -62,6 +64,7 @@ func SetMockService(m *MockService) {
 	}
 	m.JobService = &job.MockJobService{}
 
+	servicemanager.App = m.App
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform

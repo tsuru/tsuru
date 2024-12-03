@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	terminal "golang.org/x/term"
 )
 
@@ -148,7 +149,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	allowed := permission.Check(ctx, token, permission.PermAppRunShell, contextsForApp(&a)...)
+	allowed := permission.Check(ctx, token, permission.PermAppRunShell, contextsForApp(a)...)
 	if !allowed {
 		httpErr = permission.ErrUnauthorized
 		return
@@ -166,7 +167,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Owner:       token,
 		RemoteAddr:  r.RemoteAddr,
 		CustomData:  event.FormToCustomData(InputFields(r)),
-		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 		DisableLock: true,
 	})
 	if err != nil {
@@ -220,7 +221,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Units:  unitsForShell(ctx, a, unitID, isolated),
 		Term:   clientTerm,
 	}
-	err = a.Shell(ctx, opts)
+	err = app.Shell(ctx, a, opts)
 	if err != nil {
 		httpErr = &errors.HTTP{
 			Code:    http.StatusInternalServerError,
@@ -229,14 +230,14 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func unitsForShell(ctx stdContext.Context, a app.App, unitID string, isolated bool) []string {
+func unitsForShell(ctx stdContext.Context, a *appTypes.App, unitID string, isolated bool) []string {
 	if isolated {
 		return nil
 	}
 	if unitID != "" {
 		return []string{unitID}
 	}
-	appUnits, _ := a.Units(ctx)
+	appUnits, _ := app.AppUnits(ctx, a)
 	if len(appUnits) > 0 {
 		return []string{appUnits[0].ID}
 	}

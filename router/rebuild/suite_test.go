@@ -25,6 +25,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/router"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -57,7 +58,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (*appTypes.App, error) {
 		a, err := app.GetByName(context.TODO(), appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
@@ -81,6 +82,10 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	servicemock.SetMockService(&s.mockService)
+
+	s.mockService.App.OnGetHealthcheckData = func(a *appTypes.App) (router.HealthcheckData, error) {
+		return app.GetHealthcheckData(context.TODO(), a)
+	}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{*s.team}, nil
 	}

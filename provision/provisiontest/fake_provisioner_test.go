@@ -11,12 +11,10 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
@@ -44,223 +42,6 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 }
 
-func (s *S) TestFakeAppAddUnit(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	app.AddUnit(provTypes.Unit{ID: "jean-0"})
-	c.Assert(app.units, check.HasLen, 1)
-}
-
-func (s *S) TestFakeAppGetMemory(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	app.Memory = 100
-	c.Assert(app.GetMemory(), check.Equals, int64(100))
-}
-
-func (s *S) TestEnvs(c *check.C) {
-	app := FakeApp{name: "time"}
-	env := bindTypes.EnvVar{
-		Name:   "http_proxy",
-		Value:  "http://theirproxy.com:3128/",
-		Public: true,
-	}
-	app.SetEnv(env)
-	envs := map[string]bindTypes.EnvVar{
-		"http_proxy": {
-			Name:   "http_proxy",
-			Value:  "http://theirproxy.com:3128/",
-			Public: true,
-		},
-	}
-	c.Assert(envs, check.DeepEquals, app.env)
-}
-
-func (s *S) TestSetEnvs(c *check.C) {
-	app := FakeApp{name: "time"}
-	envs := []bindTypes.EnvVar{
-		{
-			Name:   "http_proxy",
-			Value:  "http://theirproxy.com:3128/",
-			Public: true,
-		},
-		{
-			Name:   "https_proxy",
-			Value:  "http://theirproxy.com:3128/",
-			Public: true,
-		},
-	}
-	app.SetEnvs(bindTypes.SetEnvArgs{
-		Envs:          envs,
-		ShouldRestart: true,
-	})
-	expected := map[string]bindTypes.EnvVar{
-		"http_proxy": {
-			Name:   "http_proxy",
-			Value:  "http://theirproxy.com:3128/",
-			Public: true,
-		},
-		"https_proxy": {
-			Name:   "https_proxy",
-			Value:  "http://theirproxy.com:3128/",
-			Public: true,
-		},
-	}
-	c.Assert(app.env, check.DeepEquals, expected)
-}
-
-func (s *S) TestGetUnitsReturnUnits(c *check.C) {
-	a := NewFakeApp("foo", "static", 2)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 2)
-	c.Assert(a.units, check.HasLen, 2)
-	c.Assert(units[0].GetID(), check.Equals, a.units[0].ID)
-	c.Assert(units[1].GetID(), check.Equals, a.units[1].ID)
-}
-
-func (s *S) TestUnsetEnvs(c *check.C) {
-	app := FakeApp{name: "time"}
-	env := bindTypes.EnvVar{
-		Name:   "http_proxy",
-		Value:  "http://theirproxy.com:3128/",
-		Public: true,
-	}
-	app.SetEnv(env)
-	app.UnsetEnvs(bindTypes.UnsetEnvArgs{
-		VariableNames: []string{"http_proxy"},
-		ShouldRestart: true,
-	})
-	c.Assert(app.env, check.DeepEquals, map[string]bindTypes.EnvVar{})
-}
-
-func (s *S) TestFakeAppGetCname(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	app.cname = []string{"cname1", "cname2"}
-	c.Assert(app.GetCname(), check.DeepEquals, []string{"cname1", "cname2"})
-}
-
-func (s *S) TestFakeAppAddInstance(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{
-				ServiceName:  "mysql",
-				InstanceName: "inst1",
-				EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
-			},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	err = app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{
-				ServiceName:  "mongodb",
-				InstanceName: "inst2",
-				EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
-			},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	envs := app.GetServiceEnvs()
-	c.Assert(envs, check.DeepEquals, []bindTypes.ServiceEnvVar{
-		{
-			ServiceName:  "mysql",
-			InstanceName: "inst1",
-			EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
-		},
-		{
-			ServiceName:  "mongodb",
-			InstanceName: "inst2",
-			EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
-		},
-	})
-}
-
-func (s *S) TestFakeAppRemoveInstance(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{
-				ServiceName:  "mysql",
-				InstanceName: "inst1",
-				EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
-			},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	err = app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{
-				ServiceName:  "mongodb",
-				InstanceName: "inst2",
-				EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
-			},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	err = app.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
-		ServiceName:   "mysql",
-		InstanceName:  "inst1",
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	envs := app.GetServiceEnvs()
-	c.Assert(envs, check.DeepEquals, []bindTypes.ServiceEnvVar{
-		{
-			ServiceName:  "mongodb",
-			InstanceName: "inst2",
-			EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
-		},
-	})
-}
-
-func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(context.TODO(), bindTypes.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{
-				ServiceName:  "mysql",
-				InstanceName: "inst1",
-				EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
-			},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	err = app.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
-		ServiceName:   "mysql",
-		InstanceName:  "inst2",
-		ShouldRestart: true,
-	})
-	c.Assert(err.Error(), check.Equals, "instance not found")
-}
-
-func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.RemoveInstance(context.TODO(), bindTypes.RemoveInstanceArgs{
-		ServiceName:   "mysql",
-		InstanceName:  "inst2",
-		ShouldRestart: true,
-	})
-	c.Assert(err.Error(), check.Equals, "instance not found")
-}
-
-func (s *S) TestFakeAppLogs(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	app.Log("something happened", "[tsuru]", "[api]")
-	c.Assert(app.Logs(), check.DeepEquals, []string{"[tsuru][api]something happened"})
-}
-
-func (s *S) TestFakeAppHasLog(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	app.Log("something happened", "[tsuru]", "[api]")
-	c.Assert(app.HasLog("[tsuru]", "[api]", "something happened"), check.Equals, true)
-	c.Assert(app.HasLog("tsuru", "api", "something happened"), check.Equals, false)
-}
-
 func (s *S) TestProvisioned(c *check.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
@@ -276,8 +57,8 @@ func (s *S) TestRestarts(c *check.C) {
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, restarts: map[string]int{"": 10, "web": 2}},
-		app2.GetName(): {app: app1, restarts: map[string]int{"": 0}},
+		app1.Name: {app: app1, restarts: map[string]int{"": 10, "web": 2}},
+		app2.Name: {app: app1, restarts: map[string]int{"": 0}},
 	}
 	c.Assert(p.Restarts(app1, ""), check.Equals, 10)
 	c.Assert(p.Restarts(app1, "web"), check.Equals, 2)
@@ -290,8 +71,8 @@ func (s *S) TestStarts(c *check.C) {
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
-		app2.GetName(): {app: app1, starts: map[string]int{"": 0}},
+		app1.Name: {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
+		app2.Name: {app: app1, starts: map[string]int{"": 0}},
 	}
 	c.Assert(p.Starts(app1, "web"), check.Equals, 10)
 	c.Assert(p.Starts(app1, "worker"), check.Equals, 1)
@@ -304,8 +85,8 @@ func (s *S) TestStops(c *check.C) {
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
-		app2.GetName(): {app: app1, stops: map[string]int{"": 0}},
+		app1.Name: {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
+		app2.Name: {app: app1, stops: map[string]int{"": 0}},
 	}
 	c.Assert(p.Stops(app1, "web"), check.Equals, 10)
 	c.Assert(p.Stops(app1, "worker"), check.Equals, 1)
@@ -321,7 +102,7 @@ func (s *S) TestGetUnits(c *check.C) {
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app.GetName(): {app: app, units: list},
+		app.Name: {app: app, units: list},
 	}
 	units := p.GetUnits(app)
 	c.Assert(units, check.DeepEquals, list)
@@ -349,10 +130,10 @@ func (s *S) TestProvision(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	pApp := p.apps[app.GetName()]
+	pApp := p.apps[app.Name]
 	c.Assert(pApp.app, check.DeepEquals, app)
 	c.Assert(pApp.units, check.HasLen, 0)
-	c.Assert(routertest.FakeRouter.HasBackend(app.GetName()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
 }
 
 func (s *S) TestProvisionWithPreparedFailure(c *check.C) {
@@ -376,15 +157,12 @@ func (s *S) TestDoubleProvision(c *check.C) {
 
 func (s *S) TestRestart(c *check.C) {
 	a := NewFakeApp("kid-gloves", "rush", 1)
-	nApp := app.App{
-		Name: a.name,
-	}
 
 	appsCollection, err := storagev2.AppsCollection()
 	c.Assert(err, check.IsNil)
 
-	_, err = appsCollection.InsertOne(context.TODO(), nApp)
-	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": nApp.Name})
+	_, err = appsCollection.InsertOne(context.TODO(), a)
+	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
 	p.Provision(context.TODO(), a)
@@ -743,7 +521,7 @@ func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	c.Assert(p.apps[app.GetName()].unitLen, check.Equals, 1)
+	c.Assert(p.apps[app.Name].unitLen, check.Equals, 1)
 }
 
 func (s *S) TestFakeProvisionerUnits(c *check.C) {
@@ -772,7 +550,7 @@ func (s *S) TestGetAppFromUnitID(c *check.C) {
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app.GetName(): {app: app, units: list},
+		app.Name: {app: app, units: list},
 	}
 	a, err := p.GetAppFromUnitID("chain-lighting-0")
 	c.Assert(err, check.IsNil)

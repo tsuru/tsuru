@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/config"
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/router"
 )
 
@@ -126,27 +127,19 @@ func Default(ctx context.Context) (string, error) {
 	return "", ErrDefaultRouterNotFound
 }
 
-// App is the interface implemented by routable applications.
-type App interface {
-	GetName() string
-	GetPool() string
-	GetTeamOwner() string
-	GetTeamsName() []string
-}
-
 // Router is the basic interface of this package. It provides methods for
 // managing backends and routes. Each backend can have multiple routes.
 type Router interface {
 	GetName() string
 	GetType() string
 
-	EnsureBackend(ctx context.Context, app App, o EnsureBackendOpts) error
-	RemoveBackend(ctx context.Context, app App) error
+	EnsureBackend(ctx context.Context, app *appTypes.App, o EnsureBackendOpts) error
+	RemoveBackend(ctx context.Context, app *appTypes.App) error
 
-	Addresses(ctx context.Context, app App) ([]string, error)
+	Addresses(ctx context.Context, app *appTypes.App) ([]string, error)
 
 	GetInfo(ctx context.Context) (map[string]string, error)
-	GetBackendStatus(ctx context.Context, app App) (status RouterBackendStatus, err error)
+	GetBackendStatus(ctx context.Context, app *appTypes.App) (status RouterBackendStatus, err error)
 }
 
 type BackendPrefix struct {
@@ -167,9 +160,9 @@ type EnsureBackendOpts struct {
 // TLSRouter is a router that supports adding and removing
 // certificates for a given cname
 type TLSRouter interface {
-	AddCertificate(ctx context.Context, app App, cname, certificate, key string) error
-	RemoveCertificate(ctx context.Context, app App, cname string) error
-	GetCertificate(ctx context.Context, app App, cname string) (string, error)
+	AddCertificate(ctx context.Context, app *appTypes.App, cname, certificate, key string) error
+	RemoveCertificate(ctx context.Context, app *appTypes.App, cname string) error
+	GetCertificate(ctx context.Context, app *appTypes.App, cname string) (string, error)
 }
 
 type BackendStatus string

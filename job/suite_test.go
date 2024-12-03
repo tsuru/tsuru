@@ -102,10 +102,10 @@ func setupMocks(s *S) {
 		}
 		return nil, appTypes.ErrPlanNotFound
 	}
-	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+	s.mockService.AppQuota.OnGet = func(_ *appTypes.App) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
-	s.mockService.TeamQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+	s.mockService.TeamQuota.OnGet = func(_ *authTypes.Team) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {

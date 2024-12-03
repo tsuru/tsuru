@@ -127,7 +127,7 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	routertest.TLSRouter.Reset()
 	pool.ResetCache()
-	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (*appTypes.App, error) {
 		a, err := GetByName(context.TODO(), appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
@@ -205,10 +205,10 @@ func setupMocks(s *S) {
 		}
 		return nil, appTypes.ErrPlanNotFound
 	}
-	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+	s.mockService.AppQuota.OnGet = func(_ *appTypes.App) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
-	s.mockService.TeamQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+	s.mockService.TeamQuota.OnGet = func(_ *authTypes.Team) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
@@ -218,7 +218,7 @@ func setupMocks(s *S) {
 			"healthcheck",
 		}, nil
 	}
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app *appTypes.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: app,
 		})
