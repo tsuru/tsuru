@@ -5818,7 +5818,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
+func (s *S) TestUnbindForceFlagNotFailWhenNotAdmin(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "myendpoint"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := service.Create(context.TODO(), srvc)
@@ -5855,7 +5855,7 @@ func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	err = unbindServiceInstance(recorder, req, token)
-	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+	c.Assert(err, check.Equals, nil)
 }
 
 func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
