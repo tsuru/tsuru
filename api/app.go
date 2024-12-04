@@ -1609,18 +1609,6 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	if force {
-		s, errGet := service.Get(ctx, instance.ServiceName)
-		if errGet != nil {
-			return errGet
-		}
-		allowed = permission.Check(ctx, t, permission.PermServiceUpdate,
-			contextsForServiceProvision(&s)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
-	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
 		ExtraTargets: []eventTypes.ExtraTarget{
