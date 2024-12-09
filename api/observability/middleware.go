@@ -63,6 +63,11 @@ type middleware struct {
 func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
 	next(rw, r)
+
+	if r.URL.Path == "/healthcheck" || r.URL.Path == "/metrics" {
+		return
+	}
+
 	duration := time.Since(start)
 	statusCode := rw.(negroni.ResponseWriter).Status()
 	if statusCode == 0 {
