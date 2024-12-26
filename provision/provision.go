@@ -77,6 +77,7 @@ type Named interface {
 type RunArgs struct {
 	Once     bool
 	Isolated bool
+	Debug    bool
 }
 
 type DeployArgs struct {
@@ -168,6 +169,7 @@ type ExecOptions struct {
 	Term   string
 	Cmds   []string
 	Units  []string
+	Debug  bool
 }
 
 type ExecutableProvisioner interface {

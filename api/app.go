@@ -965,6 +965,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	appName := r.URL.Query().Get(":app")
 	once := InputValue(r, "once")
 	isolated := InputValue(r, "isolated")
+	debug := InputValue(r, "debug")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -994,7 +995,8 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	evt.SetLogWriter(writer)
 	onceBool, _ := strconv.ParseBool(once)
 	isolatedBool, _ := strconv.ParseBool(isolated)
-	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool}
+	debugBool, _ := strconv.ParseBool(debug)
+	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool, Debug: debugBool}
 	return app.Run(ctx, a, command, evt, args)
 }
 
