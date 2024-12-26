@@ -26,6 +26,8 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -877,6 +879,7 @@ type execOpts struct {
 	stderr       io.Writer
 	stdin        io.Reader
 	termSize     *remotecommand.TerminalSize
+	debug        bool
 	tty          bool
 }
 
@@ -901,7 +904,10 @@ func execCommand(ctx context.Context, opts execOpts) error {
 	if l.AppName() != opts.app.Name {
 		return errors.Errorf("pod %q do not belong to app %q", chosenPod.Name, l.AppName())
 	}
-	containerName := chosenPod.Spec.Containers[0].Name
+	containerName, err := getContainerName(ctx, client, chosenPod, opts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	req := restCli.Post().
 		Resource("pods").
 		Name(chosenPod.Name).
@@ -926,7 +932,7 @@ func execCommand(ctx context.Context, opts execOpts) error {
 			sz: opts.termSize,
 		}
 	}
-	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+	err = streamWithContextWithRetry(ctx, exec, remotecommand.StreamOptions{
 		Stdin:             opts.stdin,
 		Stdout:            opts.stdout,
 		Stderr:            opts.stderr,
@@ -937,6 +943,62 @@ func execCommand(ctx context.Context, opts execOpts) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func streamWithContextWithRetry(ctx context.Context, exec remotecommand.Executor, opts remotecommand.StreamOptions) error {
+	var err error
+	maxRetry := 30
+	for i := 0; i < maxRetry; i++ {
+		err = exec.StreamWithContext(ctx, opts)
+		if err == nil {
+			return nil
+		}
+		if !isErrorContainerNotFound(err) {
+			return err
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return err
+}
+
+func isErrorContainerNotFound(err error) bool {
+	return strings.Contains(err.Error(), "container not found")
+}
+
+func getContainerName(ctx context.Context, client *ClusterClient, chosenPod *apiv1.Pod, opts execOpts) (string, error) {
+	if opts.debug {
+		return getContainerDebug(ctx, client, opts, chosenPod)
+	}
+	return chosenPod.Spec.Containers[0].Name, nil
+}
+
+func getContainerDebug(ctx context.Context, client *ClusterClient, opts execOpts, pod *v1.Pod) (string, error) {
+	debugContainerName := fmt.Sprintf("debugger-%s", pod.Name)
+	if ok := doesEphemeralContainerExist(pod, debugContainerName); ok {
+		return debugContainerName, nil
+	}
+	debugContainer := corev1.EphemeralContainer{
+		EphemeralContainerCommon: corev1.EphemeralContainerCommon{
+			Name:            debugContainerName,
+			Command:         opts.cmds,
+			Image:           opts.client.DebugContainerImage(),
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Stdin:           opts.stdin != nil,
+			TTY:             opts.tty,
+		},
+	}
+	pod.Spec.EphemeralContainers = append(pod.Spec.EphemeralContainers, debugContainer)
+	_, err := client.CoreV1().Pods(pod.Namespace).UpdateEphemeralContainers(ctx, pod.Name, pod, metav1.UpdateOptions{})
+	return debugContainerName, err
+}
+
+func doesEphemeralContainerExist(pod *v1.Pod, debugContainerName string) bool {
+	for _, ephemeralContainer := range pod.Spec.EphemeralContainers {
+		if ephemeralContainer.Name == debugContainerName {
+			return true
+		}
+	}
+	return false
 }
 
 type runSinglePodArgs struct {
