@@ -343,8 +343,29 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 	}
 
 	if tc != nil {
-		procfile := version.GetProcessesFromProcfile(tc.Procfile)
-		if len(procfile) == 0 {
+		var processes map[string][]string
+		var customData map[string]any
+		var tsuruYamlData provisiontypes.TsuruYamlData
+		if len(tc.TsuruYaml) > 0 {
+			fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
+			fmt.Fprintln(w, tc.TsuruYaml)
+			tsuruYamlData, err = parseTsuruYaml(tc.TsuruYaml)
+			if err != nil {
+				return nil, err
+			}
+			customData = tsuruYamlDataToCustomData(tsuruYamlData)
+		}
+		// Check if it uses new `processes` on YML
+		if len(tsuruYamlData.Processes) > 0 {
+			// If it uses, try to get processes and commands from YML
+			processes = version.GetProcessesFromYamlProcess(tsuruYamlData.Processes)
+		} else {
+			// If it does not uses new `processes` on YML, use current implementation
+			processes = version.GetProcessesFromProcfile(tc.Procfile)
+		}
+
+		// Default to web process name and entrypoint and cmd from container
+		if len(processes) == 0 {
 			ic := tc.ImageConfig
 			if ic == nil {
 				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
@@ -356,22 +377,11 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 			}
 
-			procfile[provision.WebProcessName] = cmds
+			processes[provision.WebProcessName] = cmds
 		}
 
-		for k, v := range procfile {
+		for k, v := range processes {
 			fmt.Fprintf(w, " ---> Process %q found with commands: %q\n", k, v)
-		}
-
-		var customData map[string]any
-		if len(tc.TsuruYaml) > 0 {
-			fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
-			// TODO: maybe pretty print Tsuru YAML on w
-
-			customData, err = tsuruYamlStringToCustomData(tc.TsuruYaml)
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		var exposedPorts []string
@@ -380,7 +390,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		}
 
 		err = appVersion.AddData(apptypes.AddVersionDataArgs{
-			Processes:    procfile,
+			Processes:    processes,
 			CustomData:   customData,
 			ExposedPorts: exposedPorts,
 		})
@@ -460,22 +470,22 @@ func kindToJobBuildKind(opts builder.BuildOpts) buildpb.BuildKind {
 	return buildpb.BuildKind_BUILD_KIND_UNSPECIFIED
 }
 
-func tsuruYamlStringToCustomData(str string) (map[string]any, error) {
-	if len(str) == 0 {
-		return nil, nil
-	}
-
+func parseTsuruYaml(str string) (provisiontypes.TsuruYamlData, error) {
 	var tsuruYaml provisiontypes.TsuruYamlData
 	// NOTE(nettoclaudio): we must use the "sigs.k8s.io/yaml" package to
 	// decode the YAML from app since we need some functions of JSON decoder
 	// as well - namely parse field names based on JSON struct tags.
 	if err := yaml.Unmarshal([]byte(str), &tsuruYaml); err != nil {
-		return nil, fmt.Errorf("failed to decode Tsuru YAML: %w", err)
+		return provisiontypes.TsuruYamlData{}, fmt.Errorf("failed to decode Tsuru YAML: %w", err)
 	}
+	return tsuruYaml, nil
+}
 
+func tsuruYamlDataToCustomData(tsuruYaml provisiontypes.TsuruYamlData) map[string]any {
 	return map[string]any{
 		"healthcheck": tsuruYaml.Healthcheck,
 		"hooks":       tsuruYaml.Hooks,
 		"kubernetes":  tsuruYaml.Kubernetes,
-	}, nil
+		"processes":   tsuruYaml.Processes,
+	}
 }

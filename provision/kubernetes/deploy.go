@@ -507,8 +507,17 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		return false, nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
-	if process == webProcessName && len(processPorts) > 0 {
-		//TODO: add support to multiple HCs
+	// NOTE: Here is the code that create probes for HEALTHCHECK!
+	if len(yamlData.Processes) > 0 {
+		err, healthcheck := yamlData.GetHCFromProcessName(process)
+		if err != nil {
+			return false, nil, nil, errors.WithStack(err)
+		}
+		hcData, err = probesFromHC(healthcheck, processPorts[0].TargetPort)
+		if err != nil {
+			return false, nil, nil, err
+		}
+	} else if process == webProcessName && len(processPorts) > 0 {
 		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return false, nil, nil, err
@@ -901,7 +910,6 @@ func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns str
 	crashedUnitsLogs, err = listLogsFromPods(ctx, client, ns, pods, appTypes.ListLogArgs{
 		Limit: 10,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "Could not get logs from crashed units")
 	}
