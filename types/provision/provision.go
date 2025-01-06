@@ -4,11 +4,18 @@
 
 package provision
 
-import "github.com/tsuru/tsuru/types/router"
+import (
+	"errors"
+
+	"github.com/tsuru/tsuru/types/router"
+)
+
+var ErrProcessNotFound = errors.New("process name could not be found on YAML data")
 
 type TsuruYamlData struct {
 	Hooks       *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
 	Healthcheck *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
+	Processes   []TsuruYamlProcess         `json:"processes,omitempty" bson:",omitempty"`
 	Kubernetes  *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
 }
 
@@ -37,6 +44,12 @@ type TsuruYamlHealthcheck struct {
 	IntervalSeconds      int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
 	TimeoutSeconds       int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
 	DeployTimeoutSeconds int               `json:"deploy_timeout_seconds,omitempty" yaml:"deploy_timeout_seconds" bson:"deploy_timeout_seconds,omitempty"`
+}
+
+type TsuruYamlProcess struct {
+	Healthcheck *TsuruYamlHealthcheck `json:"healthcheck,omitempty" bson:",omitempty"`
+	Name        string                `json:"name"`
+	Command     string                `json:"command" yaml:"command" bson:"command"`
 }
 
 type TsuruYamlKubernetesConfig struct {
@@ -86,6 +99,15 @@ func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
 		Status: hc.Status,
 		Body:   hc.RouterBody,
 	}
+}
+
+func (y TsuruYamlData) GetHCFromProcessName(process string) (error, *TsuruYamlHealthcheck) {
+	for _, tsuruProcessData := range y.Processes {
+		if tsuruProcessData.Name == process {
+			return nil, tsuruProcessData.Healthcheck
+		}
+	}
+	return ErrProcessNotFound, nil
 }
 
 func (y *TsuruYamlKubernetesConfig) GetProcessConfigs(procName string) *TsuruYamlKubernetesProcessConfig {
