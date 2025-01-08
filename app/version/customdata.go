@@ -19,8 +19,8 @@ var procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
 type customData struct {
 	Hooks       *provTypes.TsuruYamlHooks
 	Healthcheck *provTypes.TsuruYamlHealthcheck
-	Processes   []provTypes.TsuruYamlProcess
 	Kubernetes  *tsuruYamlKubernetesConfig
+	Processes   []provTypes.TsuruYamlProcess
 }
 
 type tsuruYamlKubernetesConfig struct {

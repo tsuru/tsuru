@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -291,10 +290,6 @@ func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
-	hc.Method = strings.ToUpper(hc.Method)
-	if hc.Method == "" {
-		hc.Method = http.MethodGet
-	}
 	if hc.IntervalSeconds == 0 {
 		hc.IntervalSeconds = 10
 	}
@@ -303,9 +298,6 @@ func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
 	}
 	if hc.AllowedFailures == 0 {
 		hc.AllowedFailures = 3
-	}
-	if hc.Method != http.MethodGet {
-		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
 	}
 
 	return nil
@@ -509,7 +501,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	var hcData hcResult
 	// NOTE: Here is the code that create probes for HEALTHCHECK!
 	if len(yamlData.Processes) > 0 {
-		err, healthcheck := yamlData.GetHCFromProcessName(process)
+		healthcheck, err := yamlData.GetHCFromProcessName(process)
 		if err != nil {
 			return false, nil, nil, errors.WithStack(err)
 		}
