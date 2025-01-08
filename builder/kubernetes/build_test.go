@@ -339,6 +339,7 @@ kubernetes:
 		Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 			Path: "/healthz",
 		},
+		Processes: []provisiontypes.TsuruYamlProcess{},
 		Hooks: &provisiontypes.TsuruYamlHooks{
 			Build: []string{"mkdir /path/to/my/dir", "/path/to/script.sh"},
 		},
@@ -864,6 +865,7 @@ CMD ["--port", "8888"]
 		Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 			Path: "/healthz",
 		},
+		Processes: []provisiontypes.TsuruYamlProcess{},
 	})
 }
 

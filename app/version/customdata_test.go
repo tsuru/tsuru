@@ -5,13 +5,14 @@
 package version
 
 import (
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 	tests := []struct {
-		procfile string
 		expected map[string][]string
+		procfile string
 	}{
 		{procfile: "", expected: map[string][]string{}},
 		{procfile: "invalid", expected: map[string][]string{}},
@@ -34,6 +35,33 @@ func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 	}
 	for i, t := range tests {
 		v := GetProcessesFromProcfile(t.procfile)
+		c.Check(v, check.DeepEquals, t.expected, check.Commentf("failed test %d", i))
+	}
+}
+
+func (s *S) TestGetProcessesFromYamlProcess(c *check.C) {
+	tests := []struct {
+		expected  map[string][]string
+		processes []provTypes.TsuruYamlProcess
+	}{
+		{processes: nil, expected: map[string][]string{}},
+		{processes: []provTypes.TsuruYamlProcess{}, expected: map[string][]string{}},
+		{
+			processes: []provTypes.TsuruYamlProcess{{Name: "web", Command: "python app.py"}},
+			expected: map[string][]string{
+				"web": {"python app.py"},
+			},
+		},
+		{
+			processes: []provTypes.TsuruYamlProcess{{Name: "web", Command: "python app.py"}, {Name: "worker", Command: "python worker.py"}},
+			expected: map[string][]string{
+				"web":    {"python app.py"},
+				"worker": {"python worker.py"},
+			},
+		},
+	}
+	for i, t := range tests {
+		v := GetProcessesFromYamlProcess(t.processes)
 		c.Check(v, check.DeepEquals, t.expected, check.Commentf("failed test %d", i))
 	}
 }

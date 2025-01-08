@@ -82,8 +82,7 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	expected := routerTypes.HealthcheckData{
-		Path:   "/healthcheck",
-		Status: 302,
+		Path: "/healthcheck",
 	}
 	c.Assert(routertest.FakeRouter.GetHealthcheck("my-test-app"), check.DeepEquals, expected)
 }
