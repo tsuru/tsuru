@@ -501,7 +501,8 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	var hcData hcResult
 	// NOTE: Here is the code that create probes for HEALTHCHECK!
 	if len(yamlData.Processes) > 0 {
-		healthcheck, err := yamlData.GetHCFromProcessName(process)
+		var healthcheck *provTypes.TsuruYamlHealthcheck
+		healthcheck, err = yamlData.GetHCFromProcessName(process)
 		if err != nil {
 			return false, nil, nil, errors.WithStack(err)
 		}
