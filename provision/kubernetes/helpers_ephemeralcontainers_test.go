@@ -128,3 +128,22 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 		c.Assert(createEphemeralContainer, check.Equals, p.expected.shouldCreateEphemeralContainer)
 	}
 }
+
+func (s *S) TestShouldReturnContainerNameNotDebug(c *check.C) {
+	pod := apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
+		Spec: apiv1.PodSpec{
+			Containers: []apiv1.Container{
+				{Name: "container1"},
+			},
+		},
+	}
+	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+	c.Assert(err, check.IsNil)
+	containerName, err := getContainerName(context.Background(), s.clusterClient, &pod, execOpts{
+		debug:  false,
+		client: c1,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(containerName, check.Equals, "container1")
+}
