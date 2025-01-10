@@ -973,7 +973,7 @@ func getContainerName(ctx context.Context, client *ClusterClient, chosenPod *api
 }
 
 func getContainerDebug(ctx context.Context, client *ClusterClient, opts execOpts, pod *v1.Pod) (string, error) {
-	debugContainerName := fmt.Sprintf("debugger-%s", pod.Name)
+	debugContainerName := "tsuru-debugger"
 	if ok := doesEphemeralContainerExist(pod, debugContainerName); ok {
 		return debugContainerName, nil
 	}
@@ -989,7 +989,10 @@ func getContainerDebug(ctx context.Context, client *ClusterClient, opts execOpts
 	}
 	pod.Spec.EphemeralContainers = append(pod.Spec.EphemeralContainers, debugContainer)
 	_, err := client.CoreV1().Pods(pod.Namespace).UpdateEphemeralContainers(ctx, pod.Name, pod, metav1.UpdateOptions{})
-	return debugContainerName, err
+	if err != nil {
+		return "", err
+	}
+	return debugContainerName, nil
 }
 
 func doesEphemeralContainerExist(pod *v1.Pod, debugContainerName string) bool {
