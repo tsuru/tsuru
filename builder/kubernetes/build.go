@@ -359,9 +359,19 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		if len(tsuruYamlData.Processes) > 0 {
 			// If it uses, try to get processes and commands from YML
 			processes = version.GetProcessesFromYamlProcess(tsuruYamlData.Processes)
+			if tsuruYamlData.Healthcheck != nil {
+				fmt.Fprintln(w, " ---> WARNING: Global healthcheck configuration will be IGNORED when YML contains 'processes' configuration")
+			}
+			if len(tc.Procfile) > 0 {
+				fmt.Fprintln(w, " ---> WARNING: Procfile will be IGNORED when YML contains 'processes' configuration")
+			}
 		} else {
 			// If it does not uses new `processes` on YML, use current implementation
 			processes = version.GetProcessesFromProcfile(tc.Procfile)
+			fmt.Fprintln(w, " ---> WARNING: Process configuration via Procfile will be deprecated in future releases, favor YML 'processes' configuration instead")
+			if tsuruYamlData.Healthcheck != nil {
+				fmt.Fprintln(w, " ---> WARNING: Global healthcheck configuration will be deprecated in future releases, favor YAML 'processes' configuration instead")
+			}
 		}
 
 		// Default to web process name and entrypoint and cmd from container
