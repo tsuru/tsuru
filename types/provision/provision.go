@@ -4,12 +4,19 @@
 
 package provision
 
-import "github.com/tsuru/tsuru/types/router"
+import (
+	"errors"
+
+	"github.com/tsuru/tsuru/types/router"
+)
+
+var ErrProcessNotFound = errors.New("process name could not be found on YAML data")
 
 type TsuruYamlData struct {
 	Hooks       *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
 	Healthcheck *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
 	Kubernetes  *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
+	Processes   []TsuruYamlProcess         `json:"processes,omitempty" bson:",omitempty"`
 }
 
 type TsuruYamlHooks struct {
@@ -23,20 +30,21 @@ type TsuruYamlRestartHooks struct {
 }
 
 type TsuruYamlHealthcheck struct {
+	Headers              map[string]string `json:"headers,omitempty" bson:",omitempty"`
 	Path                 string            `json:"path"`
-	Method               string            `json:"method"`
-	Status               int               `json:"status"`
 	Scheme               string            `json:"scheme"`
 	Command              []string          `json:"command,omitempty" bson:",omitempty"`
-	Headers              map[string]string `json:"headers,omitempty" bson:",omitempty"`
-	Match                string            `json:"match,omitempty" bson:",omitempty"`
-	RouterBody           string            `json:"router_body,omitempty" yaml:"router_body" bson:"router_body,omitempty"`
-	UseInRouter          bool              `json:"use_in_router,omitempty" yaml:"use_in_router" bson:"use_in_router,omitempty"`
-	ForceRestart         bool              `json:"force_restart,omitempty" yaml:"force_restart" bson:"force_restart,omitempty"`
 	AllowedFailures      int               `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
 	IntervalSeconds      int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
 	TimeoutSeconds       int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
 	DeployTimeoutSeconds int               `json:"deploy_timeout_seconds,omitempty" yaml:"deploy_timeout_seconds" bson:"deploy_timeout_seconds,omitempty"`
+	ForceRestart         bool              `json:"force_restart,omitempty" yaml:"force_restart" bson:"force_restart,omitempty"`
+}
+
+type TsuruYamlProcess struct {
+	Healthcheck *TsuruYamlHealthcheck `json:"healthcheck,omitempty" bson:",omitempty"`
+	Name        string                `json:"name"`
+	Command     string                `json:"command" yaml:"command" bson:"command"`
 }
 
 type TsuruYamlKubernetesConfig struct {
@@ -76,16 +84,23 @@ type TsuruYamlKubernetesProcessPortConfig struct {
 
 func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
 	hc := y.Healthcheck
-	if hc == nil || !hc.UseInRouter {
+	if hc == nil {
 		return router.HealthcheckData{
 			Path: "/",
 		}
 	}
 	return router.HealthcheckData{
-		Path:   hc.Path,
-		Status: hc.Status,
-		Body:   hc.RouterBody,
+		Path: hc.Path,
 	}
+}
+
+func (y TsuruYamlData) GetHCFromProcessName(process string) (*TsuruYamlHealthcheck, error) {
+	for _, tsuruProcessData := range y.Processes {
+		if tsuruProcessData.Name == process {
+			return tsuruProcessData.Healthcheck, nil
+		}
+	}
+	return nil, ErrProcessNotFound
 }
 
 func (y *TsuruYamlKubernetesConfig) GetProcessConfigs(procName string) *TsuruYamlKubernetesProcessConfig {

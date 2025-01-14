@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -291,10 +290,6 @@ func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
-	hc.Method = strings.ToUpper(hc.Method)
-	if hc.Method == "" {
-		hc.Method = http.MethodGet
-	}
 	if hc.IntervalSeconds == 0 {
 		hc.IntervalSeconds = 10
 	}
@@ -303,9 +298,6 @@ func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
 	}
 	if hc.AllowedFailures == 0 {
 		hc.AllowedFailures = 3
-	}
-	if hc.Method != http.MethodGet {
-		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
 	}
 
 	return nil
@@ -507,8 +499,18 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		return false, nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
-	if process == webProcessName && len(processPorts) > 0 {
-		//TODO: add support to multiple HCs
+	// NOTE: Here is the code that create probes for HEALTHCHECK!
+	if len(yamlData.Processes) > 0 {
+		var healthcheck *provTypes.TsuruYamlHealthcheck
+		healthcheck, err = yamlData.GetHCFromProcessName(process)
+		if err != nil {
+			return false, nil, nil, errors.WithStack(err)
+		}
+		hcData, err = probesFromHC(healthcheck, processPorts[0].TargetPort)
+		if err != nil {
+			return false, nil, nil, err
+		}
+	} else if process == webProcessName && len(processPorts) > 0 {
 		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return false, nil, nil, err
@@ -901,7 +903,6 @@ func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns str
 	crashedUnitsLogs, err = listLogsFromPods(ctx, client, ns, pods, appTypes.ListLogArgs{
 		Limit: 10,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "Could not get logs from crashed units")
 	}

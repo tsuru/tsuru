@@ -14,14 +14,13 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-var (
-	procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
-)
+var procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
 
 type customData struct {
 	Hooks       *provTypes.TsuruYamlHooks
 	Healthcheck *provTypes.TsuruYamlHealthcheck
 	Kubernetes  *tsuruYamlKubernetesConfig
+	Processes   []provTypes.TsuruYamlProcess
 }
 
 type tsuruYamlKubernetesConfig struct {
@@ -61,6 +60,7 @@ func unmarshalYamlData(data map[string]interface{}) (provTypes.TsuruYamlData, er
 
 	result := provTypes.TsuruYamlData{
 		Hooks:       custom.Hooks,
+		Processes:   custom.Processes,
 		Healthcheck: custom.Healthcheck,
 	}
 	if custom.Kubernetes == nil {
@@ -176,6 +176,14 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 		if p := procfileRegex.FindStringSubmatch(process); p != nil {
 			processes[p[1]] = []string{strings.TrimSpace(p[2])}
 		}
+	}
+	return processes
+}
+
+func GetProcessesFromYamlProcess(yamlProcesses []provTypes.TsuruYamlProcess) map[string][]string {
+	processes := make(map[string][]string, len(yamlProcesses))
+	for _, process := range yamlProcesses {
+		processes[process.Name] = []string{strings.TrimSpace(process.Command)}
 	}
 	return processes
 }

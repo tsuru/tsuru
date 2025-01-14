@@ -524,7 +524,8 @@ func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
 								Values:   []string{"minikube"},
 							},
 						},
-					}},
+					},
+				},
 			},
 		},
 	}
@@ -2253,33 +2254,6 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*`)
 }
 
-func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
-	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
-		},
-		"healthcheck": provTypes.TsuruYamlHealthcheck{
-			Path:   "/hc",
-			Method: "POST",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
-		App:     a,
-		Version: version,
-	}, servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
-	})
-	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
-}
-
 func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	config.Set("docker:uid", 1001)
 	defer config.Unset("docker:uid")
@@ -2686,7 +2660,8 @@ func (s *S) TestServiceManagerDeployTopologySpreadConstraintEnable(c *check.C) {
 			TopologyKey:       "kubernetes.io/zone",
 			WhenUnsatisfiable: apiv1.ScheduleAnyway,
 			LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "p1", "tsuru.io/app-version": "1"}},
-		}}
+		},
+	}
 	c.Assert(dep.Spec.Template.Spec.TopologySpreadConstraints, check.DeepEquals, topologySpreadConstraints)
 }
 
@@ -3839,7 +3814,8 @@ func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
 											Values:   []string{"minikube"},
 										},
 									},
-								}},
+								},
+							},
 						},
 					},
 				})
