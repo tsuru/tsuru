@@ -58,9 +58,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	AuthScheme auth.Scheme
-)
+var AuthScheme auth.Scheme
 
 var (
 	ErrAlreadyHaveAccess = errors.New("team already have access to this app")
@@ -516,7 +514,6 @@ func Update(ctx context.Context, app *appTypes.App, args UpdateAppArgs) (err err
 			if rebuildErr != nil {
 				log.Errorf("Could not rebuild route: %s", rebuildErr.Error())
 			}
-
 		}()
 		err = validateVolumes(ctx, app)
 		if err != nil {
@@ -660,7 +657,7 @@ func unbind(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 		return err
 	}
 	var msg string
-	var addMsg = func(instanceName string, reason error) {
+	addMsg := func(instanceName string, reason error) {
 		if msg == "" {
 			msg = "Failed to unbind the following instances:\n"
 		}
@@ -670,7 +667,7 @@ func unbind(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 		err = instance.UnbindApp(ctx, service.UnbindAppArgs{
 			App:         app,
 			Restart:     false,
-			ForceRemove: true,
+			ForceRemove: false,
 			Event:       evt,
 			RequestID:   requestID,
 		})
@@ -732,6 +729,16 @@ func Delete(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 	if err != nil {
 		return err
 	}
+
+	err = Stop(ctx, app, w, "", "")
+	if err != nil {
+		logErr("Unable to stop app", err)
+	}
+	err = unbind(ctx, app, evt, requestID)
+	if err != nil {
+		logErr("Unable to unbind app", err)
+	}
+
 	err = registry.RemoveAppImages(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
@@ -740,10 +747,6 @@ func Delete(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 	err = servicemanager.AppVersion.DeleteVersions(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
-	}
-	err = unbind(ctx, app, evt, requestID)
-	if err != nil {
-		logErr("Unable to unbind app", err)
 	}
 	routers := GetRouters(app)
 	for _, appRouter := range routers {
@@ -2389,7 +2392,6 @@ func withLogWriter(app *appTypes.App, w io.Writer) io.Writer {
 }
 
 func RenameTeam(ctx context.Context, oldName, newName string) error {
-
 	filter := &Filter{}
 	filter.ExtraIn("teams", oldName)
 	filter.ExtraIn("teamowner", oldName)
@@ -2431,7 +2433,6 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 
 	_, err = collection.BulkWrite(ctx, updates)
 	return err
-
 }
 
 func GetHealthcheckData(ctx context.Context, app *appTypes.App) (routerTypes.HealthcheckData, error) {
