@@ -251,7 +251,7 @@ func waitToJobDeletion(ctx context.Context, client kubernetes.Interface, existin
 		select {
 		case <-deleted:
 			return nil
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * 60):
 			return errors.New("timeout waiting delete")
 		}
 	}, nil
