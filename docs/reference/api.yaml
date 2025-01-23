@@ -5758,6 +5758,8 @@ definitions:
   JobInfo:
     type: object
     properties:
+      cluster:
+        type: string
       job:
         type: object
         $ref: "#/definitions/Job"
