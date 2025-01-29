@@ -6,13 +6,14 @@ package registry
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	"github.com/tsuru/tsuru/types/provision"
@@ -50,6 +51,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
 		c.Assert(name, check.Equals, s.cluster.Name)
 		return nil, provision.ErrNoCluster
+	}
+	s.mockService.Cluster.OnList = func() ([]provision.Cluster, error) {
+		return []provision.Cluster{*s.cluster}, nil
 	}
 }
 
@@ -96,11 +100,9 @@ func (s *S) TestRegistryRemoveImage(c *check.C) {
 }
 
 func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
-	config.Set("docker:registry-auth:username", "user")
-	defer config.Unset("docker:registry-auth:username")
-	config.Set("docker:registry-auth:password", "pwd")
-	defer config.Unset("docker:registry-auth:password")
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
+	encoded := base64.StdEncoding.EncodeToString([]byte("user:pwd"))
+	s.cluster.CustomData["docker-config-json"] = `{"auths": {"` + s.server.Addr() + `": {"auth": ` + strconv.Quote(encoded) + `}}}`
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
 	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
@@ -110,10 +112,8 @@ func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
 }
 
 func (s *S) TestRegistryRemoveImageWithAuthBadCredentials(c *check.C) {
-	config.Set("docker:registry-auth:username", "user")
-	defer config.Unset("docker:registry-auth:username")
-	config.Set("docker:registry-auth:password", "wrong-pwd")
-	defer config.Unset("docker:registry-auth:password")
+	encoded := base64.StdEncoding.EncodeToString([]byte("user:badpwd"))
+	s.cluster.CustomData["docker-config-json"] = `{"auths": {"` + s.server.Addr() + `": {"auth": ` + strconv.Quote(encoded) + `}}}`
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
@@ -128,9 +128,9 @@ func (s *S) TestRegistryRemoveImageNoRegistry(c *check.C) {
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	err := RemoveImage(context.TODO(), "tsuru/app-test:v1")
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `.*invalid empty registry.*`)
 	c.Assert(s.server.Repos, check.HasLen, 1)
-	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
 
 func (s *S) TestRegistryRemoveImageUnknownRegistry(c *check.C) {
