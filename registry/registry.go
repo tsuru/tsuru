@@ -66,6 +66,9 @@ func RemoveImage(ctx context.Context, imageName string) error {
 		return errors.New("invalid empty image name")
 	}
 	registry, image, tag := image.ParseImageParts(imageName)
+	if registry == "" {
+		return errors.New("invalid empty registry")
+	}
 	r := &dockerRegistry{registry: registry}
 	err := r.registryAuth(ctx, imageName)
 	if err != nil {
@@ -298,7 +301,6 @@ func (r *dockerRegistry) registryAuth(ctx context.Context, image string) error {
 		if err != nil {
 			return err
 		}
-		dockerConfigExists := false
 		for _, cluster := range clusters {
 			clusterRegistry, registryExists := cluster.CustomData["registry"]
 			dockerConfigJson, dockerConfigExists := cluster.CustomData["docker-config-json"]
@@ -309,7 +311,7 @@ func (r *dockerRegistry) registryAuth(ctx context.Context, image string) error {
 				}
 			}
 		}
-		if !dockerConfigExists {
+		if config == nil {
 			return nil
 		}
 	}
@@ -320,6 +322,9 @@ func (r *dockerRegistry) registryAuth(ctx context.Context, image string) error {
 		} else {
 			return fmt.Errorf("failed to get auth config for registry %s: %v", r.registry, err)
 		}
+	}
+	if r.authHeaders == nil {
+		r.authHeaders = http.Header{}
 	}
 	if r.authConfig.RegistryToken != "" {
 		r.authHeaders.Set("Authorization", "Bearer "+r.authConfig.RegistryToken)
