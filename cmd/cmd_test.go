@@ -839,7 +839,7 @@ func (c *ErrorCommand) Run(context *Context) error {
 	if c.msg == "abort" {
 		return ErrAbortCommand
 	}
-	return fmt.Errorf(c.msg)
+	return fmt.Errorf("%s", c.msg)
 }
 
 type FailAndWorkCommand struct {

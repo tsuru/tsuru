@@ -240,9 +240,9 @@ request:
 				}
 			}
 			to.Scopes = parseScopes(to.Scopes).normalize()
-			respAuth, err := auth.FetchToken(ctx, r.client, req.Header, to)
-			if err != nil {
-				return nil, err
+			respAuth, tokenErr := auth.FetchToken(ctx, r.client, req.Header, to)
+			if tokenErr != nil {
+				return nil, tokenErr
 			}
 			if respAuth.IssuedAt.IsZero() {
 				respAuth.IssuedAt = time.Now()
@@ -297,9 +297,9 @@ func (r *dockerRegistry) registryAuth(ctx context.Context, image string) error {
 			return nil
 		}
 	} else {
-		clusters, err := servicemanager.Cluster.List(ctx)
-		if err != nil {
-			return err
+		clusters, clusterListErr := servicemanager.Cluster.List(ctx)
+		if err != clusterListErr {
+			return clusterListErr
 		}
 		for _, cluster := range clusters {
 			clusterRegistry, registryExists := cluster.CustomData["registry"]
