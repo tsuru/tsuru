@@ -511,9 +511,9 @@ func pruneAllVersionsByApp(ctx context.Context, appVersions appTypes.AppVersions
 	}
 	if prov != nil {
 		provisionerName := prov.GetName()
-		cluster, err := servicemanager.Cluster.FindByPool(ctx, provisionerName, appStruct.Pool)
-		if err != nil && err != provision.ErrNoCluster {
-			log.Errorf("unable to get cluster name for app %s: %+v", appStruct.Name, err)
+		cluster, clusterFinderErr := servicemanager.Cluster.FindByPool(ctx, provisionerName, appStruct.Pool)
+		if clusterFinderErr != nil && clusterFinderErr != provision.ErrNoCluster {
+			log.Errorf("unable to get cluster name for app %s: %+v", appStruct.Name, clusterFinderErr)
 		}
 		if cluster != nil {
 			err = registry.RemoveAppImages(ctx, appStruct.Name, cluster)
