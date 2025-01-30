@@ -7,7 +7,6 @@ package registry
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -52,7 +51,7 @@ func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
 	err := RemoveImage(ctx, imageName)
 	if err != nil {
 		cause := errors.Cause(err)
-		if cause != ErrDeleteDisabled && cause != ErrDigestNotFound && cause != ErrImageNotFound {
+		if cause != ErrDigestNotFound && cause != ErrImageNotFound {
 			return err
 		}
 	}
@@ -85,36 +84,33 @@ func RemoveImage(ctx context.Context, imageName string) error {
 	return nil
 }
 
-// RemoveAppImages removes all app images from a remote registry v2 server, returning an error
+// RemoveAppImages removes all app images on all registry v2 server, returning an error
 // in case of failure.
-func RemoveAppImages(ctx context.Context, appName string, cluster *provision.Cluster) error {
-	clusterRegistry, registryExists := cluster.CustomData["registry"]
-	if !registryExists {
-		return errors.Errorf("registry not found in cluster %v", cluster.Name)
-	}
-	r := &dockerRegistry{registry: clusterRegistry}
-	r.cluster = cluster
-	err := r.registryAuth(ctx, "")
-	if err != nil {
-		return errors.Wrapf(err, "failed to get auth for %s registry", r.registry)
-	}
-	image := fmt.Sprintf("tsuru/app-%s", appName)
-	tags, err := r.getImageTags(ctx, image)
+func RemoveAppImages(ctx context.Context, appName string) error {
+	appVersions, err := servicemanager.AppVersion.AllAppVersions(ctx, appName)
 	if err != nil {
 		return err
 	}
 	multi := tsuruErrors.NewMultiError()
-	for _, tag := range tags {
-		digest, err := r.getDigest(ctx, image, tag)
-		if err != nil {
-			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.registry, image, tag))
-			continue
-		}
-		err = r.removeImage(ctx, image, tag, digest)
-		if err != nil {
-			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.registry, image, tag, digest))
-			if errors.Cause(err) == ErrDeleteDisabled {
-				break
+	for _, av := range appVersions {
+		for _, version := range av.Versions {
+			if version.BuildImage != "" {
+				err := RemoveImageIgnoreNotFound(ctx, version.BuildImage)
+				if err != nil {
+					multi.Add(errors.Wrapf(err, "failed to remove image %s", version.BuildImage))
+				}
+			}
+			if version.DeployImage != "" {
+				err := RemoveImageIgnoreNotFound(ctx, version.DeployImage)
+				if err != nil {
+					multi.Add(errors.Wrapf(err, "failed to remove image %s", version.DeployImage))
+				}
+			}
+			if version.CustomBuildTag != "" {
+				err := RemoveImageIgnoreNotFound(ctx, version.CustomBuildTag)
+				if err != nil {
+					multi.Add(errors.Wrapf(err, "failed to remove image %s", version.CustomBuildTag))
+				}
 			}
 		}
 	}
@@ -139,28 +135,6 @@ func (r dockerRegistry) getDigest(ctx context.Context, image, tag string) (strin
 		return "", errors.Errorf("empty digest returned for image %v:%v", image, tag)
 	}
 	return digest, nil
-}
-
-type imageTags struct {
-	Name string
-	Tags []string
-}
-
-func (r dockerRegistry) getImageTags(ctx context.Context, image string) ([]string, error) {
-	path := fmt.Sprintf("/v2/%s/tags/list", image)
-	resp, err := r.doRequest(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusBadRequest {
-		return nil, errors.Errorf("image not found (%d)", resp.StatusCode)
-	}
-	var it imageTags
-	if err := json.NewDecoder(resp.Body).Decode(&it); err != nil {
-		return nil, err
-	}
-	return it.Tags, nil
 }
 
 func (r dockerRegistry) removeImage(ctx context.Context, image, tag, digest string) error {

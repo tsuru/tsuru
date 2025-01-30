@@ -14,15 +14,26 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/version"
+	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	"github.com/tsuru/tsuru/types/provision"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
 
 type S struct {
 	server      *registrytest.RegistryServer
-	cluster     *provision.Cluster
+	cluster     *provisionTypes.Cluster
 	mockService servicemock.MockService
 }
 
@@ -35,55 +46,103 @@ func Test(t *testing.T) {
 
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "app_image_repository_tests")
 	s.server, err = registrytest.NewServer("127.0.0.1:0")
 	c.Assert(err, check.IsNil)
+	provision.DefaultProvisioner = "fake"
+	storagev2.Reset()
+
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	s.cluster = &provision.Cluster{
+	var err error
+	storagev2.ClearAllCollections(nil)
+	s.cluster = &provisionTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		Provisioner: "fake",
 		Default:     true,
-		CustomData:  map[string]string{"registry": s.server.Addr()},
+		CustomData:  map[string]string{"registry": s.server.Addr() + "/tsuru"},
 	}
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        "test-default",
+		Default:     true,
+		Provisioner: "fake",
+	})
+	c.Assert(err, check.IsNil)
 	servicemock.SetMockService(&s.mockService)
-	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
+	s.mockService.Cluster.OnFindByName = func(name string) (*provisionTypes.Cluster, error) {
 		c.Assert(name, check.Equals, s.cluster.Name)
-		return nil, provision.ErrNoCluster
+		return nil, provisionTypes.ErrNoCluster
 	}
-	s.mockService.Cluster.OnList = func() ([]provision.Cluster, error) {
-		return []provision.Cluster{*s.cluster}, nil
+	s.mockService.Cluster.OnList = func() ([]provisionTypes.Cluster, error) {
+		return []provisionTypes.Cluster{*s.cluster}, nil
 	}
+	s.mockService.Cluster.OnFindByProvisioner = func(provisioner string) ([]provisionTypes.Cluster, error) {
+		c.Assert(provisioner, check.Equals, s.cluster.Provisioner)
+		return []provisionTypes.Cluster{*s.cluster}, nil
+	}
+	s.mockService.App.OnRegistry = func(app *appTypes.App) (imgTypes.ImageRegistry, error) {
+		registry := s.cluster.CustomData["registry"]
+		return imgTypes.ImageRegistry(registry), nil
+	}
+	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
 	s.server.Stop()
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Reset()
+	err := storagev2.ClearAllCollections(nil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestRegistryRemoveAppImagesErrorImageNotFound(c *check.C) {
-	err := RemoveAppImages(context.TODO(), "test", s.cluster)
-	c.Assert(err, check.NotNil)
+func (s *S) TestRegistryRemoveAppImagesIgnoreImageNotFound(c *check.C) {
+	err := RemoveAppImages(context.TODO(), "test")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRegistryRemoveAppImagesErrorErrDeleteDisabled(c *check.C) {
+	fakeApp := provisiontest.NewFakeApp("test", "go", 0)
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
+		App:     fakeApp,
+		EventID: primitive.NewObjectID().Hex(),
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	s.server.SetStorageDelete(false)
-	err := RemoveAppImages(context.TODO(), "test", s.cluster)
+	err = RemoveAppImages(context.TODO(), "test")
 	c.Assert(errors.Cause(err), check.Equals, ErrDeleteDisabled)
 }
 
 func (s *S) TestRegistryRemoveAppImages(c *check.C) {
+	for i := 1; i <= 2; i++ {
+		fakeApp := provisiontest.NewFakeApp("test", "go", 0)
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
+			App:     fakeApp,
+			EventID: primitive.NewObjectID().Hex(),
+		})
+		c.Assert(err, check.IsNil)
+		err = version.CommitBaseImage()
+		c.Assert(err, check.IsNil)
+		err = version.CommitSuccessful()
+		c.Assert(err, check.IsNil)
+	}
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
-	err := RemoveAppImages(context.TODO(), "test", s.cluster)
+	err := RemoveAppImages(context.TODO(), "test")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)

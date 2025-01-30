@@ -36,6 +36,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -47,11 +48,13 @@ type S struct {
 	user        *auth.User
 	team        string
 	mockService servicemock.MockService
+	cluster     *provisionTypes.Cluster
 }
 
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "app_image_gc_tests")
@@ -64,6 +67,13 @@ func (s *S) SetUpSuite(c *check.C) {
 
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = auth.ManagedScheme(native.NativeScheme{})
+	s.cluster = &provisionTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+	}
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -97,6 +107,13 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
+	s.mockService.Cluster.OnFindByName = func(name string) (*provisionTypes.Cluster, error) {
+		c.Assert(name, check.Equals, s.cluster.Name)
+		return nil, provisionTypes.ErrNoCluster
+	}
+	s.mockService.Cluster.OnList = func() ([]provisionTypes.Cluster, error) {
+		return []provisionTypes.Cluster{*s.cluster}, nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -159,6 +176,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(srv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
 	defer srv.Close()
@@ -168,7 +186,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 	gc.start()
 	err := gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
-	c.Assert(regDeleteCalls, check.DeepEquals, []string{
+	expectedCalls := []string{
 		"/v2/tsuru/app-myapp/manifests/v0",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0",
 		"/v2/tsuru/app-myapp/manifests/v1",
@@ -219,7 +237,10 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v10-builder",
 		"/v2/tsuru/app-myapp/manifests/v11-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11-builder",
-	})
+	}
+	sort.Strings(regDeleteCalls)
+	sort.Strings(expectedCalls)
+	c.Assert(regDeleteCalls, check.DeepEquals, expectedCalls)
 	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(versions.Versions), check.Equals, 0)
@@ -244,6 +265,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
@@ -329,6 +351,7 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:gc:dry-run", true)
@@ -410,6 +433,7 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
@@ -445,6 +469,7 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 		http.Error(w, "Unavailable", http.StatusInternalServerError)
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
@@ -487,6 +512,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
@@ -567,6 +593,7 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 		regDeleteCalls++
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
@@ -602,6 +629,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host}
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
