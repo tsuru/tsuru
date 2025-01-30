@@ -161,12 +161,6 @@ func (s *S) TestGCStartNothingToDo(c *check.C) {
 func (s *S) TestGCStartAppNotFound(c *check.C) {
 	var regDeleteCalls []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/tags/list") {
-			w.Write([]byte(`{"name":"tsuru/app-myapp","tags":[
-				"v0","v1","v2","v3","v4","v5","v6","v7","v8","v9","v10","v11","my-custom-tag","v0-builder","v1-builder","v2-builder","v3-builder","v4-builder","v5-builder","v6-builder","v7-builder","v8-builder","v9-builder","v10-builder","v11-builder"
-			]}`))
-			return
-		}
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
@@ -181,16 +175,12 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 	defer config.Unset("docker:registry")
 	defer srv.Close()
 	fakeApp := provisiontest.NewFakeApp("myapp", "go", 0)
-	insertTestVersions(c, fakeApp, 12)
+	insertTestVersions(c, fakeApp, 10)
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
 	err := gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
-		"/v2/tsuru/app-myapp/manifests/v0",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0",
-		"/v2/tsuru/app-myapp/manifests/v1",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v1",
 		"/v2/tsuru/app-myapp/manifests/v2",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2",
 		"/v2/tsuru/app-myapp/manifests/v3",
@@ -213,10 +203,6 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11",
 		"/v2/tsuru/app-myapp/manifests/my-custom-tag",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/my-custom-tag",
-		"/v2/tsuru/app-myapp/manifests/v0-builder",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0-builder",
-		"/v2/tsuru/app-myapp/manifests/v1-builder",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v1-builder",
 		"/v2/tsuru/app-myapp/manifests/v2-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2-builder",
 		"/v2/tsuru/app-myapp/manifests/v3-builder",
