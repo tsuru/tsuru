@@ -33,6 +33,7 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -114,6 +115,10 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Cluster.OnList = func() ([]provisionTypes.Cluster, error) {
 		return []provisionTypes.Cluster{*s.cluster}, nil
 	}
+	s.mockService.App.OnRegistry = func(app *appTypes.App) (imgTypes.ImageRegistry, error) {
+		registry := s.cluster.CustomData["registry"]
+		return imgTypes.ImageRegistry(registry), nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -170,9 +175,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(srv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer srv.Close()
 	fakeApp := provisiontest.NewFakeApp("myapp", "go", 0)
 	insertTestVersions(c, fakeApp, 10)
@@ -251,11 +254,9 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
 	insertTestVersions(c, a, 12)
 
 	gc := &imgGC{once: &sync.Once{}}
@@ -337,13 +338,11 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
 	config.Set("docker:gc:dry-run", true)
-	config.Set("docker:registry", u.Host)
 	defer config.Set("docker:gc:dry-run", false)
-	defer config.Unset("docker:registry")
 
 	now := time.Now()
 
@@ -419,11 +418,9 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
 	insertTestVersions(c, a, 11)
 
 	gc := &imgGC{once: &sync.Once{}}
@@ -455,11 +452,9 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 		http.Error(w, "Unavailable", http.StatusInternalServerError)
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
 	insertTestVersions(c, a, 11)
 
 	gc := &imgGC{once: &sync.Once{}}
@@ -498,12 +493,10 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
-	config.Set("docker:registry", u.Host)
 	config.Set("docker:gc:dry-run", true)
-	defer config.Unset("docker:registry")
 	defer config.Set("docker:gc:dry-run", false)
 	insertTestVersions(c, a, 12)
 
@@ -579,11 +572,9 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 		regDeleteCalls++
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
 	insertTestVersions(c, a, 5)
 
 	gc := &imgGC{once: &sync.Once{}}
@@ -615,11 +606,9 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	u, _ := url.Parse(registrySrv.URL)
-	s.cluster.CustomData = map[string]string{"registry": u.Host}
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
 	defer registrySrv.Close()
 
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
 	insertTestVersions(c, a, 12)
 
 	nGoroutines := 10
