@@ -14,26 +14,44 @@ import (
 	registrytest "github.com/tsuru/tsuru/registry/testing"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
 type PlatformSuite struct {
 	builder     *builder.MockBuilder
 	mockService servicemock.MockService
+	cluster     *provision.Cluster
+	registry    *registrytest.RegistryServer
 }
 
 var _ = check.Suite(&PlatformSuite{})
 
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
+	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "platform_tests")
+	s.registry, err = registrytest.NewServer("127.0.0.1:0")
+	s.cluster = &provision.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+		CustomData:  map[string]string{"registry": s.registry.Addr()},
+	}
+	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 }
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
+	s.registry.Stop()
 	storagev2.ClearAllCollections(nil)
+}
+
+func (s *PlatformSuite) TearDownTest(c *check.C) {
+	s.registry.Reset()
 }
 
 func (s *PlatformSuite) SetUpTest(c *check.C) {
@@ -47,6 +65,13 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	}
 	s.mockService.PlatformImage.OnAppendImages = func(name string, versions int, images []string) error {
 		return nil
+	}
+	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
+		c.Assert(name, check.Equals, s.cluster.Name)
+		return nil, provision.ErrNoCluster
+	}
+	s.mockService.Cluster.OnList = func() ([]provision.Cluster, error) {
+		return []provision.Cluster{*s.cluster}, nil
 	}
 }
 
@@ -480,31 +505,24 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 		},
 	}
 
-	registry, err := registrytest.NewServer("127.0.0.1:0")
-	c.Assert(err, check.IsNil)
-	defer registry.Stop()
-	config.Set("registry", "docker")
-	defer config.Unset("registry")
-	config.Set("docker:registry", registry.Addr())
-	defer config.Unset("docker:registry")
-	registry.AddRepo(registrytest.Repository{Name: "tsuru/" + name, Tags: map[string]string{"v1": "abcdefg"}})
-	c.Assert(registry.Repos, check.HasLen, 1)
-	c.Assert(registry.Repos[0].Tags, check.HasLen, 1)
+	s.registry.AddRepo(registrytest.Repository{Name: "tsuru/" + name, Tags: map[string]string{"v1": "abcdefg"}})
+	c.Assert(s.registry.Repos, check.HasLen, 1)
+	c.Assert(s.registry.Repos[0].Tags, check.HasLen, 1)
 
 	s.mockService.PlatformImage.OnDeleteImages = func(name string) error {
 		return nil
 	}
 	s.mockService.PlatformImage.OnListImagesOrDefault = func(name string) ([]string, error) {
-		return []string{"tsuru/" + name + ":v1"}, nil
+		return []string{s.registry.Addr() + "/tsuru/" + name + ":v1"}, nil
 	}
-	err = ps.Remove(context.TODO(), "platform-doesnt-exist")
+	err := ps.Remove(context.TODO(), "platform-doesnt-exist")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
 
 	err = ps.Remove(context.TODO(), name)
 	c.Assert(err, check.IsNil)
-	c.Assert(registry.Repos, check.HasLen, 1)
-	c.Assert(registry.Repos[0].Tags, check.HasLen, 0)
+	c.Assert(s.registry.Repos, check.HasLen, 1)
+	c.Assert(s.registry.Repos[0].Tags, check.HasLen, 0)
 
 	err = ps.Remove(context.TODO(), "")
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)

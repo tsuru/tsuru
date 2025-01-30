@@ -737,21 +737,12 @@ func Delete(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 	if err != nil {
 		logErr("Unable to unbind app", err)
 	}
-	if prov != nil {
-		provisionerName := prov.GetName()
-		cluster, clusterErr := servicemanager.Cluster.FindByPool(ctx, provisionerName, app.Pool)
-		if clusterErr != nil && clusterErr != provTypes.ErrNoCluster {
-			log.Errorf("unable to get cluster name for app %s: %+v", appName, clusterErr)
-		}
-		if cluster != nil {
-			err = registry.RemoveAppImages(ctx, appName, cluster)
-			if err != nil {
-				log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
-			}
-		} else {
-			log.Errorf("unable to remove images for app %s: no cluster associated with the app", appName)
-		}
+
+	err = registry.RemoveAppImages(ctx, appName)
+	if err != nil {
+		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
+
 	err = servicemanager.AppVersion.DeleteVersions(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
