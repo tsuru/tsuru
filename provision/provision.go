@@ -22,7 +22,6 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
-	"github.com/tsuru/tsuru/validation"
 
 	_ "github.com/tsuru/tsuru/router/api"
 )
@@ -286,38 +285,6 @@ func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a *appTypes.App) (int, 
 	}
 
 	return cpu, nil
-}
-
-func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a *appTypes.App) error {
-	if s.MinUnits == 0 {
-		return errors.New("minimum units must be greater than 0")
-	}
-	if s.MaxUnits <= s.MinUnits {
-		return errors.New("maximum units must be greater than minimum units")
-	}
-	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
-		return errors.New("maximum units cannot be greater than quota limit")
-	}
-	if s.AverageCPU == "" && len(s.Schedules) == 0 && len(s.Prometheus) == 0 {
-		return errors.New("you have to configure at least one trigger between cpu, schedule and prometheus")
-	}
-	if s.AverageCPU != "" {
-		_, err := CPUValueOfAutoScaleSpec(s, a)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, prometheus := range s.Prometheus {
-		if !validation.ValidateName(prometheus.Name) {
-			return fmt.Errorf("\"%s\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter", prometheus.Name)
-		}
-
-		if prometheus.Threshold <= 0 {
-			return fmt.Errorf("prometheus threshold of name %q must be greater than 0", prometheus.Name)
-		}
-	}
-	return nil
 }
 
 type AutoScaleProvisioner interface {
