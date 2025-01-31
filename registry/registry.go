@@ -227,8 +227,8 @@ request:
 			if exp := respAuth.IssuedAt.Add(time.Duration(float64(respAuth.ExpiresIn)*0.9) * time.Second); time.Now().Before(exp) {
 				r.expires = exp
 			}
-			r.token = respAuth.AccessToken
-			continue request
+			r.token = respAuth.Token
+			goto request
 		}
 		if err != nil {
 			return nil, err
