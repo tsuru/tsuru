@@ -148,6 +148,49 @@ func (s *S) TestRegistryRemoveAppImages(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
 }
 
+func (s *S) TestRegistryRemoveAppImagesDetermined(c *check.C) {
+	for i := 1; i <= 2; i++ {
+		fakeApp := provisiontest.NewFakeApp("test", "go", 0)
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
+			App:     fakeApp,
+			EventID: primitive.NewObjectID().Hex(),
+		})
+		c.Assert(err, check.IsNil)
+		err = version.CommitBaseImage()
+		c.Assert(err, check.IsNil)
+		err = version.CommitSuccessful()
+		c.Assert(err, check.IsNil)
+	}
+	for i := 1; i <= 2; i++ {
+		fakeApp := provisiontest.NewFakeApp("not-removed", "go", 0)
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
+			App:     fakeApp,
+			EventID: primitive.NewObjectID().Hex(),
+		})
+		c.Assert(err, check.IsNil)
+		err = version.CommitBaseImage()
+		c.Assert(err, check.IsNil)
+		err = version.CommitSuccessful()
+		c.Assert(err, check.IsNil)
+	}
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "test1", "v2": "test2"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-not-removed", Tags: map[string]string{"v1": "no-remove1", "v2": "no-remove2"}})
+	c.Assert(s.server.Repos, check.HasLen, 2)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
+	c.Assert(s.server.Repos[1].Tags, check.HasLen, 2)
+	c.Assert(s.server.Repos[0].Tags["v1"], check.Equals, "test1")
+	c.Assert(s.server.Repos[0].Tags["v2"], check.Equals, "test2")
+	c.Assert(s.server.Repos[1].Tags["v1"], check.Equals, "no-remove1")
+	c.Assert(s.server.Repos[1].Tags["v2"], check.Equals, "no-remove2")
+	err := RemoveAppImages(context.TODO(), "test")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.server.Repos, check.HasLen, 2)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
+	c.Assert(s.server.Repos[1].Tags, check.HasLen, 2)
+	c.Assert(s.server.Repos[1].Tags["v1"], check.Equals, "no-remove1")
+	c.Assert(s.server.Repos[1].Tags["v2"], check.Equals, "no-remove2")
+}
+
 func (s *S) TestRegistryRemoveImage(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
@@ -160,6 +203,19 @@ func (s *S) TestRegistryRemoveImage(c *check.C) {
 
 func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
+	encoded := base64.StdEncoding.EncodeToString([]byte("user:pwd"))
+	s.cluster.CustomData["docker-config-json"] = `{"auths": {"` + s.server.Addr() + `": {"auth": ` + strconv.Quote(encoded) + `}}}`
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
+}
+
+func (s *S) TestRegistryRemoveImageWithAuthToken(c *check.C) {
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd", Token: "mytoken", Expire: 30})
+	s.server.SetTokenAuth(true)
 	encoded := base64.StdEncoding.EncodeToString([]byte("user:pwd"))
 	s.cluster.CustomData["docker-config-json"] = `{"auths": {"` + s.server.Addr() + `": {"auth": ` + strconv.Quote(encoded) + `}}}`
 	c.Assert(s.server.Repos, check.HasLen, 1)
