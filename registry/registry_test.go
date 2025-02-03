@@ -215,7 +215,20 @@ func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
 
 func (s *S) TestRegistryRemoveImageWithAuthToken(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd", Token: "mytoken", Expire: 30})
-	s.server.SetTokenAuth(true)
+	s.server.SetTokenAuth(true, false)
+	encoded := base64.StdEncoding.EncodeToString([]byte("user:pwd"))
+	s.cluster.CustomData["docker-config-json"] = `{"auths": {"` + s.server.Addr() + `": {"auth": ` + strconv.Quote(encoded) + `}}}`
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
+}
+
+func (s *S) TestRegistryRemoveImageWithAuthExpiredRenewToken(c *check.C) {
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd", Token: "mytoken", Expire: 30})
+	s.server.SetTokenAuth(true, true)
 	encoded := base64.StdEncoding.EncodeToString([]byte("user:pwd"))
 	s.cluster.CustomData["docker-config-json"] = `{"auths": {"` + s.server.Addr() + `": {"auth": ` + strconv.Quote(encoded) + `}}}`
 	c.Assert(s.server.Repos, check.HasLen, 1)

@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -46,11 +47,13 @@ type RegistryServer struct {
 	reposLock     sync.RWMutex
 	storageDelete bool
 	tokenAuth     bool
+	tokenRenew    bool
 }
 
 type TokenResponse struct {
 	Token     string `json:"token"`
 	ExpiresIn int    `json:"expires_in"`
+	IssuedAt  string `json:"issued_at"`
 }
 
 // NewServer returns a new instance of the fake server.
@@ -100,8 +103,9 @@ func (s *RegistryServer) SetStorageDelete(sd bool) {
 	s.reposLock.Unlock()
 }
 
-func (s *RegistryServer) SetTokenAuth(enabled bool) {
+func (s *RegistryServer) SetTokenAuth(enabled bool, renew bool) {
 	s.tokenAuth = enabled
+	s.tokenRenew = renew
 }
 
 // ServeHTTP handler HTTP requests, dealing with prepared failures before
@@ -158,7 +162,13 @@ func (s *RegistryServer) getToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := TokenResponse{Token: repo.Token, ExpiresIn: repo.Expire}
+	issued_at := time.Now().Format(time.RFC3339)
+	if s.tokenRenew {
+		issued_at = "2017-08-29T00:00:00Z"
+		s.tokenRenew = false
+	}
+
+	response := TokenResponse{Token: repo.Token, ExpiresIn: repo.Expire, IssuedAt: issued_at}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
