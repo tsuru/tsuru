@@ -83,6 +83,7 @@ const (
 	buildServiceTLSSkipVerify     = "build-service-tls-skip-verify"
 	jobEventCreationKey           = "job-event-creation"
 	topologySpreadConstraintsKey  = "topology-spread-constraints"
+	debugContainerImage           = "debug-container-image"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -118,6 +119,7 @@ var (
 		buildServiceTLSSkipVerify:     "Whether should skip certificate chain validation",
 		jobEventCreationKey:           "Enable k8s event data tracking cross-referencing with Jobs and send them to tsuru database",
 		topologySpreadConstraintsKey:  "Enable topology spread constraints for apps",
+		debugContainerImage:           "Image used to create debug containers (Ephemeral Containers)",
 	}
 )
 
@@ -724,4 +726,12 @@ func forEachCluster(ctx context.Context, fn func(client *ClusterClient) error) e
 		return errors
 	}
 	return nil
+}
+
+func (c *ClusterClient) DebugContainerImage() string {
+	debugContainerImage := c.configForContext("", debugContainerImage)
+	if debugContainerImage == "" {
+		return "nicolaka/netshoot"
+	}
+	return debugContainerImage
 }

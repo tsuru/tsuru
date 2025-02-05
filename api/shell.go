@@ -158,6 +158,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	var term *terminal.Terminal
 	unitID := r.URL.Query().Get("unit")
 	isolated, _ := strconv.ParseBool(r.URL.Query().Get("isolated"))
+	debug, _ := strconv.ParseBool(r.URL.Query().Get("debug"))
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	clientTerm := r.URL.Query().Get("term")
@@ -220,6 +221,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Height: height,
 		Units:  unitsForShell(ctx, a, unitID, isolated),
 		Term:   clientTerm,
+		Debug:  debug,
 	}
 	err = app.Shell(ctx, a, opts)
 	if err != nil {

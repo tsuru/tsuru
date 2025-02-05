@@ -1119,6 +1119,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(ctx context.Context, opts provisi
 		stdout:   opts.Stdout,
 		stderr:   opts.Stderr,
 		stdin:    opts.Stdin,
+		debug:    opts.Debug,
 		termSize: size,
 		tty:      opts.Stdin != nil,
 	}

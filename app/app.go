@@ -1252,6 +1252,7 @@ func run(ctx context.Context, app *appTypes.App, cmd string, w io.Writer, args p
 		Stdout: w,
 		Stderr: w,
 		Cmds:   cmdsForExec(cmd),
+		Debug:  args.Debug,
 	}
 	units, err := AppUnits(ctx, app)
 	if err != nil {
