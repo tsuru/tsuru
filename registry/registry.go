@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/servicemanager"
-	"github.com/tsuru/tsuru/types/provision"
 )
 
 type dockerRegistry struct {
@@ -34,7 +33,6 @@ type dockerRegistry struct {
 	client      *http.Client
 	token       string
 	expires     time.Time
-	cluster     *provision.Cluster
 	authConfig  dockerConfigTypes.AuthConfig
 	authHeaders http.Header
 }
@@ -181,59 +179,62 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 			return nil, err
 		}
 	}
+	max_tries := 5
 request:
-	for _, scheme := range []string{"https", "http"} {
-		endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
-		var req *http.Request
-		req, err = http.NewRequest(method, endpoint, nil)
-		if err != nil {
-			return nil, err
-		}
-		if ctx != nil {
-			req = req.WithContext(ctx)
-		}
-		req.Header = http.Header{}
-		for k, v := range headers {
-			req.Header.Set(k, v)
-		}
-		r.fillAuthCredentials(req)
-		resp, err = r.client.Do(req)
-		if _, ok := err.(net.Error); ok {
-			continue
-		}
-		if resp.StatusCode == http.StatusUnauthorized && resp.Header.Get("WWW-Authenticate") != "" && r.checkTokenIsValidForRenew() {
-			to := auth.TokenOptions{}
-			to.Username = r.authConfig.Username
-			to.Secret = r.authConfig.Password
-			challenges := auth.ParseAuthHeader(resp.Header)
-			for _, c := range challenges {
-				if c.Scheme == auth.BearerAuth {
-					to.Realm = c.Parameters["realm"]
-					to.Service = c.Parameters["service"]
-					to.Scopes = append(to.Scopes, c.Parameters["scope"])
+	for i := 0; i < max_tries; i++ {
+		for _, scheme := range []string{"https", "http"} {
+			endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
+			var req *http.Request
+			req, err = http.NewRequest(method, endpoint, nil)
+			if err != nil {
+				return nil, err
+			}
+			if ctx != nil {
+				req = req.WithContext(ctx)
+			}
+			req.Header = http.Header{}
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
+			r.fillAuthCredentials(req)
+			resp, err = r.client.Do(req)
+			if _, ok := err.(net.Error); ok {
+				continue
+			}
+			if resp.StatusCode == http.StatusUnauthorized && resp.Header.Get("WWW-Authenticate") != "" && r.checkTokenIsValidForRenew() {
+				to := auth.TokenOptions{}
+				to.Username = r.authConfig.Username
+				to.Secret = r.authConfig.Password
+				challenges := auth.ParseAuthHeader(resp.Header)
+				for _, c := range challenges {
+					if c.Scheme == auth.BearerAuth {
+						to.Realm = c.Parameters["realm"]
+						to.Service = c.Parameters["service"]
+						to.Scopes = append(to.Scopes, c.Parameters["scope"])
+					}
 				}
+				to.Scopes = parseScopes(to.Scopes).normalize()
+				respAuth, tokenErr := auth.FetchToken(ctx, r.client, req.Header, to)
+				if tokenErr != nil {
+					return nil, tokenErr
+				}
+				if respAuth.IssuedAt.IsZero() {
+					respAuth.IssuedAt = time.Now()
+				}
+				if respAuth.ExpiresIn == 0 {
+					respAuth.ExpiresIn = defaultExpiration
+				}
+				if exp := respAuth.IssuedAt.Add(time.Duration(float64(respAuth.ExpiresIn)*0.9) * time.Second); time.Now().Before(exp) {
+					r.expires = exp
+				}
+				r.token = respAuth.Token
+				continue request
 			}
-			to.Scopes = parseScopes(to.Scopes).normalize()
-			respAuth, tokenErr := auth.FetchToken(ctx, r.client, req.Header, to)
-			if tokenErr != nil {
-				return nil, tokenErr
+			if err != nil {
+				return nil, err
 			}
-			if respAuth.IssuedAt.IsZero() {
-				respAuth.IssuedAt = time.Now()
-			}
-			if respAuth.ExpiresIn == 0 {
-				respAuth.ExpiresIn = defaultExpiration
-			}
-			if exp := respAuth.IssuedAt.Add(time.Duration(float64(respAuth.ExpiresIn)*0.9) * time.Second); time.Now().Before(exp) {
-				r.expires = exp
-			}
-			r.token = respAuth.Token
-			goto request
+			return resp, nil
 		}
-		if err != nil {
-			return nil, err
-		}
-		return resp, nil
 	}
 	return nil, err
 }
@@ -258,36 +259,22 @@ func (r *dockerRegistry) checkTokenIsValidForRenew() bool {
 func (r *dockerRegistry) registryAuth(ctx context.Context, image string) error {
 	var err error
 	var config *configfile.ConfigFile
-	if r.cluster != nil {
-		_, registryExists := r.cluster.CustomData["registry"]
-		dockerConfigJson, dockerConfigExists := r.cluster.CustomData["docker-config-json"]
-		if registryExists && dockerConfigExists {
+	clusters, clusterListErr := servicemanager.Cluster.List(ctx)
+	if err != clusterListErr {
+		return clusterListErr
+	}
+	for _, cluster := range clusters {
+		clusterRegistry, registryExists := cluster.CustomData["registry"]
+		dockerConfigJson, dockerConfigExists := cluster.CustomData["docker-config-json"]
+		if registryExists && dockerConfigExists && strings.Contains(image, clusterRegistry) {
 			config, err = dockerConfig.LoadFromReader(strings.NewReader(dockerConfigJson))
-		}
-		if err != nil {
-			return err
-		}
-		if !dockerConfigExists {
-			return nil
-		}
-	} else {
-		clusters, clusterListErr := servicemanager.Cluster.List(ctx)
-		if err != clusterListErr {
-			return clusterListErr
-		}
-		for _, cluster := range clusters {
-			clusterRegistry, registryExists := cluster.CustomData["registry"]
-			dockerConfigJson, dockerConfigExists := cluster.CustomData["docker-config-json"]
-			if registryExists && dockerConfigExists && strings.Contains(image, clusterRegistry) {
-				config, err = dockerConfig.LoadFromReader(strings.NewReader(dockerConfigJson))
-				if err != nil {
-					return err
-				}
+			if err != nil {
+				return err
 			}
 		}
-		if config == nil {
-			return nil
-		}
+	}
+	if config == nil {
+		return nil
 	}
 	r.authConfig, err = config.GetAuthConfig(r.registry)
 	if err != nil {
