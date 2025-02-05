@@ -1,3 +1,7 @@
+// Copyright 2025 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package api
 
 import (
@@ -88,13 +92,6 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: fmt.Sprintf("unable to validate autoscale spec: %v", err),
-		}
-	}
-	err = provision.ValidateAutoScaleDownSpec(&spec)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("unable to validate autoscale down spec: %v", err),
 		}
 	}
 	evt, err := event.New(ctx, &event.Opts{
