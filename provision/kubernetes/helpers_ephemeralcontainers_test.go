@@ -35,19 +35,19 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 		{
 			input: Input{
 				debugContainerName:  "tsuru-debugger",
-				debugContainerImage: "nicolaka/netshoot",
+				debugContainerImage: "tsuru/netshoot",
 				customData:          map[string]string{},
 			},
 			expected: expected{
 				shouldCreateEphemeralContainer: true,
 				debugContainerName:             "tsuru-debugger",
-				debugContainerImage:            "nicolaka/netshoot",
+				debugContainerImage:            "tsuru/netshoot",
 			},
 		},
 		{
 			input: Input{
 				debugContainerName:  "tsuru-debugger",
-				debugContainerImage: "nicolaka/netshoot",
+				debugContainerImage: "tsuru/netshoot",
 				customData:          map[string]string{"debug-container-image": "tsuru/debugger"},
 			},
 			expected: expected{
@@ -59,13 +59,13 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 		{
 			input: Input{
 				debugContainerName:  "tsuru-debugger",
-				debugContainerImage: "nicolaka/netshoot",
+				debugContainerImage: "tsuru/netshoot",
 				customData:          map[string]string{"debug-container-image": "tsuru/debugger"},
 				ephemeralContainer: []apiv1.EphemeralContainer{
 					{
 						EphemeralContainerCommon: apiv1.EphemeralContainerCommon{
 							Name:  "tsuru-debugger",
-							Image: "nicolaka/netshoot",
+							Image: "tsuru/netshoot",
 						},
 					},
 				},
@@ -78,7 +78,7 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 		{
 			input: Input{
 				debugContainerName:  "tsuru-debugger",
-				debugContainerImage: "nicolaka/netshoot",
+				debugContainerImage: "tsuru/netshoot",
 				ephemeralContainer: []apiv1.EphemeralContainer{
 					{
 						EphemeralContainerCommon: apiv1.EphemeralContainerCommon{
@@ -91,7 +91,7 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 			expected: expected{
 				shouldCreateEphemeralContainer: true,
 				debugContainerName:             "tsuru-debugger",
-				debugContainerImage:            "nicolaka/netshoot",
+				debugContainerImage:            "tsuru/netshoot",
 			},
 		},
 	}

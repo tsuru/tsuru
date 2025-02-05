@@ -731,7 +731,7 @@ func forEachCluster(ctx context.Context, fn func(client *ClusterClient) error) e
 func (c *ClusterClient) DebugContainerImage() string {
 	debugContainerImage := c.configForContext("", debugContainerImage)
 	if debugContainerImage == "" {
-		return "nicolaka/netshoot"
+		return "tsuru/netshoot"
 	}
 	return debugContainerImage
 }
