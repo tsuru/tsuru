@@ -202,6 +202,9 @@ request:
 				continue
 			}
 			if resp.StatusCode == http.StatusUnauthorized && resp.Header.Get("WWW-Authenticate") != "" && r.checkTokenIsValidForRenew() {
+				if resp.Body != nil {
+					resp.Body.Close()
+				}
 				to := auth.TokenOptions{}
 				to.Username = r.authConfig.Username
 				to.Secret = r.authConfig.Password
