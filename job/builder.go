@@ -45,7 +45,6 @@ func buildPlan(ctx context.Context, job *jobTypes.Job) error {
 }
 
 func buildTsuruInfo(job *jobTypes.Job, user *authTypes.User) {
-	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
 }
 

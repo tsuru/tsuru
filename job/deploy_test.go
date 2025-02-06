@@ -21,7 +21,6 @@ func (s *S) TestJobDeployWithImage(c *check.C) {
 		Name:      "my-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -57,7 +56,6 @@ func (s *S) TestJobDeployWithDockerfile(c *check.C) {
 		Name:      "my-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{

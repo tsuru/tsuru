@@ -1495,7 +1495,6 @@ func (s *DeploySuite) TestJobDeployHandler(c *check.C) {
 		Name:      "myjob",
 		Pool:      "pool",
 		TeamOwner: s.team.Name,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
@@ -1562,7 +1561,6 @@ func (s *DeploySuite) TestJobDeployWithDockerfile(c *check.C) {
 		Name:      "myjob",
 		Pool:      "pool",
 		TeamOwner: s.team.Name,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
@@ -1624,7 +1622,6 @@ func (s *DeploySuite) TestJobDeploySetBothFieldsImageAndDockerfile(c *check.C) {
 		Name:      "myjob",
 		Pool:      "pool",
 		TeamOwner: s.team.Name,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
@@ -1696,7 +1693,6 @@ func (s *DeploySuite) TestJobDeployShouldReturnForbiddenWhenUserDoesNotHaveAcces
 		Name:      "myjob",
 		Pool:      "pool",
 		TeamOwner: s.team.Name,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
@@ -1738,7 +1734,6 @@ func (s *DeploySuite) TestJobDeployFailed(c *check.C) {
 		Name:      "myjob",
 		Pool:      "pool",
 		TeamOwner: s.team.Name,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
