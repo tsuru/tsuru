@@ -1006,7 +1006,8 @@ func jobTarget(jobName string) eventTypes.Target {
 }
 
 func contextsForJob(job *jobTypes.Job) []permTypes.PermissionContext {
-	return append(permission.Contexts(permTypes.CtxTeam, job.Teams),
+	return append([]permTypes.PermissionContext{},
+		permission.Context(permTypes.CtxTeam, job.TeamOwner),
 		permission.Context(permTypes.CtxJob, job.Name),
 		permission.Context(permTypes.CtxPool, job.Pool),
 	)

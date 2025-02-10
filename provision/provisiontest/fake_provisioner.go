@@ -56,7 +56,6 @@ func NewFakeJob(name, pool, teamOwner string) *jobTypes.Job {
 		Name:      name,
 		Pool:      pool,
 		TeamOwner: teamOwner,
-		Teams:     []string{teamOwner},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{

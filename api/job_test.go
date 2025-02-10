@@ -222,7 +222,6 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
-		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Owner:     "majortom@groundcontrol.com",
 		Plan: appTypes.Plan{
@@ -319,7 +318,6 @@ func (s *S) TestCreateManualJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
-		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Owner:     "majortom@groundcontrol.com",
 		Plan: appTypes.Plan{
@@ -482,7 +480,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedJob := jobTypes.Job{
 		Name:      j1.Name,
-		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Owner:     "super-root-toremove@groundcontrol.com",
 		Plan: appTypes.Plan{
@@ -1233,7 +1230,6 @@ func (s *S) TestJobInfo(c *check.C) {
 	c.Assert(s.team.Name, check.DeepEquals, result.Job.TeamOwner)
 	c.Assert(j1.Pool, check.DeepEquals, result.Job.Pool)
 	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
-	c.Assert([]string{s.team.Name}, check.DeepEquals, result.Job.Teams)
 	c.Assert(s.user.Email, check.DeepEquals, result.Job.Owner)
 	c.Assert([]bindTypes.ServiceInstanceBind{
 		{Service: "mysql", Instance: "j1sql", Plan: ""},

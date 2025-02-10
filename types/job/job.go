@@ -21,7 +21,6 @@ import (
 // it also holds a JobSpec value that defines how the Job is supposed to be run
 type Job struct {
 	Name        string            `json:"name"`
-	Teams       []string          `json:"teams"`
 	TeamOwner   string            `json:"teamOwner"`
 	Owner       string            `json:"owner"`
 	Plan        appTypes.Plan     `json:"plan"`

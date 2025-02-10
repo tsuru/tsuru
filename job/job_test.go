@@ -29,7 +29,6 @@ func (s *S) TestGetByName(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			ActiveDeadlineSeconds: func() *int64 {
@@ -55,7 +54,6 @@ func (s *S) TestCreateCronjob(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -81,7 +79,6 @@ func (s *S) TestCreateCronjobWithK8sBuilder(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -106,7 +103,6 @@ func (s *S) TestCreateManualJob(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Manual: true,
 			Container: jobTypes.ContainerInfo{
@@ -135,7 +131,6 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -159,7 +154,6 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -199,7 +193,6 @@ func (s *S) TestIncreaseDecreaseQuotaForJob(c *check.C) {
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
 		Owner:     s.user.Email,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
@@ -225,7 +218,6 @@ func (s *S) TestJobUnits(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -256,7 +248,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -286,7 +277,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
@@ -310,7 +300,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -340,7 +329,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      app.Plan{Name: "c2m1", Memory: 1024, CPUMilli: 2000},
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
@@ -364,7 +352,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -385,7 +372,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * 31 2 *",
 					Manual:   true,
@@ -410,7 +396,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * 31 2 *",
 					Manual:   true,
@@ -436,7 +421,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Manual:   false,
@@ -461,7 +445,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -485,7 +468,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -509,7 +491,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -529,7 +510,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -553,7 +533,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -572,7 +551,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -596,7 +574,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -617,7 +594,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -639,7 +615,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -660,7 +635,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -681,7 +655,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -708,7 +681,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -733,7 +705,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -758,7 +729,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					// legacy way
@@ -784,7 +754,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -809,7 +778,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 				},
@@ -834,7 +802,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -859,7 +826,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Spec: jobTypes.JobSpec{
@@ -882,7 +848,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
 				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
@@ -928,7 +893,6 @@ func (s *S) TestTriggerCronShouldExecuteJob(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "@yearly",
 			Manual:   true,
@@ -955,7 +919,6 @@ func (s *S) TestList(c *check.C) {
 		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -968,7 +931,6 @@ func (s *S) TestList(c *check.C) {
 		Name:      "j2",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
 			Container: jobTypes.ContainerInfo{
@@ -991,7 +953,6 @@ func (s *S) TestGetEnvs(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
@@ -1024,7 +985,6 @@ func (s *S) TestGetEnvsWithServiceEnvs(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
@@ -1072,7 +1032,6 @@ func (s *S) TestJobEnvsWithServiceEnvConflict(c *check.C) {
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
@@ -1145,7 +1104,6 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		Name:      "job1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1158,7 +1116,6 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		Name:      "cronjob1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1200,7 +1157,6 @@ func (s *S) TestAddMultipleServiceInstancesEnvsToJob(c *check.C) {
 		Name:      "job1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1249,7 +1205,6 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		Name:      "job1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1267,7 +1222,6 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		Name:      "cronjob1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1311,7 +1265,6 @@ func (s *S) TestRemoveServiceInstanceEnvsNotFound(c *check.C) {
 		Name:      "job1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1349,7 +1302,6 @@ func (s *S) TestRemoveServiceEnvsNotFound(c *check.C) {
 		Name:      "job1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
@@ -1387,7 +1339,6 @@ func (s *S) TestRemoveInstanceMultipleServicesEnvs(c *check.C) {
 		Name:      "job1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
-		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
