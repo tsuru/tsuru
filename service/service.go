@@ -212,7 +212,7 @@ func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
 		models = append(models,
 			mongo.NewUpdateManyModel().
 				SetFilter(mongoBSON.M{field: oldName}).
-				SetUpdate(mongoBSON.M{"$push": mongoBSON.M{field: newName}}),
+				SetUpdate(mongoBSON.M{"$addToSet": mongoBSON.M{field: newName}}),
 
 			mongo.NewUpdateManyModel().
 				SetFilter(mongoBSON.M{field: oldName}).

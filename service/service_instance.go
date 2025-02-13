@@ -345,7 +345,7 @@ func (si *ServiceInstance) Grant(ctx context.Context, teamName string) error {
 	if err != nil {
 		return err
 	}
-	return si.updateData(ctx, mongoBSON.M{"$push": mongoBSON.M{"teams": team.Name}})
+	return si.updateData(ctx, mongoBSON.M{"$addToSet": mongoBSON.M{"teams": team.Name}})
 }
 
 func (si *ServiceInstance) Revoke(ctx context.Context, teamName string) error {
@@ -576,7 +576,7 @@ func RenameServiceInstanceTeam(ctx context.Context, oldName, newName string) err
 
 		mongo.NewUpdateManyModel().
 			SetFilter(mongoBSON.M{"teams": oldName}).
-			SetUpdate(mongoBSON.M{"$push": mongoBSON.M{"teams": newName}}),
+			SetUpdate(mongoBSON.M{"$addToSet": mongoBSON.M{"teams": newName}}),
 
 		mongo.NewUpdateManyModel().
 			SetFilter(mongoBSON.M{"teams": oldName}).
