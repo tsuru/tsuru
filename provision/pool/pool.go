@@ -430,7 +430,7 @@ func RenamePoolTeam(ctx context.Context, oldName, newName string) error {
 	}
 
 	_, err = collection.BulkWrite(ctx, []mongo.WriteModel{
-		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$push": mongoBSON.M{"values": newName}}),
+		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$addToSet": mongoBSON.M{"values": newName}}),
 		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$pull": mongoBSON.M{"values": oldName}}),
 	})
 
