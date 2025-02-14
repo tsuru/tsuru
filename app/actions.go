@@ -30,8 +30,10 @@ import (
 )
 
 var (
-	ErrAppAlreadyExists  = errors.New("there is already an app with this name")
-	ErrCNameDoesNotExist = errors.New("cname does not exist in app")
+	ErrAppAlreadyExists                    = errors.New("there is already an app with this name")
+	ErrCNameDoesNotExist                   = errors.New("cname does not exist in app")
+	ErrCertIssuerAlreadyExist              = errors.New("cert issuer already exist in app")           // new error to alert user if the cert issuer already exist
+	ErrCertIssuerNotFoundInPoolConstraints = errors.New("cert issuer not present in pool constraint") // new error to alert user if the cert issuer allowed by pool constraints
 )
 
 var reserveTeamApp = action.Action{
@@ -694,6 +696,46 @@ var checkSingleCNameExists = action.Action{
 		}
 
 		return cname, nil
+	},
+}
+
+// New action: Validate if issuer already exist in the cluster
+var checkCertIssuerAlreadyExists = action.Action{
+	Name: "issuer-already-exists",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		issuer := ctx.Params[2].(string)
+
+		// como checar se esse issuer existe no cluster?
+		// (talvez) usar o exemplo de acão "var removeCertIssuer = action.Action{"
+		// e adaptar para verificar se o issuer já existe no cluster não no mongo
+
+		// 2. se existir, retorna erro
+		exists := true
+		if exists {
+			return nil, ErrCertIssuerAlreadyExist
+		}
+		// 3. se não existir, retornar
+		return issuer, nil
+	},
+}
+
+// New action: Validate if cert issuer is alloewd by pool constraint
+var checkCertIssuerPoolConstraints = action.Action{
+	Name: "validate-issuer-constraint",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*appTypes.App)
+		certIssuer := ctx.Params[2].(string)
+
+		// 1. função de pool constraints para tipo cert-issuer
+
+		// 2. Se certIssuer não estiver na lista de cert-issuer permitidos, retornar erro
+		alloewd := true
+		if !alloewd {
+			return nil, ErrCertIssuerNotFoundInPoolConstraints
+		}
+
+		// 3. Se não houver constraints, retornar issuer
+		return certIssuer, nil
 	},
 }
 
