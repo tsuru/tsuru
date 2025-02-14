@@ -20,7 +20,7 @@ import (
 
 var (
 	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", validConstraintTypes)
-	validConstraintTypes     = []PoolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan, ConstraintTypeVolumePlan}
+	validConstraintTypes     = []PoolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan, ConstraintTypeVolumePlan, ConstraintTypeCertIssuer} // new pool constraint type for cert-issuers
 )
 
 type PoolConstraintType string
@@ -31,6 +31,7 @@ const (
 	ConstraintTypeService    = PoolConstraintType("service")
 	ConstraintTypePlan       = PoolConstraintType("plan")
 	ConstraintTypeVolumePlan = PoolConstraintType("volume-plan")
+	ConstraintTypeCertIssuer = PoolConstraintType("cert-issuer") // new pool constraint type for cert-issuers
 )
 
 type regexpCache struct {
