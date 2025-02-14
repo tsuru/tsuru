@@ -18,6 +18,9 @@ var (
 	ErrInvalidSchedule          = errors.New("invalid schedule")
 	ErrInvalidConcurrencyPolicy = errors.New("invalid concurrency policy, allowed values are: Allow, Forbid, Replace")
 	ErrInvalidDeployKind        = errors.New("invalid deploy kind")
+	ErrInvalidJobName           = errors.New("your job should have at most 40 " +
+		"characters, containing only lower case letters, numbers or dashes, " +
+		"starting with a letter.")
 )
 
 type JobCreationError struct {

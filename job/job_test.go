@@ -24,6 +24,30 @@ import (
 	"gopkg.in/check.v1"
 )
 
+func (s *S) TestCreateJobWithInvalidName(c *check.C) {
+	newJob := jobTypes.Job{
+		Name:      "123-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			ActiveDeadlineSeconds: func() *int64 {
+				i := int64(300)
+				return &i
+			}(),
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provisionTypes.DeployImage,
+			Image: "alpine:latest",
+		},
+	}
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
+	c.Assert(err, check.NotNil)
+	jobCreationErr := &jobTypes.JobCreationError{Job: newJob.Name}
+	jobCreationErr.Err = jobTypes.ErrInvalidJobName
+	c.Assert(err, check.DeepEquals, jobCreationErr)
+}
+
 func (s *S) TestGetByName(c *check.C) {
 	newJob := jobTypes.Job{
 		Name:      "some-job",

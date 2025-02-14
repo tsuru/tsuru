@@ -6,8 +6,8 @@ package job
 
 import (
 	"context"
+	"regexp"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -15,8 +15,9 @@ import (
 )
 
 func validateName(ctx context.Context, job *jobTypes.Job) error {
-	if job.Name == "" {
-		return errors.New("cronjob name can't be empty")
+	nameRegexp := regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)
+	if !nameRegexp.MatchString(job.Name) {
+		return jobTypes.ErrInvalidJobName
 	}
 	// check if the given name is already in the database
 	if _, err := servicemanager.Job.GetByName(ctx, job.Name); err == nil {
