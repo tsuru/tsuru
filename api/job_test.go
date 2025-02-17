@@ -375,7 +375,7 @@ func (s *S) TestCreateCronjobNoName(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"\": cronjob name can't be empty\n")
+	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"\": your job should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter.\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
