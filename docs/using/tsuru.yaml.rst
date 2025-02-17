@@ -52,8 +52,34 @@ tsuru supports the following hooks:
 * ``build``: this hook lists commands that will be run during deployment when the
   image is being generated.
 
+.. _yaml_processes:
 
-.. _yaml_healthcheck:
+Process Configurations
+======================
+
+You can declare each process of your app in the tsuru.yaml file.
+This is useful because you can use that to configure the command that will be used to run,
+the processes and also the healthcheck configurations for each process.
+
+.. highlight:: yaml
+
+::
+
+    processes:
+      - name: web
+        command: python app.py
+        healthcheck:
+          path: /
+          scheme: http
+      - name: web-secondary
+        command: python app2.py
+        healthcheck:
+          path: /
+          scheme: http
+
+* ``processes:name``: The name of the process. This field is mandatory.
+* ``processes:command``: The command that will be used to run the process. This field is mandatory.
+* ``processes:healthcheck``: The healthcheck configuration for the process. This field is optional, and will be described in more detail below.
 
 Healthcheck
 ===========
@@ -67,7 +93,7 @@ before switching the router to point to the new units, so your application will
 never be unresponsive. You can configure the maximum time to wait for the
 application to respond with the ``docker:healthcheck:max-time`` config.
 
-Health checks may also be used by the application router and by kubernetes, so
+Health checks may also be used by kubernetes, so
 you must ensure that the check is consistent to prevent units from being
 temporarily removed from the router.
 
@@ -120,10 +146,8 @@ Example of a command based healthcheck:
   empty string array. If ``healthcheck:path`` is set, this option will be ignored.
 * ``healthcheck:interval_seconds``: The interval in seconds between each active healthcheck
   call if
-  ``use_in_router`` is set to true. Defaults to 10 seconds.
 * ``healthcheck:force_restart``: Whether the unit should be restarted after ``allowed_failures``
   consecutive healthcheck failures. (Sets the liveness probe in the Pod.)
-
 
 .. _yaml_kubernetes:
 
