@@ -699,45 +699,51 @@ var checkSingleCNameExists = action.Action{
 	},
 }
 
-// New action: Validate if issuer already exist in the cluster
-var checkCertIssuerAlreadyExists = action.Action{
-	Name: "issuer-already-exists",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		issuer := ctx.Params[2].(string)
+// *New action: Validate if issuer already exist in the cluster
+// var checkCertIssuerAlreadyExists = action.Action{
+// 	Name: "validate-if-issuer-already-exists",
+// 	Forward: func(ctx action.FWContext) (action.Result, error) {
+// 		issuer := ctx.Params[2].(string)
+// 		// 1. how check the issuer in the cluster?
+// 		// ...
+// 		// 2. if the issuer already exists in the cluster
+// 		exists := false
+// 		if exists {
+// 			return nil, ErrCertIssuerAlreadyExist
+// 		}
+// 		// 3. if  dont, return issuer and nil to continue
+// 		return issuer, nil
+// 	},
+// }
 
-		// como checar se esse issuer existe no cluster?
-		// (talvez) usar o exemplo de acão "var removeCertIssuer = action.Action{"
-		// e adaptar para verificar se o issuer já existe no cluster não no mongo
-
-		// 2. se existir, retorna erro
-		exists := true
-		if exists {
-			return nil, ErrCertIssuerAlreadyExist
-		}
-		// 3. se não existir, retornar
-		return issuer, nil
-	},
-}
-
-// New action: Validate if cert issuer is alloewd by pool constraint
-var checkCertIssuerPoolConstraints = action.Action{
-	Name: "validate-issuer-constraint",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*appTypes.App)
-		certIssuer := ctx.Params[2].(string)
-
-		// 1. função de pool constraints para tipo cert-issuer
-
-		// 2. Se certIssuer não estiver na lista de cert-issuer permitidos, retornar erro
-		alloewd := true
-		if !alloewd {
-			return nil, ErrCertIssuerNotFoundInPoolConstraints
-		}
-
-		// 3. Se não houver constraints, retornar issuer
-		return certIssuer, nil
-	},
-}
+// *New action: Validate if issuer is allowed by app pool constraint
+// var checkCertIssuerPoolConstraints = action.Action{
+// 	Name: "validate-cert-issuer-constraint",
+// 	Forward: func(ctx action.FWContext) (action.Result, error) {
+// 		app := ctx.Params[0].(*appTypes.App)
+// 		issuer := ctx.Params[2].(string)
+// 		// 1. Get cert-issuer constraints from pool.
+// 		pool, err := pool.GetPoolByName(ctx.Context, app.Pool)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		certIssuerConstraints, err := pool.GetCertIssuers(ctx.Context)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		// 2. If there is no constraint, return issuer and nil to continue
+// 		if len(certIssuerConstraints) == 0 {
+// 			return issuer, nil
+// 		}
+// 		// 3. Validate the "issuer" string in the "certIssuerConstraints" slice.
+// 		for _, constraint := range certIssuerConstraints {
+// 			if constraint == issuer {
+// 				return issuer, nil
+// 			}
+// 		}
+// 		return nil, ErrCertIssuerNotFoundInPoolConstraints
+// 	},
+// }
 
 var saveCertIssuer = action.Action{
 	Name: "save-cert-issuer",
