@@ -109,18 +109,6 @@ func (p *Pool) GetTeams(ctx context.Context) ([]string, error) {
 	return nil, ErrPoolHasNoTeam
 }
 
-// uma nova função para cert-issuers constraits de um pool
-func (p *Pool) GetCertIssuers(ctx context.Context) ([]string, error) {
-	allowedValues, err := p.allowedValues(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if c := allowedValues[ConstraintTypeCertIssuer]; len(c) > 0 {
-		return c, nil
-	}
-	return nil, ErrPoolHasNoCertIssuer
-}
-
 func (p *Pool) GetRouters(ctx context.Context) ([]string, error) {
 	allowedValues, err := p.allowedValues(ctx)
 	if err != nil {
@@ -130,6 +118,17 @@ func (p *Pool) GetRouters(ctx context.Context) ([]string, error) {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoRouter
+}
+
+func (p *Pool) GetCertIssuers(ctx context.Context) ([]string, error) {
+	allowedValues, err := p.allowedValues(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if c := allowedValues[ConstraintTypeCertIssuer]; len(c) > 0 {
+		return c, nil
+	}
+	return nil, ErrPoolHasNoCertIssuer
 }
 
 func (p *Pool) GetVolumePlans(ctx context.Context) ([]string, error) {
@@ -276,11 +275,18 @@ func (p *Pool) allowedValues(ctx context.Context) (map[PoolConstraintType][]stri
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan, ConstraintTypeCertIssuer)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range constraints {
+		// for cert-issuers, we apply the constraint directly to the Kubernetes cluster.
+		// and there is no service on Tsuru to list them
+		if k == ConstraintTypeCertIssuer {
+			resolved[k] = v.Values
+			continue
+		}
+		// for other types, we apply the filtering logic here
 		names := resolved[k]
 		var validNames []string
 		for _, n := range names {
