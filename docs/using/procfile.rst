@@ -13,6 +13,10 @@ your applications.
 This document describes some of the more
 advances features of and the Procfile ecosystem.
 
+.. note::
+
+    Procfiles are currently being deprecated in favor of `tsuru.yaml` files.
+
 A `Procfile` should look like:
 
 .. highlight:: bash
