@@ -39,7 +39,7 @@ var (
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
-	ErrPoolHasNoCertIssuer            = errors.New("no cert-issuer found for pool") // new error for cert-issuers
+	ErrPoolHasNoCertIssuer            = errors.New("no cert-issuer found for pool")
 )
 
 const (
@@ -280,13 +280,11 @@ func (p *Pool) allowedValues(ctx context.Context) (map[PoolConstraintType][]stri
 		return nil, err
 	}
 	for k, v := range constraints {
-		// for cert-issuers, we apply the constraint directly to the Kubernetes cluster.
-		// and there is no service on Tsuru to list them
+		// for cert-issuers, we apply the constraint directly to the cluster provider. There is no service on Tsuru to list this constraint type
 		if k == ConstraintTypeCertIssuer {
 			resolved[k] = v.Values
 			continue
 		}
-		// for other types, we apply the filtering logic here
 		names := resolved[k]
 		var validNames []string
 		for _, n := range names {
