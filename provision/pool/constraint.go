@@ -31,7 +31,7 @@ const (
 	ConstraintTypeService    = PoolConstraintType("service")
 	ConstraintTypePlan       = PoolConstraintType("plan")
 	ConstraintTypeVolumePlan = PoolConstraintType("volume-plan")
-	ConstraintTypeCertIssuer = PoolConstraintType("cert-issuer") // new pool constraint type for cert-issuers
+	ConstraintTypeCertIssuer = PoolConstraintType("cert-issuer")
 )
 
 type regexpCache struct {
