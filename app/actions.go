@@ -30,8 +30,10 @@ import (
 )
 
 var (
-	ErrAppAlreadyExists  = errors.New("there is already an app with this name")
-	ErrCNameDoesNotExist = errors.New("cname does not exist in app")
+	ErrAppAlreadyExists                    = errors.New("there is already an app with this name")
+	ErrCNameDoesNotExist                   = errors.New("cname does not exist in app")
+	ErrCertIssuerAlreadyExist              = errors.New("cert issuer already exist in app")           // new error to alert user if the cert issuer already exist
+	ErrCertIssuerNotFoundInPoolConstraints = errors.New("cert issuer not present in pool constraint") // new error to alert user if the cert issuer allowed by pool constraints
 )
 
 var reserveTeamApp = action.Action{
@@ -696,6 +698,50 @@ var checkSingleCNameExists = action.Action{
 		return cname, nil
 	},
 }
+
+// var checkCertIssuerAlreadyExists = action.Action{
+// 	Name: "validate-if-issuer-already-exists",
+// 	Forward: func(ctx action.FWContext) (action.Result, error) {
+// 		issuer := ctx.Params[2].(string)
+// 		// 1. how check the issuer in the cluster?
+// 		// ...
+// 		// 2. if the issuer already exists in the cluster
+// 		exists := false
+// 		if exists {
+// 			return nil, ErrCertIssuerAlreadyExist
+// 		}
+// 		// 3. if  dont, return issuer and nil to continue
+// 		return issuer, nil
+// 	},
+// }
+
+// var checkCertIssuerPoolConstraints = action.Action{
+// 	Name: "validate-cert-issuer-constraint",
+// 	Forward: func(ctx action.FWContext) (action.Result, error) {
+// 		app := ctx.Params[0].(*appTypes.App)
+// 		issuer := ctx.Params[2].(string)
+// 		// 1. Get cert-issuer constraints from pool.
+// 		pool, err := pool.GetPoolByName(ctx.Context, app.Pool)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		certIssuerConstraints, err := pool.GetCertIssuers(ctx.Context)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		// 2. If there is no constraint, return issuer and nil to continue
+// 		if len(certIssuerConstraints) == 0 {
+// 			return issuer, nil
+// 		}
+// 		// 3. Validate the "issuer" string in the "certIssuerConstraints" slice.
+// 		for _, constraint := range certIssuerConstraints {
+// 			if constraint == issuer {
+// 				return issuer, nil
+// 			}
+// 		}
+// 		return nil, ErrCertIssuerNotFoundInPoolConstraints
+// 	},
+// }
 
 var saveCertIssuer = action.Action{
 	Name: "save-cert-issuer",

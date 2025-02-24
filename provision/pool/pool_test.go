@@ -675,6 +675,21 @@ func (s *S) TestGetRouters(c *check.C) {
 	c.Assert(routers, check.DeepEquals, []string{"router1", "router2"})
 }
 
+func (s *S) TestGetCertIssuers(c *check.C) {
+	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeCertIssuer, Values: []string{"letsencrypt-prod", "internal-ca"}, Blacklist: false})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName(context.TODO(), "pool1")
+	c.Assert(err, check.IsNil)
+	issuers, err := pool.GetCertIssuers(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(issuers, check.DeepEquals, []string{"letsencrypt-prod", "internal-ca"})
+	pool.Name = "other-pool"
+	_, err = pool.GetCertIssuers(context.TODO())
+	c.Assert(err, check.Equals, ErrPoolHasNoCertIssuer)
+}
+
 func (s *S) TestGetVolumePlans(c *check.C) {
 	config.Set("volume-plans:test-volume-plan:kubernetes", "")
 	defer config.Unset("volume-plans")
@@ -801,6 +816,8 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"team1"}})
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeVolumePlan, Values: []string{"nfs"}})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeCertIssuer, Values: []string{"internal-ca"}})
 	c.Assert(err, check.IsNil)
 	constraints, err := pool.allowedValues(context.TODO())
 	c.Assert(err, check.IsNil)
