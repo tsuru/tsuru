@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
+	"strings"
 	"sync"
 
 	buildpb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
@@ -32,6 +34,8 @@ import (
 var (
 	_ builder.Builder         = &kubernetesBuilder{}
 	_ builder.PlatformBuilder = &kubernetesBuilder{}
+
+	allowedHealthcheckValues = getJSONFieldNames(&provisiontypes.TsuruYamlHealthcheck{})
 )
 
 type kubernetesBuilder struct{}
@@ -353,10 +357,16 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 			if err != nil {
 				return nil, err
 			}
+
+			findDeprecatedHealthcheckData(w, tc.TsuruYaml)
+
 			customData = tsuruYamlDataToCustomData(tsuruYamlData)
 		}
+
+		definedOn := ""
 		// Check if it uses new `processes` on YML
 		if len(tsuruYamlData.Processes) > 0 {
+			fmt.Fprintln(w, " ---> Using 'processes' configuration from tsuru.yaml")
 			// If it uses, try to get processes and commands from YML
 			processes = version.GetProcessesFromYamlProcess(tsuruYamlData.Processes)
 			if tsuruYamlData.Healthcheck != nil {
@@ -365,13 +375,11 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 			if len(tc.Procfile) > 0 {
 				fmt.Fprintln(w, " ---> WARNING: Procfile will be IGNORED when YML contains 'processes' configuration")
 			}
+			definedOn = "tsuru.yaml"
 		} else {
 			// If it does not uses new `processes` on YML, use current implementation
 			processes = version.GetProcessesFromProcfile(tc.Procfile)
-			fmt.Fprintln(w, " ---> WARNING: Process configuration via Procfile will be deprecated in future releases, favor YML 'processes' configuration instead")
-			if tsuruYamlData.Healthcheck != nil {
-				fmt.Fprintln(w, " ---> WARNING: Global healthcheck configuration will be deprecated in future releases, favor YAML 'processes' configuration instead")
-			}
+			definedOn = "Procfile"
 		}
 
 		// Default to web process name and entrypoint and cmd from container
@@ -381,17 +389,18 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
 			}
 
-			fmt.Fprintln(w, " ---> Procfile not found, using entrypoint and cmd")
+			fmt.Fprintln(w, " ---> neither the Procfile nor the processes in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead.")
 			cmds := append(ic.Entrypoint, ic.Cmd...)
 			if len(cmds) == 0 {
 				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 			}
 
 			processes[provision.WebProcessName] = cmds
+			definedOn = "dockerfile"
 		}
 
 		for k, v := range processes {
-			fmt.Fprintf(w, " ---> Process %q found with commands: %q\n", k, v)
+			fmt.Fprintf(w, " ---> Process %q found with commands: %q (defined in: %q)\n", k, v, definedOn)
 		}
 
 		var exposedPorts []string
@@ -414,6 +423,58 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 	}
 
 	return appVersion, nil
+}
+
+func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
+	data := make(map[string]any)
+
+	if err := yaml.Unmarshal([]byte(tsuruYaml), &data); err != nil {
+		fmt.Fprintf(w, " ---> ERROR: Failed to parse tsuru.yaml: %v\n", err)
+		return
+	}
+
+	var checkHealthcheck = func(healthcheckData map[string]any) {
+		for key := range healthcheckData {
+			if _, contains := allowedHealthcheckValues[key]; !contains {
+				fmt.Fprintf(w, " ---> WARNING: invalid or deprecated healthcheck field %q found in tsuru.yaml\n", key)
+			}
+		}
+	}
+
+	if _, ok := data["healthcheck"]; ok {
+		healthcheckData, ok := data["healthcheck"].(map[string]any)
+		if !ok {
+			fmt.Fprintln(w, " ---> WARNING: invalid healthcheck configuration on tsuru.yaml")
+			return
+		}
+
+		checkHealthcheck(healthcheckData)
+	}
+
+	if _, ok := data["processes"]; ok {
+		processes, ok := data["processes"].([]any)
+		if !ok {
+			fmt.Fprintln(w, " ---> WARNING: invalid processes configuration on tsuru.yaml")
+			return
+		}
+
+		for _, process := range processes {
+			process, ok := process.(map[string]any)
+			if !ok {
+				fmt.Fprintln(w, " ---> WARNING: invalid process configuration on tsuru.yaml")
+				return
+			}
+			if _, ok := process["healthcheck"]; ok {
+				healthcheckData, ok := process["healthcheck"].(map[string]any)
+				if !ok {
+					fmt.Fprintln(w, " ---> WARNING: invalid healthcheck configuration on tsuru.yaml")
+					return
+				}
+
+				checkHealthcheck(healthcheckData)
+			}
+		}
+	}
 }
 
 func callBuildService(ctx context.Context, bc buildpb.BuildClient, req *buildpb.BuildRequest, w io.Writer) (*buildpb.TsuruConfig, error) {
@@ -498,4 +559,27 @@ func tsuruYamlDataToCustomData(tsuruYaml provisiontypes.TsuruYamlData) map[strin
 		"kubernetes":  tsuruYaml.Kubernetes,
 		"processes":   tsuruYaml.Processes,
 	}
+}
+
+func getJSONFieldNames(v any) map[string]struct{} {
+	t := reflect.TypeOf(v)
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	fields := map[string]struct{}{}
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		jsonTag := field.Tag.Get("json")
+
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+
+		name := strings.Split(jsonTag, ",")[0]
+		fields[name] = struct{}{}
+	}
+
+	return fields
 }
