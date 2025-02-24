@@ -827,7 +827,6 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 		ConstraintTypeService:    nil,
 		ConstraintTypePlan:       {"plan1", "plan2"},
 		ConstraintTypeVolumePlan: {"nfs"},
-		ConstraintTypeCertIssuer: {"internal-ca"},
 	})
 	pool.Name = "other"
 	constraints, err = pool.allowedValues(context.TODO())

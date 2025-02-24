@@ -121,14 +121,15 @@ func (p *Pool) GetRouters(ctx context.Context) ([]string, error) {
 }
 
 func (p *Pool) GetCertIssuers(ctx context.Context) ([]string, error) {
-	allowedValues, err := p.allowedValues(ctx)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeCertIssuer)
 	if err != nil {
 		return nil, err
 	}
-	if c := allowedValues[ConstraintTypeCertIssuer]; len(c) > 0 {
-		return c, nil
+	certIssuerConstraint, exists := constraints[ConstraintTypeCertIssuer]
+	if !exists || len(certIssuerConstraint.Values) == 0 {
+		return nil, ErrPoolHasNoCertIssuer
 	}
-	return nil, ErrPoolHasNoCertIssuer
+	return certIssuerConstraint.Values, nil
 }
 
 func (p *Pool) GetVolumePlans(ctx context.Context) ([]string, error) {
@@ -275,16 +276,11 @@ func (p *Pool) allowedValues(ctx context.Context) (map[PoolConstraintType][]stri
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan, ConstraintTypeCertIssuer)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range constraints {
-		// for cert-issuers, we apply the constraint directly to the cluster provider. There is no service on Tsuru to list this constraint type
-		if k == ConstraintTypeCertIssuer {
-			resolved[k] = v.Values
-			continue
-		}
 		names := resolved[k]
 		var validNames []string
 		for _, n := range names {
