@@ -699,7 +699,6 @@ var checkSingleCNameExists = action.Action{
 	},
 }
 
-// *New action: Validate if issuer already exist in the cluster
 // var checkCertIssuerAlreadyExists = action.Action{
 // 	Name: "validate-if-issuer-already-exists",
 // 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -716,7 +715,6 @@ var checkSingleCNameExists = action.Action{
 // 	},
 // }
 
-// *New action: Validate if issuer is allowed by app pool constraint
 // var checkCertIssuerPoolConstraints = action.Action{
 // 	Name: "validate-cert-issuer-constraint",
 // 	Forward: func(ctx action.FWContext) (action.Result, error) {
