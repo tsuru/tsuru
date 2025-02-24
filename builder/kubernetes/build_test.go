@@ -271,6 +271,7 @@ func (s *S) TestBuild_BuildWithSourceCode(c *check.C) {
 				TsuruYaml: `
 healthcheck:
   path: /healthz
+  method: GET
 
 hooks:
   build:
@@ -319,6 +320,9 @@ kubernetes:
 	c.Assert(output.String(), check.Matches, "(?s).*--> Starting container image build(.*)")
 	c.Assert(output.String(), check.Matches, "(?s).*------- some container build progress(.*)")
 	c.Assert(output.String(), check.Matches, "(?s).*--> Container image build finished(.*)")
+	c.Assert(output.String(), check.Matches, "(?s).*--> WARNING: invalid or deprecated healthcheck field \"method\" found in tsuru.yaml(.*)")
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"web"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"Procfile"(.*)`)
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"worker"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"Procfile"(.*)`)
 
 	c.Assert(appVersion, check.NotNil)
 	c.Assert(appVersion.Version(), check.DeepEquals, 1)
@@ -411,6 +415,7 @@ processes:
     command: ./path/app.py --port ${PORT}
     healthcheck:
       path: /healthz
+      method: GET
   - name: worker
     command: ./path/worker.sh --verbose
   - name: web-secondary
@@ -465,6 +470,9 @@ kubernetes:
 	c.Assert(output.String(), check.Matches, "(?s).*--> Starting container image build(.*)")
 	c.Assert(output.String(), check.Matches, "(?s).*------- some container build progress(.*)")
 	c.Assert(output.String(), check.Matches, "(?s).*--> Container image build finished(.*)")
+	c.Assert(output.String(), check.Matches, "(?s).*--> WARNING: invalid or deprecated healthcheck field \"method\" found in tsuru.yaml(.*)")
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"web"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"tsuru.yaml"(.*)`)
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"worker"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"tsuru.yaml"(.*)`)
 
 	c.Assert(appVersion, check.NotNil)
 	c.Assert(appVersion.Version(), check.DeepEquals, 1)
