@@ -231,6 +231,16 @@ func (ProvisionSuite) TestValidateWhenNoErrors(c *check.C) {
 				MinUnits: 1,
 				MaxUnits: 10,
 				Schedules: []provTypes.AutoScaleSchedule{{
+					Start: "5 * * * *",
+					End:   "10 * * * *",
+				}},
+			},
+		},
+		{
+			provTypes.AutoScaleSpec{
+				MinUnits: 1,
+				MaxUnits: 10,
+				Schedules: []provTypes.AutoScaleSchedule{{
 					Name:  "valid-name",
 					Start: "5 * * * *",
 					End:   "10 * * * *",

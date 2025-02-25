@@ -54,7 +54,7 @@ func ValidateAutoScaleSpec(spec *provTypes.AutoScaleSpec, quotaLimit int, a *app
 
 func ValidateAutoScaleSchedule(schedules []provTypes.AutoScaleSchedule) error {
 	for _, schedule := range schedules {
-		if !validation.ValidateName(schedule.Name) {
+		if schedule.Name != "" && !validation.ValidateName(schedule.Name) {
 			return fmt.Errorf("\"%s\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter", schedule.Name)
 		}
 
