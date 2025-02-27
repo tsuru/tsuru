@@ -529,6 +529,170 @@ kubernetes:
 	})
 }
 
+func (s *S) TestBuild_BuildWithSourceCodeWithMergedProcessDefinitions(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	a.Env = map[string]bindTypes.EnvVar{
+		"MY_ENV1": {Name: "MY_ENV1", Value: "value 1"},
+		"MY_ENV2": {Name: "MY_ENV2", Value: "value 2"},
+	}
+	s.mockService.PlatformImage.OnCurrentImage = func(registry imagetypes.ImageRegistry, platform string) (string, error) {
+		if c.Check(registry, check.DeepEquals, imagetypes.ImageRegistry("")) &&
+			c.Check(platform, check.DeepEquals, "python") {
+			return "docker.io/tsuru/python:latest", nil
+		}
+
+		return "", fmt.Errorf("bad platform")
+	}
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke an deadlock on RPC client and server.
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
+				Name: "myapp",
+				EnvVars: map[string]string{
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+					"MY_ENV1":        "value 1",
+					"MY_ENV2":        "value 2",
+				},
+			})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD)
+			c.Check(req.GetSourceImage(), check.DeepEquals, "docker.io/tsuru/python:latest")
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
+			c.Check(req.GetData(), check.DeepEquals, []byte(`my awesome source code :P`))
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_Output{Output: "--> Starting container image build\n"}})
+			c.Check(err, check.IsNil)
+
+			err = stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_Output{Output: "------- some container build progress\n"}})
+			c.Check(err, check.IsNil)
+
+			err = stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_Output{Output: "--> Container image build finished\n"}})
+			c.Check(err, check.IsNil)
+
+			err = stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
+				Procfile: "web: ./path/app.py --port ${PORT}\nweb-secondary: ./path/app-secondary.py --port ${PORT}",
+				TsuruYaml: `
+processes:
+  - name: web
+    healthcheck:
+      path: /healthz
+      method: GET
+  - name: worker
+    command: ./path/worker.sh --verbose
+  - name: web-secondary
+    healthcheck:
+      path: /healthz-secondary
+
+hooks:
+  build:
+  - mkdir /path/to/my/dir
+  - /path/to/script.sh
+
+kubernetes:
+  groups:
+    my-app:
+      web:
+        ports:
+        - name: http
+          port: 80
+          target_port: 8080
+        - name: http-grpc
+          port: 3000
+          protocol: TCP
+`,
+			}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	data := bytes.NewBufferString("my awesome source code :P")
+
+	var output bytes.Buffer
+
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
+		Message:     "Add my awesome feature :P",
+		ArchiveFile: data,
+		ArchiveSize: int64(data.Len()),
+		Output:      &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(output.String(), check.Matches, "(?s).*--> Starting container image build(.*)")
+	c.Assert(output.String(), check.Matches, "(?s).*------- some container build progress(.*)")
+	c.Assert(output.String(), check.Matches, "(?s).*--> Container image build finished(.*)")
+	c.Assert(output.String(), check.Matches, "(?s).*--> WARNING: invalid or deprecated healthcheck field \"method\" found in tsuru.yaml(.*)")
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"web"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"Procfile"(.*)`)
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"worker"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"tsuru.yaml"(.*)`)
+	c.Assert(output.String(), check.Matches, `(?s).*--> Process\s+"web-secondary"\s+found\s+with\s+commands:\s+\[(.*?)\]\s+\(defined in:\s+"Procfile"(.*)`)
+
+	c.Assert(appVersion, check.NotNil)
+	c.Assert(appVersion.Version(), check.DeepEquals, 1)
+	c.Assert(appVersion.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
+	c.Assert(appVersion.VersionInfo().Description, check.DeepEquals, "Add my awesome feature :P")
+	c.Assert(appVersion.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
+
+	processes, err := appVersion.Processes()
+	c.Assert(err, check.IsNil)
+	c.Assert(processes, check.DeepEquals, map[string][]string{
+		"web":           {"./path/app.py --port ${PORT}"},
+		"worker":        {"./path/worker.sh --verbose"},
+		"web-secondary": {"./path/app-secondary.py --port ${PORT}"},
+	})
+
+	tsuruYaml, err := appVersion.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
+		Processes: []provisiontypes.TsuruYamlProcess{
+			{
+				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
+					Path: "/healthz",
+				},
+				Name: "web",
+			},
+			{
+				Name:    "worker",
+				Command: "./path/worker.sh --verbose",
+			},
+			{
+				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
+					Path: "/healthz-secondary",
+				},
+				Name: "web-secondary",
+			},
+		},
+		Hooks: &provisiontypes.TsuruYamlHooks{
+			Build: []string{"mkdir /path/to/my/dir", "/path/to/script.sh"},
+		},
+		Kubernetes: &provisiontypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provisiontypes.TsuruYamlKubernetesGroup{
+				"my-app": map[string]provisiontypes.TsuruYamlKubernetesProcessConfig{
+					"web": {
+						Ports: []provisiontypes.TsuruYamlKubernetesProcessPortConfig{
+							{Name: "http", Port: 80, TargetPort: 8080},
+							{Name: "http-grpc", Port: 3000, Protocol: "TCP"},
+						},
+					},
+				},
+			},
+		},
+	})
+}
+
 func (s *S) TestBuild_BuildWithContainerImage(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
