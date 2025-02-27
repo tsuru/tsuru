@@ -2134,20 +2134,18 @@ func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Message: fmt.Sprintf("%s (%s)", err.Error(), cname),
 		}
 	}
-	// The issuer already exists...
 	// if err == app.ErrCertIssuerAlreadyExist {
 	// 	return &errors.HTTP{
 	// 		Code:    http.StatusBadRequest,
 	// 		Message: fmt.Sprintf("%s (%s)", err.Error(), issuer),
 	// 	}
 	// }
-	// Issuer not allowed by pool constraints
-	// if err == app.ErrCertIssuerNotFoundInPoolConstraints {
-	// 	return &errors.HTTP{
-	// 		Code:    http.StatusBadRequest,
-	// 		Message: fmt.Sprintf("%s (%s)", err.Error(), issuer),
-	// 	}
-	// }
+	if err == app.ErrCertIssuerNotAllowedByPoolConstraints {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("%s (%s)", err.Error(), issuer),
+		}
+	}
 	return err
 }
 
