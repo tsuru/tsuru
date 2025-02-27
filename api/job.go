@@ -77,7 +77,7 @@ contextsLoop:
 			filter.Extra = nil
 			break contextsLoop
 		case permTypes.CtxTeam:
-			filterExtraIn(filter, "teams", c.Value)
+			filterExtraIn(filter, "teamowner", c.Value)
 		case permTypes.CtxJob:
 			filterExtraIn(filter, "name", c.Value)
 		case permTypes.CtxPool:

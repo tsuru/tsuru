@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -886,6 +887,76 @@ func (s *S) TestJobList(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 3)
+}
+
+func (s *S) TestJobListEmptyIfNowOwner(c *check.C) {
+	differentTeam := authTypes.Team{Name: "team2"}
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	j1 := jobTypes.Job{
+		Name:      "j1",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provTypes.DeployImage,
+			Image: "busybox:1.28",
+		},
+	}
+	j2 := jobTypes.Job{
+		Name:      "j2",
+		TeamOwner: differentTeam.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/2 * * * *",
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provTypes.DeployImage,
+			Image: "busybox:1.28",
+		},
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
+	c.Assert(err, check.IsNil)
+
+	_, newToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "custom-user-toremove", permTypes.Permission{
+		Scheme:  permission.PermJob,
+		Context: permission.Context(permTypes.CtxTeam, differentTeam.Name),
+	})
+	user2, err := newToken.User(context.TODO())
+	c.Assert(err, check.IsNil)
+
+	//make sure the user2 team has access to the test1 pool
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: differentTeam.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &authTypes.Team{Name: differentTeam.Name}, nil
+	}
+
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user2)
+	c.Assert(err, check.IsNil)
+
+	//get job list with newToken that has only access to jobs from own team
+	request, err := http.NewRequest("GET", "/jobs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+newToken.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []jobTypes.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs), check.Equals, 1)
 }
 
 func (s *S) TestJobListFilterByName(c *check.C) {
