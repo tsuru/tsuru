@@ -383,13 +383,13 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		}
 
 		// Default to web process name and entrypoint and cmd from container
-		if len(processes) == 0 {
+		if shouldDefaultToImageCommands(processes) {
 			ic := tc.ImageConfig
 			if ic == nil {
 				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
 			}
 
-			fmt.Fprintln(w, " ---> neither the Procfile nor the processes in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead.")
+			fmt.Fprintln(w, " ---> neither the Procfile nor the processes commands in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead.")
 			cmds := append(ic.Entrypoint, ic.Cmd...)
 			if len(cmds) == 0 {
 				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
@@ -425,6 +425,24 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 	return appVersion, nil
 }
 
+func shouldDefaultToImageCommands(processes map[string][]string) bool {
+	if len(processes) == 0 {
+		return true
+	}
+	webProcessCommands, ok := processes[provision.WebProcessName]
+	if !ok {
+		// NOTE(ravilock): web process not found, but a custom processes might be defined
+		return false
+	}
+	if len(webProcessCommands) == 0 {
+		return true
+	}
+	if len(webProcessCommands) == 1 && webProcessCommands[0] == "" {
+		return true
+	}
+	return false
+}
+
 func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	data := make(map[string]any)
 
@@ -433,7 +451,7 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 		return
 	}
 
-	var checkHealthcheck = func(healthcheckData map[string]any) {
+	checkHealthcheck := func(healthcheckData map[string]any) {
 		for key := range healthcheckData {
 			if _, contains := allowedHealthcheckValues[key]; !contains {
 				fmt.Fprintf(w, " ---> WARNING: invalid or deprecated healthcheck field %q found in tsuru.yaml\n", key)
