@@ -144,7 +144,7 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 			return errors.WithStack(waitErr)
 		}
 
-		propagationPolicy := metav1.DeletePropagationForeground
+		propagationPolicy := metav1.DeletePropagationBackground
 		err = client.BatchV1().CronJobs(namespace).Delete(ctx, existingCronjob.Name, metav1.DeleteOptions{
 			GracePeriodSeconds: ptr.To[int64](0),
 			PropagationPolicy:  &propagationPolicy,
