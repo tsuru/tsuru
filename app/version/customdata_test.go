@@ -32,6 +32,8 @@ func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 			"worker":  {"x"},
 			"worker2": {"z"},
 		}},
+		{procfile: "", expected: map[string][]string{}},
+		{procfile: "web:", expected: map[string][]string{}},
 	}
 	for i, t := range tests {
 		v := GetProcessesFromProcfile(t.procfile)
@@ -56,6 +58,12 @@ func (s *S) TestGetProcessesFromYamlProcess(c *check.C) {
 			processes: []provTypes.TsuruYamlProcess{{Name: "web", Command: "python app.py"}, {Name: "worker", Command: "python worker.py"}},
 			expected: map[string][]string{
 				"web":    {"python app.py"},
+				"worker": {"python worker.py"},
+			},
+		},
+		{
+			processes: []provTypes.TsuruYamlProcess{{Name: "web", Command: ""}, {Name: "worker", Command: "python worker.py"}},
+			expected: map[string][]string{
 				"worker": {"python worker.py"},
 			},
 		},
