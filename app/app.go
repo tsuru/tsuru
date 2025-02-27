@@ -1633,7 +1633,7 @@ func SetCertIssuer(ctx context.Context, app *appTypes.App, cname, certIssuer str
 	actions := []*action.Action{
 		&checkSingleCNameExists,
 		// &checkCertIssuerAlreadyExists,
-		// &checkCertIssuerPoolConstraints,
+		&checkCertIssuerPoolConstraints,
 		&saveCertIssuer,
 		&rebuildRoutes,
 	}

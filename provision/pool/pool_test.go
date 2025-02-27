@@ -684,10 +684,11 @@ func (s *S) TestGetCertIssuers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	issuers, err := pool.GetCertIssuers(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(issuers, check.DeepEquals, []string{"letsencrypt-prod", "internal-ca"})
+	c.Assert(issuers.Values, check.DeepEquals, []string{"letsencrypt-prod", "internal-ca"})
+	c.Assert(issuers.Blacklist, check.Equals, false)
 	pool.Name = "other-pool"
 	_, err = pool.GetCertIssuers(context.TODO())
-	c.Assert(err, check.Equals, ErrPoolHasNoCertIssuer)
+	c.Assert(err, check.Equals, ErrPoolHasNoCertIssuerConstraint)
 }
 
 func (s *S) TestGetVolumePlans(c *check.C) {
