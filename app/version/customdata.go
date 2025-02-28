@@ -174,6 +174,9 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	processes := make(map[string][]string, len(procfile))
 	for _, process := range procfile {
 		if p := procfileRegex.FindStringSubmatch(process); p != nil {
+			if p[1] == "" || p[2] == "" {
+				continue
+			}
 			processes[p[1]] = []string{strings.TrimSpace(p[2])}
 		}
 	}
@@ -183,6 +186,9 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 func GetProcessesFromYamlProcess(yamlProcesses []provTypes.TsuruYamlProcess) map[string][]string {
 	processes := make(map[string][]string, len(yamlProcesses))
 	for _, process := range yamlProcesses {
+		if process.Command == "" {
+			continue
+		}
 		processes[process.Name] = []string{strings.TrimSpace(process.Command)}
 	}
 	return processes

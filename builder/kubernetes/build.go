@@ -38,6 +38,11 @@ var (
 	allowedHealthcheckValues = getJSONFieldNames(&provisiontypes.TsuruYamlHealthcheck{})
 )
 
+type processCommands struct {
+	commands  []string
+	definedOn string
+}
+
 type kubernetesBuilder struct{}
 
 func init() {
@@ -347,7 +352,8 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 	}
 
 	if tc != nil {
-		var processes map[string][]string
+		finalProcesses := map[string][]string{}
+		processes := map[string]processCommands{}
 		var customData map[string]any
 		var tsuruYamlData provisiontypes.TsuruYamlData
 		if len(tc.TsuruYaml) > 0 {
@@ -363,23 +369,24 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 			customData = tsuruYamlDataToCustomData(tsuruYamlData)
 		}
 
-		definedOn := ""
 		// Check if it uses new `processes` on YML
 		if len(tsuruYamlData.Processes) > 0 {
 			fmt.Fprintln(w, " ---> Using 'processes' configuration from tsuru.yaml")
 			// If it uses, try to get processes and commands from YML
-			processes = version.GetProcessesFromYamlProcess(tsuruYamlData.Processes)
+			tsuruYamlProcesses := version.GetProcessesFromYamlProcess(tsuruYamlData.Processes)
 			if tsuruYamlData.Healthcheck != nil {
 				fmt.Fprintln(w, " ---> WARNING: Global healthcheck configuration will be IGNORED when YML contains 'processes' configuration")
 			}
+			mergeProcesses(processes, tsuruYamlProcesses, "tsuru.yaml")
 			if len(tc.Procfile) > 0 {
-				fmt.Fprintln(w, " ---> WARNING: Procfile will be IGNORED when YML contains 'processes' configuration")
+				fmt.Fprintln(w, " ---> WARNING: Individual Procfile processes will be IGNORED when YML defines the same process configuration (name and command)")
 			}
-			definedOn = "tsuru.yaml"
-		} else {
+		}
+
+		if len(tc.Procfile) > 0 {
 			// If it does not uses new `processes` on YML, use current implementation
-			processes = version.GetProcessesFromProcfile(tc.Procfile)
-			definedOn = "Procfile"
+			procfileProcesses := version.GetProcessesFromProcfile(tc.Procfile)
+			mergeProcesses(processes, procfileProcesses, "Procfile")
 		}
 
 		// Default to web process name and entrypoint and cmd from container
@@ -389,18 +396,20 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
 			}
 
-			fmt.Fprintln(w, " ---> neither the Procfile nor the processes in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead.")
+			fmt.Fprintln(w, " ---> neither the Procfile nor the processes commands in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead.")
 			cmds := append(ic.Entrypoint, ic.Cmd...)
 			if len(cmds) == 0 {
 				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 			}
-
-			processes[provision.WebProcessName] = cmds
-			definedOn = "dockerfile"
+			processes[provision.WebProcessName] = processCommands{
+				commands:  cmds,
+				definedOn: "dockerfile",
+			}
 		}
 
 		for k, v := range processes {
-			fmt.Fprintf(w, " ---> Process %q found with commands: %q (defined in: %q)\n", k, v, definedOn)
+			fmt.Fprintf(w, " ---> Process %q found with commands: %q (defined in: %q)\n", k, v.commands, v.definedOn)
+			finalProcesses[k] = v.commands
 		}
 
 		var exposedPorts []string
@@ -409,7 +418,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		}
 
 		err = appVersion.AddData(apptypes.AddVersionDataArgs{
-			Processes:    processes,
+			Processes:    finalProcesses,
 			CustomData:   customData,
 			ExposedPorts: exposedPorts,
 		})
@@ -425,6 +434,18 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 	return appVersion, nil
 }
 
+func mergeProcesses(finalProcesses map[string]processCommands, processes map[string][]string, source string) {
+	for pName, pCommand := range processes {
+		if _, ok := finalProcesses[pName]; ok {
+			continue
+		}
+		finalProcesses[pName] = processCommands{
+			commands:  pCommand,
+			definedOn: source,
+		}
+	}
+}
+
 func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	data := make(map[string]any)
 
@@ -433,7 +454,7 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 		return
 	}
 
-	var checkHealthcheck = func(healthcheckData map[string]any) {
+	checkHealthcheck := func(healthcheckData map[string]any) {
 		for key := range healthcheckData {
 			if _, contains := allowedHealthcheckValues[key]; !contains {
 				fmt.Fprintf(w, " ---> WARNING: invalid or deprecated healthcheck field %q found in tsuru.yaml\n", key)
