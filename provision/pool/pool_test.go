@@ -818,8 +818,6 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeVolumePlan, Values: []string{"nfs"}})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(context.TODO(), &PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeCertIssuer, Values: []string{"internal-ca"}})
-	c.Assert(err, check.IsNil)
 	constraints, err := pool.allowedValues(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[PoolConstraintType][]string{
