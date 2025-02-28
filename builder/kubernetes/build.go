@@ -390,7 +390,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		}
 
 		// Default to web process name and entrypoint and cmd from container
-		if shouldDefaultToImageCommands(processes) {
+		if len(processes) == 0 {
 			ic := tc.ImageConfig
 			if ic == nil {
 				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
@@ -444,24 +444,6 @@ func mergeProcesses(finalProcesses map[string]processCommands, processes map[str
 			definedOn: source,
 		}
 	}
-}
-
-func shouldDefaultToImageCommands(processes map[string]processCommands) bool {
-	if len(processes) == 0 {
-		return true
-	}
-	webProcessCommands, ok := processes[provision.WebProcessName]
-	if !ok {
-		// NOTE(ravilock): web process not found, but a custom processes might be defined
-		return false
-	}
-	if len(webProcessCommands.commands) == 0 {
-		return true
-	}
-	if len(webProcessCommands.commands) == 1 && webProcessCommands.commands[0] == "" {
-		return true
-	}
-	return false
 }
 
 func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
