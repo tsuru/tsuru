@@ -33,7 +33,6 @@ import (
 var (
 	ErrAppAlreadyExists                      = errors.New("there is already an app with this name")
 	ErrCNameDoesNotExist                     = errors.New("cname does not exist in app")
-	ErrCertIssuerAlreadyExist                = errors.New("cert issuer already exist in app")
 	ErrCertIssuerNotAllowedByPoolConstraints = errors.New("cert issuer not allowed by constraints of this pool")
 )
 
@@ -699,22 +698,6 @@ var checkSingleCNameExists = action.Action{
 		return cname, nil
 	},
 }
-
-// var checkCertIssuerAlreadyExists = action.Action{
-// 	Name: "validate-if-issuer-already-exists",
-// 	Forward: func(ctx action.FWContext) (action.Result, error) {
-// 		issuer := ctx.Params[2].(string)
-// 		// 1. how check the issuer in the cluster?
-// 		// ...
-// 		// 2. if the issuer already exists in the cluster
-// 		exists := false
-// 		if exists {
-// 			return nil, ErrCertIssuerAlreadyExist
-// 		}
-// 		// 3. if  dont, return issuer and nil to continue
-// 		return issuer, nil
-// 	},
-// }
 
 var checkCertIssuerPoolConstraints = action.Action{
 	Name: "validate-cert-issuer-constraint",
