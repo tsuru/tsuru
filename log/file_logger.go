@@ -44,7 +44,7 @@ func (l *fileLogger) Errorf(format string, o ...interface{}) {
 }
 
 func (l *fileLogger) Fatal(o string) {
-	l.logger.Printf(fmt.Sprintf(fatalPrefix, o))
+	l.logger.Printf(fatalPrefix, o)
 	os.Exit(1)
 }
 
