@@ -167,79 +167,123 @@ func (r dockerRegistry) removeImagePath(ctx context.Context, path string) error 
 	return nil
 }
 
-func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, headers map[string]string) (resp *http.Response, err error) {
-	u, _ := url.Parse(r.registry)
-	server := r.registry
-	if u != nil && u.Host != "" {
-		server = u.Host
-	}
+func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, headers map[string]string) (*http.Response, error) {
+	var err error
 	if r.client == nil {
+		server := getServerFromRegistry(r.registry)
 		r.client, err = tsuruNet.WithProxyFromConfig(*tsuruNet.Dial15Full300ClientNoKeepAlive, server)
 		if err != nil {
 			return nil, err
 		}
 	}
-	max_tries := 5
-request:
-	for i := 0; i < max_tries; i++ {
+
+	maxTries := 5
+	for attemptNum := 0; attemptNum < maxTries; attemptNum++ {
 		for _, scheme := range []string{"https", "http"} {
-			endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
-			var req *http.Request
-			req, err = http.NewRequest(method, endpoint, nil)
-			if err != nil {
-				return nil, err
-			}
-			if ctx != nil {
-				req = req.WithContext(ctx)
-			}
-			req.Header = http.Header{}
-			for k, v := range headers {
-				req.Header.Set(k, v)
-			}
-			r.fillAuthCredentials(req)
-			resp, err = r.client.Do(req)
+			resp, err := r.attemptRequest(ctx, method, path, headers, scheme)
+
 			if _, ok := err.(net.Error); ok {
 				continue
 			}
-			if resp.StatusCode == http.StatusUnauthorized && resp.Header.Get("WWW-Authenticate") != "" && r.checkTokenIsValidForRenew() {
-				if resp.Body != nil {
-					resp.Body.Close()
+
+			if resp != nil && resp.StatusCode == http.StatusUnauthorized &&
+				resp.Header.Get("WWW-Authenticate") != "" &&
+				r.checkTokenIsValidForRenew() {
+
+				closeRespBody(resp)
+
+				err = r.refreshToken(ctx, resp.Header)
+				if err != nil {
+					return nil, err
 				}
-				to := auth.TokenOptions{}
-				to.Username = r.authConfig.Username
-				to.Secret = r.authConfig.Password
-				challenges := auth.ParseAuthHeader(resp.Header)
-				for _, c := range challenges {
-					if c.Scheme == auth.BearerAuth {
-						to.Realm = c.Parameters["realm"]
-						to.Service = c.Parameters["service"]
-						to.Scopes = append(to.Scopes, c.Parameters["scope"])
-					}
-				}
-				to.Scopes = parseScopes(to.Scopes).normalize()
-				respAuth, tokenErr := auth.FetchToken(ctx, r.client, req.Header, to)
-				if tokenErr != nil {
-					return nil, tokenErr
-				}
-				if respAuth.IssuedAt.IsZero() {
-					respAuth.IssuedAt = time.Now()
-				}
-				if respAuth.ExpiresIn == 0 {
-					respAuth.ExpiresIn = defaultExpiration
-				}
-				if exp := respAuth.IssuedAt.Add(time.Duration(float64(respAuth.ExpiresIn)*0.9) * time.Second); time.Now().Before(exp) {
-					r.expires = exp
-				}
-				r.token = respAuth.Token
-				continue request
+
+				break
 			}
+
 			if err != nil {
 				return nil, err
 			}
 			return resp, nil
 		}
 	}
-	return nil, err
+
+	return nil, errors.New("exceeded maximum request attempts")
+}
+
+func (r *dockerRegistry) attemptRequest(ctx context.Context, method, path string, headers map[string]string, scheme string) (*http.Response, error) {
+	server := getServerFromRegistry(r.registry)
+	endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
+
+	req, err := http.NewRequest(method, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	req.Header = http.Header{}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	r.fillAuthCredentials(req)
+
+	return r.client.Do(req)
+}
+
+func (r *dockerRegistry) refreshToken(ctx context.Context, respHeaders http.Header) error {
+	to := auth.TokenOptions{
+		Username: r.authConfig.Username,
+		Secret:   r.authConfig.Password,
+	}
+
+	challenges := auth.ParseAuthHeader(respHeaders)
+	for _, c := range challenges {
+		if c.Scheme == auth.BearerAuth {
+			to.Realm = c.Parameters["realm"]
+			to.Service = c.Parameters["service"]
+			to.Scopes = append(to.Scopes, c.Parameters["scope"])
+		}
+	}
+
+	to.Scopes = parseScopes(to.Scopes).normalize()
+
+	authResp, err := auth.FetchToken(ctx, r.client, http.Header{}, to)
+	if err != nil {
+		return err
+	}
+
+	if authResp.IssuedAt.IsZero() {
+		authResp.IssuedAt = time.Now()
+	}
+
+	if authResp.ExpiresIn == 0 {
+		authResp.ExpiresIn = defaultExpiration
+	}
+
+	expiry := authResp.IssuedAt.Add(time.Duration(float64(authResp.ExpiresIn)*0.9) * time.Second)
+	if time.Now().Before(expiry) {
+		r.expires = expiry
+	}
+
+	r.token = authResp.Token
+	return nil
+}
+
+func getServerFromRegistry(registry string) string {
+	u, _ := url.Parse(registry)
+	if u != nil && u.Host != "" {
+		return u.Host
+	}
+	return registry
+}
+
+func closeRespBody(resp *http.Response) {
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 }
 
 func (r *dockerRegistry) fillAuthCredentials(req *http.Request) {
