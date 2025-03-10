@@ -123,7 +123,7 @@ func (s *S) TestRegistryRemoveAppImagesErrorErrDeleteDisabled(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	s.server.SetStorageDelete(false)
 	err = RemoveAppImages(context.TODO(), "test")
-	c.Assert(errors.Cause(err), check.Equals, ErrDeleteDisabled)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRegistryRemoveAppImages(c *check.C) {

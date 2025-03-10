@@ -49,7 +49,7 @@ func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
 	err := RemoveImage(ctx, imageName)
 	if err != nil {
 		cause := errors.Cause(err)
-		if cause != ErrDigestNotFound && cause != ErrImageNotFound {
+		if cause != ErrDeleteDisabled && cause != ErrDigestNotFound && cause != ErrImageNotFound {
 			return err
 		}
 	}
