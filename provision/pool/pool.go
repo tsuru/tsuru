@@ -39,6 +39,7 @@ var (
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
+	ErrPoolHasNoCertIssuerConstraint  = errors.New("no cert-issuer constraints found for pool")
 )
 
 const (
@@ -117,6 +118,18 @@ func (p *Pool) GetRouters(ctx context.Context) ([]string, error) {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoRouter
+}
+
+func (p *Pool) GetCertIssuers(ctx context.Context) (*PoolConstraint, error) {
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeCertIssuer)
+	if err != nil {
+		return nil, err
+	}
+	certIssuerConstraint, exists := constraints[ConstraintTypeCertIssuer]
+	if !exists || len(certIssuerConstraint.Values) == 0 {
+		return nil, ErrPoolHasNoCertIssuerConstraint
+	}
+	return certIssuerConstraint, nil
 }
 
 func (p *Pool) GetVolumePlans(ctx context.Context) ([]string, error) {

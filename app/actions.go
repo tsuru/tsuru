@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -30,8 +31,9 @@ import (
 )
 
 var (
-	ErrAppAlreadyExists  = errors.New("there is already an app with this name")
-	ErrCNameDoesNotExist = errors.New("cname does not exist in app")
+	ErrAppAlreadyExists                      = errors.New("there is already an app with this name")
+	ErrCNameDoesNotExist                     = errors.New("cname does not exist in app")
+	ErrCertIssuerNotAllowedByPoolConstraints = errors.New("cert issuer not allowed by constraints of this pool")
 )
 
 var reserveTeamApp = action.Action{
@@ -694,6 +696,38 @@ var checkSingleCNameExists = action.Action{
 		}
 
 		return cname, nil
+	},
+}
+
+var checkCertIssuerPoolConstraints = action.Action{
+	Name: "validate-cert-issuer-constraint",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*appTypes.App)
+		issuer := ctx.Params[2].(string)
+
+		appPool, err := pool.GetPoolByName(ctx.Context, app.Pool)
+		if err != nil {
+			return nil, err
+		}
+		certIssuerConstraint, err := appPool.GetCertIssuers(ctx.Context)
+		if err != nil {
+			if errors.Is(err, pool.ErrPoolHasNoCertIssuerConstraint) {
+				return issuer, nil
+			}
+			return nil, err
+		}
+
+		issuerMatchValues := false
+		for _, value := range certIssuerConstraint.Values {
+			if value == issuer {
+				issuerMatchValues = true
+				break
+			}
+		}
+		if !issuerMatchValues || certIssuerConstraint.Blacklist {
+			return nil, ErrCertIssuerNotAllowedByPoolConstraints
+		}
+		return issuer, nil
 	},
 }
 

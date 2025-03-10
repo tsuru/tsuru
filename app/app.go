@@ -1631,6 +1631,7 @@ func RemoveCName(ctx context.Context, app *appTypes.App, cnames ...string) error
 func SetCertIssuer(ctx context.Context, app *appTypes.App, cname, certIssuer string) error {
 	actions := []*action.Action{
 		&checkSingleCNameExists,
+		&checkCertIssuerPoolConstraints,
 		&saveCertIssuer,
 		&rebuildRoutes,
 	}
