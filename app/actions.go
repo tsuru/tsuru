@@ -724,7 +724,7 @@ var checkCertIssuerPoolConstraints = action.Action{
 				break
 			}
 		}
-		if certIssuerConstraint.Blacklist == issuerMatchValues {
+		if !issuerMatchValues || certIssuerConstraint.Blacklist {
 			return nil, ErrCertIssuerNotAllowedByPoolConstraints
 		}
 		return issuer, nil
