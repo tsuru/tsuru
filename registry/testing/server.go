@@ -12,9 +12,18 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
+)
+
+var (
+	ErrMissingToken   = errors.New("missing token")
+	ErrBadToken       = errors.New("bad token")
+	ErrBadCredentials = errors.New("bad credentials")
 )
 
 type Repository struct {
@@ -22,6 +31,8 @@ type Repository struct {
 	Tags     map[string]string
 	Username string
 	Password string
+	Token    string
+	Expire   int
 }
 
 type tagListResponse struct {
@@ -35,6 +46,14 @@ type RegistryServer struct {
 	Repos         []Repository
 	reposLock     sync.RWMutex
 	storageDelete bool
+	tokenAuth     bool
+	tokenRenew    bool
+}
+
+type TokenResponse struct {
+	Token     string `json:"token"`
+	ExpiresIn int    `json:"expires_in"`
+	IssuedAt  string `json:"issued_at"`
 }
 
 // NewServer returns a new instance of the fake server.
@@ -84,6 +103,11 @@ func (s *RegistryServer) SetStorageDelete(sd bool) {
 	s.reposLock.Unlock()
 }
 
+func (s *RegistryServer) SetTokenAuth(enabled bool, renew bool) {
+	s.tokenAuth = enabled
+	s.tokenRenew = renew
+}
+
 // ServeHTTP handler HTTP requests, dealing with prepared failures before
 // dispatching the request to the proper internal handler.
 func (s *RegistryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -95,11 +119,25 @@ func (s *RegistryServer) buildMuxer() {
 	s.muxer.Path("/v2/{name:.*}/manifests/{tag:.*}").Methods("HEAD").HandlerFunc(s.getDigest)
 	s.muxer.Path("/v2/{name:.*}/manifests/{digest:.*}").Methods("DELETE").HandlerFunc(s.removeTag)
 	s.muxer.Path("/v2/{name:.*}/tags/list").Methods("GET").HandlerFunc(s.listTags)
+	s.muxer.Path("/token/{name:.*}").Methods("GET").HandlerFunc(s.getToken)
 }
 
-func (s *RegistryServer) auth(w http.ResponseWriter, r *http.Request) error {
+func (s *RegistryServer) auth(r *http.Request) error {
 	name := mux.Vars(r)["name"]
 	repo, _ := s.findRepository(name)
+	if s.tokenAuth {
+		authTokenHeader := r.Header.Get("Authorization")
+		if authTokenHeader == "" || strings.Contains(authTokenHeader, "Basic") {
+			return ErrMissingToken
+		}
+		if authTokenHeader != "Bearer "+repo.Token {
+			return ErrBadToken
+		}
+		if authTokenHeader == "Bearer "+repo.Token {
+			return nil
+		}
+	}
+
 	if len(repo.Username) == 0 && len(repo.Password) == 0 {
 		return nil
 	}
@@ -108,21 +146,52 @@ func (s *RegistryServer) auth(w http.ResponseWriter, r *http.Request) error {
 	credentials := fmt.Sprintf("%s:%s", repo.Username, repo.Password)
 	b64Credentials := "Basic " + base64.StdEncoding.EncodeToString([]byte(credentials))
 	if authHeader != b64Credentials {
-		return fmt.Errorf("bad credentials")
+		return ErrBadCredentials
 	}
 	return nil
 }
 
-func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
-	err := s.auth(w, r)
-	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
+func (s *RegistryServer) getToken(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+	repo, _ := s.findRepository(name)
+	scope := r.URL.Query().Get("scope")
+	service := r.URL.Query().Get("service")
+
+	if scope == "" || service == "" {
+		http.Error(w, "missing scope or service", http.StatusBadRequest)
 		return
 	}
 
+	issued_at := time.Now().Format(time.RFC3339)
+	if s.tokenRenew {
+		issued_at = "2017-08-29T00:00:00Z"
+		s.tokenRenew = false
+	}
+
+	response := TokenResponse{Token: repo.Token, ExpiresIn: repo.Expire, IssuedAt: issued_at}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *RegistryServer) handleAuthError(w http.ResponseWriter, err error, name string) {
+	cause := errors.Cause(err)
+	if cause == ErrMissingToken {
+		w.Header().Set("Www-Authenticate", "Bearer realm=\"http://"+s.Addr()+"/token/"+name+"\",service=\""+s.Addr()+"\",scope=\"repository:"+name+":push\"")
+		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		w.WriteHeader(http.StatusForbidden)
+	}
+}
+func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
-	digest := mux.Vars(r)["digest"]
 	repo, index := s.findRepository(name)
+	err := s.auth(r)
+	if err != nil {
+		s.handleAuthError(w, err, name)
+		return
+	}
+
+	digest := mux.Vars(r)["digest"]
 	if index < 0 {
 		http.Error(w, fmt.Sprintf("unknown repository name=%s", name), http.StatusNotFound)
 		return
@@ -144,15 +213,14 @@ func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *RegistryServer) getDigest(w http.ResponseWriter, r *http.Request) {
-	err := s.auth(w, r)
+	name := mux.Vars(r)["name"]
+	repo, index := s.findRepository(name)
+	err := s.auth(r)
 	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
+		s.handleAuthError(w, err, name)
 		return
 	}
-
-	name := mux.Vars(r)["name"]
 	tag := mux.Vars(r)["tag"]
-	repo, index := s.findRepository(name)
 	if index < 0 {
 		http.Error(w, fmt.Sprintf("unknown repository name=%s", name), http.StatusNotFound)
 		return
@@ -169,14 +237,13 @@ func (s *RegistryServer) getDigest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *RegistryServer) listTags(w http.ResponseWriter, r *http.Request) {
-	err := s.auth(w, r)
-	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
 	name := mux.Vars(r)["name"]
 	repo, index := s.findRepository(name)
+	err := s.auth(r)
+	if err != nil {
+		s.handleAuthError(w, err, name)
+		return
+	}
 	if index < 0 {
 		http.Error(w, fmt.Sprintf("unknown repository name=%s", name), http.StatusNotFound)
 		return

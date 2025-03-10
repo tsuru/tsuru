@@ -729,7 +729,6 @@ func Delete(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 	if err != nil {
 		return err
 	}
-
 	err = Stop(ctx, app, w, "", "")
 	if err != nil {
 		logErr("Unable to stop app", err)
