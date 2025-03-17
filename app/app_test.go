@@ -1715,6 +1715,46 @@ func (s *S) TestSetCertIssuer(c *check.C) {
 	c.Assert(hasIssuer, check.Equals, true)
 }
 
+func (s *S) TestSetCertIssuerWithConstraints(c *check.C) {
+	a := appTypes.App{
+		Name:      "ktulu",
+		TeamOwner: s.team.Name,
+		CName:     []string{"ktulu.mycompany.com"},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     pool.ConstraintTypeCertIssuer,
+		Values:    []string{"CorrectIssuer"},
+		Blacklist: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = SetCertIssuer(context.TODO(), &a, "ktulu.mycompany.com", "InvalidIssuer")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cert issuer not allowed by constraints of this pool")
+}
+
+func (s *S) TestSetCertIssuerWithBlacklistConstraints(c *check.C) {
+	a := appTypes.App{
+		Name:      "ktulu",
+		TeamOwner: s.team.Name,
+		CName:     []string{"ktulu.mycompany.com"},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     pool.ConstraintTypeCertIssuer,
+		Values:    []string{"InvalidIssuer"},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	err = SetCertIssuer(context.TODO(), &a, "ktulu.mycompany.com", "InvalidIssuer")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cert issuer not allowed by constraints of this pool")
+}
+
 func (s *S) TestSetCertIssuerWithInvalidCName(c *check.C) {
 	a := appTypes.App{
 		Name:      "ktulu",
