@@ -1732,7 +1732,7 @@ func (s *S) TestSetCertIssuerWithConstraints(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetCertIssuer(context.TODO(), &a, "ktulu.mycompany.com", "InvalidIssuer")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cert issuer not allowed by constraints of this pool")
+	c.Assert(err.Error(), check.Equals, "cert issuer not allowed by constraints of this pool. allowed values: CorrectIssuer")
 }
 
 func (s *S) TestSetCertIssuerWithBlacklistConstraints(c *check.C) {
@@ -1752,7 +1752,7 @@ func (s *S) TestSetCertIssuerWithBlacklistConstraints(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetCertIssuer(context.TODO(), &a, "ktulu.mycompany.com", "InvalidIssuer")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cert issuer not allowed by constraints of this pool")
+	c.Assert(err.Error(), check.Equals, "cert issuer not allowed by constraints of this pool. not allowed values: InvalidIssuer")
 }
 
 func (s *S) TestSetCertIssuerWithInvalidCName(c *check.C) {
