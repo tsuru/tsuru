@@ -14,7 +14,7 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2
 	github.com/felixge/fgprof v0.9.1
 	github.com/fsnotify/fsnotify v1.6.0
-	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
