@@ -724,8 +724,14 @@ var checkCertIssuerPoolConstraints = action.Action{
 				break
 			}
 		}
-		if !issuerMatchValues || certIssuerConstraint.Blacklist {
-			return nil, ErrCertIssuerNotAllowedByPoolConstraints
+		if certIssuerConstraint.Blacklist {
+			if issuerMatchValues {
+				return nil, fmt.Errorf("%w. not allowed values: %s", ErrCertIssuerNotAllowedByPoolConstraints, strings.Join(certIssuerConstraint.Values, ", "))
+			}
+		} else {
+			if !issuerMatchValues {
+				return nil, fmt.Errorf("%w. allowed values: %s", ErrCertIssuerNotAllowedByPoolConstraints, strings.Join(certIssuerConstraint.Values, ", "))
+			}
 		}
 		return issuer, nil
 	},
