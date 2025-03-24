@@ -11,7 +11,7 @@ require (
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/docker/cli v23.0.0-rc.1+incompatible
 	github.com/docker/docker v24.0.9+incompatible
-	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2
+	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -80,7 +80,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
