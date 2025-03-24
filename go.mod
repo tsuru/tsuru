@@ -22,7 +22,7 @@ require (
 	github.com/imdario/mergo v0.3.13
 	github.com/kedacore/keda/v2 v2.10.1
 	github.com/kr/pretty v0.3.0
-	github.com/lestrrat-go/jwx/v2 v2.0.11
+	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/opentracing-contrib/go-stdlib v1.0.1-0.20201028152118-adbfc141dfc2
@@ -105,9 +105,9 @@ require (
 	github.com/kardianos/osext v0.0.0-20151124170342-10da29423eb9 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
-	github.com/lestrrat-go/httprc v1.0.4 // indirect
+	github.com/lestrrat-go/httprc v1.0.5 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
