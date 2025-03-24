@@ -387,6 +387,7 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 	var units []provTypes.Unit
 	for _, k8sJob := range k8sJobs {
 		var status provTypes.UnitStatus
+		var statusReason string
 		var restarts int32
 		pods, err := p.getPodsForJob(ctx, client, &k8sJob)
 		if err != nil {
@@ -398,6 +399,7 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 		switch {
 		case k8sJob.Status.Failed > 0:
 			status = provTypes.UnitStatusError
+			statusReason = findJobFailedReason(&k8sJob)
 		case k8sJob.Status.Succeeded > 0:
 			status = provTypes.UnitStatusSucceeded
 		default:
@@ -406,14 +408,26 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 
 		createdAt := k8sJob.CreationTimestamp.Time.In(time.UTC)
 		units = append(units, provTypes.Unit{
-			ID:        k8sJob.Name,
-			Name:      k8sJob.Name,
-			Status:    status,
-			Restarts:  &restarts,
-			CreatedAt: &createdAt,
+			ID:           k8sJob.Name,
+			Name:         k8sJob.Name,
+			Status:       status,
+			StatusReason: statusReason,
+			Restarts:     &restarts,
+			CreatedAt:    &createdAt,
 		})
 	}
 	return units, nil
+}
+
+func findJobFailedReason(job *batchv1.Job) string {
+	if job.Status.Conditions != nil {
+		for _, condition := range job.Status.Conditions {
+			if condition.Type == batchv1.JobFailed && condition.Status == apiv1.ConditionTrue {
+				return condition.Reason
+			}
+		}
+	}
+	return ""
 }
 
 func incrementJobMetrics(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
