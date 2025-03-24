@@ -10,7 +10,7 @@ require (
 	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/docker/cli v23.0.0-rc.1+incompatible
-	github.com/docker/docker v24.0.9+incompatible
+	github.com/docker/docker v25.0.6+incompatible
 	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
 	github.com/fsnotify/fsnotify v1.6.0
