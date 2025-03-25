@@ -1347,3 +1347,53 @@ func (s *S) TestKillJobUnitUnknow(c *check.C) {
 	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestFindJobFailedReason(c *check.C) {
+	testCases := []struct {
+		name           string
+		job            *batchv1.Job
+		expectedReason string
+	}{
+		{
+			name: "Job with Failed Condition",
+			job: &batchv1.Job{
+				Status: batchv1.JobStatus{
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobFailed,
+							Status: corev1.ConditionTrue,
+							Reason: "BackoffLimitExceeded",
+						},
+					},
+				},
+			},
+			expectedReason: "BackoffLimitExceeded",
+		},
+		{
+			name: "Job without Failed Condition",
+			job: &batchv1.Job{
+				Status: batchv1.JobStatus{
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+			expectedReason: "",
+		},
+		{
+			name: "Job with No Conditions",
+			job: &batchv1.Job{
+				Status: batchv1.JobStatus{},
+			},
+			expectedReason: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		reason := findJobFailedReason(tc.job)
+		c.Assert(reason, check.Equals, tc.expectedReason)
+	}
+}
