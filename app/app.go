@@ -667,7 +667,7 @@ func unbind(ctx context.Context, app *appTypes.App, evt *event.Event, requestID 
 		err = instance.UnbindApp(ctx, service.UnbindAppArgs{
 			App:         app,
 			Restart:     false,
-			ForceRemove: false,
+			ForceRemove: true,
 			Event:       evt,
 			RequestID:   requestID,
 		})
