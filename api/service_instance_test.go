@@ -1254,7 +1254,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		Apps:        []string{"painkiller"},
+		Apps:        []string{"painkiller", "appRemoved"},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
