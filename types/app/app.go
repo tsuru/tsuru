@@ -48,6 +48,15 @@ type App struct {
 	UUID string
 
 	Quota quota.Quota
+
+	InternalAddresses    []AppInternalAddress       `json:"internalAddresses,omitempty"`
+	IP                   string                     `json:"ip,omitempty"`
+	Units                []provision.Unit           `json:"units"`
+	UnitsMetrics         []provision.UnitMetric     `json:"unitsMetrics,omitempty"`
+	Provisioner          string                     `json:"provisioner,omitempty"`
+	Autoscale            []provision.AutoScaleSpec  `json:"autoscale,omitempty"`
+	ServiceInstanceBinds []bind.ServiceInstanceBind `json:"serviceInstanceBinds"`
+	VolumeBinds          []volume.VolumeBind        `json:"volumeBinds,omitempty"`
 }
 
 var CertIssuerDotReplacement = "_dot_"
