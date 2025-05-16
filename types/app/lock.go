@@ -5,13 +5,25 @@
 package app
 
 import (
+	"fmt"
 	"time"
 )
 
-// AppLock stores information about a lock hold on the app
 type AppLock struct {
 	Locked      bool
 	Reason      string
 	Owner       string
 	AcquireDate time.Time
+}
+
+type AppLockInterface interface {
+	String()
+}
+
+func (l *AppLock) String() string {
+	format := `Lock:
+ Acquired in: %s
+ Owner: %s
+ Running: %s`
+	return fmt.Sprintf(format, l.AcquireDate, l.Owner, l.Reason)
 }
