@@ -17,7 +17,7 @@ type AppLock struct {
 }
 
 type AppLockInterface interface {
-	String()
+	String() string
 }
 
 func (l *AppLock) String() string {
