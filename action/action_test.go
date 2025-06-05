@@ -9,7 +9,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/opentracing/opentracing-go"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 	check "gopkg.in/check.v1"
 )
 
@@ -19,20 +21,23 @@ func Test(t *testing.T) {
 
 type S struct{}
 
-var ctx = context.TODO()
+var baseCtx = context.TODO() // Renamed from ctx to avoid conflict with FWContext/BWContext's Context field
 var _ = check.Suite(&S{})
 
 func (s *S) TestSuccessAndParameters(c *check.C) {
-	parentSpan, parentCtx := opentracing.StartSpanFromContext(ctx, "parent operation")
-	defer parentSpan.Finish()
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	tracer := tp.Tracer("test-tracer")
+	parentCtx, parentSpan := tracer.Start(baseCtx, "parent operation")
+	defer parentSpan.End()
 
 	actions := []*Action{
 		{
 			Forward: func(ctx FWContext) (Result, error) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello"})
 
-				currentSpan := opentracing.SpanFromContext(ctx.Context)
-				c.Assert(currentSpan, check.Not(check.IsNil))
+				currentSpan := trace.SpanFromContext(ctx.Context)
+				c.Assert(currentSpan.SpanContext().IsValid(), check.Equals, true)
 				return "ok", nil
 			},
 		},
@@ -54,8 +59,8 @@ func (s *S) TestRollback(c *check.C) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
 				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
 
-				currentSpan := opentracing.SpanFromContext(ctx.Context)
-				c.Assert(currentSpan, check.Not(check.IsNil))
+				currentSpan := trace.SpanFromContext(ctx.Context)
+				c.Assert(currentSpan.SpanContext().IsValid(), check.Equals, true)
 
 				backwardCalled = true
 			},
@@ -63,8 +68,13 @@ func (s *S) TestRollback(c *check.C) {
 		&errorAction,
 	}
 	pipeline := NewPipeline(actions...)
-	parentSpan, parentCtx := opentracing.StartSpanFromContext(ctx, "parent operation")
-	defer parentSpan.Finish()
+
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	tracer := tp.Tracer("test-tracer")
+	parentCtx, parentSpan := tracer.Start(baseCtx, "parent operation")
+	defer parentSpan.End()
+
 	err := pipeline.Execute(parentCtx, "hello", "world")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to execute.")
@@ -87,7 +97,10 @@ func (s *S) TestRollbackOnPanic(c *check.C) {
 		&panicAction,
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute(ctx, "hello", "world")
+	// For tests not directly asserting trace properties, passing baseCtx is fine.
+	// If trace propagation within panic scenarios becomes a specific test case,
+	// then a parent OTel span should be created here too.
+	err := pipeline.Execute(baseCtx, "hello", "world")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `panic running.*`)
 	c.Assert(backwardCalled, check.Equals, true)
@@ -100,14 +113,14 @@ func (s *S) TestRollbackUnrollbackableAction(c *check.C) {
 		&errorAction,
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute(ctx, "hello")
+	err := pipeline.Execute(baseCtx, "hello")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to execute.")
 }
 
 func (s *S) TestExecuteNoActions(c *check.C) {
 	pipeline := NewPipeline()
-	err := pipeline.Execute(ctx)
+	err := pipeline.Execute(baseCtx)
 	c.Assert(err, check.Equals, ErrPipelineNoActions)
 }
 
@@ -128,7 +141,7 @@ func (s *S) TestExecuteActionWithNilForward(c *check.C) {
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute(ctx)
+	err := pipeline.Execute(baseCtx)
 	c.Assert(err, check.Equals, ErrPipelineForwardMissing)
 	c.Assert(executed, check.Equals, true)
 }
@@ -153,7 +166,7 @@ func (s *S) TestExecuteMinParams(c *check.C) {
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute(ctx)
+	err := pipeline.Execute(baseCtx)
 	c.Assert(err, check.Equals, ErrPipelineFewParameters)
 	c.Assert(executed, check.Equals, true)
 }
@@ -169,7 +182,7 @@ func (s *S) TestResult(c *check.C) {
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute(ctx)
+	err := pipeline.Execute(baseCtx)
 	c.Assert(err, check.IsNil)
 	r := pipeline.Result()
 	c.Assert(r, check.Equals, "ok")
@@ -184,10 +197,10 @@ func (s *S) TestDoesntOverwriteResult(c *check.C) {
 		},
 	}
 	pipeline1 := NewPipeline(&myAction)
-	err := pipeline1.Execute(ctx, "result1")
+	err := pipeline1.Execute(baseCtx, "result1")
 	c.Assert(err, check.IsNil)
 	pipeline2 := NewPipeline(&myAction)
-	err = pipeline2.Execute(ctx, "result2")
+	err = pipeline2.Execute(baseCtx, "result2")
 	c.Assert(err, check.IsNil)
 	r1 := pipeline1.Result()
 	c.Assert(r1, check.Equals, "result1")
@@ -210,7 +223,7 @@ func (s *S) TestActionOnError(c *check.C) {
 		},
 	}
 	pipeline1 := NewPipeline(&myAction)
-	err := pipeline1.Execute(ctx, expectedParam)
+	err := pipeline1.Execute(baseCtx, expectedParam)
 	c.Assert(err, check.Equals, returnedErr)
 	c.Assert(called, check.Equals, true)
 }
