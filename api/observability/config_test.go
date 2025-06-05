@@ -5,69 +5,89 @@
 package observability
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/uber/jaeger-client-go"
+	"go.opentelemetry.io/otel/attribute"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestTsuruJaegerSampler(c *check.C) {
-	fallbackSampler := jaeger.NewConstSampler(false)
-	sampler := tsuruJaegerSampler{fallbackSampler: fallbackSampler}
+func (s *S) TestTsuruSampler(c *check.C) {
+	fallbackSamplerNever := sdktrace.NeverSample()
+	fallbackSamplerAlways := sdktrace.AlwaysSample()
 
 	tests := []struct {
-		operation string
-		expected  bool
-		tags      []jaeger.Tag
+		name            string
+		operation       string
+		fallbackSampler sdktrace.Sampler
+		expectedDecision sdktrace.SamplingDecision
+		expectedAttrs   []attribute.KeyValue
 	}{
 		{
-			operation: "GET /apps",
-			expected:  false,
-			tags: []jaeger.Tag{
-				jaeger.NewTag("sampler.type", "const"),
-				jaeger.NewTag("sampler.param", false),
+			name:            "Read operation with NeverSample fallback",
+			operation:       "GET /apps",
+			fallbackSampler: fallbackSamplerNever,
+			expectedDecision: sdktrace.Drop,
+			expectedAttrs:   nil, // Fallback sampler (NeverSample) doesn't add attributes
+		},
+		{
+			name:            "Write operation (POST) should be sampled",
+			operation:       "POST /apps",
+			fallbackSampler: fallbackSamplerNever, // Fallback shouldn't be used
+			expectedDecision: sdktrace.RecordAndSample,
+			expectedAttrs: []attribute.KeyValue{
+				attribute.String("sampler.type", "tsuru"),
+				attribute.String("sampling.reason", "write operation"),
 			},
 		},
 		{
-			operation: "POST /apps",
-			expected:  true,
-			tags: []jaeger.Tag{
-				jaeger.NewTag("sampler.type", "tsuru"),
-				jaeger.NewTag("sampling.reason", "write operation"),
+			name:            "Write operation (PUT) should be sampled",
+			operation:       "PUT /apps",
+			fallbackSampler: fallbackSamplerNever, // Fallback shouldn't be used
+			expectedDecision: sdktrace.RecordAndSample,
+			expectedAttrs: []attribute.KeyValue{
+				attribute.String("sampler.type", "tsuru"),
+				attribute.String("sampling.reason", "write operation"),
 			},
 		},
 		{
-			operation: "PUT /apps",
-			expected:  true,
-			tags: []jaeger.Tag{
-				jaeger.NewTag("sampler.type", "tsuru"),
-				jaeger.NewTag("sampling.reason", "write operation"),
+			name:            "Write operation (DELETE) should be sampled",
+			operation:       "DELETE /apps",
+			fallbackSampler: fallbackSamplerNever, // Fallback shouldn't be used
+			expectedDecision: sdktrace.RecordAndSample,
+			expectedAttrs: []attribute.KeyValue{
+				attribute.String("sampler.type", "tsuru"),
+				attribute.String("sampling.reason", "write operation"),
 			},
 		},
 		{
-			operation: "DELETE /apps",
-			expected:  true,
-			tags: []jaeger.Tag{
-				jaeger.NewTag("sampler.type", "tsuru"),
-				jaeger.NewTag("sampling.reason", "write operation"),
-			},
-		},
-		{
-			operation: "POST /node/status",
-			expected:  false,
-			tags: []jaeger.Tag{
-				jaeger.NewTag("sampler.type", "const"),
-				jaeger.NewTag("sampler.param", false),
-			},
+			name:            "Denied write operation with AlwaysSample fallback",
+			operation:       "POST /node/status",
+			fallbackSampler: fallbackSamplerAlways,
+			expectedDecision: sdktrace.RecordAndSample, // Fallback sampler (AlwaysSample)
+			expectedAttrs:   nil,                     // Fallback sampler (AlwaysSample) doesn't add attributes by default
 		},
 	}
 
 	for _, test := range tests {
-		fmt.Println(test.operation)
-		sampled, tags := sampler.IsSampled(jaeger.TraceID{}, test.operation)
+		c.Logf("Running test: %s", test.name)
+		sampler := NewTsuruSampler(test.fallbackSampler)
+		params := sdktrace.SamplingParameters{
+			ParentContext: context.Background(),
+			TraceID:       trace.TraceID{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10},
+			Name:          test.operation,
+			Kind:          trace.SpanKindServer, // Assuming server spans, adjust if needed
+		}
+		result := sampler.ShouldSample(params)
 
-		c.Check(sampled, check.Equals, test.expected)
-		c.Check(tags, check.DeepEquals, test.tags)
+		c.Check(result.Decision, check.Equals, test.expectedDecision, check.Commentf("Test: %s", test.name))
+		if test.expectedAttrs == nil {
+			c.Check(result.Attributes, check.IsNil, check.Commentf("Test: %s", test.name))
+		} else {
+			c.Check(result.Attributes, check.DeepEquals, test.expectedAttrs, check.Commentf("Test: %s", test.name))
+		}
+		c.Check(sampler.Description(), check.Equals, "TsuruSampler")
 	}
-
 }

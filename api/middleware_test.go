@@ -14,10 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"go.opentelemetry.io/otel/attribute"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -242,18 +244,35 @@ func (s *S) TestAuthTokenMiddlewareWithToken(c *check.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	tracer := mocktracer.New()
-	span, ctx := opentracing.StartSpanFromContextWithTracer(request.Context(), tracer, "test")
-	request = request.WithContext(ctx)
+
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	tracer := tp.Tracer("test-tracer")
+	spanCtx, span := tracer.Start(request.Context(), "test")
+	request = request.WithContext(spanCtx)
+
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	t := context.GetAuthToken(request)
 	c.Assert(t.GetValue(), check.Equals, s.token.GetValue())
 	c.Assert(t.GetUserName(), check.Equals, s.token.GetUserName())
-	mockSpan := span.(*mocktracer.MockSpan)
-	c.Check(mockSpan.Tag("user.name"), check.Equals, s.token.GetUserName())
-	c.Check(mockSpan.Tag("app.name"), check.Equals, nil)
+
+	span.End()
+	spans := exporter.GetSpans()
+	c.Assert(spans, check.HasLen, 1)
+	roSpan := spans[0]
+	var userNameAttr, appNameAttr string
+	for _, attr := range roSpan.Attributes() {
+		if attr.Key == "user.name" {
+			userNameAttr = attr.Value.AsString()
+		}
+		if attr.Key == "app.name" {
+			appNameAttr = attr.Value.AsString()
+		}
+	}
+	c.Check(userNameAttr, check.Equals, s.token.GetUserName())
+	c.Check(appNameAttr, check.Equals, "") // app.name is expected to be empty or not set
 }
 
 func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
@@ -268,18 +287,35 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+user.APIKey)
-	tracer := mocktracer.New()
-	span, ctx := opentracing.StartSpanFromContextWithTracer(request.Context(), tracer, "test")
-	request = request.WithContext(ctx)
+
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	tracer := tp.Tracer("test-tracer")
+	spanCtx, span := tracer.Start(request.Context(), "test")
+	request = request.WithContext(spanCtx)
+
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	t := context.GetAuthToken(request)
 	c.Assert(t.GetValue(), check.Equals, user.APIKey)
 	c.Assert(t.GetUserName(), check.Equals, user.Email)
-	mockSpan := span.(*mocktracer.MockSpan)
-	c.Check(mockSpan.Tag("user.name"), check.Equals, user.Email)
-	c.Check(mockSpan.Tag("app.name"), check.Equals, nil)
+
+	span.End()
+	spans := exporter.GetSpans()
+	c.Assert(spans, check.HasLen, 1)
+	roSpan := spans[0]
+	var userNameAttr, appNameAttr string
+	for _, attr := range roSpan.Attributes() {
+		if attr.Key == "user.name" {
+			userNameAttr = attr.Value.AsString()
+		}
+		if attr.Key == "app.name" {
+			appNameAttr = attr.Value.AsString()
+		}
+	}
+	c.Check(userNameAttr, check.Equals, user.Email)
+	c.Check(appNameAttr, check.Equals, "")
 }
 
 func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
@@ -290,9 +326,13 @@ func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
-	tracer := mocktracer.New()
-	span, ctx := opentracing.StartSpanFromContextWithTracer(request.Context(), tracer, "test")
-	request = request.WithContext(ctx)
+
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	tracer := tp.Tracer("test-tracer")
+	spanCtx, span := tracer.Start(request.Context(), "test")
+	request = request.WithContext(spanCtx)
+
 	request.Header.Set("Authorization", "bearer "+token.Token)
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
@@ -300,9 +340,22 @@ func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
 	t := context.GetAuthToken(request)
 	c.Assert(t, check.NotNil)
 	c.Assert(t.GetValue(), check.Equals, token.Token)
-	mockSpan := span.(*mocktracer.MockSpan)
-	c.Check(mockSpan.Tag("user.name"), check.Equals, token.TokenID)
-	c.Check(mockSpan.Tag("app.name"), check.Equals, nil)
+
+	span.End()
+	spans := exporter.GetSpans()
+	c.Assert(spans, check.HasLen, 1)
+	roSpan := spans[0]
+	var userNameAttr, appNameAttr string
+	for _, attr := range roSpan.Attributes() {
+		if attr.Key == "user.name" {
+			userNameAttr = attr.Value.AsString()
+		}
+		if attr.Key == "app.name" {
+			appNameAttr = attr.Value.AsString()
+		}
+	}
+	c.Check(userNameAttr, check.Equals, token.TokenID)
+	c.Check(appNameAttr, check.Equals, "")
 }
 
 func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *check.C) {
@@ -346,9 +399,13 @@ func (s *S) TestAuthTokenMiddlewareUserTokenForApp(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=something", nil)
 	c.Assert(err, check.IsNil)
-	tracer := mocktracer.New()
-	span, ctx := opentracing.StartSpanFromContextWithTracer(request.Context(), tracer, "test")
-	request = request.WithContext(ctx)
+
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	tracer := tp.Tracer("test-tracer")
+	spanCtx, span := tracer.Start(request.Context(), "test")
+	request = request.WithContext(spanCtx)
+
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
@@ -356,9 +413,22 @@ func (s *S) TestAuthTokenMiddlewareUserTokenForApp(c *check.C) {
 	t := context.GetAuthToken(request)
 	c.Assert(t.GetValue(), check.Equals, s.token.GetValue())
 	c.Assert(t.GetUserName(), check.Equals, s.token.GetUserName())
-	mockSpan := span.(*mocktracer.MockSpan)
-	c.Check(mockSpan.Tag("user.name"), check.Equals, s.token.GetUserName())
-	c.Check(mockSpan.Tag("app.name"), check.Equals, nil)
+
+	span.End()
+	spans := exporter.GetSpans()
+	c.Assert(spans, check.HasLen, 1)
+	roSpan := spans[0]
+	var userNameAttr, appNameAttr string
+	for _, attr := range roSpan.Attributes() {
+		if attr.Key == "user.name" {
+			userNameAttr = attr.Value.AsString()
+		}
+		if attr.Key == "app.name" {
+			appNameAttr = attr.Value.AsString()
+		}
+	}
+	c.Check(userNameAttr, check.Equals, s.token.GetUserName())
+	c.Check(appNameAttr, check.Equals, "")
 }
 
 func (s *S) TestAuthTokenMiddlewareUserTokenAppNotFound(c *check.C) {

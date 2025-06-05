@@ -7,96 +7,94 @@ package observability
 import (
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"context"
+	"strings"
+
 	"github.com/tsuru/tsuru/log"
-	"github.com/uber/jaeger-client-go"
-	jaegerConfig "github.com/uber/jaeger-client-go/config"
-	"github.com/uber/jaeger-client-go/zipkin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
 func init() {
-	// We decided to use B3 Format, in the future plan to move to W3C context propagation
-	// https://github.com/w3c/trace-context
-	zipkinPropagator := zipkin.NewZipkinB3HTTPHeaderPropagator()
+	ctx := context.Background()
 
-	// setup opentracing
-	cfg, err := jaegerConfig.FromEnv()
+	// Create a new OTLP HTTP trace exporter
+	exporter, err := otlptracehttp.New(ctx)
 	if err != nil {
-		log.Fatal(err.Error())
-	}
-	cfg.ServiceName = "tsurud"
-
-	sampler, err := NewTsuruJaegerSamplerFromConfig(cfg)
-	if err != nil {
-		log.Fatal(err.Error())
+		log.Errorf("failed to create OTLP HTTP trace exporter: %v", err)
+		return
 	}
 
-	tracer, _, err := cfg.NewTracer(
-		jaegerConfig.Injector(opentracing.HTTPHeaders, zipkinPropagator),
-		jaegerConfig.Extractor(opentracing.HTTPHeaders, zipkinPropagator),
-		jaegerConfig.Injector(opentracing.TextMap, zipkinPropagator),
-		jaegerConfig.Extractor(opentracing.TextMap, zipkinPropagator),
-		jaegerConfig.Sampler(sampler),
+	// Create a new resource
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("tsurud"),
+		),
 	)
-	if err == nil {
-		opentracing.SetGlobalTracer(tracer)
-	} else {
-		// FIXME: we need to mark that traces are disabled
-		log.Debugf("Could not initialize jaeger tracer: %s", err.Error())
+	if err != nil {
+		log.Errorf("failed to create resource: %v", err)
+		return
 	}
 
+	// Instantiate a new TracerProvider
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+		sdktrace.WithSampler(NewTsuruSampler(sdktrace.ParentBased(sdktrace.AlwaysSample()))),
+	)
+
+	// Set this provider as the global tracer provider
+	otel.SetTracerProvider(tp)
+
+	// Set up a global text map propagator
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	log.Debug("OpenTelemetry initialized successfully")
 }
 
 var (
-	_                       jaeger.Sampler = &tsuruJaegerSampler{}
-	writeOperations         []string       = []string{"POST", "PUT", "DELETE"}
-	writeOperationsDenyList []string       = []string{"POST /node/status"}
+	_                       sdktrace.Sampler = &tsuruSampler{}
+	writeOperations         []string         = []string{"POST", "PUT", "DELETE"}
+	writeOperationsDenyList []string         = []string{"POST /node/status"}
 )
 
-func NewTsuruJaegerSamplerFromConfig(cfg *jaegerConfig.Configuration) (*tsuruJaegerSampler, error) {
-	cfgSampler := cfg.Sampler
-	if cfgSampler == nil {
-		cfgSampler = &jaegerConfig.SamplerConfig{
-			Type:  jaeger.SamplerTypeRemote,
-			Param: 0.001,
-		}
-	}
-
-	fallbackSampler, err := cfgSampler.NewSampler(cfg.ServiceName, jaeger.NewNullMetrics())
-	if err != nil {
-		return nil, err
-	}
-
-	return &tsuruJaegerSampler{fallbackSampler: fallbackSampler}, nil
+// NewTsuruSampler creates a new tsuruSampler.
+// fallbackSampler is used if the operation is not a write operation or is in the deny list.
+func NewTsuruSampler(fallbackSampler sdktrace.Sampler) sdktrace.Sampler {
+	return &tsuruSampler{fallbackSampler: fallbackSampler}
 }
 
-type tsuruJaegerSampler struct {
-	fallbackSampler jaeger.Sampler
+type tsuruSampler struct {
+	fallbackSampler sdktrace.Sampler
 }
 
-func (t *tsuruJaegerSampler) Close() {
-	t.fallbackSampler.Close()
-}
-
-func (*tsuruJaegerSampler) Equal(other jaeger.Sampler) bool {
-	_, ok := other.(*tsuruJaegerSampler)
-	return ok
-}
-
-func (t *tsuruJaegerSampler) IsSampled(id jaeger.TraceID, operation string) (sampled bool, tags []jaeger.Tag) {
-	if isWriteOperationDenied(operation) {
-		return t.fallbackSampler.IsSampled(id, operation)
+// ShouldSample implements the OpenTelemetry Sampler interface.
+func (t *tsuruSampler) ShouldSample(parameters sdktrace.SamplingParameters) sdktrace.SamplingResult {
+	// parameters.Name is the span name, which corresponds to `operation` in the old sampler.
+	if isWriteOperationDenied(parameters.Name) {
+		return t.fallbackSampler.ShouldSample(parameters)
 	}
 
 	for _, writeOperation := range writeOperations {
-		if strings.HasPrefix(operation, writeOperation) {
-			return true, []jaeger.Tag{
-				jaeger.NewTag("sampler.type", "tsuru"),
-				jaeger.NewTag("sampling.reason", "write operation"),
+		if strings.HasPrefix(parameters.Name, writeOperation) {
+			return sdktrace.SamplingResult{
+				Decision:   sdktrace.RecordAndSample,
+				Attributes: []attribute.KeyValue{attribute.String("sampler.type", "tsuru"), attribute.String("sampling.reason", "write operation")},
+				Tracestate: parameters.ParentContext.TraceState(),
 			}
 		}
 	}
-	return t.fallbackSampler.IsSampled(id, operation)
+	return t.fallbackSampler.ShouldSample(parameters)
+}
+
+// Description returns a human-readable description of the Sampler.
+func (t *tsuruSampler) Description() string {
+	return "TsuruSampler"
 }
 
 func isWriteOperationDenied(operation string) bool {
