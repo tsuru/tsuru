@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -16,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -910,6 +912,74 @@ func (s *S) TestUpdateJob(c *check.C) {
 		c.Assert(updatedJob, check.DeepEquals, &t.expectedJob)
 		servicemanager.Job.RemoveJob(context.TODO(), &t.newJob)
 	}
+}
+
+func (s *S) TestUpdateJobFailedShouldRollback(c *check.C) {
+	oldJob := jobTypes.Job{
+		Name:      "rollback-test-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Spec: jobTypes.JobSpec{
+			Schedule: "10 * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "original!"},
+			},
+		},
+	}
+	newJob := jobTypes.Job{
+		Name:      "rollback-test-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Spec: jobTypes.JobSpec{
+			Schedule: "20 * * * *", // Changed schedule time
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "updated!"},
+			},
+		},
+	}
+
+	err := servicemanager.Job.CreateJob(context.TODO(), &oldJob, s.user)
+	c.Assert(err, check.IsNil)
+
+	initialJob, err := servicemanager.Job.GetByName(context.TODO(), oldJob.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(initialJob.Spec.Schedule, check.Equals, "10 * * * *")
+	c.Assert(initialJob.Spec.Container.Command, check.DeepEquals, []string{"echo", "original!"})
+
+	provisionerCalled := false
+	originalJobService := servicemanager.Job
+
+	s.mockService.JobService.OnUpdateJob = func(newJob, oldJob *jobTypes.Job, user *authTypes.User) error {
+		return originalJobService.UpdateJob(context.TODO(), newJob, oldJob, user)
+	}
+	s.mockService.JobService.OnUpdateJobProv = func(job *jobTypes.Job) error {
+		provisionerCalled = true
+		c.Assert(job.Spec.Schedule, check.Equals, "20 * * * *") // Verify we got the new job
+		return errors.New("provisioner failure")
+	}
+	s.mockService.JobService.OnGetByName = func(name string) (*jobTypes.Job, error) {
+		return originalJobService.GetByName(context.TODO(), name)
+	}
+
+	servicemanager.Job = s.mockService.JobService
+	defer func() {
+		servicemanager.Job = originalJobService
+	}()
+
+	err = servicemanager.Job.UpdateJob(context.TODO(), &newJob, &oldJob, s.user)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "provisioner failure")
+
+	c.Assert(provisionerCalled, check.Equals, true)
+	rolledBackJob, err := servicemanager.Job.GetByName(context.TODO(), oldJob.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(rolledBackJob.Spec.Schedule, check.Equals, "10 * * * *")                               // Original schedule
+	c.Assert(rolledBackJob.Spec.Container.Command, check.DeepEquals, []string{"echo", "original!"}) // Original command
+
+	err = servicemanager.Job.RemoveJob(context.TODO(), &oldJob)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestTriggerCronShouldExecuteJob(c *check.C) {
