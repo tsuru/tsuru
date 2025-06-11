@@ -154,7 +154,7 @@ type JobProvisioner interface {
 	EnsureJob(context.Context, *jobTypes.Job) error
 
 	DestroyJob(context.Context, *jobTypes.Job) error
-	TriggerCron(ctx context.Context, name, pool string) error
+	TriggerCron(ctx context.Context, job *jobTypes.Job, pool string) error
 	KillJobUnit(ctx context.Context, job *jobTypes.Job, unitName string, force bool) error
 }
 
