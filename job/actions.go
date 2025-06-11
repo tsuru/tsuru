@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -116,7 +117,7 @@ var jobUpdateDB = action.Action{
 			return
 		}
 		if err := updateJobDB(ctx.Context, oldJob); err != nil {
-			errors.New("failed to rollback job update for job")
+			log.Errorf("Error trying to rollback old job %s: %v", oldJob.Name, err)
 		}
 	},
 	MinParams: 1,
