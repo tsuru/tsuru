@@ -64,10 +64,8 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -105,10 +103,8 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -144,10 +140,8 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -194,10 +188,8 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -244,10 +236,8 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -303,10 +293,8 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -365,10 +353,8 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -429,10 +415,8 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -496,10 +480,8 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})

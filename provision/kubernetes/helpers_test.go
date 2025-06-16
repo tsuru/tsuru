@@ -357,11 +357,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 
 func (s *S) TestCleanupDeployment(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
-	})
+	version := newCommittedVersion(c, a, map[string][]string{"p1": {"cm1"}})
 	expectedLabels := map[string]string{
 		"tsuru.io/is-tsuru":        "true",
 		"tsuru.io/is-service":      "true",
