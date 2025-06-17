@@ -41,15 +41,21 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 	}{
 		{
 			name:      "simple create cronjob with default plan",
-			jobName:   "myjob",
+			jobName:   "myjob-1cec0fa1", // Hash-based name for "* * * * *"
 			namespace: "default",
 			teardown: func() {
 				j := jobTypes.Job{
 					Name: "myjob",
 					Pool: "test-default",
+					Spec: jobTypes.JobSpec{
+						Schedule: "* * * * *",
+					},
 				}
 				err := s.p.DestroyJob(context.TODO(), &j)
 				c.Assert(err, check.IsNil)
+
+				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
+				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 			},
 			scenario: func() {
 				cj := jobTypes.Job{
@@ -89,7 +95,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
 				expectedTarget := &batchv1.CronJob{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "myjob",
+						Name:      "myjob-1cec0fa1", // Hash-based name for "* * * * *"
 						Namespace: "default",
 						Labels: map[string]string{
 							"app.kubernetes.io/component":  "job",
@@ -163,15 +169,17 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					},
 				}
 				c.Assert(*gotCron, check.DeepEquals, *expectedTarget)
-				account, err := s.client.CoreV1().ServiceAccounts(expectedTarget.Namespace).Get(context.TODO(), "job-"+expectedTarget.Name, metav1.GetOptions{})
+				jobName := "myjob" // original job name
+				serviceAccountName := "job-" + jobName
+				account, err := s.client.CoreV1().ServiceAccounts(expectedTarget.Namespace).Get(context.TODO(), serviceAccountName, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				c.Assert(account, check.DeepEquals, &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "job-" + expectedTarget.Name,
+						Name:      serviceAccountName,
 						Namespace: expectedTarget.Namespace,
 						Labels: map[string]string{
 							"tsuru.io/is-tsuru": "true",
-							"tsuru.io/job-name": expectedTarget.Name,
+							"tsuru.io/job-name": jobName,
 						},
 					},
 				})
@@ -179,7 +187,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		},
 		{
 			name:      "create cronjob with service account annotation",
-			jobName:   "myjob",
+			jobName:   "myjob-1cec0fa1", // Hash-based name for "* * * * *"
 			namespace: "default",
 			scenario: func() {
 				cj := jobTypes.Job{
@@ -207,15 +215,17 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				c.Assert(err, check.IsNil)
 			},
 			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
-				account, err := s.client.CoreV1().ServiceAccounts(gotCron.Namespace).Get(context.TODO(), "job-"+gotCron.Name, metav1.GetOptions{})
+				jobName := "myjob" // original job name
+				serviceAccountName := "job-" + jobName
+				account, err := s.client.CoreV1().ServiceAccounts(gotCron.Namespace).Get(context.TODO(), serviceAccountName, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				c.Assert(account, check.DeepEquals, &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "job-" + gotCron.Name,
+						Name:      serviceAccountName,
 						Namespace: gotCron.Namespace,
 						Labels: map[string]string{
 							"tsuru.io/is-tsuru": "true",
-							"tsuru.io/job-name": gotCron.Name,
+							"tsuru.io/job-name": jobName,
 						},
 						Annotations: map[string]string{
 							"iam.gke.io/gcp-service-account": "test@test.com",
@@ -224,16 +234,23 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				})
 			},
 			teardown: func() {
-				err := s.p.DestroyJob(context.TODO(), &jobTypes.Job{
+				j := jobTypes.Job{
 					Name: "myjob",
 					Pool: "test-default",
-				})
+					Spec: jobTypes.JobSpec{
+						Schedule: "* * * * *",
+					},
+				}
+				err := s.p.DestroyJob(context.TODO(), &j)
 				c.Assert(err, check.IsNil)
+
+				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
+				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 			},
 		},
 		{
 			name:      "create cronjob with concurrency policy set to forbid",
-			jobName:   "myjob",
+			jobName:   "myjob-1cec0fa1", // Hash-based name for "* * * * *"
 			namespace: "default",
 			scenario: func() {
 				cj := jobTypes.Job{
@@ -257,11 +274,18 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				c.Assert(gotCron.Spec.ConcurrencyPolicy, check.DeepEquals, batchv1.ForbidConcurrent)
 			},
 			teardown: func() {
-				err := s.p.DestroyJob(context.TODO(), &jobTypes.Job{
+				j := jobTypes.Job{
 					Name: "myjob",
 					Pool: "test-default",
-				})
+					Spec: jobTypes.JobSpec{
+						Schedule: "* * * * *",
+					},
+				}
+				err := s.p.DestroyJob(context.TODO(), &j)
 				c.Assert(err, check.IsNil)
+
+				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
+				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 			},
 		},
 	}
@@ -360,7 +384,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 			},
 			expectedTarget: &batchv1.CronJob{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "myjob",
+					Name:      "myjob-1cec0fa1", // Hash-based name for "* * * * *"
 					Namespace: "default",
 					Labels: map[string]string{
 						"app.kubernetes.io/component":  "job",
@@ -474,7 +498,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 			},
 			expectedTarget: &batchv1.CronJob{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "myjob",
+					Name:      "myjob-e5fcddb0", // Hash-based name for "*/2 * * * *"
 					Namespace: "default",
 					Labels: map[string]string{
 						"app.kubernetes.io/component":  "job",
@@ -550,6 +574,16 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 		gotCron, err := s.client.BatchV1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
+
+		j := jobTypes.Job{
+			Name: "myjob",
+			Pool: "test-default",
+			Spec: jobTypes.JobSpec{
+				Schedule: "* * * * *",
+			},
+		}
+		err = s.p.DestroyJob(context.TODO(), &j)
+		c.Assert(err, check.IsNil)
 	}
 }
 
@@ -604,6 +638,35 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()
 
+	cj := jobTypes.Job{
+		Name:      "myjob",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "hello world"},
+			},
+			Envs: []bindTypes.EnvVar{
+				{
+					Name:  "MY_ENV",
+					Value: "** value",
+				},
+			},
+			ServiceEnvs: []bindTypes.ServiceEnvVar{
+				{
+					ServiceName:  "database-as-service",
+					InstanceName: "my-redis",
+					EnvVar: bindTypes.EnvVar{
+						Name:  "REDIS_HOST",
+						Value: "localhost",
+					},
+				},
+			},
+		},
+	}
+
 	tests := []struct {
 		name         string
 		setup        func()
@@ -613,50 +676,23 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 		{
 			name: "simple trigger cronjob",
 			setup: func() {
-				cj := jobTypes.Job{
-					Name:      "myjob",
-					TeamOwner: s.team.Name,
-					Pool:      "pool1",
-					Spec: jobTypes.JobSpec{
-						Schedule: "* * * * *",
-						Container: jobTypes.ContainerInfo{
-							OriginalImageSrc: "ubuntu:latest",
-							Command:          []string{"echo", "hello world"},
-						},
-						Envs: []bindTypes.EnvVar{
-							{
-								Name:  "MY_ENV",
-								Value: "** value",
-							},
-						},
-						ServiceEnvs: []bindTypes.ServiceEnvVar{
-							{
-								ServiceName:  "database-as-service",
-								InstanceName: "my-redis",
-								EnvVar: bindTypes.EnvVar{
-									Name:  "REDIS_HOST",
-									Value: "localhost",
-								},
-							},
-						},
-					},
-				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
 			scenario: func(t *time.Time) {
 				*t = time.Now()
-				err := s.p.TriggerCron(context.TODO(), "myjob", "test-default")
+				err := s.p.TriggerCron(context.TODO(), &cj, "test-default")
 				c.Assert(err, check.IsNil)
 				waitCron()
 			},
 			testScenario: func(c *check.C, t *time.Time) {
-				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", metav1.GetOptions{})
+				expectedCronJobName := "myjob-1cec0fa1" // Hash-based name for "* * * * *"
+				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), expectedCronJobName, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				expected := &batchv1.Job{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("myjob-manual-job-%d", t.Unix()/60),
+						Name:      fmt.Sprintf("%s-manual-job-%d", cronParent.Name, t.Unix()/60),
 						Namespace: "default",
 						Labels: map[string]string{
 							"app.kubernetes.io/component":  "job",
@@ -742,7 +778,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(gotJob, check.DeepEquals, expected)
 				// cleanup
-				err = s.client.BatchV1().CronJobs(expected.Namespace).Delete(context.TODO(), "myjob", metav1.DeleteOptions{})
+				err = s.client.BatchV1().CronJobs(expected.Namespace).Delete(context.TODO(), cronParent.Name, metav1.DeleteOptions{})
 				c.Assert(err, check.IsNil)
 			},
 		},
@@ -753,6 +789,205 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 		tt.scenario(&t)
 		tt.testScenario(c, &t)
 	}
+}
+
+func (s *S) TestBackwardCompatibilityOldNaming(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	oldCronJob := &batchv1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "legacy-job",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/job-name": "legacy-job",
+				"tsuru.io/job-pool": "test-default",
+				"tsuru.io/job-team": "admin",
+			},
+		},
+		Spec: batchv1.CronJobSpec{
+			Schedule: "0 2 * * *",
+			JobTemplate: batchv1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+							Containers: []corev1.Container{
+								{
+									Name:    "job",
+									Image:   "ubuntu:latest",
+									Command: []string{"echo", "legacy job"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), oldCronJob, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	job := &jobTypes.Job{
+		Name: "legacy-job",
+		Pool: "test-default",
+		Spec: jobTypes.JobSpec{
+			Schedule: "0 2 * * *",
+		},
+	}
+
+	err = s.p.TriggerCron(context.TODO(), job, "test-default")
+	c.Assert(err, check.IsNil)
+	waitCron()
+
+	jobs, err := s.client.BatchV1().Jobs("default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs.Items), check.Equals, 1)
+	c.Assert(jobs.Items[0].Name, check.Matches, "legacy-job-manual-job-.*")
+
+	err = s.p.DestroyJob(context.TODO(), job)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "legacy-job", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) TestScheduleChangeTriggersNameMigration(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	job := &jobTypes.Job{
+		Name:      "schedule-change-job",
+		TeamOwner: s.team.Name,
+		Pool:      "test-default",
+		Spec: jobTypes.JobSpec{
+			Schedule: "0 1 * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "original schedule"},
+			},
+		},
+	}
+
+	err := s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	originalHash := "26f58082" // Hash of "0 1 * * *"
+	originalName := fmt.Sprintf("schedule-change-job-%s", originalHash)
+
+	originalCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), originalName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(originalCronJob.Spec.Schedule, check.Equals, "0 1 * * *")
+
+	job.Spec.Schedule = "0 2 * * *"
+	err = s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	newHash := "746248f8" // Hash of "0 2 * * *"
+	newName := fmt.Sprintf("schedule-change-job-%s", newHash)
+
+	newCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), newName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(newCronJob.Spec.Schedule, check.Equals, "0 2 * * *")
+
+	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), originalName, metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	err = s.p.DestroyJob(context.TODO(), job)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestMixedOldAndNewJobsCoexisting(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	oldCronJob := &batchv1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "old-style-job",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/job-name": "old-style-job",
+				"tsuru.io/job-pool": "test-default",
+			},
+		},
+		Spec: batchv1.CronJobSpec{
+			Schedule: "0 3 * * *",
+			JobTemplate: batchv1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+							Containers: []corev1.Container{
+								{
+									Name:    "job",
+									Image:   "ubuntu:latest",
+									Command: []string{"echo", "old style"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	_, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), oldCronJob, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	newJob := &jobTypes.Job{
+		Name:      "new-style-job",
+		TeamOwner: s.team.Name,
+		Pool:      "test-default",
+		Spec: jobTypes.JobSpec{
+			Schedule: "0 4 * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "new style"},
+			},
+		},
+	}
+
+	err = s.p.EnsureJob(context.TODO(), newJob)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	cronJobs, err := s.client.BatchV1().CronJobs("default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(cronJobs.Items), check.Equals, 2)
+
+	var foundOld, foundNew *batchv1.CronJob
+	for i := range cronJobs.Items {
+		if cronJobs.Items[i].Name == "old-style-job" {
+			foundOld = &cronJobs.Items[i]
+		}
+		if cronJobs.Items[i].Name == "new-style-job-0ba863fe" { // Hash-based name for "0 4 * * *"
+			foundNew = &cronJobs.Items[i]
+		}
+	}
+
+	c.Assert(foundOld, check.NotNil)
+	c.Assert(foundNew, check.NotNil)
+	c.Assert(foundOld.Spec.Schedule, check.Equals, "0 3 * * *")
+	c.Assert(foundNew.Spec.Schedule, check.Equals, "0 4 * * *")
+
+	oldJobSpec := &jobTypes.Job{Name: "old-style-job", Pool: "test-default", Spec: jobTypes.JobSpec{Schedule: "0 3 * * *"}}
+	err = s.p.TriggerCron(context.TODO(), oldJobSpec, "test-default")
+	c.Assert(err, check.IsNil)
+
+	err = s.p.TriggerCron(context.TODO(), newJob, "test-default")
+	c.Assert(err, check.IsNil)
+	waitCron()
+
+	jobs, err := s.client.BatchV1().Jobs("default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs.Items), check.Equals, 2)
+
+	err = s.p.DestroyJob(context.TODO(), oldJobSpec)
+	c.Assert(err, check.IsNil)
+	err = s.p.DestroyJob(context.TODO(), newJob)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateJobEvent(c *check.C) {
@@ -1396,4 +1631,341 @@ func (s *S) TestFindJobFailedReason(c *check.C) {
 		reason := findJobFailedReason(tc.job)
 		c.Assert(reason, check.Equals, tc.expectedReason)
 	}
+}
+
+func (s *S) TestKillJobUnitWithPodCleanup(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+	cj := jobTypes.Job{
+		Name:      "myjob",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	err := s.p.EnsureJob(context.TODO(), &cj)
+	defer func() {
+		j := jobTypes.Job{
+			Name: "myjob",
+			Pool: "pool1",
+		}
+		err = s.p.DestroyJob(context.TODO(), &j)
+		c.Assert(err, check.IsNil)
+	}()
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/job-name": "myjob",
+			},
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+					Containers: []corev1.Container{
+						{
+							Name:    "job",
+							Image:   "ubuntu:latest",
+							Command: []string{"echo", "hello world"},
+						},
+					},
+				},
+			},
+		},
+	}
+	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(k8sJob, check.NotNil)
+	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1")
+
+	pod1 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1-pod1",
+			Namespace: "default",
+			Labels: map[string]string{
+				"job-name": "myjob-unit1",
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyOnFailure,
+			Containers: []corev1.Container{
+				{
+					Name:    "job",
+					Image:   "ubuntu:latest",
+					Command: []string{"echo", "hello world"},
+				},
+			},
+		},
+	}
+	pod2 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1-pod2",
+			Namespace: "default",
+			Labels: map[string]string{
+				"job-name": "myjob-unit1",
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyOnFailure,
+			Containers: []corev1.Container{
+				{
+					Name:    "job",
+					Image:   "ubuntu:latest",
+					Command: []string{"echo", "hello world"},
+				},
+			},
+		},
+	}
+
+	_, err = s.client.CoreV1().Pods("default").Create(context.TODO(), pod1, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().Pods("default").Create(context.TODO(), pod2, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	pods, err := s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "job-name=myjob-unit1",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pods.Items), check.Equals, 2)
+
+	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1", false)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	pods, err = s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "job-name=myjob-unit1",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pods.Items), check.Equals, 0)
+}
+
+func (s *S) TestKillJobUnitWithPodCleanupForced(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+	cj := jobTypes.Job{
+		Name:      "myjob",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	err := s.p.EnsureJob(context.TODO(), &cj)
+	defer func() {
+		j := jobTypes.Job{
+			Name: "myjob",
+			Pool: "pool1",
+		}
+		err = s.p.DestroyJob(context.TODO(), &j)
+		c.Assert(err, check.IsNil)
+	}()
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1-forced",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/job-name": "myjob",
+			},
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+					Containers: []corev1.Container{
+						{
+							Name:    "job",
+							Image:   "ubuntu:latest",
+							Command: []string{"echo", "hello world"},
+						},
+					},
+				},
+			},
+		},
+	}
+	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(k8sJob, check.NotNil)
+	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1-forced")
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1-forced-pod",
+			Namespace: "default",
+			Labels: map[string]string{
+				"job-name": "myjob-unit1-forced",
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyOnFailure,
+			Containers: []corev1.Container{
+				{
+					Name:    "job",
+					Image:   "ubuntu:latest",
+					Command: []string{"echo", "hello world"},
+				},
+			},
+		},
+	}
+
+	_, err = s.client.CoreV1().Pods("default").Create(context.TODO(), pod, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	pods, err := s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "job-name=myjob-unit1-forced",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pods.Items), check.Equals, 1)
+
+	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1-forced", true)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1-forced", metav1.GetOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	pods, err = s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "job-name=myjob-unit1-forced",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pods.Items), check.Equals, 0)
+}
+
+func (s *S) TestScheduleChangeDeletesAllOldCronJobs(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	job := &jobTypes.Job{
+		Name:      "multi-change-job",
+		TeamOwner: s.team.Name,
+		Pool:      "test-default",
+		Spec: jobTypes.JobSpec{
+			Schedule: "0 1 * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "original"},
+			},
+		},
+	}
+
+	err := s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	initialName := generateJobNameWithScheduleHash(job)
+
+	initialCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), initialName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(initialCronJob.Spec.Schedule, check.Equals, "0 1 * * *")
+
+	job.Spec.Schedule = "0 2 * * *"
+	err = s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	secondName := generateJobNameWithScheduleHash(job)
+
+	secondCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), secondName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(secondCronJob.Spec.Schedule, check.Equals, "0 2 * * *")
+
+	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), initialName, metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	job.Spec.Schedule = "0 3 * * *"
+	err = s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	thirdName := generateJobNameWithScheduleHash(job)
+
+	thirdCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), thirdName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(thirdCronJob.Spec.Schedule, check.Equals, "0 3 * * *")
+
+	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), secondName, metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	allCronJobs, err := s.client.BatchV1().CronJobs("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "tsuru.io/job-name=multi-change-job",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(allCronJobs.Items), check.Equals, 1)
+	c.Assert(allCronJobs.Items[0].Name, check.Equals, thirdName)
+
+	err = s.p.DestroyJob(context.TODO(), job)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestMaxJobNameLengthWithHash(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	maxJobName := "this-is-a-very-long-job-name-exactly-40c"
+	c.Assert(len(maxJobName), check.Equals, 40)
+
+	job := &jobTypes.Job{
+		Name:      maxJobName,
+		TeamOwner: s.team.Name,
+		Pool:      "test-default",
+		Spec: jobTypes.JobSpec{
+			Schedule: "0 1 * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "max length test"},
+			},
+		},
+	}
+
+	err := s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	expectedName := generateJobNameWithScheduleHash(job)
+	c.Assert(len(expectedName), check.Equals, 49)
+
+	cronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), expectedName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(cronJob.Name, check.Equals, expectedName)
+	c.Assert(cronJob.Spec.Schedule, check.Equals, "0 1 * * *")
+
+	job.Spec.Schedule = "0 2 * * *"
+	err = s.p.EnsureJob(context.TODO(), job)
+	waitCron()
+	c.Assert(err, check.IsNil)
+
+	newExpectedName := generateJobNameWithScheduleHash(job)
+	c.Assert(len(newExpectedName), check.Equals, 49)
+
+	newCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), newExpectedName, metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(newCronJob.Name, check.Equals, newExpectedName)
+	c.Assert(newCronJob.Spec.Schedule, check.Equals, "0 2 * * *")
+
+	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), expectedName, metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	err = s.p.TriggerCron(context.TODO(), job, "test-default")
+	c.Assert(err, check.IsNil)
+	waitCron()
+
+	manualJobs, err := s.client.BatchV1().Jobs("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("tsuru.io/job-name=%s", maxJobName),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(manualJobs.Items), check.Equals, 1)
+
+	err = s.p.DestroyJob(context.TODO(), job)
+	c.Assert(err, check.IsNil)
 }

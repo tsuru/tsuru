@@ -47,6 +47,7 @@ require (
 	golang.org/x/net v0.36.0
 	golang.org/x/oauth2 v0.20.0
 	golang.org/x/term v0.29.0
+	golang.org/x/text v0.22.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -61,8 +62,6 @@ require (
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	sigs.k8s.io/yaml v1.3.0
 )
-
-require golang.org/x/text v0.22.0
 
 require (
 	github.com/containerd/log v0.1.0 // indirect

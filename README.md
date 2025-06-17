@@ -119,6 +119,17 @@ tsuru cluster list
 
 If everything is working as expected, you should see your local Minikube cluster listed as the default provisioner.
 
+### Creating an app or job
+For that, you will have to create a team, pool and set a label to the minikube nodes to allow deploys on it
+
+```bash
+tsuru team create my-team
+tsuru pool add my-pool
+
+# make sure you are using the right kube config
+kubectl label nodes minikube tsuru.io/pool=my-pool
+```
+
 ### Cleaning up
 
 When you're done working with your local environment, it's important to stop the services to free up system resources.

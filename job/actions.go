@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -65,7 +66,7 @@ var triggerCron = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return nil, prov.TriggerCron(ctx.Context, job.Name, job.Pool)
+		return nil, prov.TriggerCron(ctx.Context, job, job.Pool)
 	},
 	MinParams: 1,
 }
@@ -99,7 +100,25 @@ var jobUpdateDB = action.Action{
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		return nil, updateJobDB(ctx.Context, j)
+
+		oldJob, err := servicemanager.Job.GetByName(ctx.Context, j.Name)
+		if err != nil {
+			return nil, updateJobDB(ctx.Context, j)
+		}
+
+		return oldJob, updateJobDB(ctx.Context, j)
+	},
+	Backward: func(ctx action.BWContext) {
+		if ctx.FWResult == nil {
+			return
+		}
+		oldJob, ok := ctx.FWResult.(*jobTypes.Job)
+		if !ok {
+			return
+		}
+		if err := updateJobDB(ctx.Context, oldJob); err != nil {
+			log.Errorf("Error trying to rollback old job %s: %v", oldJob.Name, err)
+		}
 	},
 	MinParams: 1,
 }

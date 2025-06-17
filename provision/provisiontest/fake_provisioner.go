@@ -878,10 +878,10 @@ func (p *JobProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) erro
 	return nil
 }
 
-func (p *JobProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
+func (p *JobProvisioner) TriggerCron(ctx context.Context, job *jobTypes.Job, pool string) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	j, ok := p.jobs[name]
+	j, ok := p.jobs[job.Name]
 	if !ok {
 		return errNotProvisioned
 	}

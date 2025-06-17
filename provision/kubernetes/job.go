@@ -6,6 +6,8 @@ package kubernetes
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -24,7 +26,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	k8sLabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
@@ -119,46 +121,125 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	}, nil
 }
 
+func generateJobNameWithScheduleHash(job *jobTypes.Job) string {
+	h := sha256.New()
+
+	h.Write([]byte(job.Spec.Schedule))
+	hashBytes := h.Sum(nil)
+	hashString := hex.EncodeToString(hashBytes)
+
+	scheduleHash := hashString[:8]
+
+	// max name size will be up to 40 from name + "-" + 8 from hash
+	return fmt.Sprintf("%s-%s", job.Name, scheduleHash)
+}
+
+func getCronJobWithFallback(ctx context.Context, client *ClusterClient, job *jobTypes.Job, namespace string) (*batchv1.CronJob, error) {
+	newJobName := generateJobNameWithScheduleHash(job)
+	cron, err := client.BatchV1().CronJobs(namespace).Get(ctx, newJobName, metav1.GetOptions{})
+	if err == nil {
+		return cron, nil
+	}
+	if !k8sErrors.IsNotFound(err) {
+		return nil, errors.WithStack(err)
+	}
+
+	// Try old naming scheme
+	cron, err = client.BatchV1().CronJobs(namespace).Get(ctx, job.Name, metav1.GetOptions{})
+	if err == nil {
+		return cron, nil
+	}
+	if !k8sErrors.IsNotFound(err) {
+		return nil, errors.WithStack(err)
+	}
+
+	// If no direct match, find any cronjob
+	allCronJobs, err := findAllCronJobsForJob(ctx, client, job.Name, namespace)
+	if err != nil {
+		return nil, err
+	}
+	if len(allCronJobs) > 0 {
+		// If multiple cronjobs exist, return the most recent
+		// This is a safeguard in-case a previous deletion didn't complete yet, since we do it background
+		mostRecent := &allCronJobs[0]
+		for i := 1; i < len(allCronJobs); i++ {
+			if allCronJobs[i].CreationTimestamp.After(mostRecent.CreationTimestamp.Time) {
+				mostRecent = &allCronJobs[i]
+			}
+		}
+		return mostRecent, nil
+	}
+
+	return nil, k8sErrors.NewNotFound(batchv1.Resource("cronjob"), job.Name)
+}
+
+func findAllCronJobsForJob(ctx context.Context, client *ClusterClient, jobName, namespace string) ([]batchv1.CronJob, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("tsuru.io/job-name=%s", jobName),
+	}
+	cronJobs, err := client.BatchV1().CronJobs(namespace).List(ctx, listOptions)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return cronJobs.Items, nil
+}
+
 func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job) error {
 	labels, annotations := buildMetadata(ctx, job)
 	jobSpec, err := buildJobSpec(job, client, labels, annotations)
 	if err != nil {
 		return err
 	}
-
 	namespace := client.PoolNamespace(job.Pool)
 
-	existingCronjob, err := client.BatchV1().CronJobs(namespace).Get(ctx, job.Name, metav1.GetOptions{})
+	existingCronjob, err := getCronJobWithFallback(ctx, client, job, namespace)
 	if k8sErrors.IsNotFound(err) {
 		existingCronjob = nil
 	} else if err != nil {
 		return errors.WithStack(err)
 	}
 
-	// when the schedule suffer changes some cronjobs may suffer a unexpected execution
-	// for these reason we decided to recreate the entire cronjob to avoid this
 	if existingCronjob != nil && existingCronjob.Spec.Schedule != job.Spec.Schedule {
+		var cronJobsToDelete []batchv1.CronJob
 
-		wait, waitErr := waitToJobDeletion(ctx, client, existingCronjob)
-		if waitErr != nil {
-			return errors.WithStack(waitErr)
+		if existingCronjob.Name == job.Name {
+			cronJobsToDelete = []batchv1.CronJob{*existingCronjob}
+		} else {
+			allCronJobs, err := findAllCronJobsForJob(ctx, client, job.Name, namespace)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			cronJobsToDelete = allCronJobs
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		err = client.BatchV1().CronJobs(namespace).Delete(ctx, existingCronjob.Name, metav1.DeleteOptions{
-			GracePeriodSeconds: ptr.To[int64](0),
-			PropagationPolicy:  &propagationPolicy,
-		})
+		var waitFuncs []func() error
 
-		if err != nil {
-			return errors.WithStack(err)
+		for _, cronJob := range cronJobsToDelete {
+			wait, waitErr := waitForJobDeletion(ctx, client, &cronJob)
+			if waitErr != nil {
+				return errors.WithStack(waitErr)
+			}
+
+			err = client.BatchV1().CronJobs(namespace).Delete(ctx, cronJob.Name, metav1.DeleteOptions{
+				GracePeriodSeconds: ptr.To[int64](1),
+				PropagationPolicy:  &propagationPolicy,
+			})
+
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				return errors.WithStack(err)
+			}
+
+			waitFuncs = append(waitFuncs, wait)
 		}
+
+		for _, wait := range waitFuncs {
+			if waitErr := wait(); waitErr != nil {
+				return errors.WithStack(waitErr)
+			}
+		}
+
 		existingCronjob = nil
-
-		waitErr = wait()
-		if waitErr != nil {
-			return errors.WithStack(waitErr)
-		}
 	}
 
 	concurrencyPolicy := ""
@@ -166,9 +247,16 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		concurrencyPolicy = *job.Spec.ConcurrencyPolicy
 	}
 
+	var cronjobName string
+	if existingCronjob != nil {
+		cronjobName = existingCronjob.Name
+	} else {
+		cronjobName = generateJobNameWithScheduleHash(job)
+	}
+
 	cronjob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.Name,
+			Name:        cronjobName,
 			Namespace:   namespace,
 			Labels:      labels,
 			Annotations: annotations,
@@ -185,7 +273,6 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 
 	if existingCronjob == nil {
 		_, err = client.BatchV1().CronJobs(namespace).Create(ctx, cronjob, metav1.CreateOptions{})
-
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -197,7 +284,6 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 	cronjob.Finalizers = existingCronjob.Finalizers
 
 	_, err = client.BatchV1().CronJobs(namespace).Update(ctx, cronjob, metav1.UpdateOptions{})
-
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -223,7 +309,7 @@ func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, m
 
 type deleteWaiterFunc func() error
 
-func waitToJobDeletion(ctx context.Context, client kubernetes.Interface, existingCronjob *batchv1.CronJob) (deleteWaiterFunc, error) {
+func waitForJobDeletion(ctx context.Context, client kubernetes.Interface, existingCronjob *batchv1.CronJob) (deleteWaiterFunc, error) {
 	deleted := make(chan struct{}, 1)
 
 	watchInterface, err := client.BatchV1().CronJobs(existingCronjob.ObjectMeta.Namespace).Watch(ctx, metav1.ListOptions{
@@ -269,13 +355,14 @@ func (p *kubernetesProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job
 	return ensureCronjob(ctx, client, job)
 }
 
-func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
+func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, job *jobTypes.Job, pool string) error {
 	client, err := clusterForPool(ctx, pool)
 	if err != nil {
 		return err
 	}
 	namespace := client.PoolNamespace(pool)
-	cron, err := client.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
+
+	cron, err := getCronJobWithFallback(ctx, client, job, namespace)
 	if err != nil {
 		return err
 	}
@@ -319,7 +406,7 @@ func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job)
 	jobLabels := provision.JobLabels(ctx, job).ToLabels()
 	labelSelector := metav1.LabelSelector{MatchLabels: jobLabels}
 	listOptions := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+		LabelSelector: k8sLabels.Set(labelSelector.MatchLabels).String(),
 	}
 	k8sJobs, err := client.BatchV1().Jobs(client.PoolNamespace(job.Pool)).List(ctx, listOptions)
 	if err != nil {
@@ -338,7 +425,12 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 		return err
 	}
 
-	err = client.BatchV1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
+	jobName := generateJobNameWithScheduleHash(job)
+	err = client.BatchV1().CronJobs(namespace).Delete(ctx, jobName, metav1.DeleteOptions{})
+	if err != nil && k8sErrors.IsNotFound(err) {
+		// Fallback to old naming scheme
+		err = client.BatchV1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
+	}
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
@@ -359,19 +451,54 @@ func (p *kubernetesProvisioner) KillJobUnit(ctx context.Context, job *jobTypes.J
 		}
 		return errors.WithStack(err)
 	}
-	if jobName, ok := k8sJob.Labels[tsuruLabelJobName]; !ok || jobName != job.Name {
+	if jobNameLabel, ok := k8sJob.Labels[tsuruLabelJobName]; !ok || jobNameLabel != job.Name {
 		return &provision.UnitNotFoundError{ID: unit}
 	}
-	if force {
-		return client.BatchV1().Jobs(namespace).Delete(ctx, unit, metav1.DeleteOptions{GracePeriodSeconds: func() *int64 { i := int64(0); return &i }()})
+
+	pods, err := p.getPodsForJob(ctx, client, k8sJob)
+	if err != nil {
+		return errors.WithStack(err)
 	}
-	return client.BatchV1().Jobs(namespace).Delete(ctx, unit, metav1.DeleteOptions{})
+
+	deleteOptions := metav1.DeleteOptions{}
+	if force {
+		deleteOptions = metav1.DeleteOptions{
+			GracePeriodSeconds: ptr.To[int64](1),
+		}
+	}
+
+	err = client.BatchV1().Jobs(namespace).Delete(ctx, unit, deleteOptions)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if len(pods) > 0 {
+		err = removePodsForJob(ctx, client, pods, deleteOptions)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	return nil
+}
+
+func removePodsForJob(ctx context.Context, client *ClusterClient, podList []apiv1.Pod, deleteOptions metav1.DeleteOptions) error {
+	for _, pod := range podList {
+		if err := client.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, deleteOptions); err != nil {
+			if k8sErrors.IsNotFound(err) {
+				continue
+			}
+			return errors.WithStack(err)
+		}
+	}
+
+	return nil
 }
 
 func (p *kubernetesProvisioner) getPodsForJob(ctx context.Context, client *ClusterClient, job *batchv1.Job) ([]apiv1.Pod, error) {
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"job-name": job.Name}}
 	listOptions := metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+		LabelSelector: k8sLabels.Set(labelSelector.MatchLabels).String(),
 	}
 	pods, err := client.CoreV1().Pods(job.Namespace).List(ctx, listOptions)
 	if err != nil {
