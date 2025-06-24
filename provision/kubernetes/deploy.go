@@ -1036,7 +1036,16 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	if err != nil {
 		return revision, errors.WithStack(err)
 	}
-	maxWaitTimeDuration := dockercommon.DeployHealthcheckTimeout(tsuruYamlData)
+	var healthcheck *provTypes.TsuruYamlHealthcheck
+	if len(tsuruYamlData.Processes) > 0 {
+		healthcheck, err = tsuruYamlData.GetHCFromProcessName(processName)
+		if err != nil {
+			return revision, errors.WithStack(err)
+		}
+	} else {
+		healthcheck = tsuruYamlData.Healthcheck
+	}
+	maxWaitTimeDuration := dockercommon.DeployHealthcheckTimeout(healthcheck)
 	var healthcheckTimeout <-chan time.Time
 	t0 := time.Now()
 	largestReady := int32(0)

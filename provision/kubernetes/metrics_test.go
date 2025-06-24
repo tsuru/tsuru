@@ -32,10 +32,8 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})

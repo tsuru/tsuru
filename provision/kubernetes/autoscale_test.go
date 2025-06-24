@@ -222,10 +222,8 @@ func testKEDAHPA(scaledObjectName string) *autoscalingv2.HorizontalPodAutoscaler
 func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -342,10 +340,8 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -486,10 +482,8 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 	config.Set("kubernetes:keda:prometheus-address-template", "http://prometheus-address-test.{{.namespace}}")
 	defer config.Unset("kubernetes:keda:prometheus-address-template")
 
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -658,10 +652,8 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -737,10 +729,8 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 
 	versions := make([]appTypes.AppVersion, 4)
 	for i := range versions {
-		versions[i] = newSuccessfulVersion(c, a, map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "python myapp.py",
-			},
+		versions[i] = newSuccessfulVersion(c, a, map[string][]string{
+			"web": {"python", "myapp.py"},
 		})
 	}
 
@@ -848,10 +838,8 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 
 	versions := make([]appTypes.AppVersion, 4)
 	for i := range versions {
-		versions[i] = newSuccessfulVersion(c, a, map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "python myapp.py",
-			},
+		versions[i] = newSuccessfulVersion(c, a, map[string][]string{
+			"web": {"python", "myapp.py"},
 		})
 	}
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
@@ -971,10 +959,8 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1049,10 +1035,8 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1095,11 +1079,9 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "python worker.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "myapp.py"},
+		"worker": {"python worker.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1164,11 +1146,9 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "python worker.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "myapp.py"},
+		"worker": {"python worker.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1285,11 +1265,9 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 	config.Set("kubernetes:keda:prometheus-address-template", "http://prometheus-address-test.{{.namespace}}")
 	defer config.Unset("kubernetes:keda:prometheus-address-template")
 
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "python worker.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "myapp.py"},
+		"worker": {"python worker.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1412,10 +1390,8 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1469,10 +1445,8 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
 func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1524,10 +1498,8 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
 func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cm1"},
 	})
 	err := s.p.AddUnits(context.Background(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1696,10 +1668,8 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 func (s *S) TestEnsureHPA(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1728,10 +1698,8 @@ func (s *S) TestEnsureHPA(c *check.C) {
 func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1774,10 +1742,8 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)

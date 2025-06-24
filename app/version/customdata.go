@@ -111,6 +111,9 @@ func marshalCustomData(data map[string]interface{}) (map[string]interface{}, err
 	}
 	result["hooks"] = yamlData.Hooks
 	result["healthcheck"] = yamlData.Healthcheck
+	if len(yamlData.Processes) > 0 {
+		result["processes"] = yamlData.Processes
+	}
 	if yamlData.Kubernetes == nil {
 		return result, nil
 	}

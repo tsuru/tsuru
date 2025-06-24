@@ -323,15 +323,13 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			for j, step := range tt.steps {
 				c.Logf("test %v step %v", i, j)
 				if step.deployStep != nil {
-					versionProcs := map[string]interface{}{}
+					versionProcs := map[string][]string{}
 					procSpec := servicecommon.ProcessSpec{}
 					for _, proc := range step.procs {
-						versionProcs[proc] = "cmd"
+						versionProcs[proc] = []string{"cmd"}
 						procSpec[proc] = servicecommon.ProcessState{Start: true}
 					}
-					version := newCommittedVersion(c, a, map[string]interface{}{
-						"processes": versionProcs,
-					})
+					version := newCommittedVersion(c, a, versionProcs)
 					var oldVersionNumber int
 					if !step.deployStep.newVersion {
 						oldVersionNumber, err = baseVersionForApp(context.TODO(), s.clusterClient, a)

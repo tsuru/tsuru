@@ -52,11 +52,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -318,11 +316,9 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -358,11 +354,9 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotations(c
 	}}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -408,11 +402,9 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotationsWi
 	}}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -458,11 +450,9 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotationsFromDeployment(c
 	}}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -494,11 +484,9 @@ func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -544,11 +532,9 @@ func (s *S) TestServiceManagerDeployServiceWithPodAffinity(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -594,11 +580,9 @@ func (s *S) TestServiceManagerDeployServiceWithAffinityAndClusterNodeSelectorDis
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -642,10 +626,8 @@ func (s *S) TestServiceManagerDeployServiceRaceWithHPA(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cm1"},
 	})
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -702,14 +684,12 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 	})
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	processes := map[string]interface{}{
-		"p1": "cmd1",
-		"p2": "cmd2",
-		"p3": "cmd3",
+	processes := map[string][]string{
+		"p1": {"cmd1"},
+		"p2": {"cmd2"},
+		"p3": {"cmd3"},
 	}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": processes,
-	})
+	version := newCommittedVersion(c, a, processes)
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -854,20 +834,21 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cmd1",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"p1": {"cmd1"},
 		},
-		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
-			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
-				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"p1": {
-						Ports: nil,
+		map[string]interface{}{
+			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"p1": {
+							Ports: nil,
+						},
 					},
 				},
 			},
-		},
-	})
+		})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -894,10 +875,8 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cmd1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cmd1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -913,20 +892,20 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
-	version = newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cmd1",
-		},
-		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
-			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
-				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"p1": {
-						Ports: nil,
+	version = newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cmd1"},
+	},
+		map[string]interface{}{
+			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"p1": {
+							Ports: nil,
+						},
 					},
 				},
 			},
-		},
-	})
+		})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -947,11 +926,9 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	c.Assert(err, check.IsNil)
 	tests := []struct {
@@ -1219,13 +1196,15 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		},
 	}
 	for _, tt := range tests {
-		version := newCommittedVersion(c, a, map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "cm1",
-				"p2":  "cmd2",
+		version := newCommittedVersion(c, a,
+			map[string][]string{
+				"web": {"cm1"},
+				"p2":  {"cmd2"},
 			},
-			"healthcheck": tt.hc,
-		})
+			map[string]interface{}{
+				"healthcheck": tt.hc,
+			},
+		)
 		c.Assert(err, check.IsNil)
 		err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 			App:     a,
@@ -1303,13 +1282,15 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 		},
 	}
 
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"cm1"},
+			"p2":  {"cmd2"},
 		},
-		"healthcheck": hc,
-	})
+		map[string]interface{}{
+			"healthcheck": hc,
+		},
+	)
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -1386,13 +1367,15 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 		},
 	}
 
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"cm1"},
+			"p2":  {"cmd2"},
 		},
-		"healthcheck": hc,
-	})
+		map[string]interface{}{
+			"healthcheck": hc,
+		},
+	)
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -1469,13 +1452,15 @@ func (s *S) TestEnsureBackendConfigWithMissingSlash(c *check.C) {
 		},
 	}
 
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"cm1"},
+			"p2":  {"cmd2"},
 		},
-		"healthcheck": hc,
-	})
+		map[string]interface{}{
+			"healthcheck": hc,
+		},
+	)
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -1535,13 +1520,15 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 	hc := provTypes.TsuruYamlHealthcheck{
 		Command: []string{"curl", "x"},
 	}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"cm1"},
+			"p2":  {"cmd2"},
 		},
-		"healthcheck": hc,
-	})
+		map[string]interface{}{
+			"healthcheck": hc,
+		},
+	)
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -1577,11 +1564,9 @@ func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cm1"},
+		"p2":  {"cmd2"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -1632,18 +1617,20 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "proc1",
-			"p2":  "proc2",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"proc1"},
+			"p2":  {"proc2"},
 		},
-		"hooks": provTypes.TsuruYamlHooks{
-			Restart: provTypes.TsuruYamlRestartHooks{
-				Before: []string{"before cmd1", "before cmd2"},
-				After:  []string{"after cmd1", "after cmd2"},
+		map[string]interface{}{
+			"hooks": provTypes.TsuruYamlHooks{
+				Restart: provTypes.TsuruYamlRestartHooks{
+					Before: []string{"before cmd1", "before cmd2"},
+					After:  []string{"after cmd1", "after cmd2"},
+				},
 			},
 		},
-	})
+	)
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -1734,10 +1721,8 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "proc1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"proc1"},
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -1767,42 +1752,44 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "proc1",
-			"p2":  "proc2",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"proc1"},
+			"p2":  {"proc2"},
 		},
-		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
-			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"web": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{
-								Name:       "port1",
-								Protocol:   "UDP",
-								TargetPort: 8080,
-							},
-							{
-								Protocol: "TCP",
-								Port:     9000,
-							},
-							{
-								Port:       8000,
-								TargetPort: 8001,
+		map[string]interface{}{
+			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{
+									Name:       "port1",
+									Protocol:   "UDP",
+									TargetPort: 8080,
+								},
+								{
+									Protocol: "TCP",
+									Port:     9000,
+								},
+								{
+									Port:       8000,
+									TargetPort: 8001,
+								},
 							},
 						},
 					},
-				},
-				"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"p2": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{Name: "myport"},
+					"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"p2": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Name: "myport"},
+							},
 						},
 					},
 				},
 			},
 		},
-	})
+	)
 	c.Assert(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -1893,29 +1880,31 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "proc1",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"proc1"},
 		},
-		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
-			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"web": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{TargetPort: 8080},
+		map[string]interface{}{
+			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{TargetPort: 8080},
+							},
 						},
 					},
-				},
-				"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"web": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{Name: "myport"},
+					"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Name: "myport"},
+							},
 						},
 					},
 				},
 			},
 		},
-	})
+	)
 	c.Assert(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -1934,20 +1923,22 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "proc1",
+	version := newCommittedVersion(c, a,
+		map[string][]string{
+			"web": {"proc1"},
 		},
-		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
-			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"web": {
-						Ports: nil,
+		map[string]interface{}{
+			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"web": {
+							Ports: nil,
+						},
 					},
 				},
 			},
 		},
-	})
+	)
 	c.Assert(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -1983,10 +1974,8 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cmd1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cmd1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2089,10 +2078,8 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	})
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cmd1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cmd1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2126,10 +2113,8 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cmd1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cmd1"},
 	})
 	c.Assert(err, check.IsNil)
 	var deleteCalled bool
@@ -2198,10 +2183,8 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cmd1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"web": {"cmd1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2263,11 +2246,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
-	})
+	version := newCommittedVersion(c, a, map[string][]string{"p1": {"cm1"}})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -2295,11 +2274,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
-	})
+	version := newCommittedVersion(c, a, map[string][]string{"p1": {"cm1"}})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -2335,11 +2310,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
-	})
+	version := newCommittedVersion(c, a, map[string][]string{"p1": {"cm1"}})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -2377,10 +2348,8 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2497,10 +2466,8 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -2537,10 +2504,8 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2571,10 +2536,8 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2600,10 +2563,8 @@ func (s *S) TestServiceManagerDeployDnsConfigNdotsEnable(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2630,10 +2591,8 @@ func (s *S) TestServiceManagerDeployTopologySpreadConstraintEnable(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2672,15 +2631,11 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version1 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
-	version2 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version2 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2924,16 +2879,12 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version1 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cm2",
-		},
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cm2"},
 	})
-	version2 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version2 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -3003,16 +2954,12 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version1 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cm2",
-		},
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cm2"},
 	})
-	version2 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version2 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -3101,10 +3048,8 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -3145,10 +3090,8 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
@@ -3220,16 +3163,15 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version1 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
-	version2 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+
+	version2 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
+
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -3316,10 +3258,8 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 
@@ -3389,17 +3329,13 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version1 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
-	version2 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version2 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -3488,15 +3424,11 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version1 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cmd1",
-		},
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cmd1"},
 	})
-	version2 := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cmd1",
-		},
+	version2 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cmd1"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -3552,6 +3484,96 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 }
 
+func (s *S) TestServiceManagerDeployServiceProcessHealthcheckTimeoutExceeded(c *check.C) {
+	config.Set("docker:healthcheck:max-time", 1)
+	defer config.Unset("docker:healthcheck:max-time")
+	config.Set("kubernetes:deployment-progress-timeout", 10)
+	defer config.Unset("kubernetes:deployment-progress-timeout")
+
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+
+	buf := bytes.Buffer{}
+	m := serviceManager{client: s.clusterClient, writer: &buf}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+
+	version1 := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cmd1"},
+	})
+
+	version2 := newCommittedVersion(c, a,
+		map[string][]string{
+			"p1": {"cmd1"},
+		},
+		map[string]interface{}{
+			"processes": []provTypes.TsuruYamlProcess{
+				{
+					Name: "p1",
+					Healthcheck: &provTypes.TsuruYamlHealthcheck{
+						DeployTimeoutSeconds: 5,
+					},
+				},
+			},
+		},
+	)
+
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version1,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		dep := obj.(*appsv1.Deployment)
+		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
+		rev++
+		dep.Annotations = map[string]string{
+			replicaDepRevision: strconv.Itoa(rev),
+		}
+		dep.Status.UnavailableReplicas = 2
+		return false, nil, nil
+	}
+
+	s.client.PrependReactor("create", "deployments", reaction)
+	s.client.PrependReactor("update", "deployments", reaction)
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		pod.Status.Conditions = append(pod.Status.Conditions, apiv1.PodCondition{
+			Type:   apiv1.PodReady,
+			Status: apiv1.ConditionFalse,
+		})
+		pod.OwnerReferences = append(pod.OwnerReferences, metav1.OwnerReference{
+			Kind: "ReplicaSet",
+			Name: "replica-for-myapp-p1",
+		})
+		return false, nil, nil
+	})
+
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version2,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
+	waitDep()
+
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
+
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Healthcheck Timeout of 5s exceeded .*ROLLING BACK AFTER FAILURE.*`)
+}
+
 func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *check.C) {
 	config.Set("docker:healthcheck:max-time", 1)
 	defer config.Unset("docker:healthcheck:max-time")
@@ -3562,11 +3584,9 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -3625,11 +3645,9 @@ func (s *S) TestServiceManagerDeployServiceNoChanges(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	c.Assert(err, check.IsNil)
 
@@ -3675,10 +3693,8 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -3750,10 +3766,8 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -3956,10 +3970,8 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -4056,7 +4068,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
 	manager := &serviceManager{client: s.clusterClient}
-	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1", "p2": "cm2"}})
+	firstVersion := newVersion(c, a, map[string][]string{"p1": {"cm1"}, "p2": {"cm2"}})
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -4070,11 +4082,9 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	c.Assert(err, check.IsNil)
 	manager.writer = evt
 	args := provision.DeployArgs{
-		App:   a,
-		Event: evt,
-		Version: newVersion(c, a, map[string]interface{}{
-			"processes": map[string]interface{}{"p1": "CM1", "p2": "CM2"},
-		}),
+		App:     a,
+		Event:   evt,
+		Version: newVersion(c, a, map[string][]string{"p1": {"CM1"}, "p2": {"CM2"}}),
 	}
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, firstVersion.Version(), args, nil)
 	c.Assert(err, check.NotNil)
@@ -4127,7 +4137,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
 	manager := &serviceManager{client: s.clusterClient}
-	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1"}})
+	firstVersion := newVersion(c, a, map[string][]string{"p1": {"cm1"}})
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
@@ -4141,11 +4151,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	c.Assert(err, check.IsNil)
 	manager.writer = evt
 	args := provision.DeployArgs{
-		App:   a,
-		Event: evt,
-		Version: newVersion(c, a, map[string]interface{}{
-			"processes": map[string]interface{}{"p1": "CM1"},
-		}),
+		App:     a,
+		Event:   evt,
+		Version: newVersion(c, a, map[string][]string{"p1": {"CM1"}}),
 	}
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, firstVersion.Version(), args, nil)
 	c.Assert(err, check.NotNil)
@@ -4178,10 +4186,8 @@ func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *che
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -4207,10 +4213,8 @@ func (s *S) TestServiceManagerDeployServiceWithVPA(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	c.Assert(err, check.IsNil)
 	vpaCRD := &extensionsv1.CustomResourceDefinition{
@@ -4248,11 +4252,9 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -4324,11 +4326,9 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
+		"p2": {"cmd2"},
 	})
 	m := serviceManager{client: s.clusterClient}
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -4351,10 +4351,8 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	var buffer bytes.Buffer
 	m.writer = &buffer
 
-	newVersion := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
+	newVersion := newCommittedVersion(c, a, map[string][]string{
+		"p1": {"cm1"},
 	})
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,

@@ -157,11 +157,9 @@ func (s *S) TestUnits(c *check.C) {
 		{NodePort: int32(30002)},
 		{NodePort: int32(30003)},
 	}))
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "myworker",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "myapp.py"},
+		"worker": {"myworker"},
 	})
 	c.Assert(err, check.IsNil)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
@@ -341,11 +339,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "myworker",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "myapp.py"},
+		"worker": {"myworker"},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
@@ -383,11 +379,9 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 func (s *S) TestUnitsSkipEvicted(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "myworker",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "myapp.py"},
+		"worker": {"myworker"},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
@@ -425,10 +419,8 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 func (s *S) TestUnitsStarting(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
@@ -470,10 +462,8 @@ func (s *S) TestUnitsStarting(c *check.C) {
 func (s *S) TestUnitsStartingError(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
@@ -522,10 +512,8 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
@@ -579,10 +567,8 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
@@ -659,10 +645,8 @@ func (s *S) TestUnitsNoApps(c *check.C) {
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -677,10 +661,8 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	a.Deploys = 1
 	err = s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
@@ -694,10 +676,8 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 func (s *S) TestRemoveUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -716,10 +696,8 @@ func (s *S) TestRemoveUnits(c *check.C) {
 func (s *S) TestRemoveUnits_SetUnitsToZero(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 5, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -749,10 +727,8 @@ func (s *S) TestRemoveUnits_SetUnitsToZero(c *check.C) {
 func (s *S) TestRestart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -775,10 +751,8 @@ func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	a.Deploys = 1
 	err = s.p.Restart(context.TODO(), a, "", version, nil)
@@ -789,10 +763,8 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	v1 := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	v1 := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 
 	evt1, err := event.New(context.TODO(), &event.Opts{
@@ -814,10 +786,8 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 
 	wait()
 
-	v2 := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "./my/app.sh",
-		},
+	v2 := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"./my/app.sh"},
 	})
 
 	evt2, err := event.New(context.TODO(), &event.Opts{
@@ -865,10 +835,8 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 func (s *S) TestStopStart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -908,10 +876,8 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -949,20 +915,16 @@ func (s *S) TestProvisionerDestroyVersion(c *check.C) {
 		DisableLock: true,
 	})
 	c.Assert(err, check.IsNil)
-	customData1 := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData1 := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version1 := newCommittedVersion(c, a, customData1)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: deployEvent})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	wait()
 
-	customData2 := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData2 := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version2 := newCommittedVersion(c, a, customData2)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: deployEvent, PreserveVersions: true})
@@ -1007,11 +969,9 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":   "run mycmd arg1",
-			"other": "my other cmd",
-		},
+	customData := map[string][]string{
+		"web":   {"run", "mycmd", "arg1"},
+		"other": {"my", "other", "cmd"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1081,10 +1041,8 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1136,10 +1094,8 @@ func (s *S) TestDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run mycmd arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1187,10 +1143,8 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1221,10 +1175,8 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1282,11 +1234,9 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":  "run mycmd web",
-			"jobs": "run mycmd jobs",
-		},
+	customData := map[string][]string{
+		"web":  {"run", "mycmd", "web"},
+		"jobs": {"run", "mycmd", "jobs"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1314,10 +1264,10 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
+	processes := map[string][]string{
+		"web": {"run", "mycmd", "web"},
+	}
 	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd web",
-		},
 		"kubernetes": map[string]interface{}{
 			"groups": map[string]interface{}{
 				"pod1": map[string]interface{}{
@@ -1328,7 +1278,7 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 			},
 		},
 	}
-	version := newCommittedVersion(c, a, customData)
+	version := newCommittedVersion(c, a, processes, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
@@ -1349,10 +1299,10 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
+	processes := map[string][]string{
+		"web": {"run mycmd arg1"},
+	}
 	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
 		"kubernetes": map[string]interface{}{
 			"groups": map[string]interface{}{
 				"pod1": map[string]interface{}{
@@ -1386,7 +1336,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 			},
 		},
 	}
-	version := newCommittedVersion(c, a, customData)
+	version := newCommittedVersion(c, a, processes, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
@@ -1454,19 +1404,15 @@ func (s *S) TestDeployRollback(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run mycmd arg1"},
 	}
 	version1 := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: deployEvt})
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	customData = map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg2",
-		},
+	customData = map[string][]string{
+		"web": {"run mycmd arg2"},
 	}
 	version2 := newCommittedVersion(c, a, customData)
 	img, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: deployEvt})
@@ -1508,10 +1454,8 @@ func (s *S) TestDeployRollback(c *check.C) {
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1545,10 +1489,8 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1575,10 +1517,8 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1597,10 +1537,8 @@ func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 func (s *S) TestExecuteCommand(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1627,10 +1565,8 @@ func (s *S) TestExecuteCommand(c *check.C) {
 func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1655,10 +1591,8 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
 	err := s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
@@ -1694,10 +1628,8 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	a.Plan.CPUMilli = 250000
 	a.Plan.Memory = 100000
@@ -1745,10 +1677,8 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 		pod.Status.Phase = apiv1.PodFailed
 		return false, nil, nil
 	})
-	newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
 	err := s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
@@ -1766,10 +1696,8 @@ func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
 	s.mock.IgnorePool = true
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -1882,10 +1810,8 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -1972,10 +1898,8 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	{
-		customData := map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "run mycmd arg1",
-			},
+		customData := map[string][]string{
+			"web": {"run", "mycmd", "arg1"},
 		}
 		version1 := newCommittedVersion(c, a, customData)
 		var img1 string
@@ -1983,11 +1907,6 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
 		wait()
-		customData = map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "run mycmd arg1",
-			},
-		}
 		version2 := newCommittedVersion(c, a, customData)
 		var img2 string
 		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
@@ -2044,22 +1963,14 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version1 := newCommittedVersion(c, a, customData)
 	img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	customData = map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
-	}
 	version2 := newCommittedVersion(c, a, customData)
 	img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
@@ -2123,10 +2034,8 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	{
-		customData := map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "run mycmd arg1",
-			},
+		customData := map[string][]string{
+			"web": {"run", "mycmd", "arg1"},
 		}
 		version1 := newCommittedVersion(c, a, customData)
 		var img1 string
@@ -2134,10 +2043,8 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
 		wait()
-		customData = map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": "run mycmd arg1",
-			},
+		customData = map[string][]string{
+			"web": {"run", "mycmd", "arg1"},
 		}
 		version2 := newCommittedVersion(c, a, customData)
 		var img2 string
@@ -2179,10 +2086,8 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -2248,10 +2153,8 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
@@ -2359,10 +2262,8 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a)
 	c.Assert(err, check.IsNil)
 
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newSuccessfulVersion(c, a, customData)
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
@@ -2450,10 +2351,8 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a2)
 	c.Assert(err, check.IsNil)
 
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
+	customData := map[string][]string{
+		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newSuccessfulVersion(c, a, customData)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
@@ -2520,53 +2419,53 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"proc1": "python proc1.py",
-			"proc2": "python proc2.py",
-			"proc3": "python proc3.py",
-			"proc4": "python proc4.py",
-			"proc5": "python worker.py",
-			"proc6": "python proc6.py",
-		},
-		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
-			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"proc1": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{TargetPort: 8080},
-							{Port: 9000},
+	version := newCommittedVersion(c, a, map[string][]string{
+		"proc1": {"python", "proc1.py"},
+		"proc2": {"python", "proc2.py"},
+		"proc3": {"python", "proc3.py"},
+		"proc4": {"python", "proc4.py"},
+		"proc5": {"python", "worker.py"},
+		"proc6": {"python", "proc6.py"},
+	},
+		map[string]interface{}{
+			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"proc1": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{TargetPort: 8080},
+								{Port: 9000},
+							},
 						},
 					},
-				},
-				"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"proc2": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{TargetPort: 8000},
+					"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"proc2": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{TargetPort: 8000},
+							},
 						},
 					},
-				},
-				"mypod3": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"proc3": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{Port: 8000, TargetPort: 8080},
+					"mypod3": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"proc3": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 8000, TargetPort: 8080},
+							},
 						},
 					},
-				},
-				"mypod5": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"proc5": {},
-					"proc6": {
-						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{Port: 8000},
+					"mypod5": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"proc5": {},
+						"proc6": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 8000},
+							},
 						},
 					},
-				},
-				"mypod6": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
-					"proc6": {},
+					"mypod6": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+						"proc6": {},
+					},
 				},
 			},
-		},
-	})
+		})
 	c.Assert(err, check.IsNil)
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 
@@ -2653,10 +2552,8 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -2710,10 +2607,8 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 func (s *S) TestProvisionerToggleRoutableAtomic(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -2740,10 +2635,8 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
 	ctx := context.TODO()
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(ctx, a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -2796,10 +2689,8 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 	ctx := context.TODO()
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(ctx, a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
