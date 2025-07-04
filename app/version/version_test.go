@@ -159,9 +159,10 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 				},
 			},
 			expectedRaw: map[string]interface{}{
-				"myfield":     "myvalue",
-				"healthcheck": nil,
-				"hooks":       nil,
+				"myfield":      "myvalue",
+				"healthcheck":  nil,
+				"startupcheck": nil,
+				"hooks":        nil,
 			},
 			expectedProcesses: map[string][]string{},
 			expectedPorts:     []string{},
@@ -175,6 +176,9 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 					},
 					"healthcheck": map[string]interface{}{
 						"path": "/status",
+					},
+					"startupcheck": map[string]interface{}{
+						"path": "/startup",
 					},
 					"kubernetes": map[string]interface{}{
 						"groups": map[string]interface{}{
@@ -212,6 +216,9 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 				},
 				Healthcheck: &provTypes.TsuruYamlHealthcheck{
 					Path: "/status",
+				},
+				Startupcheck: &provTypes.TsuruYamlStartupcheck{
+					Path: "/startup",
 				},
 				Kubernetes: &provTypes.TsuruYamlKubernetesConfig{
 					Groups: map[string]provTypes.TsuruYamlKubernetesGroup{

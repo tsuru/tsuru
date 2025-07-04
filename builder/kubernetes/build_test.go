@@ -272,6 +272,9 @@ func (s *S) TestBuild_BuildWithSourceCode(c *check.C) {
 healthcheck:
   path: /healthz
   method: GET
+startupcheck:
+  path: /startupz
+  method: GET
 
 hooks:
   build:
@@ -342,6 +345,9 @@ kubernetes:
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
 		Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 			Path: "/healthz",
+		},
+		Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+			Path: "/startupz",
 		},
 		Processes: []provisiontypes.TsuruYamlProcess{},
 		Hooks: &provisiontypes.TsuruYamlHooks{
@@ -416,12 +422,18 @@ processes:
     healthcheck:
       path: /healthz
       method: GET
+    startupcheck:
+      path: /startupz
+      method: GET
   - name: worker
     command: ./path/worker.sh --verbose
   - name: web-secondary
     command: ./path/app-secondary.py --port ${PORT}
     healthcheck:
       path: /healthz-secondary
+    startupcheck:
+      path: /startupz-secondary
+      method: GET
 
 hooks:
   build:
@@ -496,6 +508,9 @@ kubernetes:
 				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 					Path: "/healthz",
 				},
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz",
+				},
 				Name:    "web",
 				Command: "./path/app.py --port ${PORT}",
 			},
@@ -506,6 +521,9 @@ kubernetes:
 			{
 				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 					Path: "/healthz-secondary",
+				},
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz-secondary",
 				},
 				Name:    "web-secondary",
 				Command: "./path/app-secondary.py --port ${PORT}",
@@ -582,11 +600,16 @@ processes:
     healthcheck:
       path: /healthz
       method: GET
+    startupcheck:
+      path: /startupz
+      method: GET
   - name: worker
     command: ./path/worker.sh --verbose
   - name: web-secondary
     healthcheck:
       path: /healthz-secondary
+    startupcheck:
+      path: /startupz-secondary
 
 hooks:
   build:
@@ -662,6 +685,9 @@ kubernetes:
 				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 					Path: "/healthz",
 				},
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz",
+				},
 				Name: "web",
 			},
 			{
@@ -671,6 +697,9 @@ kubernetes:
 			{
 				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 					Path: "/healthz-secondary",
+				},
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz-secondary",
 				},
 				Name: "web-secondary",
 			},
@@ -789,91 +818,8 @@ processes:
     healthcheck:
       path: /healthz
       method: GET
-        `,
-				ImageConfig: &buildpb.ContainerImageConfig{
-					Entrypoint:   []string{"/bin/sh", "-c"},
-					Cmd:          []string{"/var/www/app/app.sh", "--port", "${PORT}"},
-					ExposedPorts: []string{"8080/tcp", "8443/tcp"},
-					WorkingDir:   "/var/www/app",
-				},
-			}}})
-			c.Check(err, check.IsNil)
-
-			return nil
-		},
-	})
-	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
-
-	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-
-	var output bytes.Buffer
-
-	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
-		Message: "New container image xD",
-		ImageID: "registry.example/my-repository/my-app:v42",
-		Output:  &output,
-	})
-	c.Assert(err, check.IsNil)
-
-	c.Assert(appVersion.Version(), check.DeepEquals, 1)
-	c.Assert(appVersion.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
-	c.Assert(appVersion.VersionInfo().Description, check.DeepEquals, "New container image xD")
-	c.Assert(appVersion.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
-	c.Assert(appVersion.VersionInfo().ExposedPorts, check.DeepEquals, []string{"8080/tcp", "8443/tcp"})
-
-	processes, err := appVersion.Processes()
-	c.Assert(err, check.IsNil)
-	c.Assert(processes, check.DeepEquals, map[string][]string{
-		"web": {"/bin/sh", "-c", "/var/www/app/app.sh", "--port", "${PORT}"},
-	})
-
-	tsuruYaml, err := appVersion.TsuruYamlData()
-	c.Assert(err, check.IsNil)
-	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
-		Processes: []provisiontypes.TsuruYamlProcess{
-			{
-				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
-					Path: "/healthz",
-				},
-				Name: "web",
-			},
-		},
-	})
-}
-
-func (s *S) TestBuild_BuildWithContainerImageWithTsuruYamlProcessesHealthcheckAndEmptyCommand(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-
-	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
-		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
-			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
-			// provoke a deadlock on RPC client and server.
-			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
-				Name: "myapp",
-				EnvVars: map[string]string{
-					"TSURU_SERVICES": "{}",
-					"TSURU_APPNAME":  "myapp",
-					"TSURU_APPDIR":   "/home/application/current",
-				},
-			})
-			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE)
-			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
-			c.Check(req.GetData(), check.IsNil)
-
-			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
-				TsuruYaml: `
-processes:
-  - name: web
-    command:
-    healthcheck:
-      path: /healthz
+    startupcheck:
+      path: /startupz
       method: GET
         `,
 				ImageConfig: &buildpb.ContainerImageConfig{
@@ -926,6 +872,186 @@ processes:
 			{
 				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 					Path: "/healthz",
+				},
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz",
+				},
+				Name: "web",
+			},
+		},
+	})
+}
+
+func (s *S) TestBuild_BuildWithContainerImageWithTsuruYamlProcessesStartupcheckOnly(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke a deadlock on RPC client and server.
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
+				Name: "myapp",
+				EnvVars: map[string]string{
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+				},
+			})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
+			c.Check(req.GetData(), check.IsNil)
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
+				TsuruYaml: `
+processes:
+  - name: web
+    startupcheck:
+      path: /startupz
+      method: GET
+        `,
+				ImageConfig: &buildpb.ContainerImageConfig{
+					Entrypoint:   []string{"/bin/sh", "-c"},
+					Cmd:          []string{"/var/www/app/app.sh", "--port", "${PORT}"},
+					ExposedPorts: []string{"8080/tcp", "8443/tcp"},
+					WorkingDir:   "/var/www/app",
+				},
+			}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	var output bytes.Buffer
+
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
+		Message: "New container image xD",
+		ImageID: "registry.example/my-repository/my-app:v42",
+		Output:  &output,
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(appVersion.Version(), check.DeepEquals, 1)
+	c.Assert(appVersion.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
+	c.Assert(appVersion.VersionInfo().Description, check.DeepEquals, "New container image xD")
+	c.Assert(appVersion.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
+	c.Assert(appVersion.VersionInfo().ExposedPorts, check.DeepEquals, []string{"8080/tcp", "8443/tcp"})
+
+	processes, err := appVersion.Processes()
+	c.Assert(err, check.IsNil)
+	c.Assert(processes, check.DeepEquals, map[string][]string{
+		"web": {"/bin/sh", "-c", "/var/www/app/app.sh", "--port", "${PORT}"},
+	})
+
+	tsuruYaml, err := appVersion.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
+		Processes: []provisiontypes.TsuruYamlProcess{
+			{
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz",
+				},
+				Name: "web",
+			},
+		},
+	})
+}
+
+func (s *S) TestBuild_BuildWithContainerImageWithTsuruYamlProcessesHealthcheckAndEmptyCommand(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke a deadlock on RPC client and server.
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{
+				Name: "myapp",
+				EnvVars: map[string]string{
+					"TSURU_SERVICES": "{}",
+					"TSURU_APPNAME":  "myapp",
+					"TSURU_APPDIR":   "/home/application/current",
+				},
+			})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
+			c.Check(req.GetData(), check.IsNil)
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
+				TsuruYaml: `
+processes:
+  - name: web
+    command:
+    healthcheck:
+      path: /healthz
+      method: GET
+    startupcheck:
+      path: /startupz
+      method: GET
+        `,
+				ImageConfig: &buildpb.ContainerImageConfig{
+					Entrypoint:   []string{"/bin/sh", "-c"},
+					Cmd:          []string{"/var/www/app/app.sh", "--port", "${PORT}"},
+					ExposedPorts: []string{"8080/tcp", "8443/tcp"},
+					WorkingDir:   "/var/www/app",
+				},
+			}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	var output bytes.Buffer
+
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
+		Message: "New container image xD",
+		ImageID: "registry.example/my-repository/my-app:v42",
+		Output:  &output,
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(appVersion.Version(), check.DeepEquals, 1)
+	c.Assert(appVersion.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
+	c.Assert(appVersion.VersionInfo().Description, check.DeepEquals, "New container image xD")
+	c.Assert(appVersion.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
+	c.Assert(appVersion.VersionInfo().ExposedPorts, check.DeepEquals, []string{"8080/tcp", "8443/tcp"})
+
+	processes, err := appVersion.Processes()
+	c.Assert(err, check.IsNil)
+	c.Assert(processes, check.DeepEquals, map[string][]string{
+		"web": {"/bin/sh", "-c", "/var/www/app/app.sh", "--port", "${PORT}"},
+	})
+
+	tsuruYaml, err := appVersion.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
+		Processes: []provisiontypes.TsuruYamlProcess{
+			{
+				Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
+					Path: "/healthz",
+				},
+				Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+					Path: "/startupz",
 				},
 				Name: "web",
 			},
@@ -1315,7 +1441,7 @@ CMD ["--port", "8888"]
 			c.Check(req.GetData(), check.DeepEquals, []byte("some context files"))
 
 			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
-				TsuruYaml: "healthcheck:\n  path: /healthz",
+				TsuruYaml: "healthcheck:\n  path: /healthz\nstartupcheck:\n  path: /startupz",
 				ImageConfig: &buildpb.ContainerImageConfig{
 					Entrypoint:   []string{"/var/app/app.sh"},
 					Cmd:          []string{"--port", "8888"},
@@ -1370,6 +1496,9 @@ CMD ["--port", "8888"]
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
 		Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
 			Path: "/healthz",
+		},
+		Startupcheck: &provisiontypes.TsuruYamlStartupcheck{
+			Path: "/startupz",
 		},
 		Processes: []provisiontypes.TsuruYamlProcess{},
 	})

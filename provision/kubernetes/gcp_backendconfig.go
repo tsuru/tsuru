@@ -69,9 +69,10 @@ func gcpHCToString(hc *backendconfigv1.HealthCheckConfig) string {
 	return fmt.Sprintf("path=%s type=%s interval=%v timeout=%v success=%d failure=%d", path, hcType, time.Duration(intervalSec)*time.Second, time.Duration(timeoutSec)*time.Second, success, failure)
 }
 
+// TODO: Check if this needs to be changed because of the startupcheck support
+// NOTE: Problably not because BackendConfigSpec only uses healthcheck, but take a look
 func backendConfigFromHC(ctx context.Context, app *appTypes.App, process string, hc provTypes.TsuruYamlHealthcheck) (*backendconfigv1.BackendConfig, error) {
-	err := ensureHealthCheckDefaults(&hc)
-	if err != nil {
+	if err := hc.EnsureDefaults(); err != nil {
 		return nil, err
 	}
 
