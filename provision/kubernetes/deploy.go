@@ -284,47 +284,61 @@ func logPodEvents(ctx context.Context, client *ClusterClient, initialResourceVer
 type hcResult struct {
 	liveness  *apiv1.Probe
 	readiness *apiv1.Probe
+	startup   *apiv1.Probe
 }
 
-func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
-	if hc.Scheme == "" {
-		hc.Scheme = provision.DefaultHealthcheckScheme
-	}
-	if hc.IntervalSeconds == 0 {
-		hc.IntervalSeconds = 10
-	}
-	if hc.TimeoutSeconds == 0 {
-		hc.TimeoutSeconds = 60
-	}
-	if hc.AllowedFailures == 0 {
-		hc.AllowedFailures = 3
-	}
-
-	return nil
-}
-
-func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error) {
+func probesFromCheckConfigs(healthcheck *provTypes.TsuruYamlHealthcheck, startupcheck *provTypes.TsuruYamlStartupcheck, port int) (hcResult, error) {
 	var result hcResult
-	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
-		return result, nil
+	if healthcheck != nil && !healthcheck.IsEmpty() {
+		hcProbe, err := probesFromConfig(healthcheck, port)
+		if err != nil {
+			return result, err
+		}
+		result.readiness = hcProbe
+		if healthcheck.ForceRestart {
+			result.liveness = hcProbe
+		}
 	}
-	if err := ensureHealthCheckDefaults(hc); err != nil {
-		return result, err
+	if startupcheck != nil && !startupcheck.IsEmpty() {
+		scProbe, err := probesFromConfig(startupcheck, port)
+		if err != nil {
+			return result, err
+		}
+		result.startup = scProbe
+	}
+	return result, nil
+}
+
+type probeConfig interface {
+	GetHeaders() map[string]string
+	GetPath() string
+	GetScheme() string
+	GetCommand() []string
+	GetAllowedFailures() int32
+	GetIntervalSeconds() int32
+	GetTimeoutSeconds() int32
+	GetDeployTimeoutSeconds() int32
+	EnsureDefaults() error
+}
+
+func probesFromConfig(cfg probeConfig, port int) (*apiv1.Probe, error) {
+	if err := cfg.EnsureDefaults(); err != nil {
+		return nil, err
 	}
 	headers := []apiv1.HTTPHeader{}
-	for header, value := range hc.Headers {
+	for header, value := range cfg.GetHeaders() {
 		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
 	}
 	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
-	hc.Scheme = strings.ToUpper(hc.Scheme)
+	formatedScheme := strings.ToUpper(cfg.GetScheme())
 	probe := &apiv1.Probe{
-		FailureThreshold: int32(hc.AllowedFailures),
-		PeriodSeconds:    int32(hc.IntervalSeconds),
-		TimeoutSeconds:   int32(hc.TimeoutSeconds),
+		FailureThreshold: cfg.GetAllowedFailures(),
+		PeriodSeconds:    cfg.GetIntervalSeconds(),
+		TimeoutSeconds:   cfg.GetTimeoutSeconds(),
 		ProbeHandler:     apiv1.ProbeHandler{},
 	}
-	if hc.Path != "" {
-		path := hc.Path
+	if cfg.GetPath() != "" {
+		path := cfg.GetPath()
 		if !strings.HasPrefix(path, "/") {
 			path = "/" + path
 		}
@@ -332,19 +346,15 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		probe.ProbeHandler.HTTPGet = &apiv1.HTTPGetAction{
 			Path:        path,
 			Port:        intstr.FromInt(port),
-			Scheme:      apiv1.URIScheme(hc.Scheme),
+			Scheme:      apiv1.URIScheme(formatedScheme),
 			HTTPHeaders: headers,
 		}
 	} else {
 		probe.ProbeHandler.Exec = &apiv1.ExecAction{
-			Command: hc.Command,
+			Command: cfg.GetCommand(),
 		}
 	}
-	result.readiness = probe
-	if hc.ForceRestart {
-		result.liveness = probe
-	}
-	return result, nil
+	return probe, nil
 }
 
 func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app *appTypes.App) error {
@@ -502,16 +512,17 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	// NOTE: Here is the code that create probes for HEALTHCHECK!
 	if len(yamlData.Processes) > 0 {
 		var healthcheck *provTypes.TsuruYamlHealthcheck
-		healthcheck, err = yamlData.GetHCFromProcessName(process)
+		var startupcheck *provTypes.TsuruYamlStartupcheck
+		healthcheck, startupcheck, err = yamlData.GetCheckConfigsFromProcessName(process)
 		if err != nil {
 			return false, nil, nil, errors.WithStack(err)
 		}
-		hcData, err = probesFromHC(healthcheck, processPorts[0].TargetPort)
+		hcData, err = probesFromCheckConfigs(healthcheck, startupcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return false, nil, nil, err
 		}
 	} else if process == webProcessName && len(processPorts) > 0 {
-		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
+		hcData, err = probesFromCheckConfigs(yamlData.Healthcheck, yamlData.Startupcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -698,6 +709,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 							Env:            appEnvs(a, process, version),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
+							StartupProbe:   hcData.startup,
 							Resources:      resourceRequirements,
 							VolumeMounts:   mounts,
 							Ports:          containerPorts,
@@ -1038,13 +1050,14 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	}
 	var healthcheck *provTypes.TsuruYamlHealthcheck
 	if len(tsuruYamlData.Processes) > 0 {
-		healthcheck, err = tsuruYamlData.GetHCFromProcessName(processName)
+		healthcheck, _, err = tsuruYamlData.GetCheckConfigsFromProcessName(processName)
 		if err != nil {
 			return revision, errors.WithStack(err)
 		}
 	} else {
 		healthcheck = tsuruYamlData.Healthcheck
 	}
+	// TODO: Problably change this so it uses startupcheck if it exists, then fallback to healthckeck
 	maxWaitTimeDuration := dockercommon.DeployHealthcheckTimeout(healthcheck)
 	var healthcheckTimeout <-chan time.Time
 	t0 := time.Now()

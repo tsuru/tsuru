@@ -37,6 +37,7 @@ func UserForContainer() (username string, uid *int64) {
 	return username, uid
 }
 
+// TODO: Problably change this so it uses startupcheck if it exists, then fallback to healthckeck
 func DeployHealthcheckTimeout(healthcheck *provTypes.TsuruYamlHealthcheck) time.Duration {
 	const defaultWaitSeconds = 120
 

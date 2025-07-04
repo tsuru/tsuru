@@ -17,10 +17,11 @@ import (
 var procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
 
 type customData struct {
-	Hooks       *provTypes.TsuruYamlHooks
-	Healthcheck *provTypes.TsuruYamlHealthcheck
-	Kubernetes  *tsuruYamlKubernetesConfig
-	Processes   []provTypes.TsuruYamlProcess
+	Hooks        *provTypes.TsuruYamlHooks
+	Healthcheck  *provTypes.TsuruYamlHealthcheck
+	Startupcheck *provTypes.TsuruYamlStartupcheck
+	Kubernetes   *tsuruYamlKubernetesConfig
+	Processes    []provTypes.TsuruYamlProcess
 }
 
 type tsuruYamlKubernetesConfig struct {
@@ -59,9 +60,10 @@ func unmarshalYamlData(data map[string]interface{}) (provTypes.TsuruYamlData, er
 	}
 
 	result := provTypes.TsuruYamlData{
-		Hooks:       custom.Hooks,
-		Processes:   custom.Processes,
-		Healthcheck: custom.Healthcheck,
+		Hooks:        custom.Hooks,
+		Processes:    custom.Processes,
+		Healthcheck:  custom.Healthcheck,
+		Startupcheck: custom.Startupcheck,
 	}
 	if custom.Kubernetes == nil {
 		return result, nil
@@ -111,6 +113,7 @@ func marshalCustomData(data map[string]interface{}) (map[string]interface{}, err
 	}
 	result["hooks"] = yamlData.Hooks
 	result["healthcheck"] = yamlData.Healthcheck
+	result["startupcheck"] = yamlData.Startupcheck
 	if len(yamlData.Processes) > 0 {
 		result["processes"] = yamlData.Processes
 	}

@@ -35,7 +35,8 @@ var (
 	_ builder.Builder         = &kubernetesBuilder{}
 	_ builder.PlatformBuilder = &kubernetesBuilder{}
 
-	allowedHealthcheckValues = getJSONFieldNames(&provisiontypes.TsuruYamlHealthcheck{})
+	allowedHealthcheckValues  = getJSONFieldNames(&provisiontypes.TsuruYamlHealthcheck{})
+	allowedStartupcheckValues = getJSONFieldNames(&provisiontypes.TsuruYamlStartupcheck{})
 )
 
 type processCommands struct {
@@ -472,6 +473,23 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 		checkHealthcheck(healthcheckData)
 	}
 
+	checkStartupcheck := func(startupcheckData map[string]any) {
+		for key := range startupcheckData {
+			if _, contains := allowedStartupcheckValues[key]; !contains {
+				fmt.Fprintf(w, " ---> WARNING: invalid or deprecated startupcheck field %q found in tsuru.yaml\n", key)
+			}
+		}
+	}
+
+	if _, ok := data["startupcheck"]; ok {
+		startupcheckData, ok := data["startupcheck"].(map[string]any)
+		if !ok {
+			fmt.Fprintln(w, " ---> WARNING: invalid startupcheck configuration on tsuru.yaml")
+			return
+		}
+		checkStartupcheck(startupcheckData)
+	}
+
 	if _, ok := data["processes"]; ok {
 		processes, ok := data["processes"].([]any)
 		if !ok {
@@ -493,6 +511,15 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 				}
 
 				checkHealthcheck(healthcheckData)
+			}
+
+			if _, ok := process["startupcheck"]; ok {
+				startupcheckData, ok := process["startupcheck"].(map[string]any)
+				if !ok {
+					fmt.Fprintln(w, " ---> WARNING: invalid startupcheck configuration on tsuru.yaml")
+					return
+				}
+				checkStartupcheck(startupcheckData)
 			}
 		}
 	}
@@ -575,10 +602,11 @@ func parseTsuruYaml(str string) (provisiontypes.TsuruYamlData, error) {
 
 func tsuruYamlDataToCustomData(tsuruYaml provisiontypes.TsuruYamlData) map[string]any {
 	return map[string]any{
-		"healthcheck": tsuruYaml.Healthcheck,
-		"hooks":       tsuruYaml.Hooks,
-		"kubernetes":  tsuruYaml.Kubernetes,
-		"processes":   tsuruYaml.Processes,
+		"healthcheck":  tsuruYaml.Healthcheck,
+		"startupcheck": tsuruYaml.Startupcheck,
+		"hooks":        tsuruYaml.Hooks,
+		"kubernetes":   tsuruYaml.Kubernetes,
+		"processes":    tsuruYaml.Processes,
 	}
 }
 
