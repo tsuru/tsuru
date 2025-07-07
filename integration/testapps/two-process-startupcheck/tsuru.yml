@@ -1,0 +1,17 @@
+processes:
+- name: web
+  command: web
+  healthcheck:
+    path: /
+    scheme: http
+- name: web-secondary
+  command: web-secondary
+  healthcheck:
+    path: /
+    scheme: http
+  startupcheck:
+    path: /startup
+    scheme: http
+    allowed_failures: 5
+    interval_seconds: 15
+    timeout_seconds: 5

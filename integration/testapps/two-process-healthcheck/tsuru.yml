@@ -1,0 +1,11 @@
+processes:
+- name: web
+  command: web
+  healthcheck:
+    path: /
+    scheme: http
+- name: web-secondary
+  command: web-secondary
+  healthcheck:
+    path: /
+    scheme: http
