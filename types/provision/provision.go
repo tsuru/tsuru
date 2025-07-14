@@ -7,8 +7,12 @@ package provision
 import (
 	"errors"
 	"maps"
+	"sort"
+	"strings"
 
 	"github.com/tsuru/tsuru/types/router"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const defaultHealthcheckScheme = "http"
@@ -128,50 +132,6 @@ func (y *TsuruYamlKubernetesConfig) GetProcessConfigs(procName string) *TsuruYam
 	return nil
 }
 
-func (y *TsuruYamlHealthcheck) GetHeaders() map[string]string {
-	result := make(map[string]string)
-	maps.Copy(result, y.Headers)
-	return result
-}
-
-func (y *TsuruYamlHealthcheck) GetPath() string {
-	return y.Path
-}
-
-func (y *TsuruYamlHealthcheck) GetScheme() string {
-	return y.Scheme
-}
-
-func (y *TsuruYamlHealthcheck) GetCommand() []string {
-	return y.Command
-}
-
-func (y *TsuruYamlHealthcheck) GetAllowedFailures() int32 {
-	return int32(y.AllowedFailures)
-}
-
-func (y *TsuruYamlHealthcheck) GetIntervalSeconds() int32 {
-	return int32(y.IntervalSeconds)
-}
-
-func (y *TsuruYamlHealthcheck) GetTimeoutSeconds() int32 {
-	return int32(y.TimeoutSeconds)
-}
-
-func (y *TsuruYamlHealthcheck) GetDeployTimeoutSeconds() int32 {
-	return int32(y.DeployTimeoutSeconds)
-}
-
-func (y *TsuruYamlHealthcheck) GetForceRestart() bool {
-	return y.ForceRestart
-}
-
-func (y *TsuruYamlStartupcheck) GetHeaders() map[string]string {
-	result := make(map[string]string)
-	maps.Copy(result, y.Headers)
-	return result
-}
-
 func (y *TsuruYamlHealthcheck) EnsureDefaults() error {
 	if y.Scheme == "" {
 		y.Scheme = defaultHealthcheckScheme
@@ -193,32 +153,58 @@ func (y *TsuruYamlHealthcheck) IsEmpty() bool {
 	return y.Path == "" && len(y.Command) == 0
 }
 
-func (y *TsuruYamlStartupcheck) GetPath() string {
-	return y.Path
+func (y *TsuruYamlHealthcheck) AssembleProbe(port int) (*apiv1.Probe, error) {
+	if err := y.EnsureDefaults(); err != nil {
+		return nil, err
+	}
+	headers := []apiv1.HTTPHeader{}
+	for header, value := range y.getHeaders() {
+		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
+	}
+	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
+	formatedScheme := strings.ToUpper(y.Scheme)
+	probe := &apiv1.Probe{
+		FailureThreshold: y.getAllowedFailures(),
+		PeriodSeconds:    y.getIntervalSeconds(),
+		TimeoutSeconds:   y.getTimeoutSeconds(),
+		ProbeHandler:     apiv1.ProbeHandler{},
+	}
+	if y.Path != "" {
+		path := y.Path
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+
+		probe.ProbeHandler.HTTPGet = &apiv1.HTTPGetAction{
+			Path:        path,
+			Port:        intstr.FromInt(port),
+			Scheme:      apiv1.URIScheme(formatedScheme),
+			HTTPHeaders: headers,
+		}
+	} else {
+		probe.ProbeHandler.Exec = &apiv1.ExecAction{
+			Command: y.Command,
+		}
+	}
+	return probe, nil
 }
 
-func (y *TsuruYamlStartupcheck) GetScheme() string {
-	return y.Scheme
+func (y *TsuruYamlHealthcheck) getHeaders() map[string]string {
+	result := make(map[string]string)
+	maps.Copy(result, y.Headers)
+	return result
 }
 
-func (y *TsuruYamlStartupcheck) GetCommand() []string {
-	return y.Command
-}
-
-func (y *TsuruYamlStartupcheck) GetAllowedFailures() int32 {
+func (y *TsuruYamlHealthcheck) getAllowedFailures() int32 {
 	return int32(y.AllowedFailures)
 }
 
-func (y *TsuruYamlStartupcheck) GetIntervalSeconds() int32 {
+func (y *TsuruYamlHealthcheck) getIntervalSeconds() int32 {
 	return int32(y.IntervalSeconds)
 }
 
-func (y *TsuruYamlStartupcheck) GetTimeoutSeconds() int32 {
+func (y *TsuruYamlHealthcheck) getTimeoutSeconds() int32 {
 	return int32(y.TimeoutSeconds)
-}
-
-func (y *TsuruYamlStartupcheck) GetDeployTimeoutSeconds() int32 {
-	return int32(y.DeployTimeoutSeconds)
 }
 
 func (y *TsuruYamlStartupcheck) EnsureDefaults() error {
@@ -240,4 +226,58 @@ func (y *TsuruYamlStartupcheck) EnsureDefaults() error {
 
 func (y *TsuruYamlStartupcheck) IsEmpty() bool {
 	return y.Path == "" && len(y.Command) == 0
+}
+
+func (y *TsuruYamlStartupcheck) AssembleProbe(port int) (*apiv1.Probe, error) {
+	if err := y.EnsureDefaults(); err != nil {
+		return nil, err
+	}
+	headers := []apiv1.HTTPHeader{}
+	for header, value := range y.getHeaders() {
+		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
+	}
+	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
+	formatedScheme := strings.ToUpper(y.Scheme)
+	probe := &apiv1.Probe{
+		FailureThreshold: y.getAllowedFailures(),
+		PeriodSeconds:    y.getIntervalSeconds(),
+		TimeoutSeconds:   y.getTimeoutSeconds(),
+		ProbeHandler:     apiv1.ProbeHandler{},
+	}
+	if y.Path != "" {
+		path := y.Path
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+
+		probe.ProbeHandler.HTTPGet = &apiv1.HTTPGetAction{
+			Path:        path,
+			Port:        intstr.FromInt(port),
+			Scheme:      apiv1.URIScheme(formatedScheme),
+			HTTPHeaders: headers,
+		}
+	} else {
+		probe.ProbeHandler.Exec = &apiv1.ExecAction{
+			Command: y.Command,
+		}
+	}
+	return probe, nil
+}
+
+func (y *TsuruYamlStartupcheck) getHeaders() map[string]string {
+	result := make(map[string]string)
+	maps.Copy(result, y.Headers)
+	return result
+}
+
+func (y *TsuruYamlStartupcheck) getAllowedFailures() int32 {
+	return int32(y.AllowedFailures)
+}
+
+func (y *TsuruYamlStartupcheck) getIntervalSeconds() int32 {
+	return int32(y.IntervalSeconds)
+}
+
+func (y *TsuruYamlStartupcheck) getTimeoutSeconds() int32 {
+	return int32(y.TimeoutSeconds)
 }

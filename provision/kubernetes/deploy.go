@@ -12,7 +12,6 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -290,7 +289,7 @@ type hcResult struct {
 func probesFromCheckConfigs(healthcheck *provTypes.TsuruYamlHealthcheck, startupcheck *provTypes.TsuruYamlStartupcheck, port int) (hcResult, error) {
 	var result hcResult
 	if healthcheck != nil && !healthcheck.IsEmpty() {
-		hcProbe, err := probesFromConfig(healthcheck, port)
+		hcProbe, err := healthcheck.AssembleProbe(port)
 		if err != nil {
 			return result, err
 		}
@@ -300,61 +299,13 @@ func probesFromCheckConfigs(healthcheck *provTypes.TsuruYamlHealthcheck, startup
 		}
 	}
 	if startupcheck != nil && !startupcheck.IsEmpty() {
-		scProbe, err := probesFromConfig(startupcheck, port)
+		scProbe, err := startupcheck.AssembleProbe(port)
 		if err != nil {
 			return result, err
 		}
 		result.startup = scProbe
 	}
 	return result, nil
-}
-
-type probeConfig interface {
-	GetHeaders() map[string]string
-	GetPath() string
-	GetScheme() string
-	GetCommand() []string
-	GetAllowedFailures() int32
-	GetIntervalSeconds() int32
-	GetTimeoutSeconds() int32
-	GetDeployTimeoutSeconds() int32
-	EnsureDefaults() error
-}
-
-func probesFromConfig(cfg probeConfig, port int) (*apiv1.Probe, error) {
-	if err := cfg.EnsureDefaults(); err != nil {
-		return nil, err
-	}
-	headers := []apiv1.HTTPHeader{}
-	for header, value := range cfg.GetHeaders() {
-		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
-	}
-	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
-	formatedScheme := strings.ToUpper(cfg.GetScheme())
-	probe := &apiv1.Probe{
-		FailureThreshold: cfg.GetAllowedFailures(),
-		PeriodSeconds:    cfg.GetIntervalSeconds(),
-		TimeoutSeconds:   cfg.GetTimeoutSeconds(),
-		ProbeHandler:     apiv1.ProbeHandler{},
-	}
-	if cfg.GetPath() != "" {
-		path := cfg.GetPath()
-		if !strings.HasPrefix(path, "/") {
-			path = "/" + path
-		}
-
-		probe.ProbeHandler.HTTPGet = &apiv1.HTTPGetAction{
-			Path:        path,
-			Port:        intstr.FromInt(port),
-			Scheme:      apiv1.URIScheme(formatedScheme),
-			HTTPHeaders: headers,
-		}
-	} else {
-		probe.ProbeHandler.Exec = &apiv1.ExecAction{
-			Command: cfg.GetCommand(),
-		}
-	}
-	return probe, nil
 }
 
 func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app *appTypes.App) error {
