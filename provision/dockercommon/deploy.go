@@ -37,8 +37,7 @@ func UserForContainer() (username string, uid *int64) {
 	return username, uid
 }
 
-// TODO: Problably change this so it uses startupcheck if it exists, then fallback to healthckeck
-func DeployHealthcheckTimeout(healthcheck *provTypes.TsuruYamlHealthcheck) time.Duration {
+func DeployHealthcheckTimeout(startupcheck *provTypes.TsuruYamlStartupcheck, healthcheck *provTypes.TsuruYamlHealthcheck) time.Duration {
 	const defaultWaitSeconds = 120
 
 	minWaitSeconds, _ := config.GetInt("docker:healthcheck:max-time")
@@ -47,12 +46,20 @@ func DeployHealthcheckTimeout(healthcheck *provTypes.TsuruYamlHealthcheck) time.
 	}
 
 	var waitTime int
-	if healthcheck != nil {
+	if startupcheck != nil {
+		waitTime = startupcheck.DeployTimeoutSeconds
+	} else if healthcheck != nil {
 		waitTime = healthcheck.DeployTimeoutSeconds
 	}
-	if waitTime < minWaitSeconds {
-		waitTime = minWaitSeconds
-	}
+
+	waitTime = max(waitTime, minWaitSeconds)
 
 	return time.Duration(waitTime) * time.Second
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

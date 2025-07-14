@@ -1049,17 +1049,18 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		return revision, errors.WithStack(err)
 	}
 	var healthcheck *provTypes.TsuruYamlHealthcheck
+	var startupcheck *provTypes.TsuruYamlStartupcheck
 	if len(tsuruYamlData.Processes) > 0 {
-		healthcheck, _, err = tsuruYamlData.GetCheckConfigsFromProcessName(processName)
+		healthcheck, startupcheck, err = tsuruYamlData.GetCheckConfigsFromProcessName(processName)
 		if err != nil {
 			return revision, errors.WithStack(err)
 		}
 	} else {
 		healthcheck = tsuruYamlData.Healthcheck
+		startupcheck = tsuruYamlData.Startupcheck
 	}
-	// TODO: Problably change this so it uses startupcheck if it exists, then fallback to healthckeck
-	maxWaitTimeDuration := dockercommon.DeployHealthcheckTimeout(healthcheck)
-	var healthcheckTimeout <-chan time.Time
+	maxWaitTimeDuration := dockercommon.DeployHealthcheckTimeout(startupcheck, healthcheck)
+	var initialCheckTimeout <-chan time.Time
 	t0 := time.Now()
 	largestReady := int32(0)
 	for {
@@ -1076,11 +1077,11 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		if oldUpdatedReplicas != dep.Status.UpdatedReplicas {
 			fmt.Fprintf(w, " ---> %d of %d new units created\n", dep.Status.UpdatedReplicas, specReplicas)
 		}
-		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
+		if initialCheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
 			allInit, err = allNewPodsRunning(ctx, client, dep)
 			if allInit && err == nil {
-				healthcheckTimeout = time.After(maxWaitTimeDuration)
+				initialCheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
 			}
 		}
@@ -1131,8 +1132,8 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			if isDeploymentEvent(msg, dep) {
 				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
-		case <-healthcheckTimeout:
-			fmt.Fprintf(w, "\n**** Healthcheck Timeout of %s exceeded ****\n", maxWaitTimeDuration.String())
+		case <-initialCheckTimeout:
+			fmt.Fprintf(w, "\n**** Initial Check Timeout of %s exceeded ****\n", maxWaitTimeDuration.String())
 			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, time.Since(t0))
 		case <-timer.C:
 			fmt.Fprintf(w, "\n**** Deployment Progress Timeout of %s exceeded ****\n", kubeConf.DeploymentProgressTimeout.String())
