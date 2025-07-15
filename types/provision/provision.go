@@ -46,14 +46,13 @@ type TsuruYamlHealthcheck struct {
 }
 
 type TsuruYamlStartupcheck struct {
-	Headers              map[string]string `json:"headers,omitempty" bson:",omitempty"`
-	Path                 string            `json:"path"`
-	Scheme               string            `json:"scheme"`
-	Command              []string          `json:"command,omitempty" bson:",omitempty"`
-	AllowedFailures      int               `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
-	IntervalSeconds      int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
-	TimeoutSeconds       int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
-	DeployTimeoutSeconds int               `json:"deploy_timeout_seconds,omitempty" yaml:"deploy_timeout_seconds" bson:"deploy_timeout_seconds,omitempty"`
+	Headers         map[string]string `json:"headers,omitempty" bson:",omitempty"`
+	Path            string            `json:"path"`
+	Scheme          string            `json:"scheme"`
+	Command         []string          `json:"command,omitempty" bson:",omitempty"`
+	AllowedFailures int               `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
+	IntervalSeconds int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
+	TimeoutSeconds  int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
 }
 
 type TsuruYamlProcess struct {
