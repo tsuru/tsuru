@@ -3225,7 +3225,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Initial Check Timeout of 1s exceeded .* ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Healthcheck Timeout of 1s exceeded .* ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), &apiv1.Event{
@@ -3390,7 +3390,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Initial Check Timeout of 1s exceeded .*ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Healthcheck Timeout of 1s exceeded .*ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), &apiv1.Event{
@@ -3571,7 +3571,7 @@ func (s *S) TestServiceManagerDeployServiceProcessHealthcheckTimeoutExceeded(c *
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Initial Check Timeout of 5s exceeded .*ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.* Healthcheck Timeout of 5s exceeded .*ROLLING BACK AFTER FAILURE.*`)
 }
 
 func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *check.C) {

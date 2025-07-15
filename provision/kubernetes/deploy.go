@@ -1164,7 +1164,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
 		case <-initialCheckTimeout:
-			fmt.Fprintf(w, "\n**** Initial Check Timeout of %s exceeded ****\n", maxWaitTimeDuration.String())
+			fmt.Fprintf(w, "\n**** Healthcheck Timeout of %s exceeded ****\n", maxWaitTimeDuration.String())
 			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, time.Since(t0))
 		case <-timer.C:
 			fmt.Fprintf(w, "\n**** Deployment Progress Timeout of %s exceeded ****\n", kubeConf.DeploymentProgressTimeout.String())
