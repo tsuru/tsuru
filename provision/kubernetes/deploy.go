@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/url"
 	"sort"
@@ -314,15 +315,19 @@ func assembleHealthProbe(y *provTypes.TsuruYamlHealthcheck, port int) (*apiv1.Pr
 		return nil, err
 	}
 	headers := []apiv1.HTTPHeader{}
-	for header, value := range y.GetHeaders() {
+	for header, value := range func() map[string]string {
+		result := make(map[string]string)
+		maps.Copy(result, y.Headers)
+		return result
+	}() {
 		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
 	}
 	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
 	formatedScheme := strings.ToUpper(y.Scheme)
 	probe := &apiv1.Probe{
-		FailureThreshold: y.GetAllowedFailures(),
-		PeriodSeconds:    y.GetIntervalSeconds(),
-		TimeoutSeconds:   y.GetTimeoutSeconds(),
+		FailureThreshold: int32(y.AllowedFailures),
+		PeriodSeconds:    int32(y.IntervalSeconds),
+		TimeoutSeconds:   int32(y.TimeoutSeconds),
 		ProbeHandler:     apiv1.ProbeHandler{},
 	}
 	if y.Path != "" {
@@ -350,15 +355,19 @@ func assembleStartupProbe(y *provTypes.TsuruYamlStartupcheck, port int) (*apiv1.
 		return nil, err
 	}
 	headers := []apiv1.HTTPHeader{}
-	for header, value := range y.GetHeaders() {
+	for header, value := range func() map[string]string {
+		result := make(map[string]string)
+		maps.Copy(result, y.Headers)
+		return result
+	}() {
 		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
 	}
 	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
 	formatedScheme := strings.ToUpper(y.Scheme)
 	probe := &apiv1.Probe{
-		FailureThreshold: y.GetAllowedFailures(),
-		PeriodSeconds:    y.GetIntervalSeconds(),
-		TimeoutSeconds:   y.GetTimeoutSeconds(),
+		FailureThreshold: int32(y.AllowedFailures),
+		PeriodSeconds:    int32(y.IntervalSeconds),
+		TimeoutSeconds:   int32(y.TimeoutSeconds),
 		ProbeHandler:     apiv1.ProbeHandler{},
 	}
 	if y.Path != "" {

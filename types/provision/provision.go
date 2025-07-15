@@ -149,24 +149,6 @@ func (y *TsuruYamlHealthcheck) IsEmpty() bool {
 	return y.Path == "" && len(y.Command) == 0
 }
 
-func (y *TsuruYamlHealthcheck) GetHeaders() map[string]string {
-	result := make(map[string]string)
-	maps.Copy(result, y.Headers)
-	return result
-}
-
-func (y *TsuruYamlHealthcheck) GetAllowedFailures() int32 {
-	return int32(y.AllowedFailures)
-}
-
-func (y *TsuruYamlHealthcheck) GetIntervalSeconds() int32 {
-	return int32(y.IntervalSeconds)
-}
-
-func (y *TsuruYamlHealthcheck) GetTimeoutSeconds() int32 {
-	return int32(y.TimeoutSeconds)
-}
-
 func (y *TsuruYamlStartupcheck) EnsureDefaults() error {
 	if y.Scheme == "" {
 		y.Scheme = defaultHealthcheckScheme
@@ -186,22 +168,4 @@ func (y *TsuruYamlStartupcheck) EnsureDefaults() error {
 
 func (y *TsuruYamlStartupcheck) IsEmpty() bool {
 	return y.Path == "" && len(y.Command) == 0
-}
-
-func (y *TsuruYamlStartupcheck) GetHeaders() map[string]string {
-	result := make(map[string]string)
-	maps.Copy(result, y.Headers)
-	return result
-}
-
-func (y *TsuruYamlStartupcheck) GetAllowedFailures() int32 {
-	return int32(y.AllowedFailures)
-}
-
-func (y *TsuruYamlStartupcheck) GetIntervalSeconds() int32 {
-	return int32(y.IntervalSeconds)
-}
-
-func (y *TsuruYamlStartupcheck) GetTimeoutSeconds() int32 {
-	return int32(y.TimeoutSeconds)
 }
