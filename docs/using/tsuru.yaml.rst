@@ -71,6 +71,9 @@ the processes and also the healthcheck configurations for each process.
         healthcheck:
           path: /
           scheme: http
+        startupcheck:
+          path: /startupcheck
+          scheme: http
       - name: web-secondary
         command: python app2.py
         healthcheck:
@@ -80,6 +83,14 @@ the processes and also the healthcheck configurations for each process.
 * ``processes:name``: The name of the process. This field is mandatory.
 * ``processes:command``: The command that will be used to run the process. This field is mandatory.
 * ``processes:healthcheck``: The healthcheck configuration for the process. This field is optional, and will be described in more detail below.
+* ``processes:startupcheck``: The startupcheck configuration for the process. This field is optional, and will be described in more detail below.
+
+.. note::
+   ``healthcheck`` and ``startupcheck`` are similar but serve different purposes:
+
+   - **healthcheck**: Used to monitor the ongoing health of each unit after deployment. If the healthcheck fails, the unit may be restarted or marked as unhealthy (removed from the router, and will receive no further requests until it is marked again as healthy).
+   - **startupcheck**: Used only during pod starts (deployments, scaling, restarts) to ensure the process is healthy before traffic is routed to it. If the startupcheck fails, the deployment is aborted and rolled back.
+
 
 Healthcheck
 ===========
@@ -148,6 +159,67 @@ Example of a command based healthcheck:
   call if
 * ``healthcheck:force_restart``: Whether the unit should be restarted after ``allowed_failures``
   consecutive healthcheck failures. (Sets the liveness probe in the Pod.)
+
+Startupcheck
+===========
+
+The ``startupcheck`` is similar to ``healthcheck`` but is only executed during pod starts,
+such as deployments, scaling, or restarts. It ensures the process is healthy before traffic is routed to it.
+If the startupcheck fails, the deployment is aborted and rolled back. See the note above for a summary of differences.
+
+You can declare a startup check in your tsuru.yaml file. This startup check will be
+called during pod starts like deployments, scaling or restarts and tsuru will make sure that the check is
+passing before continuing with the deployment process.
+
+If tsuru fails to run the startup check successfully it will abort the deployment
+before switching the router to point to the new units, so your application will
+never be unresponsive. You can configure the maximum time to wait for the
+application to respond with the ``docker:healthcheck:max-time`` config.
+
+Example on how you can configure a HTTP based startupcheck in your yaml file:
+
+.. highlight:: yaml
+
+::
+
+    startupcheck:
+      path: /startupcheck
+      scheme: http
+      headers:
+        Host: test.com
+        X-Custom-Header: xxx
+      allowed_failures: 0
+      interval_seconds: 10
+      timeout_seconds: 60
+      deploy_timeout_seconds: 180
+
+
+Example of a command based startupcheck:
+
+.. highlight:: yaml
+
+::
+
+    startupcheck:
+      command: ["curl", "-f", "-XPOST", "http://localhost:8888"]
+
+* ``startupcheck:path``: Which path to call in your application. This path will
+  be called for each unit. It is the only mandatory field, if it's not set your
+  health check will be ignored. ``Kubernetes expects a status code greater than or
+  equal to 200 and less than 400``.
+* ``startupcheck:scheme``: Which scheme to use. Defaults to http.
+* ``startupcheck:headers``: Additional headers to use for the request. Headers name
+  should be capitalized. It is optional.
+* ``startupcheck:allowed_failures``: The number of allowed failures before
+  the check be considered as failed. Defaults to 3.
+* ``startupcheck:timeout_seconds``: The timeout for each startupcheck call in
+  seconds. Defaults to 60 seconds.
+* ``startupcheck:command``: A command to execute inside the unit container. Exit status
+  of zero is considered as passed and non-zero is failed. This option defaults to an
+  empty string array. If ``startupcheck:path`` is set, this option will be ignored.
+* ``startupcheck:interval_seconds``: The interval in seconds between each active startupcheck
+  call. Considering that the startupcheck is only called once per unit if the check succeeds,
+  this setting will only affect the following calls of the startupcheck after a failure.
 
 .. _yaml_kubernetes:
 

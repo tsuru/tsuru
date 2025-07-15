@@ -70,8 +70,7 @@ func gcpHCToString(hc *backendconfigv1.HealthCheckConfig) string {
 }
 
 func backendConfigFromHC(ctx context.Context, app *appTypes.App, process string, hc provTypes.TsuruYamlHealthcheck) (*backendconfigv1.BackendConfig, error) {
-	err := ensureHealthCheckDefaults(&hc)
-	if err != nil {
+	if err := hc.EnsureDefaults(); err != nil {
 		return nil, err
 	}
 

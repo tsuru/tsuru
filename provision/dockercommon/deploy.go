@@ -37,7 +37,7 @@ func UserForContainer() (username string, uid *int64) {
 	return username, uid
 }
 
-func DeployHealthcheckTimeout(healthcheck *provTypes.TsuruYamlHealthcheck) time.Duration {
+func DeployTimeoutFromHealthcheck(healthcheck *provTypes.TsuruYamlHealthcheck) time.Duration {
 	const defaultWaitSeconds = 120
 
 	minWaitSeconds, _ := config.GetInt("docker:healthcheck:max-time")
@@ -49,9 +49,15 @@ func DeployHealthcheckTimeout(healthcheck *provTypes.TsuruYamlHealthcheck) time.
 	if healthcheck != nil {
 		waitTime = healthcheck.DeployTimeoutSeconds
 	}
-	if waitTime < minWaitSeconds {
-		waitTime = minWaitSeconds
-	}
+
+	waitTime = max(waitTime, minWaitSeconds)
 
 	return time.Duration(waitTime) * time.Second
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -6,17 +6,21 @@ package provision
 
 import (
 	"errors"
+	"maps"
 
 	"github.com/tsuru/tsuru/types/router"
 )
 
+const defaultHealthcheckScheme = "http"
+
 var ErrProcessNotFound = errors.New("process name could not be found on YAML data")
 
 type TsuruYamlData struct {
-	Hooks       *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
-	Healthcheck *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
-	Kubernetes  *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
-	Processes   []TsuruYamlProcess         `json:"processes,omitempty" bson:",omitempty"`
+	Hooks        *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
+	Healthcheck  *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
+	Startupcheck *TsuruYamlStartupcheck     `json:"startupcheck,omitempty" bson:",omitempty"`
+	Kubernetes   *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
+	Processes    []TsuruYamlProcess         `json:"processes,omitempty" bson:",omitempty"`
 }
 
 type TsuruYamlHooks struct {
@@ -41,10 +45,21 @@ type TsuruYamlHealthcheck struct {
 	ForceRestart         bool              `json:"force_restart,omitempty" yaml:"force_restart" bson:"force_restart,omitempty"`
 }
 
+type TsuruYamlStartupcheck struct {
+	Headers         map[string]string `json:"headers,omitempty" bson:",omitempty"`
+	Path            string            `json:"path"`
+	Scheme          string            `json:"scheme"`
+	Command         []string          `json:"command,omitempty" bson:",omitempty"`
+	AllowedFailures int               `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
+	IntervalSeconds int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
+	TimeoutSeconds  int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
+}
+
 type TsuruYamlProcess struct {
-	Healthcheck *TsuruYamlHealthcheck `json:"healthcheck,omitempty" bson:",omitempty"`
-	Name        string                `json:"name"`
-	Command     string                `json:"command" yaml:"command" bson:"command"`
+	Healthcheck  *TsuruYamlHealthcheck  `json:"healthcheck,omitempty" bson:",omitempty"`
+	Startupcheck *TsuruYamlStartupcheck `json:"startupcheck,omitempty" bson:",omitempty"`
+	Name         string                 `json:"name"`
+	Command      string                 `json:"command" yaml:"command" bson:"command"`
 }
 
 type TsuruYamlKubernetesConfig struct {
@@ -58,9 +73,7 @@ func (in *TsuruYamlKubernetesConfig) DeepCopyInto(out *TsuruYamlKubernetesConfig
 	if out.Groups == nil {
 		out.Groups = make(map[string]TsuruYamlKubernetesGroup)
 	}
-	for k, v := range in.Groups {
-		out.Groups[k] = v
-	}
+	maps.Copy(out.Groups, in.Groups)
 }
 
 func (in *TsuruYamlKubernetesConfig) DeepCopy() *TsuruYamlKubernetesConfig {
@@ -94,13 +107,13 @@ func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
 	}
 }
 
-func (y TsuruYamlData) GetHCFromProcessName(process string) (*TsuruYamlHealthcheck, error) {
+func (y TsuruYamlData) GetCheckConfigsFromProcessName(process string) (*TsuruYamlHealthcheck, *TsuruYamlStartupcheck, error) {
 	for _, tsuruProcessData := range y.Processes {
 		if tsuruProcessData.Name == process {
-			return tsuruProcessData.Healthcheck, nil
+			return tsuruProcessData.Healthcheck, tsuruProcessData.Startupcheck, nil
 		}
 	}
-	return nil, ErrProcessNotFound
+	return nil, nil, ErrProcessNotFound
 }
 
 func (y *TsuruYamlKubernetesConfig) GetProcessConfigs(procName string) *TsuruYamlKubernetesProcessConfig {
@@ -112,4 +125,46 @@ func (y *TsuruYamlKubernetesConfig) GetProcessConfigs(procName string) *TsuruYam
 		}
 	}
 	return nil
+}
+
+func (y *TsuruYamlHealthcheck) EnsureDefaults() error {
+	if y.Scheme == "" {
+		y.Scheme = defaultHealthcheckScheme
+	}
+	if y.IntervalSeconds == 0 {
+		y.IntervalSeconds = 10
+	}
+	if y.TimeoutSeconds == 0 {
+		y.TimeoutSeconds = 60
+	}
+	if y.AllowedFailures == 0 {
+		y.AllowedFailures = 3
+	}
+
+	return nil
+}
+
+func (y *TsuruYamlHealthcheck) IsEmpty() bool {
+	return y.Path == "" && len(y.Command) == 0
+}
+
+func (y *TsuruYamlStartupcheck) EnsureDefaults() error {
+	if y.Scheme == "" {
+		y.Scheme = defaultHealthcheckScheme
+	}
+	if y.IntervalSeconds == 0 {
+		y.IntervalSeconds = 10
+	}
+	if y.TimeoutSeconds == 0 {
+		y.TimeoutSeconds = 60
+	}
+	if y.AllowedFailures == 0 {
+		y.AllowedFailures = 3
+	}
+
+	return nil
+}
+
+func (y *TsuruYamlStartupcheck) IsEmpty() bool {
+	return y.Path == "" && len(y.Command) == 0
 }

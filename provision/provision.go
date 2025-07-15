@@ -28,7 +28,6 @@ import (
 
 const (
 	defaultKubernetesProvisioner = "kubernetes"
-	DefaultHealthcheckScheme     = "http"
 
 	PoolMetadataName = "pool"
 	WebProcessName   = "web"

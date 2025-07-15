@@ -55,7 +55,7 @@ type AppVersion interface {
 
 type AddVersionDataArgs struct {
 	Processes    map[string][]string
-	CustomData   map[string]interface{}
+	CustomData   map[string]any
 	ExposedPorts []string
 }
 

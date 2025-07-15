@@ -143,7 +143,7 @@ generate-test-certs:
 DOCKER ?= docker
 
 # Kubernetes version used with minikube
-K8S_VERSION = v1.26.15
+K8S_VERSION = v1.30.0
 
 # Tsuru local host
 # This is used to configure the insecure registry in minikube as well as in the
@@ -189,7 +189,10 @@ local.cluster:
 	@$(LOCAL_DEV) setup-loopback $(TSURU_HOST_IP)
 	@if ! minikube status &>/dev/null; then \
 		echo "Starting local kubernetes cluster for linux..."; \
-		minikube start --driver=docker --kubernetes-version=$(K8S_VERSION); \
+		minikube start \
+			--insecure-registry="$(TSURU_HOST_IP):5000" \
+			--driver=docker \
+			--kubernetes-version=$(K8S_VERSION); \
 	fi
 
 endif
@@ -261,3 +264,6 @@ generate-grpc:
 	$(PROTOC) --go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		types/tag/service.proto
+
+connect-db:
+	@$(DOCKER) compose exec mongo bash -c 'mongosh "mongodb://mongo:27017'
