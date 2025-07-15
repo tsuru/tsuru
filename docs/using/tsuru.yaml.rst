@@ -214,12 +214,6 @@ Example of a command based startupcheck:
   the check be considered as failed. Defaults to 3.
 * ``startupcheck:timeout_seconds``: The timeout for each startupcheck call in
   seconds. Defaults to 60 seconds.
-* ``startupcheck:deploy_timeout_seconds``: The timeout for the first successful
-  healthcheck response after the application process has started during a new
-  deploy. During this time a new healthcheck attempt will be made every
-  ``startupcheck:interval_seconds``. If the startupcheck is not successful in
-  this time the deploy will be aborted and rolled back. Defaults to
-  :ref:`max-time global config <config_healthcheck_max_time>`.
 * ``startupcheck:command``: A command to execute inside the unit container. Exit status
   of zero is considered as passed and non-zero is failed. This option defaults to an
   empty string array. If ``startupcheck:path`` is set, this option will be ignored.
