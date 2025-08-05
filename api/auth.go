@@ -72,7 +72,7 @@ func teamTarget(t string) eventTypes.Target {
 //	401: Unauthorized
 //	403: Forbidden
 //	409: User already exists
-func createUser(w http.ResponseWriter, r *http.Request) error {
+func createUser(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
 	registrationEnabled, _ := config.GetBool("auth:user-registration")
 	if !registrationEnabled {
@@ -277,7 +277,7 @@ var teamRenameFns = []func(ctx context.Context, oldName, newName string) error{
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Team not found
-func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	type teamChange struct {
@@ -296,7 +296,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	_, err := servicemanager.Team.FindByName(ctx, name)
+	_, err = servicemanager.Team.FindByName(ctx, name)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -363,7 +363,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid data
 //	401: Unauthorized
 //	409: Team already exists
-func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(ctx, t, permission.PermTeamCreate)
 	if !allowed {

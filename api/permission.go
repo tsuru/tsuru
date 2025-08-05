@@ -593,7 +593,7 @@ func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
-func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 
 	roleName := InputValue(r, "name")
@@ -704,7 +704,7 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Role or team token not found
-func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	if !permission.Check(ctx, t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
@@ -752,7 +752,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Role or team token not found
-func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	if !permission.Check(ctx, t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
@@ -798,7 +798,7 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Role not found
-func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	if !permission.Check(ctx, t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
@@ -841,7 +841,7 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Role not found
-func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 
 	if !permission.Check(ctx, t, permission.PermRoleUpdateDissociate) {

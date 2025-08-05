@@ -797,7 +797,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App or unit not found
-func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	unitName := r.URL.Query().Get(":unit")
 	if unitName == "" {
@@ -1586,7 +1586,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
@@ -2089,7 +2089,7 @@ func listCertificatesLegacy(w http.ResponseWriter, r *http.Request, t auth.Token
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	inputErrMsg := "You must provide a cname and a issuer."
 	cname := InputValue(r, "cname")
@@ -2153,7 +2153,7 @@ func setCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func unsetCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func unsetCertIssuer(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	inputErrMsg := "You must provide a cname."
 	cname := InputValue(r, "cname")
