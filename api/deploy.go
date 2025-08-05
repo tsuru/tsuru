@@ -292,7 +292,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid data
 //	403: Forbidden
 //	404: Not found
-func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	instance, err := app.GetByName(ctx, appName)
@@ -434,7 +434,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid data
 //	403: Forbidden
 //	404: Not found
-func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	instance, err := app.GetByName(ctx, appName)
@@ -499,7 +499,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	200: Rollback updated
 //	400: Invalid data
 //	403: Forbidden
-func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	instance, err := app.GetByName(ctx, appName)

@@ -282,7 +282,7 @@ func fillDashboardURL(jobInfo *jobTypes.JobInfo) error {
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Job or unit not found
-func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	unitName := r.URL.Query().Get(":unit")
 	if unitName == "" {
@@ -652,7 +652,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 //	400: Invalid data
 //	401: Unauthorized
 //	404: Job not found
-func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
 	jobName := r.URL.Query().Get(":job")
