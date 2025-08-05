@@ -245,7 +245,7 @@ func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //	200: Volume deleted
 //	401: Unauthorized
 //	404: Volume not found
-func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	volumeName := r.URL.Query().Get(":name")
 	dbVolume, err := servicemanager.Volume.Get(ctx, volumeName)
@@ -284,7 +284,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	404: Volume not found
 //	409: Volume bind already exists
-func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var bindInfo struct {
 		App        string
@@ -292,7 +292,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		ReadOnly   bool
 		NoRestart  bool
 	}
-	err := ParseInput(r, &bindInfo)
+	err = ParseInput(r, &bindInfo)
 	if err != nil {
 		return err
 	}
@@ -356,14 +356,14 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	200: Volume unbinded
 //	401: Unauthorized
 //	404: Volume not found
-func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var bindInfo struct {
 		App        string
 		MountPoint string
 		NoRestart  bool
 	}
-	err := ParseInput(r, &bindInfo)
+	err = ParseInput(r, &bindInfo)
 	if err != nil {
 		return err
 	}

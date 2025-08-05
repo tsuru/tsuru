@@ -83,10 +83,10 @@ func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	400: Invalid webhook
 //	409: Webhook already exists
-func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var webhook eventTypes.Webhook
-	err := ParseInput(r, &webhook)
+	err = ParseInput(r, &webhook)
 	if err != nil {
 		return err
 	}
@@ -130,10 +130,10 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	400: Invalid webhook
 //	404: Webhook not found
-func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var webhook eventTypes.Webhook
-	err := ParseInput(r, &webhook)
+	err = ParseInput(r, &webhook)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	200: Webhook deleted
 //	401: Unauthorized
 //	404: Webhook not found
-func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	webhookName := r.URL.Query().Get(":name")
 	webhook, err := servicemanager.Webhook.Find(ctx, webhookName)
