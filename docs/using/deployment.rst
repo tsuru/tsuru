@@ -18,7 +18,7 @@ is what an application need to go on a tsuru cloud:
  1. Well defined requirements, both, on language level and operational system
     level
  2. Configuration of external resources using environment variables
- 3. A Procfile to tell how your process should be run
+ 3. A Procfile or Tsuru.yaml file to tell how your process should be run
 
 Let's go a little deeper through each of those topics.
 
