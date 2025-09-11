@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -518,6 +519,47 @@ func defineSelectorAndAffinity(ctx context.Context, a *appTypes.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
+func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, depName string, oldSecret *apiv1.Secret, a *appTypes.App, process string, version appTypes.AppVersion, labels *provision.LabelSet) (bool, *apiv1.Secret, error) {
+	envs := appSecretEnvs(a, process, version)
+
+	secretLabels := labels.WithoutVersion().ToLabels()
+
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return false, nil, err
+	}
+
+	secret := apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      depName,
+			Namespace: ns,
+			Labels:    secretLabels,
+		},
+		Data: envs,
+	}
+
+	var newSecret *apiv1.Secret
+	if oldSecret == nil {
+		newSecret, err = client.CoreV1().Secrets(ns).Create(ctx, &secret, metav1.CreateOptions{})
+
+		if err == nil {
+			fmt.Fprintf(w, "\n---- Created secret %q for process %q [version %d] ----\n", depName, process, version.Version())
+		}
+	} else {
+		if secretUnchanged(&secret, oldSecret) {
+			fmt.Fprintf(w, "\n---- No changes on secret %q for process %q [version %d] ----\n", depName, process, version.Version())
+			return false, oldSecret, nil
+		}
+
+		secret.ResourceVersion = oldSecret.ResourceVersion
+		newSecret, err = client.CoreV1().Secrets(ns).Update(ctx, &secret, metav1.UpdateOptions{})
+		if err == nil {
+			fmt.Fprintf(w, "\n---- Updated secret %q for process %q [version %d] ----\n", depName, process, version.Version())
+		}
+	}
+	return true, newSecret, errors.WithStack(err)
+}
+
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a *appTypes.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
@@ -777,6 +819,28 @@ func deploymentUnchanged(deployment *appsv1.Deployment, oldDeployment *appsv1.De
 		oldDeployment.Status.UnavailableReplicas == 0)
 }
 
+func secretUnchanged(secret *apiv1.Secret, oldSecret *apiv1.Secret) bool {
+	return (secret.ObjectMeta.Name == oldSecret.ObjectMeta.Name &&
+		secret.ObjectMeta.Namespace == oldSecret.ObjectMeta.Namespace &&
+		apiequality.Semantic.DeepEqual(secret.ObjectMeta.Labels, oldSecret.ObjectMeta.Labels) &&
+		annotationsUnchanged(secret.ObjectMeta.Annotations, oldSecret.ObjectMeta.Annotations) &&
+		secretDataEqual(secret.Data, oldSecret.Data))
+}
+
+func secretDataEqual(new, old map[string][]byte) bool {
+	if len(new) != len(old) {
+		return false
+	}
+
+	for key, value := range new {
+		if !bytes.Equal(old[key], value) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func annotationsUnchanged(new, old map[string]string) bool {
 	for key, value := range new {
 		if old[key] != value {
@@ -797,6 +861,20 @@ func appEnvs(a *appTypes.App, process string, version appTypes.AppVersion) []api
 		}
 	}
 	return envs
+}
+
+func appSecretEnvs(a *appTypes.App, process string, version appTypes.AppVersion) map[string][]byte {
+	appEnvs := EnvsForApp(a, process, version)
+
+	result := map[string][]byte{}
+
+	for _, envData := range appEnvs {
+		if envData.Public {
+			continue
+		}
+		result[envData.Name] = []byte(strings.ReplaceAll(envData.Value, "$", "$$"))
+	}
+	return result
 }
 
 type serviceManager struct {
@@ -1248,6 +1326,21 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 				opts.Replicas = totalReplicas
 			}
 		}
+	}
+
+	oldSecret, err := m.client.CoreV1().Secrets(ns).Get(ctx, depArgs.name, metav1.GetOptions{})
+	if err != nil {
+		if !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+		oldSecret = nil
+	}
+
+	fmt.Fprintf(m.writer, "\n---- No changes on units [%s] [version %d] ----\n", opts.ProcessName, opts.Version.Version())
+
+	_, _, err = createAppSecret(ctx, m.writer, m.client, depArgs.name, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
+	if err != nil {
+		return err
 	}
 
 	changed, newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
