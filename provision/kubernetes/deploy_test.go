@@ -165,7 +165,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 								{Name: "TSURU_APPNAME", Value: a.Name},
-								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+									SecretKeyRef: &apiv1.SecretKeySelector{
+										LocalObjectReference: apiv1.LocalObjectReference{Name: "myapp-p1"},
+										Key:                  "TSURU_SERVICES",
+									},
+								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "1"},
 								{Name: "TSURU_HOST", Value: ""},
@@ -1990,20 +1995,18 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	require.EqualValues(s.t, []apiv1.LocalObjectReference{{Name: "docker-config-tsuru"}}, dep.Spec.Template.Spec.ImagePullSecrets)
-	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	secret, err := s.client.CoreV1().Secrets(ns).Get(context.TODO(), "docker-config-tsuru", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	require.EqualValues(s.t, []apiv1.Secret{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "docker-config-tsuru",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
-			},
-			Type: "kubernetes.io/dockerconfigjson",
+	require.EqualValues(s.t, &apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "docker-config-tsuru",
+			Namespace: "default",
 		},
-	}, secrets.Items)
+		Data: map[string][]byte{
+			".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
+		},
+		Type: "kubernetes.io/dockerconfigjson",
+	}, secret)
 }
 
 func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
@@ -2769,7 +2772,12 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 								{Name: "TSURU_APPNAME", Value: a.Name},
-								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+									SecretKeyRef: &apiv1.SecretKeySelector{
+										LocalObjectReference: apiv1.LocalObjectReference{Name: "myapp-p1-v2"},
+										Key:                  "TSURU_SERVICES",
+									},
+								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "2"},
 								{Name: "TSURU_HOST", Value: ""},
@@ -3073,8 +3081,22 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	require.EqualValues(s.t, []apiv1.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 		{Name: "TSURU_APPNAME", Value: a.Name},
-		{Name: "TSURU_SERVICES", Value: "{}"},
-		{Name: "env1", Value: "a$$()b$$$$c"},
+		{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+			SecretKeyRef: &apiv1.SecretKeySelector{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: "myapp-p1",
+				},
+				Key: "TSURU_SERVICES",
+			},
+		}},
+		{Name: "env1", ValueFrom: &apiv1.EnvVarSource{
+			SecretKeyRef: &apiv1.SecretKeySelector{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: "myapp-p1",
+				},
+				Key: "env1",
+			},
+		}},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
@@ -3082,6 +3104,13 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
 	}, dep.Spec.Template.Spec.Containers[0].Env)
+
+	secret, err := s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, map[string][]byte{
+		"TSURU_SERVICES": []byte("{}"),
+		"env1":           []byte("a$$()b$$$$c"),
+	}, secret.Data)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {

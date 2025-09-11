@@ -560,7 +560,7 @@ func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, de
 	return true, newSecret, errors.WithStack(err)
 }
 
-func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a *appTypes.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(ctx context.Context, client *ClusterClient, depName, secretName string, oldDeployment *appsv1.Deployment, a *appTypes.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
@@ -781,7 +781,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 							Name:           depName,
 							Image:          deployImage,
 							Command:        cmds,
-							Env:            appEnvs(a, process, version),
+							Env:            appEnvs(a, process, secretName, version),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							StartupProbe:   hcData.startup,
@@ -851,13 +851,27 @@ func annotationsUnchanged(new, old map[string]string) bool {
 	return true
 }
 
-func appEnvs(a *appTypes.App, process string, version appTypes.AppVersion) []apiv1.EnvVar {
+func appEnvs(a *appTypes.App, process string, secretName string, version appTypes.AppVersion) []apiv1.EnvVar {
 	appEnvs := EnvsForApp(a, process, version)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
-		envs[i] = apiv1.EnvVar{
-			Name:  envData.Name,
-			Value: strings.ReplaceAll(envData.Value, "$", "$$"),
+		if envData.Public {
+			envs[i] = apiv1.EnvVar{
+				Name:  envData.Name,
+				Value: strings.ReplaceAll(envData.Value, "$", "$$"),
+			}
+		} else {
+			envs[i] = apiv1.EnvVar{
+				Name: envData.Name,
+				ValueFrom: &apiv1.EnvVarSource{
+					SecretKeyRef: &apiv1.SecretKeySelector{
+						LocalObjectReference: apiv1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: envData.Name,
+					},
+				},
+			}
 		}
 	}
 	return envs
@@ -1338,12 +1352,12 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 	fmt.Fprintf(m.writer, "\n---- No changes on units [%s] [version %d] ----\n", opts.ProcessName, opts.Version.Version())
 
-	_, _, err = createAppSecret(ctx, m.writer, m.client, depArgs.name, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
+	_, secret, err := createAppSecret(ctx, m.writer, m.client, depArgs.name, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
 	if err != nil {
 		return err
 	}
 
-	changed, newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
+	changed, newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, secret.Name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
 	if err != nil {
 		return err
 	}

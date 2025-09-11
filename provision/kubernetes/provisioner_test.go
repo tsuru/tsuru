@@ -2476,76 +2476,76 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 
 	envs := EnvsForApp(fa, "proc1", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "PORT_proc1", Value: "8080,9000"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc1", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "PORT_proc1", Value: "8080,9000", Public: true},
 	}, envs)
 
 	envs = EnvsForApp(fa, "proc2", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "PORT_proc2", Value: "8000"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc2", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "PORT_proc2", Value: "8000", Public: true},
 	}, envs)
 
 	envs = EnvsForApp(fa, "proc3", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "PORT_proc3", Value: "8080"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc3", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "PORT_proc3", Value: "8080", Public: true},
 	}, envs)
 
 	envs = EnvsForApp(fa, "proc4", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
-		{Name: "PORT_proc4", Value: "8888"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc4", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "port", Value: "8888", Public: true},
+		{Name: "PORT", Value: "8888", Public: true},
+		{Name: "PORT_proc4", Value: "8888", Public: true},
 	}, envs)
 
 	envs = EnvsForApp(fa, "proc5", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
+		{Name: "TSURU_PROCESSNAME", Value: "proc5", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
 	}, envs)
 
 	envs = EnvsForApp(fa, "proc6", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "proc6"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc6", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "port", Value: "8888", Public: true},
+		{Name: "PORT", Value: "8888", Public: true},
 	}, envs)
 }
 

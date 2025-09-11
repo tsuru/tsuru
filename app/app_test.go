@@ -256,7 +256,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(retrievedApp.Tags, check.DeepEquals, []string{"test a", "test b"})
 	env := provision.EnvsForApp(retrievedApp)
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
-	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
+	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, true)
 }
 
 func (s *S) TestCreateAppAlreadyExists(c *check.C) {
@@ -1289,14 +1289,14 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 		"TSURU_APPNAME": {
 			Name:      "TSURU_APPNAME",
 			Value:     "myapp",
-			Public:    false,
+			Public:    true,
 			ManagedBy: "tsuru",
 		},
 
 		"TSURU_APPDIR": {
 			Name:      "TSURU_APPDIR",
 			Value:     "/home/application/current",
-			Public:    false,
+			Public:    true,
 			ManagedBy: "tsuru",
 		},
 	}
@@ -3441,11 +3441,13 @@ func (s *S) TestEnvs(c *check.C) {
 			Name:      "TSURU_APPNAME",
 			Value:     "time",
 			ManagedBy: "tsuru",
+			Public:    true,
 		},
 		"TSURU_APPDIR": {
 			Name:      "TSURU_APPDIR",
 			Value:     "/home/application/current",
 			ManagedBy: "tsuru",
+			Public:    true,
 		},
 	}
 	env := provision.EnvsForApp(&app)
@@ -3494,8 +3496,8 @@ func (s *S) TestEnvsInterpolate(c *check.C) {
 		"i":              {Name: "i", Value: "", Alias: "notfound"},
 		"DB_HOST":        {Name: "DB_HOST", Value: "host1", ManagedBy: "srv1/inst1"},
 		"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{\"srv1\":[{\"instance_name\":\"inst1\",\"envs\":{\"DB_HOST\":\"host1\"}}]}", ManagedBy: "tsuru"},
-		"TSURU_APPNAME":  {Name: "TSURU_APPNAME", Value: "time", ManagedBy: "tsuru"},
-		"TSURU_APPDIR":   {Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
+		"TSURU_APPNAME":  {Name: "TSURU_APPNAME", Value: "time", ManagedBy: "tsuru", Public: true},
+		"TSURU_APPDIR":   {Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 	}
 	env := provision.EnvsForApp(&app)
 	c.Assert(env, check.DeepEquals, expected)

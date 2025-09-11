@@ -53,14 +53,14 @@ func (s *S) TestEnvsForApp(c *check.C) {
 	}
 	envs := provision.EnvsForAppAndVersion(a, "p1", nil)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "p1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "port", Value: "8888", Public: true},
+		{Name: "PORT", Value: "8888", Public: true},
 	})
 }
 
@@ -77,15 +77,15 @@ func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 
 	envs := provision.EnvsForAppAndVersion(a, "p1", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "p1"},
-		{Name: "TSURU_APPVERSION", Value: "1"},
-		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1", Public: true},
+		{Name: "TSURU_APPVERSION", Value: "1", Public: true},
+		{Name: "TSURU_HOST", Value: "", Public: true},
+		{Name: "port", Value: "8888", Public: true},
+		{Name: "PORT", Value: "8888", Public: true},
 	})
 
 }
@@ -101,13 +101,13 @@ func (s *S) TestEnvsForAppCustomConfig(c *check.C) {
 	}
 	envs := provision.EnvsForAppAndVersion(a, "p1", nil)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
-		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
+		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
 		{Name: "e1", Value: "v1"},
-		{Name: "TSURU_PROCESSNAME", Value: "p1"},
-		{Name: "TSURU_HOST", Value: "cloud.tsuru.io"},
-		{Name: "port", Value: "8989"},
-		{Name: "PORT", Value: "8989"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1", Public: true},
+		{Name: "TSURU_HOST", Value: "cloud.tsuru.io", Public: true},
+		{Name: "port", Value: "8989", Public: true},
+		{Name: "PORT", Value: "8989", Public: true},
 	})
 }

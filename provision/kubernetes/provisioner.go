@@ -1570,7 +1570,11 @@ func EnvsForApp(a *appTypes.App, process string, version appTypes.AppVersion) []
 		}
 		portValue[i] = fmt.Sprintf("%d", targetPort)
 	}
-	portEnv := bindTypes.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")}
+	portEnv := bindTypes.EnvVar{
+		Name:   fmt.Sprintf("PORT_%s", process),
+		Value:  strings.Join(portValue, ","),
+		Public: true,
+	}
 	if !isDefaultPort(portsConfig) {
 		envs = removeDefaultPortEnvs(envs)
 	}
