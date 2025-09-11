@@ -164,7 +164,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 								{Name: "TSURU_APPNAME", Value: a.Name},
-								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+									SecretKeyRef: &apiv1.SecretKeySelector{
+										LocalObjectReference: apiv1.LocalObjectReference{Name: "myapp-p1"},
+										Key:                  "TSURU_SERVICES",
+									},
+								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "1"},
 								{Name: "TSURU_HOST", Value: ""},
@@ -1993,19 +1998,17 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
 		{Name: "docker-config-tsuru"},
 	})
-	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	secret, err := s.client.CoreV1().Secrets(ns).Get(context.TODO(), "docker-config-tsuru", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(secrets.Items, check.DeepEquals, []apiv1.Secret{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "docker-config-tsuru",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
-			},
-			Type: "kubernetes.io/dockerconfigjson",
+	c.Assert(secret, check.DeepEquals, &apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "docker-config-tsuru",
+			Namespace: "default",
 		},
+		Data: map[string][]byte{
+			".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
+		},
+		Type: "kubernetes.io/dockerconfigjson",
 	})
 }
 
@@ -2766,7 +2769,12 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 								{Name: "TSURU_APPNAME", Value: a.Name},
-								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+									SecretKeyRef: &apiv1.SecretKeySelector{
+										LocalObjectReference: apiv1.LocalObjectReference{Name: "myapp-p1-v2"},
+										Key:                  "TSURU_SERVICES",
+									},
+								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "2"},
 								{Name: "TSURU_HOST", Value: ""},
@@ -3070,14 +3078,35 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	c.Check(dep.Spec.Template.Spec.Containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 		{Name: "TSURU_APPNAME", Value: a.Name},
-		{Name: "TSURU_SERVICES", Value: "{}"},
-		{Name: "env1", Value: "a$$()b$$$$c"},
+		{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+			SecretKeyRef: &apiv1.SecretKeySelector{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: "myapp-p1",
+				},
+				Key: "TSURU_SERVICES",
+			},
+		}},
+		{Name: "env1", ValueFrom: &apiv1.EnvVarSource{
+			SecretKeyRef: &apiv1.SecretKeySelector{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: "myapp-p1",
+				},
+				Key: "env1",
+			},
+		}},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
+	})
+
+	secret, err := s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(secret.Data, check.DeepEquals, map[string][]byte{
+		"TSURU_SERVICES": []byte("{}"),
+		"env1":           []byte("a$$()b$$$$c"),
 	})
 }
 

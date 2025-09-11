@@ -163,7 +163,7 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appEnv := provision.EnvsForApp(gotApp)
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
-	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
+	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, true)
 	c.Assert(appEnv["TSURU_APPDir"].Value, check.Not(check.Equals), "/home/application/current")
 	c.Assert(appEnv["TSURU_APPDir"].Public, check.Equals, false)
 }
