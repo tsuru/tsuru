@@ -413,6 +413,19 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(s.t, err)
+
+	_, err = s.client.CoreV1().Secrets(ns).Create(context.TODO(), &apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appSecretPrefix + "myapp-p1",
+			Namespace: ns,
+			Labels:    expectedLabels,
+		},
+		Data: map[string][]byte{
+			"TSURU_SERVICES": []byte(`{}`),
+			"MY_ENV":         []byte("myvalue"),
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(s.t, err)
 	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
@@ -440,6 +453,9 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	require.NoError(s.t, err)
 	require.Len(s.t, deps.Items, 0)
+	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	require.NoError(s.t, err)
+	require.Len(s.t, secrets.Items, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	require.NoError(s.t, err)
 	require.Len(s.t, pods.Items, 0)

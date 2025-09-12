@@ -1019,6 +1019,8 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		require.NoError(s.t, err)
 		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 		require.True(s.t, err == nil || k8sErrors.IsNotFound(err))
+		_, err = s.client.Clientset.CoreV1().Secrets(nsName).Get(context.TODO(), appSecretPrefix+"myapp-p1", metav1.GetOptions{})
+		require.True(s.t, err == nil || k8sErrors.IsNotFound(err))
 		waitDep()
 		tt.fn(dep)
 		err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version.Version())
@@ -2168,6 +2170,8 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	require.NoError(s.t, err)
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	require.True(s.t, k8sErrors.IsNotFound(err))
+	_, err = s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-web", metav1.GetOptions{})
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	require.Contains(s.t, buf.String(), "---> 1 of 1 new units created")
 	require.Contains(s.t, buf.String(), "---> 0 of 1 new units ready")
 	require.Contains(s.t, buf.String(), "DELETING CREATED DEPLOYMENT AFTER FAILURE")
@@ -2953,6 +2957,9 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	_, err = s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-p2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
