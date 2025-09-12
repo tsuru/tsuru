@@ -98,10 +98,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	require.NoError(s.t, err)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
+			Name:      "myapp-p1",
+			Namespace: nsName,
+			Labels:    depLabels,
+			Annotations: map[string]string{
+				"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+			},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -139,7 +141,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/app-pool":        "test-default",
 						"tsuru.io/app-version":     "1",
 					},
-					Annotations: map[string]string{},
+					Annotations: map[string]string{
+						"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+					},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2721,10 +2725,12 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	require.NoError(s.t, err)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1-v2",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
+			Name:      "myapp-p1-v2",
+			Namespace: nsName,
+			Labels:    depLabels,
+			Annotations: map[string]string{
+				"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+			},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -2751,8 +2757,10 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: map[string]string{},
+					Labels: podLabels,
+					Annotations: map[string]string{
+						"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+					},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -4087,7 +4095,10 @@ func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *che
 	require.NoError(s.t, err)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	require.EqualValues(s.t, map[string]string{"tsuru.io/a": "my custom annotation"}, dep.Spec.Template.ObjectMeta.Annotations)
+	require.EqualValues(s.t, map[string]string{
+		"tsuru.io/a":             "my custom annotation",
+		"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+	}, dep.Spec.Template.ObjectMeta.Annotations)
 	require.Equal(s.t, "BACKUP", dep.Spec.Template.ObjectMeta.Labels["tsuru.io/logs"])
 }
 
