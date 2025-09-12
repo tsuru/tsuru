@@ -7,7 +7,9 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -573,26 +575,40 @@ func cleanupAppSecret(ctx context.Context, client *ClusterClient, a *appTypes.Ap
 	return errors.WithStack(err)
 }
 
-func createAppDeployment(ctx context.Context, client *ClusterClient, depName, secretName string, oldDeployment *appsv1.Deployment, a *appTypes.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
-	realReplicas := int32(replicas)
-	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
+type createAppDeploymentOptions struct {
+	client        *ClusterClient
+	depName       string
+	secretName    string
+	oldDeployment *appsv1.Deployment
+	app           *appTypes.App
+	process       string
+	version       appTypes.AppVersion
+	replicas      int
+	labels        *provision.LabelSet
+	selector      map[string]string
+	secret        *apiv1.Secret
+}
+
+func createAppDeployment(ctx context.Context, opts *createAppDeploymentOptions) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
+	realReplicas := int32(opts.replicas)
+	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(opts.version)
 	if err != nil {
 		return false, nil, nil, errors.WithStack(err)
 	}
-	cmds, _, err := dockercommon.LeanContainerCmds(process, cmdData, a)
+	cmds, _, err := dockercommon.LeanContainerCmds(opts.process, cmdData, opts.app)
 	if err != nil {
 		return false, nil, nil, errors.WithStack(err)
 	}
 	tenRevs := int32(10)
-	webProcessName, err := version.WebProcess()
+	webProcessName, err := opts.version.WebProcess()
 	if err != nil {
 		return false, nil, nil, errors.WithStack(err)
 	}
-	yamlData, err := version.TsuruYamlData()
+	yamlData, err := opts.version.TsuruYamlData()
 	if err != nil {
 		return false, nil, nil, errors.WithStack(err)
 	}
-	processPorts, err := getProcessPortsForVersion(version, process)
+	processPorts, err := getProcessPortsForVersion(opts.version, opts.process)
 	if err != nil {
 		return false, nil, nil, errors.WithStack(err)
 	}
@@ -601,7 +617,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 	if len(yamlData.Processes) > 0 {
 		var healthcheck *provTypes.TsuruYamlHealthcheck
 		var startupcheck *provTypes.TsuruYamlStartupcheck
-		healthcheck, startupcheck, err = yamlData.GetCheckConfigsFromProcessName(process)
+		healthcheck, startupcheck, err = yamlData.GetCheckConfigsFromProcessName(opts.process)
 		if err != nil {
 			return false, nil, nil, errors.WithStack(err)
 		}
@@ -609,14 +625,14 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 		if err != nil {
 			return false, nil, nil, err
 		}
-	} else if process == webProcessName && len(processPorts) > 0 {
+	} else if opts.process == webProcessName && len(processPorts) > 0 {
 		hcData, err = probesFromCheckConfigs(yamlData.Healthcheck, yamlData.Startupcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return false, nil, nil, err
 		}
 	}
 
-	sleepSec := client.preStopSleepSeconds(a.Pool)
+	sleepSec := opts.client.preStopSleepSeconds(opts.app.Pool)
 	terminationGracePeriod := int64(30 + sleepSec)
 
 	var lifecycle apiv1.Lifecycle
@@ -643,38 +659,38 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 			},
 		}
 	}
-	maxSurge := client.maxSurge(a.Pool)
-	maxUnavailable := client.maxUnavailable(a.Pool)
-	dnsConfig := dnsConfigNdots(client, a)
-	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, a, client)
+	maxSurge := opts.client.maxSurge(opts.app.Pool)
+	maxUnavailable := opts.client.maxUnavailable(opts.app.Pool)
+	dnsConfig := dnsConfigNdots(opts.client, opts.app)
+	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, opts.app, opts.client)
 	if err != nil {
 		return false, nil, nil, err
 	}
 
 	_, uid := dockercommon.UserForContainer()
-	overCommit, err := client.OvercommitFactor(a.Pool)
+	overCommit, err := opts.client.OvercommitFactor(opts.app.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
-	cpuOverCommit, err := client.CPUOvercommitFactor(a.Pool)
+	cpuOverCommit, err := opts.client.CPUOvercommitFactor(opts.app.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster cpu overcommit factor")
 	}
-	poolCPUBurst, err := client.CPUBurstFactor(a.Pool)
+	poolCPUBurst, err := opts.client.CPUBurstFactor(opts.app.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster cpu burst factor")
 	}
-	memoryOverCommit, err := client.MemoryOvercommitFactor(a.Pool)
+	memoryOverCommit, err := opts.client.MemoryOvercommitFactor(opts.app.Pool)
 	if err != nil {
 		return false, nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
 	}
 
-	plan, err := planForProcess(ctx, a, process)
+	plan, err := planForProcess(ctx, opts.app, opts.process)
 	if err != nil {
 		return false, nil, nil, err
 	}
 
-	resourceRequirements, err := resourceRequirements(&plan, a.Pool, client, requirementsFactors{
+	resourceRequirements, err := resourceRequirements(&plan, opts.app.Pool, opts.client, requirementsFactors{
 		overCommit:       overCommit,
 		cpuOverCommit:    cpuOverCommit,
 		poolCPUBurst:     poolCPUBurst,
@@ -683,25 +699,25 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 	if err != nil {
 		return false, nil, nil, err
 	}
-	volumes, mounts, err := createVolumesForApp(ctx, client, a)
+	volumes, mounts, err := createVolumesForApp(ctx, opts.client, opts.app)
 	if err != nil {
 		return false, nil, nil, err
 	}
-	ns, err := client.AppNamespace(ctx, a)
+	ns, err := opts.client.AppNamespace(ctx, opts.app)
 	if err != nil {
 		return false, nil, nil, err
 	}
-	deployImage := version.VersionInfo().DeployImage
-	pullSecrets, err := getImagePullSecrets(ctx, client, ns, deployImage)
+	deployImage := opts.version.VersionInfo().DeployImage
+	pullSecrets, err := getImagePullSecrets(ctx, opts.client, ns, deployImage)
 	if err != nil {
 		return false, nil, nil, err
 	}
 
-	metadata := provision.GetAppMetadata(a, process)
-	podLabels := labels.PodLabels()
+	metadata := provision.GetAppMetadata(opts.app, opts.process)
+	podLabels := opts.labels.PodLabels()
 
 	for _, l := range metadata.Labels {
-		labels.RawLabels[l.Name] = l.Value
+		opts.labels.RawLabels[l.Name] = l.Value
 		podLabels[l.Name] = l.Value
 	}
 
@@ -710,7 +726,9 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 		annotations[annotation.Name] = annotation.Value
 	}
 
-	depLabels := labels.WithoutVersion().ToLabels()
+	annotations["tsuru.io/secret-sha256"] = generateSecretHash(opts.secret)
+
+	depLabels := opts.labels.WithoutVersion().ToLabels()
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
 		portInt := port.TargetPort
@@ -721,12 +739,12 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 	}
 	serviceLinks := false
 
-	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, client.TopologySpreadConstraints(a.Pool))
+	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, opts.client.TopologySpreadConstraints(opts.app.Pool))
 	if err != nil {
 		return false, nil, nil, err
 	}
 
-	routers := a.Routers
+	routers := opts.app.Routers
 	conditionSet := set.Set{}
 	for _, r := range routers {
 		var planRouter routerTypes.PlanRouter
@@ -740,7 +758,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 	}
 	var readinessGates []apiv1.PodReadinessGate
 
-	if process == webProcessName {
+	if opts.process == webProcessName {
 		for condition := range conditionSet {
 			readinessGates = append(readinessGates, apiv1.PodReadinessGate{
 				ConditionType: apiv1.PodConditionType(condition),
@@ -750,7 +768,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        depName,
+			Name:        opts.depName,
 			Namespace:   ns,
 			Labels:      depLabels,
 			Annotations: annotations,
@@ -766,7 +784,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 			Replicas:             &realReplicas,
 			RevisionHistoryLimit: &tenRevs,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: selector,
+				MatchLabels: opts.selector,
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -778,7 +796,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
 					EnableServiceLinks:            &serviceLinks,
 					ImagePullSecrets:              pullSecrets,
-					ServiceAccountName:            serviceAccountNameForApp(a),
+					ServiceAccountName:            serviceAccountNameForApp(opts.app),
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
@@ -786,15 +804,15 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 					NodeSelector:   nodeSelector,
 					Affinity:       affinity,
 					Volumes:        volumes,
-					Subdomain:      headlessServiceName(a, process),
+					Subdomain:      headlessServiceName(opts.app, opts.process),
 					ReadinessGates: readinessGates,
 					DNSConfig:      dnsConfig,
 					Containers: []apiv1.Container{
 						{
-							Name:           depName,
+							Name:           opts.depName,
 							Image:          deployImage,
 							Command:        cmds,
-							Env:            appEnvs(a, process, secretName, version),
+							Env:            appEnvs(opts.app, opts.process, opts.secretName, opts.version),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							StartupProbe:   hcData.startup,
@@ -809,17 +827,17 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName, se
 		},
 	}
 	var newDep *appsv1.Deployment
-	if oldDeployment == nil {
-		newDep, err = client.AppsV1().Deployments(ns).Create(ctx, &deployment, metav1.CreateOptions{})
+	if opts.oldDeployment == nil {
+		newDep, err = opts.client.AppsV1().Deployments(ns).Create(ctx, &deployment, metav1.CreateOptions{})
 	} else {
-		if deploymentUnchanged(&deployment, oldDeployment, realReplicas) {
-			return false, oldDeployment, labels, nil
+		if deploymentUnchanged(&deployment, opts.oldDeployment, realReplicas) {
+			return false, opts.oldDeployment, opts.labels, nil
 		}
 
-		deployment.ResourceVersion = oldDeployment.ResourceVersion
-		newDep, err = client.AppsV1().Deployments(ns).Update(ctx, &deployment, metav1.UpdateOptions{})
+		deployment.ResourceVersion = opts.oldDeployment.ResourceVersion
+		newDep, err = opts.client.AppsV1().Deployments(ns).Update(ctx, &deployment, metav1.UpdateOptions{})
 	}
-	return true, newDep, labels, errors.WithStack(err)
+	return true, newDep, opts.labels, errors.WithStack(err)
 }
 
 func deploymentUnchanged(deployment *appsv1.Deployment, oldDeployment *appsv1.Deployment, realReplicas int32) bool {
@@ -838,6 +856,23 @@ func secretUnchanged(secret *apiv1.Secret, oldSecret *apiv1.Secret) bool {
 		apiequality.Semantic.DeepEqual(secret.ObjectMeta.Labels, oldSecret.ObjectMeta.Labels) &&
 		annotationsUnchanged(secret.ObjectMeta.Annotations, oldSecret.ObjectMeta.Annotations) &&
 		secretDataEqual(secret.Data, oldSecret.Data))
+}
+
+func generateSecretHash(secret *apiv1.Secret) string {
+	h := sha256.New()
+
+	keys := []string{}
+	for key := range secret.Data {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+	for _, key := range keys {
+		fmt.Fprintf(h, "%s:%s\n", key, string(secret.Data[key]))
+	}
+
+	hashBytes := h.Sum(nil)
+	return hex.EncodeToString(hashBytes)
 }
 
 func secretDataEqual(new, old map[string][]byte) bool {
@@ -1380,7 +1415,20 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return err
 	}
 
-	changed, newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, secret.Name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
+	changed, newDep, labels, err := createAppDeployment(ctx, &createAppDeploymentOptions{
+		client:        m.client,
+		depName:       depArgs.name,
+		secretName:    secret.Name,
+		oldDeployment: oldDep,
+		app:           opts.App,
+		process:       opts.ProcessName,
+		version:       opts.Version,
+		replicas:      opts.Replicas,
+		labels:        opts.Labels,
+		selector:      depArgs.selector,
+		secret:        secret,
+	})
+
 	if err != nil {
 		return err
 	}
