@@ -520,7 +520,7 @@ func defineSelectorAndAffinity(ctx context.Context, a *appTypes.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, depName string, oldSecret *apiv1.Secret, a *appTypes.App, process string, version appTypes.AppVersion, labels *provision.LabelSet) (bool, *apiv1.Secret, error) {
+func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, secretName string, oldSecret *apiv1.Secret, a *appTypes.App, process string, version appTypes.AppVersion, labels *provision.LabelSet) (bool, *apiv1.Secret, error) {
 	envs := appSecretEnvs(a, process, version)
 
 	secretLabels := labels.WithoutVersion().ToLabels()
@@ -532,7 +532,7 @@ func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, de
 
 	secret := apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appSecretPrefix + depName,
+			Name:      secretName,
 			Namespace: ns,
 			Labels:    secretLabels,
 		},
@@ -544,21 +544,33 @@ func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, de
 		newSecret, err = client.CoreV1().Secrets(ns).Create(ctx, &secret, metav1.CreateOptions{})
 
 		if err == nil {
-			fmt.Fprintf(w, "\n---- Created secret %q for process %q [version %d] ----\n", depName, process, version.Version())
+			fmt.Fprintf(w, "\n---- Created secret %q for process %q [version %d] ----\n", secretName, process, version.Version())
 		}
 	} else {
 		if secretUnchanged(&secret, oldSecret) {
-			fmt.Fprintf(w, "\n---- No changes on secret %q for process %q [version %d] ----\n", depName, process, version.Version())
+			fmt.Fprintf(w, "\n---- No changes on secret %q for process %q [version %d] ----\n", secretName, process, version.Version())
 			return false, oldSecret, nil
 		}
 
 		secret.ResourceVersion = oldSecret.ResourceVersion
 		newSecret, err = client.CoreV1().Secrets(ns).Update(ctx, &secret, metav1.UpdateOptions{})
 		if err == nil {
-			fmt.Fprintf(w, "\n---- Updated secret %q for process %q [version %d] ----\n", depName, process, version.Version())
+			fmt.Fprintf(w, "\n---- Updated secret %q for process %q [version %d] ----\n", secretName, process, version.Version())
 		}
 	}
 	return true, newSecret, errors.WithStack(err)
+}
+
+func cleanupAppSecret(ctx context.Context, client *ClusterClient, a *appTypes.App, secretName string) error {
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+	err = client.CoreV1().Secrets(ns).Delete(ctx, secretName, metav1.DeleteOptions{})
+	if k8sErrors.IsNotFound(err) {
+		return nil
+	}
+	return errors.WithStack(err)
 }
 
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName, secretName string, oldDeployment *appsv1.Deployment, a *appTypes.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (bool, *appsv1.Deployment, *provision.LabelSet, error) {
@@ -932,6 +944,14 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 
 			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", depData.dep.Name)
 			err = cleanupSingleDeployment(ctx, m.client, depData.dep)
+			if err != nil {
+				multiErrors.Add(err)
+			}
+
+			secretName := appSecretPrefix + depData.dep.Name
+
+			fmt.Fprintf(m.writer, " ---> Cleaning up secret %s\n", secretName)
+			err = cleanupAppSecret(ctx, m.client, a, secretName)
 			if err != nil {
 				multiErrors.Add(err)
 			}
@@ -1343,7 +1363,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		}
 	}
 
-	oldSecret, err := m.client.CoreV1().Secrets(ns).Get(ctx, appSecretPrefix+depArgs.name, metav1.GetOptions{})
+	secretName := appSecretPrefix + depArgs.name
+	oldSecret, err := m.client.CoreV1().Secrets(ns).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -1353,9 +1374,9 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 	fmt.Fprintf(m.writer, "\n---- No changes on units [%s] [version %d] ----\n", opts.ProcessName, opts.Version.Version())
 
-	_, secret, err := createAppSecret(ctx, m.writer, m.client, depArgs.name, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
+	_, secret, err := createAppSecret(ctx, m.writer, m.client, secretName, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
 	if err != nil {
-		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET ****\n ---> %s <---\n", err)
+		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
 		return err
 	}
 
@@ -1378,7 +1399,19 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 			} else if oldDep == nil {
 				// We have just created the deployment, so we need to remove it
 				fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n")
+				rollbackErrors := tsuruErrors.NewMultiError()
+
 				rollbackErr = m.client.AppsV1().Deployments(ns).Delete(ctx, newDep.Name, metav1.DeleteOptions{})
+				if rollbackErr != nil {
+					rollbackErrors.Add(rollbackErr)
+				}
+
+				rollbackErr = cleanupAppSecret(ctx, m.client, opts.App, secretName)
+				if rollbackErr != nil {
+					rollbackErrors.Add(rollbackErr)
+				}
+
+				rollbackErr = rollbackErrors.ToError()
 			} else {
 				fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
 

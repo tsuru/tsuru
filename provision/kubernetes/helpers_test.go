@@ -399,6 +399,19 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		},
 	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
+
+	_, err = s.client.CoreV1().Secrets(ns).Create(context.TODO(), &apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appSecretPrefix + "myapp-p1",
+			Namespace: ns,
+			Labels:    expectedLabels,
+		},
+		Data: map[string][]byte{
+			"TSURU_SERVICES": []byte(`{}`),
+			"MY_ENV":         []byte("myvalue"),
+		},
+	}, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
 	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
@@ -426,6 +439,9 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
+	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(secrets.Items, check.HasLen, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
