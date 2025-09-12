@@ -1407,8 +1407,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		oldSecret = nil
 	}
 
-	fmt.Fprintf(m.writer, "\n---- No changes on units [%s] [version %d] ----\n", opts.ProcessName, opts.Version.Version())
-
 	_, secret, err := createAppSecret(ctx, m.writer, m.client, secretName, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
 	if err != nil {
 		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
