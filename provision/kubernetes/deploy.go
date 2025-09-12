@@ -62,6 +62,7 @@ const (
 	defaultUdpPortName      = "udp-default"
 	backendConfigCRDName    = "backendconfigs.cloud.google.com"
 	backendConfigKey        = "cloud.google.com/backend-config"
+	appSecretPrefix         = "tsuru-app-"
 )
 
 func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
@@ -531,7 +532,7 @@ func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, de
 
 	secret := apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      depName,
+			Name:      appSecretPrefix + depName,
 			Namespace: ns,
 			Labels:    secretLabels,
 		},
@@ -1342,7 +1343,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		}
 	}
 
-	oldSecret, err := m.client.CoreV1().Secrets(ns).Get(ctx, depArgs.name, metav1.GetOptions{})
+	oldSecret, err := m.client.CoreV1().Secrets(ns).Get(ctx, appSecretPrefix+depArgs.name, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -1354,6 +1355,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 	_, secret, err := createAppSecret(ctx, m.writer, m.client, depArgs.name, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
 	if err != nil {
+		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET ****\n ---> %s <---\n", err)
 		return err
 	}
 

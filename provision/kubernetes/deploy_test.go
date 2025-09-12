@@ -166,8 +166,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								{Name: "TSURU_APPNAME", Value: a.Name},
 								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
 									SecretKeyRef: &apiv1.SecretKeySelector{
-										LocalObjectReference: apiv1.LocalObjectReference{Name: "myapp-p1"},
-										Key:                  "TSURU_SERVICES",
+										LocalObjectReference: apiv1.LocalObjectReference{
+											Name: appSecretPrefix + "myapp-p1",
+										},
+										Key: "TSURU_SERVICES",
 									},
 								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
@@ -2771,8 +2773,10 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 								{Name: "TSURU_APPNAME", Value: a.Name},
 								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
 									SecretKeyRef: &apiv1.SecretKeySelector{
-										LocalObjectReference: apiv1.LocalObjectReference{Name: "myapp-p1-v2"},
-										Key:                  "TSURU_SERVICES",
+										LocalObjectReference: apiv1.LocalObjectReference{
+											Name: appSecretPrefix + "myapp-p1-v2",
+										},
+										Key: "TSURU_SERVICES",
 									},
 								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
@@ -3081,7 +3085,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 		{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
 			SecretKeyRef: &apiv1.SecretKeySelector{
 				LocalObjectReference: apiv1.LocalObjectReference{
-					Name: "myapp-p1",
+					Name: appSecretPrefix + "myapp-p1",
 				},
 				Key: "TSURU_SERVICES",
 			},
@@ -3089,7 +3093,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 		{Name: "env1", ValueFrom: &apiv1.EnvVarSource{
 			SecretKeyRef: &apiv1.SecretKeySelector{
 				LocalObjectReference: apiv1.LocalObjectReference{
-					Name: "myapp-p1",
+					Name: appSecretPrefix + "myapp-p1",
 				},
 				Key: "env1",
 			},
@@ -3102,7 +3106,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 		{Name: "PORT_p1", Value: "8888"},
 	})
 
-	secret, err := s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	secret, err := s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(secret.Data, check.DeepEquals, map[string][]byte{
 		"TSURU_SERVICES": []byte("{}"),
