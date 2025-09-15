@@ -6,14 +6,14 @@ jobs:
     services:
       mongodb:
         image: mongo:5
-        ports: ['27017:27017']
+        ports: ["27017:27017"]
       redis:
         image: redis
-        ports: ['6379:6379']
+        ports: ["6379:6379"]
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -38,8 +38,8 @@ jobs:
       fail-fast: true
       matrix:
         k8s_version:
-        - "1.30"
         - "1.31"
+        - "1.32"
     steps:
     - uses: actions/checkout@v4
     - name: Running up Kubernetes (using Minikube)
@@ -76,7 +76,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
     - run: make yamllint
     - uses: golangci/golangci-lint-action@v6
@@ -84,14 +84,14 @@ jobs:
         version: v1.64
         args: --timeout=10m
       env:
-        GOROOT: ''
+        GOROOT: ""
   govulncheck:
     runs-on: ubuntu-latest
     name: Run govulncheck
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - id: govulncheck
       uses: golang/govulncheck-action@v1
   check-contributors:
@@ -104,7 +104,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
       with:
@@ -118,7 +118,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
       with:
@@ -132,7 +132,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
       with:
@@ -146,7 +146,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
     - run: make validate-api-spec
   verify-codegen:
@@ -154,7 +154,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: "1.24"
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
       with:
@@ -194,7 +194,7 @@ jobs:
       with:
         docker_image: tsuru/api
         default_branch: main
-        tag_with_sha: 'true'
+        tag_with_sha: "true"
     - name: Get version from tag
       id: gittag
       uses: jimschubert/query-tag-action@v1
