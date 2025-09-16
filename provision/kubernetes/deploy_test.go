@@ -3128,7 +3128,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	require.NoError(s.t, err)
 	require.EqualValues(s.t, map[string][]byte{
 		"TSURU_SERVICES": []byte("{}"),
-		"env1":           []byte("a$$()b$$$$c"),
+		"env1":           []byte("a$()b$$c"),
 	}, secret.Data)
 }
 
