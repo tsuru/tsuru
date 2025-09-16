@@ -475,6 +475,11 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 		return err
 	}
 
+	secretName := jobSecretPrefix + job.Name
+	if err = client.CoreV1().Secrets(namespace).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
 	jobName := generateJobNameWithScheduleHash(job)
 	err = client.BatchV1().CronJobs(namespace).Delete(ctx, jobName, metav1.DeleteOptions{})
 	if err != nil && k8sErrors.IsNotFound(err) {
