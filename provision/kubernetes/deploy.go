@@ -522,10 +522,13 @@ func defineSelectorAndAffinity(ctx context.Context, a *appTypes.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, secretName string, oldSecret *apiv1.Secret, a *appTypes.App, process string, version appTypes.AppVersion, labels *provision.LabelSet) (bool, *apiv1.Secret, error) {
+func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, secretName string, oldSecret *apiv1.Secret, a *appTypes.App, process string, version appTypes.AppVersion) (bool, *apiv1.Secret, error) {
 	envs := appSecretEnvs(a, process, version)
 
-	secretLabels := labels.WithoutVersion().ToLabels()
+	labels := provision.SecretLabels(provision.SecretLabelsOpts{
+		App:    a,
+		Prefix: tsuruLabelPrefix,
+	}).ToLabels()
 
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
@@ -536,7 +539,7 @@ func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, se
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: ns,
-			Labels:    secretLabels,
+			Labels:    labels,
 		},
 		Data: envs,
 	}
@@ -1407,7 +1410,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		oldSecret = nil
 	}
 
-	_, secret, err := createAppSecret(ctx, m.writer, m.client, secretName, oldSecret, opts.App, opts.ProcessName, opts.Version, opts.Labels)
+	_, secret, err := createAppSecret(ctx, m.writer, m.client, secretName, oldSecret, opts.App, opts.ProcessName, opts.Version)
 	if err != nil {
 		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
 		return err

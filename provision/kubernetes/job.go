@@ -37,6 +37,8 @@ const (
 	promNamespace = "tsuru"
 	promSubsystem = "job"
 	expireTTL     = time.Hour * 24 // 1 day
+
+	jobSecretPrefix = "tsuru-job-"
 )
 
 var (
@@ -65,6 +67,8 @@ var (
 func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
 	jSpec := job.Spec
 
+	secretName := jobSecretPrefix + job.Name
+
 	requirements, err := resourceRequirements(&job.Plan, job.Pool, client, requirementsFactors{})
 	if err != nil {
 		return batchv1.JobSpec{}, err
@@ -73,17 +77,46 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	envs := []apiv1.EnvVar{}
 
 	for _, env := range jSpec.Envs {
-		envs = append(envs, apiv1.EnvVar{
-			Name:  env.Name,
-			Value: strings.ReplaceAll(env.Value, "$", "$$"),
-		})
+		if env.Public {
+			envs = append(envs, apiv1.EnvVar{
+				Name:  env.Name,
+				Value: strings.ReplaceAll(env.Value, "$", "$$"),
+			})
+		} else {
+			envs = append(envs, apiv1.EnvVar{
+				Name: env.Name,
+				ValueFrom: &apiv1.EnvVarSource{
+					SecretKeyRef: &apiv1.SecretKeySelector{
+						Key: env.Name,
+						LocalObjectReference: apiv1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+				},
+			})
+		}
+
 	}
 
 	for _, env := range jSpec.ServiceEnvs {
-		envs = append(envs, apiv1.EnvVar{
-			Name:  env.Name,
-			Value: strings.ReplaceAll(env.Value, "$", "$$"),
-		})
+		if env.Public {
+			envs = append(envs, apiv1.EnvVar{
+				Name:  env.Name,
+				Value: strings.ReplaceAll(env.Value, "$", "$$"),
+			})
+		} else {
+			envs = append(envs, apiv1.EnvVar{
+				Name: env.Name,
+				ValueFrom: &apiv1.EnvVarSource{
+					SecretKeyRef: &apiv1.SecretKeySelector{
+						Key: env.Name,
+						LocalObjectReference: apiv1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+				},
+			})
+		}
 	}
 
 	imageURL := jSpec.Container.InternalRegistryImage
@@ -276,6 +309,69 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 	return nil
 }
 
+func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobTypes.Job) error {
+	labels := provision.SecretLabels(provision.SecretLabelsOpts{
+		Job:    job,
+		Prefix: tsuruLabelPrefix,
+	}).ToLabels()
+	secretName := jobSecretPrefix + job.Name
+	namespace := client.PoolNamespace(job.Pool)
+
+	data := map[string][]byte{}
+
+	for _, env := range job.Spec.Envs {
+		if env.Public {
+			continue
+		}
+
+		data[env.Name] = []byte(env.Value)
+	}
+
+	for _, env := range job.Spec.ServiceEnvs {
+		if env.Public {
+			continue
+		}
+		data[env.Name] = []byte(env.Value)
+	}
+
+	oldSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
+	if !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+
+	secret := apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      secretName,
+			Labels:    labels,
+		},
+		Type: apiv1.SecretTypeOpaque,
+		Data: data,
+	}
+
+	if oldSecret == nil {
+		_, err = client.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return nil
+	}
+
+	if secretUnchanged(oldSecret, &secret) {
+		return nil
+	}
+
+	secret.ResourceVersion = oldSecret.ResourceVersion
+	secret.Finalizers = oldSecret.Finalizers
+
+	_, err = client.CoreV1().Secrets(namespace).Update(ctx, &secret, metav1.UpdateOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, map[string]string) {
 	jobLabels := provision.JobLabels(ctx, job).ToLabels()
 	customData := job.Metadata
@@ -299,6 +395,10 @@ func (p *kubernetesProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job
 		return err
 	}
 	if err = ensureServiceAccountForJob(ctx, client, *job); err != nil {
+		return err
+	}
+
+	if err = ensureSecretForJob(ctx, client, job); err != nil {
 		return err
 	}
 

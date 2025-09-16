@@ -87,6 +87,13 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 							OriginalImageSrc: "ubuntu:latest",
 							Command:          []string{"echo", "hello world"},
 						},
+						Envs: []bindTypes.EnvVar{
+							{
+								Name:   "ENV1",
+								Value:  "VAL1",
+								Public: false,
+							},
+						},
 					},
 				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
@@ -151,7 +158,19 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 												Name:    "job",
 												Image:   "ubuntu:latest",
 												Command: []string{"echo", "hello world"},
-												Env:     []corev1.EnvVar{},
+												Env: []corev1.EnvVar{
+													{
+														Name: "ENV1",
+														ValueFrom: &corev1.EnvVarSource{
+															SecretKeyRef: &corev1.SecretKeySelector{
+																Key: "ENV1",
+																LocalObjectReference: corev1.LocalObjectReference{
+																	Name: "tsuru-job-myjob",
+																},
+															},
+														},
+													},
+												},
 												Resources: corev1.ResourceRequirements{
 													Limits: corev1.ResourceList{
 														corev1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
@@ -184,6 +203,24 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						},
 					},
 				}, account)
+
+				secretName := "tsuru-job-" + jobName
+				secret, err := s.client.CoreV1().Secrets(expectedTarget.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: expectedTarget.Namespace,
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": jobName,
+						},
+					},
+					Data: map[string][]byte{
+						"ENV1": []byte("VAL1"),
+					},
+					Type: corev1.SecretTypeOpaque,
+				}, secret)
 			},
 		},
 		{
@@ -749,12 +786,26 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 										Command: []string{"echo", "hello world"},
 										Env: []corev1.EnvVar{
 											{
-												Name:  "MY_ENV",
-												Value: "** value",
+												Name: "MY_ENV",
+												ValueFrom: &corev1.EnvVarSource{
+													SecretKeyRef: &corev1.SecretKeySelector{
+														Key: "MY_ENV",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "tsuru-job-myjob",
+														},
+													},
+												},
 											},
 											{
-												Name:  "REDIS_HOST",
-												Value: "localhost",
+												Name: "REDIS_HOST",
+												ValueFrom: &corev1.EnvVarSource{
+													SecretKeyRef: &corev1.SecretKeySelector{
+														Key: "REDIS_HOST",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "tsuru-job-myjob",
+														},
+													},
+												},
 											},
 										},
 										Resources: corev1.ResourceRequirements{
