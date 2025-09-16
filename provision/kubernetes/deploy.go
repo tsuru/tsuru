@@ -934,7 +934,7 @@ func appSecretEnvs(a *appTypes.App, process string, version appTypes.AppVersion)
 		if envData.Public {
 			continue
 		}
-		result[envData.Name] = []byte(strings.ReplaceAll(envData.Value, "$", "$$"))
+		result[envData.Name] = []byte(envData.Value)
 	}
 	return result
 }

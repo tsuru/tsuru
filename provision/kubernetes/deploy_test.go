@@ -3126,7 +3126,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(secret.Data, check.DeepEquals, map[string][]byte{
 		"TSURU_SERVICES": []byte("{}"),
-		"env1":           []byte("a$$()b$$$$c"),
+		"env1":           []byte("a$()b$$c"),
 	})
 }
 
