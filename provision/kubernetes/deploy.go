@@ -16,6 +16,7 @@ import (
 	"maps"
 	"net"
 	"net/url"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -522,45 +523,67 @@ func defineSelectorAndAffinity(ctx context.Context, a *appTypes.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppSecret(ctx context.Context, w io.Writer, client *ClusterClient, secretName string, oldSecret *apiv1.Secret, a *appTypes.App, process string, version appTypes.AppVersion) (bool, *apiv1.Secret, error) {
-	envs := appSecretEnvs(a, process, version)
+type ensureAppSecretOptions struct {
+	writer     io.Writer
+	client     *ClusterClient
+	secretName string
+	dep        *appsv1.Deployment
+	app        *appTypes.App
+	process    string
+	version    appTypes.AppVersion
+}
 
-	labels := provision.SecretLabels(provision.SecretLabelsOpts{
-		App:    a,
-		Prefix: tsuruLabelPrefix,
-	}).ToLabels()
-
-	ns, err := client.AppNamespace(ctx, a)
+func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (bool, *apiv1.Secret, error) {
+	ns, err := opts.client.AppNamespace(ctx, opts.app)
 	if err != nil {
 		return false, nil, err
 	}
+	oldSecret, err := opts.client.CoreV1().Secrets(ns).Get(ctx, opts.secretName, metav1.GetOptions{})
+	if err != nil {
+		if !k8sErrors.IsNotFound(err) {
+			return false, nil, errors.WithStack(err)
+		}
+		oldSecret = nil
+	}
+	envs := appSecretEnvs(opts.app, opts.process, opts.version)
+
+	labels := provision.SecretLabels(provision.SecretLabelsOpts{
+		App:    opts.app,
+		Prefix: tsuruLabelPrefix,
+	}).ToLabels()
 
 	secret := apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
+			Name:      opts.secretName,
 			Namespace: ns,
 			Labels:    labels,
 		},
 		Data: envs,
 	}
 
+	if opts.dep != nil {
+		secret.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+			*metav1.NewControllerRef(opts.dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+		}
+	}
+
 	var newSecret *apiv1.Secret
 	if oldSecret == nil {
-		newSecret, err = client.CoreV1().Secrets(ns).Create(ctx, &secret, metav1.CreateOptions{})
+		newSecret, err = opts.client.CoreV1().Secrets(ns).Create(ctx, &secret, metav1.CreateOptions{})
 
 		if err == nil {
-			fmt.Fprintf(w, "\n---- Created secret %q for process %q [version %d] ----\n", secretName, process, version.Version())
+			fmt.Fprintf(opts.writer, "\n---- Created secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
 		}
 	} else {
 		if secretUnchanged(&secret, oldSecret) {
-			fmt.Fprintf(w, "\n---- No changes on secret %q for process %q [version %d] ----\n", secretName, process, version.Version())
+			fmt.Fprintf(opts.writer, "\n---- No changes on secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
 			return false, oldSecret, nil
 		}
 
 		secret.ResourceVersion = oldSecret.ResourceVersion
-		newSecret, err = client.CoreV1().Secrets(ns).Update(ctx, &secret, metav1.UpdateOptions{})
+		newSecret, err = opts.client.CoreV1().Secrets(ns).Update(ctx, &secret, metav1.UpdateOptions{})
 		if err == nil {
-			fmt.Fprintf(w, "\n---- Updated secret %q for process %q [version %d] ----\n", secretName, process, version.Version())
+			fmt.Fprintf(opts.writer, "\n---- Updated secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
 		}
 	}
 	return true, newSecret, errors.WithStack(err)
@@ -858,6 +881,7 @@ func secretUnchanged(secret *apiv1.Secret, oldSecret *apiv1.Secret) bool {
 		secret.ObjectMeta.Namespace == oldSecret.ObjectMeta.Namespace &&
 		apiequality.Semantic.DeepEqual(secret.ObjectMeta.Labels, oldSecret.ObjectMeta.Labels) &&
 		annotationsUnchanged(secret.ObjectMeta.Annotations, oldSecret.ObjectMeta.Annotations) &&
+		reflect.DeepEqual(secret.ObjectMeta.OwnerReferences, oldSecret.ObjectMeta.OwnerReferences) &&
 		secretDataEqual(secret.Data, oldSecret.Data))
 }
 
@@ -1402,15 +1426,18 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 
 	secretName := appSecretPrefix + depArgs.name
-	oldSecret, err := m.client.CoreV1().Secrets(ns).Get(ctx, secretName, metav1.GetOptions{})
-	if err != nil {
-		if !k8sErrors.IsNotFound(err) {
-			return errors.WithStack(err)
-		}
-		oldSecret = nil
-	}
 
-	_, secret, err := createAppSecret(ctx, m.writer, m.client, secretName, oldSecret, opts.App, opts.ProcessName, opts.Version)
+	ensureAppSecretOptions := &ensureAppSecretOptions{
+		writer:     m.writer,
+		client:     m.client,
+		secretName: secretName,
+		app:        opts.App,
+		process:    opts.ProcessName,
+		version:    opts.Version,
+		dep:        oldDep,
+	}
+	_, secret, err := ensureAppSecret(ctx, ensureAppSecretOptions)
+
 	if err != nil {
 		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
 		return err
@@ -1431,7 +1458,29 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	})
 
 	if err != nil {
-		return err
+		errs := tsuruErrors.NewMultiError()
+		errs.Add(err)
+		if oldDep == nil {
+			err = cleanupAppSecret(ctx, m.client, opts.App, secretName)
+			if err != nil {
+				errs.Add(err)
+			}
+		}
+		return errs.ToError()
+	}
+
+	if len(secret.OwnerReferences) == 0 {
+		ensureAppSecretOptions.dep = newDep
+		_, _, err = ensureAppSecret(ctx, ensureAppSecretOptions)
+
+		if err == nil {
+			fmt.Fprintf(m.writer, "\n---- Updated secret %q ownerReferences ----\n", ensureAppSecretOptions.secretName)
+		}
+
+		if err != nil {
+			fmt.Fprintf(m.writer, "**** ERROR UPDATING SECRET OWNERREFERENCES: %s ****\n ---> %s <---\n", secretName, err)
+			return err
+		}
 	}
 
 	if changed {
