@@ -309,13 +309,20 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 	return nil
 }
 
-func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobTypes.Job) error {
+func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobTypes.Job) (*apiv1.Secret, error) {
 	labels := provision.SecretLabels(provision.SecretLabelsOpts{
 		Job:    job,
 		Prefix: tsuruLabelPrefix,
 	}).ToLabels()
 	secretName := jobSecretPrefix + job.Name
 	namespace := client.PoolNamespace(job.Pool)
+
+	newJobName := generateJobNameWithScheduleHash(job)
+	cron, err := client.BatchV1().CronJobs(namespace).Get(ctx, newJobName, metav1.GetOptions{})
+
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return nil, errors.WithStack(err)
+	}
 
 	data := map[string][]byte{}
 
@@ -335,8 +342,8 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 	}
 
 	oldSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
+	if !k8sErrors.IsNotFound(err) && err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	secret := apiv1.Secret{
@@ -349,27 +356,28 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 		Data: data,
 	}
 
-	if oldSecret == nil {
-		_, err = client.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{})
-		if err != nil {
-			return errors.WithStack(err)
+	if cron != nil {
+		secret.OwnerReferences = []metav1.OwnerReference{
+			*metav1.NewControllerRef(cron, batchv1.SchemeGroupVersion.WithKind("CronJob")),
 		}
-		return nil
+	}
+
+	if oldSecret == nil {
+		newSecret, err := client.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{})
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return newSecret, nil
 	}
 
 	if secretUnchanged(oldSecret, &secret) {
-		return nil
+		return oldSecret, nil
 	}
 
 	secret.ResourceVersion = oldSecret.ResourceVersion
 	secret.Finalizers = oldSecret.Finalizers
 
-	_, err = client.CoreV1().Secrets(namespace).Update(ctx, &secret, metav1.UpdateOptions{})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
+	return client.CoreV1().Secrets(namespace).Update(ctx, &secret, metav1.UpdateOptions{})
 }
 
 func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, map[string]string) {
@@ -394,15 +402,22 @@ func (p *kubernetesProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job
 	if err != nil {
 		return err
 	}
-	if err = ensureServiceAccountForJob(ctx, client, *job); err != nil {
+	err = ensureServiceAccountForJob(ctx, client, *job)
+	if err != nil {
 		return err
 	}
 
-	if err = ensureSecretForJob(ctx, client, job); err != nil {
+	err = ensureCronjob(ctx, client, job)
+	if err != nil {
 		return err
 	}
 
-	return ensureCronjob(ctx, client, job)
+	_, err = ensureSecretForJob(ctx, client, job)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, job *jobTypes.Job, pool string) error {

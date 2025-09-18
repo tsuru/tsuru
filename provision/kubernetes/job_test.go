@@ -215,6 +215,16 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 							"tsuru.io/is-tsuru": "true",
 							"tsuru.io/job-name": jobName,
 						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "batch/v1",
+								Kind:               "CronJob",
+								Name:               expectedTarget.Name,
+								UID:                k8sTypes.UID(gotCron.UID),
+								Controller:         ptr.To(true),
+								BlockOwnerDeletion: ptr.To(true),
+							},
+						},
 					},
 					Data: map[string][]byte{
 						"ENV1": []byte("VAL1"),
