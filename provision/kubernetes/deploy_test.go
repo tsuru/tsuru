@@ -102,7 +102,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Namespace: nsName,
 			Labels:    depLabels,
 			Annotations: map[string]string{
-				"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+				secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
 			},
 		},
 		Status: appsv1.DeploymentStatus{
@@ -142,7 +142,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/app-version":     "1",
 					},
 					Annotations: map[string]string{
-						"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+						secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
 					},
 				},
 				Spec: apiv1.PodSpec{
@@ -2729,7 +2729,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			Namespace: nsName,
 			Labels:    depLabels,
 			Annotations: map[string]string{
-				"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+				secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
 			},
 		},
 		Status: appsv1.DeploymentStatus{
@@ -2759,7 +2759,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: podLabels,
 					Annotations: map[string]string{
-						"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+						secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
 					},
 				},
 				Spec: apiv1.PodSpec{
@@ -4096,8 +4096,8 @@ func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *che
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	require.EqualValues(s.t, map[string]string{
-		"tsuru.io/a":             "my custom annotation",
-		"tsuru.io/secret-sha256": "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+		"tsuru.io/a":            "my custom annotation",
+		secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
 	}, dep.Spec.Template.ObjectMeta.Annotations)
 	require.Equal(s.t, "BACKUP", dep.Spec.Template.ObjectMeta.Labels["tsuru.io/logs"])
 }
