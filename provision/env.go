@@ -50,12 +50,14 @@ func EnvsForApp(app *appTypes.App) map[string]bindTypes.EnvVar {
 		Name:      "TSURU_APPNAME",
 		Value:     app.Name,
 		ManagedBy: "tsuru",
+		Public:    true,
 	}
 
 	mergedEnvs["TSURU_APPDIR"] = bindTypes.EnvVar{
 		Name:      "TSURU_APPDIR",
 		Value:     appTypes.DefaultAppDir,
 		ManagedBy: "tsuru",
+		Public:    true,
 	}
 
 	return mergedEnvs
@@ -70,13 +72,13 @@ func EnvsForAppAndVersion(a *appTypes.App, process string, version appTypes.AppV
 	sort.Slice(envs, func(i int, j int) bool {
 		return envs[i].Name < envs[j].Name
 	})
-	envs = append(envs, bindTypes.EnvVar{Name: "TSURU_PROCESSNAME", Value: process})
+	envs = append(envs, bindTypes.EnvVar{Name: "TSURU_PROCESSNAME", Value: process, Public: true})
 	if version != nil {
-		envs = append(envs, bindTypes.EnvVar{Name: "TSURU_APPVERSION", Value: strconv.Itoa(version.Version())})
+		envs = append(envs, bindTypes.EnvVar{Name: "TSURU_APPVERSION", Value: strconv.Itoa(version.Version()), Public: true})
 	}
 
 	host, _ := config.GetString("host")
-	envs = append(envs, bindTypes.EnvVar{Name: "TSURU_HOST", Value: host})
+	envs = append(envs, bindTypes.EnvVar{Name: "TSURU_HOST", Value: host, Public: true})
 
 	envs = append(envs, DefaultWebPortEnvs()...)
 
@@ -86,7 +88,7 @@ func EnvsForAppAndVersion(a *appTypes.App, process string, version appTypes.AppV
 func DefaultWebPortEnvs() []bindTypes.EnvVar {
 	port := WebProcessDefaultPort()
 	return []bindTypes.EnvVar{
-		{Name: "port", Value: port},
-		{Name: "PORT", Value: port},
+		{Name: "port", Value: port, Public: true},
+		{Name: "PORT", Value: port, Public: true},
 	}
 }

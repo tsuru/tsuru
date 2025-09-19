@@ -750,7 +750,19 @@ func cleanupDeployment(ctx context.Context, client *ClusterClient, a *appTypes.A
 		return errors.WithStack(err)
 	}
 
-	return cleanupReplicas(ctx, client, dep)
+	multiErr := tsuruErrors.NewMultiError()
+	err = cleanupReplicas(ctx, client, dep)
+	if err != nil {
+		multiErr.Add(err)
+	}
+
+	secretName := appSecretPrefix + dep.Name
+	err = cleanupAppSecret(ctx, client, a, secretName)
+	if err != nil {
+		multiErr.Add(err)
+	}
+
+	return multiErr.ToError()
 }
 
 func allServicesForAppProcess(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) ([]apiv1.Service, error) {
