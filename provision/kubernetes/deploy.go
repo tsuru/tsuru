@@ -688,6 +688,8 @@ func createAppDeployment(ctx context.Context, opts *createAppDeploymentOptions) 
 	}
 	maxSurge := opts.client.maxSurge(opts.app.Pool)
 	maxUnavailable := opts.client.maxUnavailable(opts.app.Pool)
+	disableSecrets := opts.client.disableSecrets(opts.app.Pool)
+
 	dnsConfig := dnsConfigNdots(opts.client, opts.app)
 	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, opts.app, opts.client)
 	if err != nil {
@@ -839,7 +841,7 @@ func createAppDeployment(ctx context.Context, opts *createAppDeploymentOptions) 
 							Name:           opts.depName,
 							Image:          deployImage,
 							Command:        cmds,
-							Env:            appEnvs(opts.app, opts.process, opts.secretName, opts.version),
+							Env:            appEnvs(opts.app, opts.process, opts.secretName, opts.version, disableSecrets),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							StartupProbe:   hcData.startup,
@@ -927,11 +929,11 @@ func annotationsUnchanged(new, old map[string]string) bool {
 	return true
 }
 
-func appEnvs(a *appTypes.App, process string, secretName string, version appTypes.AppVersion) []apiv1.EnvVar {
+func appEnvs(a *appTypes.App, process string, secretName string, version appTypes.AppVersion, disableSecrets bool) []apiv1.EnvVar {
 	appEnvs := EnvsForApp(a, process, version)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
-		if envData.Public {
+		if disableSecrets || envData.Public {
 			envs[i] = apiv1.EnvVar{
 				Name:  envData.Name,
 				Value: strings.ReplaceAll(envData.Value, "$", "$$"),
