@@ -66,6 +66,7 @@ const (
 	backendConfigCRDName    = "backendconfigs.cloud.google.com"
 	backendConfigKey        = "cloud.google.com/backend-config"
 	appSecretPrefix         = "tsuru-app-"
+	secretHashAnnotationKey = "tsuru.io/secret-sha256"
 )
 
 func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
@@ -533,15 +534,15 @@ type ensureAppSecretOptions struct {
 	version    appTypes.AppVersion
 }
 
-func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (bool, *apiv1.Secret, error) {
+func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (*apiv1.Secret, error) {
 	ns, err := opts.client.AppNamespace(ctx, opts.app)
 	if err != nil {
-		return false, nil, err
+		return nil, err
 	}
 	oldSecret, err := opts.client.CoreV1().Secrets(ns).Get(ctx, opts.secretName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
-			return false, nil, errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 		oldSecret = nil
 	}
@@ -577,7 +578,7 @@ func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (bool, *
 	} else {
 		if secretUnchanged(&secret, oldSecret) {
 			fmt.Fprintf(opts.writer, "\n---- No changes on secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
-			return false, oldSecret, nil
+			return oldSecret, nil
 		}
 
 		secret.ResourceVersion = oldSecret.ResourceVersion
@@ -586,7 +587,7 @@ func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (bool, *
 			fmt.Fprintf(opts.writer, "\n---- Updated secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
 		}
 	}
-	return true, newSecret, errors.WithStack(err)
+	return newSecret, errors.WithStack(err)
 }
 
 func cleanupAppSecret(ctx context.Context, client *ClusterClient, a *appTypes.App, secretName string) error {
@@ -752,7 +753,7 @@ func createAppDeployment(ctx context.Context, opts *createAppDeploymentOptions) 
 		annotations[annotation.Name] = annotation.Value
 	}
 
-	annotations["tsuru.io/secret-sha256"] = generateSecretHash(opts.secret)
+	annotations[secretHashAnnotationKey] = generateSecretHash(opts.secret)
 
 	depLabels := opts.labels.WithoutVersion().ToLabels()
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
@@ -1436,7 +1437,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		version:    opts.Version,
 		dep:        oldDep,
 	}
-	_, secret, err := ensureAppSecret(ctx, ensureAppSecretOptions)
+	secret, err := ensureAppSecret(ctx, ensureAppSecretOptions)
 
 	if err != nil {
 		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
@@ -1471,7 +1472,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 	if len(secret.OwnerReferences) == 0 {
 		ensureAppSecretOptions.dep = newDep
-		_, _, err = ensureAppSecret(ctx, ensureAppSecretOptions)
+		_, err = ensureAppSecret(ctx, ensureAppSecretOptions)
 
 		if err == nil {
 			fmt.Fprintf(m.writer, "\n---- Updated secret %q ownerReferences ----\n", ensureAppSecretOptions.secretName)
