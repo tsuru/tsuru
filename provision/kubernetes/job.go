@@ -65,6 +65,8 @@ var (
 )
 
 func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
+	disableSecrets := client.disableSecrets(job.Pool)
+
 	jSpec := job.Spec
 
 	secretName := jobSecretPrefix + job.Name
@@ -77,7 +79,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	envs := []apiv1.EnvVar{}
 
 	for _, env := range jSpec.Envs {
-		if env.Public {
+		if disableSecrets || env.Public {
 			envs = append(envs, apiv1.EnvVar{
 				Name:  env.Name,
 				Value: strings.ReplaceAll(env.Value, "$", "$$"),
@@ -99,7 +101,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	}
 
 	for _, env := range jSpec.ServiceEnvs {
-		if env.Public {
+		if disableSecrets || env.Public {
 			envs = append(envs, apiv1.EnvVar{
 				Name:  env.Name,
 				Value: strings.ReplaceAll(env.Value, "$", "$$"),
