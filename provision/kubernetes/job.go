@@ -27,8 +27,6 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sLabels "k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 
 	eventTypes "github.com/tsuru/tsuru/types/event"
@@ -213,29 +211,17 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		var waitFuncs []func() error
 
 		for _, cronJob := range cronJobsToDelete {
-			wait, waitErr := waitForJobDeletion(ctx, client, &cronJob)
-			if waitErr != nil {
-				return errors.WithStack(waitErr)
-			}
-
 			err = client.BatchV1().CronJobs(namespace).Delete(ctx, cronJob.Name, metav1.DeleteOptions{
+				// NOTE: 1s is used so we can avoid possible race conditions on resources that the cron job can be using under the hood
+				// Similar to: https://github.com/kubernetes/kubernetes/issues/120671
 				GracePeriodSeconds: ptr.To[int64](1),
 				PropagationPolicy:  &propagationPolicy,
 			})
 
 			if err != nil && !k8sErrors.IsNotFound(err) {
 				return errors.WithStack(err)
-			}
-
-			waitFuncs = append(waitFuncs, wait)
-		}
-
-		for _, wait := range waitFuncs {
-			if waitErr := wait(); waitErr != nil {
-				return errors.WithStack(waitErr)
 			}
 		}
 
@@ -305,42 +291,6 @@ func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, m
 		jobAnnotations[a.Name] = a.Value
 	}
 	return jobLabels, jobAnnotations
-}
-
-type deleteWaiterFunc func() error
-
-func waitForJobDeletion(ctx context.Context, client kubernetes.Interface, existingCronjob *batchv1.CronJob) (deleteWaiterFunc, error) {
-	deleted := make(chan struct{}, 1)
-
-	watchInterface, err := client.BatchV1().CronJobs(existingCronjob.ObjectMeta.Namespace).Watch(ctx, metav1.ListOptions{
-		Watch:           true,
-		FieldSelector:   "metadata.name=" + existingCronjob.ObjectMeta.Name,
-		ResourceVersion: existingCronjob.ObjectMeta.ResourceVersion,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		for {
-			event := <-watchInterface.ResultChan()
-
-			if event.Type == watch.Deleted {
-				close(deleted)
-				break
-			}
-		}
-	}()
-
-	return func() error {
-		select {
-		case <-deleted:
-			return nil
-		case <-time.After(time.Second * 60):
-			return errors.New("timeout waiting delete")
-		}
-	}, nil
 }
 
 func (p *kubernetesProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job) error {
