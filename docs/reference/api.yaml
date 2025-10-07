@@ -4,7 +4,7 @@ info:
   description: Open source, extensible and Docker-based Platform as a Service (PaaS)
   # Warning:
   # DO NOT UPDATE THIS FIELD MANUALLY. RUN "make release version=X.Z.Y" INSTEAD.
-  version: "1.26"
+  version: "1.27"
 schemes:
 - http
 - https
