@@ -390,6 +390,12 @@ func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, 
 		if err != nil {
 			multiErrors.Add(err)
 		}
+
+		secretName := appSecretPrefix + dd.Name
+		err = cleanupAppSecret(ctx, client, app, secretName)
+		if err != nil {
+			multiErrors.Add(err)
+		}
 	}
 
 	for _, ss := range svcList {
@@ -426,6 +432,11 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, dd := range deps {
 		err = cleanupSingleDeployment(ctx, client, &dd)
+		if err != nil {
+			multiErrors.Add(err)
+		}
+
+		err = cleanupAppSecret(ctx, client, app, appSecretPrefix+dd.Name)
 		if err != nil {
 			multiErrors.Add(err)
 		}
@@ -1570,7 +1581,11 @@ func EnvsForApp(a *appTypes.App, process string, version appTypes.AppVersion) []
 		}
 		portValue[i] = fmt.Sprintf("%d", targetPort)
 	}
-	portEnv := bindTypes.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")}
+	portEnv := bindTypes.EnvVar{
+		Name:   fmt.Sprintf("PORT_%s", process),
+		Value:  strings.Join(portValue, ","),
+		Public: true,
+	}
 	if !isDefaultPort(portsConfig) {
 		envs = removeDefaultPortEnvs(envs)
 	}

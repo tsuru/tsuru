@@ -97,10 +97,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
+			Name:      "myapp-p1",
+			Namespace: nsName,
+			Labels:    depLabels,
+			Annotations: map[string]string{
+				secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+			},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -138,7 +140,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/app-pool":        "test-default",
 						"tsuru.io/app-version":     "1",
 					},
-					Annotations: map[string]string{},
+					Annotations: map[string]string{
+						secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+					},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -164,7 +168,14 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 								{Name: "TSURU_APPNAME", Value: a.Name},
-								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+									SecretKeyRef: &apiv1.SecretKeySelector{
+										LocalObjectReference: apiv1.LocalObjectReference{
+											Name: appSecretPrefix + "myapp-p1",
+										},
+										Key: "TSURU_SERVICES",
+									},
+								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "1"},
 								{Name: "TSURU_HOST", Value: ""},
@@ -1010,6 +1021,9 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		nsName, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
 		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+		c.Assert(err == nil || k8sErrors.IsNotFound(err), check.Equals, true)
+
+		_, err = s.client.Clientset.CoreV1().Secrets(nsName).Get(context.TODO(), appSecretPrefix+"myapp-p1", metav1.GetOptions{})
 		c.Assert(err == nil || k8sErrors.IsNotFound(err), check.Equals, true)
 		waitDep()
 		tt.fn(dep)
@@ -1993,19 +2007,17 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
 		{Name: "docker-config-tsuru"},
 	})
-	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	secret, err := s.client.CoreV1().Secrets(ns).Get(context.TODO(), "docker-config-tsuru", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(secrets.Items, check.DeepEquals, []apiv1.Secret{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "docker-config-tsuru",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
-			},
-			Type: "kubernetes.io/dockerconfigjson",
+	c.Assert(secret, check.DeepEquals, &apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "docker-config-tsuru",
+			Namespace: "default",
 		},
+		Data: map[string][]byte{
+			".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
+		},
+		Type: "kubernetes.io/dockerconfigjson",
 	})
 }
 
@@ -2161,6 +2173,8 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
+	_, err = s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? DELETING CREATED DEPLOYMENT AFTER FAILURE .*`)
 	c.Assert(deleteCalled, check.DeepEquals, true)
@@ -2709,10 +2723,12 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1-v2",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
+			Name:      "myapp-p1-v2",
+			Namespace: nsName,
+			Labels:    depLabels,
+			Annotations: map[string]string{
+				secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+			},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -2739,8 +2755,10 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: map[string]string{},
+					Labels: podLabels,
+					Annotations: map[string]string{
+						secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+					},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2766,7 +2784,14 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 								{Name: "TSURU_APPNAME", Value: a.Name},
-								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+									SecretKeyRef: &apiv1.SecretKeySelector{
+										LocalObjectReference: apiv1.LocalObjectReference{
+											Name: appSecretPrefix + "myapp-p1-v2",
+										},
+										Key: "TSURU_SERVICES",
+									},
+								}},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "2"},
 								{Name: "TSURU_HOST", Value: ""},
@@ -2940,6 +2965,9 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
+	_, err = s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-p2", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
@@ -3070,14 +3098,35 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	c.Check(dep.Spec.Template.Spec.Containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current"},
 		{Name: "TSURU_APPNAME", Value: a.Name},
-		{Name: "TSURU_SERVICES", Value: "{}"},
-		{Name: "env1", Value: "a$$()b$$$$c"},
+		{Name: "TSURU_SERVICES", ValueFrom: &apiv1.EnvVarSource{
+			SecretKeyRef: &apiv1.SecretKeySelector{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: appSecretPrefix + "myapp-p1",
+				},
+				Key: "TSURU_SERVICES",
+			},
+		}},
+		{Name: "env1", ValueFrom: &apiv1.EnvVarSource{
+			SecretKeyRef: &apiv1.SecretKeySelector{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: appSecretPrefix + "myapp-p1",
+				},
+				Key: "env1",
+			},
+		}},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
+	})
+
+	secret, err := s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(secret.Data, check.DeepEquals, map[string][]byte{
+		"TSURU_SERVICES": []byte("{}"),
+		"env1":           []byte("a$()b$$c"),
 	})
 }
 
@@ -4202,7 +4251,10 @@ func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *che
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{"tsuru.io/a": "my custom annotation"})
+	c.Assert(dep.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
+		"tsuru.io/a":            "my custom annotation",
+		secretHashAnnotationKey: "f3f68faf3959035e45fe666a94854e2a76ff017ec775568944352586ca3d3fc5",
+	})
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/logs"], check.Equals, "BACKUP")
 }
 
