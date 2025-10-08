@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -73,7 +74,8 @@ var (
 	_             = check.Suite(suiteInstance)
 )
 
-func Test(t *testing.T) {
+func Test(t *testing.T) { // -check.f TestDoubleStartDoesNotIncreaseAppUnits or -check.f TestServiceManagerDeployServiceRemovingOtherVersionsCleanup
+	fmt.Println("start")
 	suiteInstance.t = t
 	check.TestingT(t)
 }

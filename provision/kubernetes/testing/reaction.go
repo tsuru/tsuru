@@ -458,7 +458,7 @@ func (s *KubeMock) DeploymentReactions(c *check.C) func() {
 
 func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	var counter int32
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		if action.GetSubresource() != "" {
 			return false, nil, nil
@@ -482,7 +482,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			s.deployWithPodReaction(c, dep, specReplicas, &counter)
 		}()
 		return false, nil, nil
-	}, &wg
+	}, wg
 }
 
 func (s *KubeMock) CronJobReactions(c *check.C) func() {

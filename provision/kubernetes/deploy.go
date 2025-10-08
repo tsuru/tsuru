@@ -294,6 +294,10 @@ type hcResult struct {
 	startup   *apiv1.Probe
 }
 
+func (hc hcResult) Display() string {
+	return fmt.Sprintf("%s\n%s\n%s\n", hc.liveness.String(), hc.readiness.String(), hc.startup.String())
+}
+
 func probesFromCheckConfigs(healthcheck *provTypes.TsuruYamlHealthcheck, startupcheck *provTypes.TsuruYamlStartupcheck, port int) (hcResult, error) {
 	var result hcResult
 	if healthcheck != nil && !healthcheck.IsEmpty() {
@@ -977,6 +981,7 @@ type serviceManager struct {
 var _ servicecommon.ServiceManager = &serviceManager{}
 
 func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, deployedVersion int, preserveOldVersions bool) error {
+	fmt.Println()
 	depGroups, err := deploymentsDataForApp(ctx, m.client, a)
 	if err != nil {
 		return err
@@ -993,17 +998,21 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Deployed Version: %d, baseVersion: %d, Preserve Old Versions: %v\n", deployedVersion, baseVersion, preserveOldVersions)
 
 	processInUse := map[string]struct{}{}
 	versionInUse := map[processVersionKey]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
+	// check if the deployedVersion is on depGroups.bases, if it is, remove it from depGroups.versioned if preserveOldVersions is false
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			toKeep := (depData.isBase && depData.version == baseVersion) ||
-				(depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion))
-			if toKeep {
+			fmt.Printf("Checking if versioned deployment process(%s):version(%d) should be kept...", depData.process, depData.version)
+			if shouldKeepDeployment(depData, baseVersion, deployedVersion, preserveOldVersions) {
 				processInUse[depData.process] = struct{}{}
-				versionInUse[processVersionKey{process: depData.process, version: depData.version}] = struct{}{}
+				versionInUse[processVersionKey{
+					process: depData.process,
+					version: depData.version,
+				}] = struct{}{}
 				continue
 			}
 
@@ -1032,11 +1041,14 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 		svcVersion := labels.AppVersion()
 		process := labels.AppProcess()
 		_, inUseProcess := processInUse[process]
-		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
+		_, inUseVersion := versionInUse[processVersionKey{
+			process: labels.AppProcess(),
+			version: svcVersion,
+		}]
 
-		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
+		fmt.Printf("Checking if service %s process(%s):version(%d) should be kept...", svc.Name, process, svcVersion)
 
-		if toKeep {
+		if shouldKeepService(inUseVersion, inUseProcess, svcVersion) {
 			continue
 		}
 
@@ -1068,6 +1080,45 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	}
 
 	return multiErrors.ToError()
+}
+
+func shouldKeepDeployment(depData deploymentInfo, baseVersion, deployedVersion int, preserveOldVersions bool) bool {
+	fmt.Printf(" - %d Replicas", depData.replicas)
+	if depData.isBase && depData.version == baseVersion {
+		fmt.Println(" - Keeping (base with base version)")
+		return true
+	}
+	if depData.replicas == 0 {
+		fmt.Println(" - Cleaning up (0 replicas)")
+		return false
+	}
+	if preserveOldVersions {
+		fmt.Println(" - Keeping (preserveOldVersions)")
+		return true
+	}
+	if depData.isBase && depData.version == deployedVersion {
+		fmt.Println(" - Keeping (base with deployed version)(the fix)")
+		return true
+	}
+	fmt.Println(" - Cleaning up (none")
+	return false
+}
+
+func shouldKeepService(inUseVersion, inUseProcess bool, serviceVersion int) bool {
+	if inUseVersion {
+		fmt.Println(" - Keeping (version in use)")
+		return true
+	}
+	if isBaseService(serviceVersion) && inUseProcess {
+		fmt.Println(" - Keeping (base version && process in use)")
+		return true
+	}
+	fmt.Println(" - Cleaning up (none)")
+	return false
+}
+
+func isBaseService(serviceVersion int) bool {
+	return serviceVersion == 0
 }
 
 func (m *serviceManager) RemoveService(ctx context.Context, a *appTypes.App, process string, versionNumber int) error {
