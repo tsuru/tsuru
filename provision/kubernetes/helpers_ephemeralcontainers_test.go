@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/stretchr/testify/require"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -15,7 +16,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
-func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
+func (s *S) TestShouldReturnContainerNameOfDebug(_ *check.C) {
 	type Input struct {
 		debugContainerName  string
 		debugContainerImage string
@@ -100,18 +101,18 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 		createEphemeralContainer := false
 		s.client.PrependReactor("update", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 			updateAction, ok := action.(ktesting.UpdateAction)
-			c.Assert(ok, check.Equals, true)
+			require.True(s.t, ok)
 			pod, ok := updateAction.GetObject().(*apiv1.Pod)
-			c.Assert(ok, check.Equals, true)
-			c.Assert(len(pod.Spec.EphemeralContainers) > 0, check.Equals, true)
+			require.True(s.t, ok)
+			require.Greater(s.t, len(pod.Spec.EphemeralContainers), 0)
 			indexEphemeralContainer := len(pod.Spec.EphemeralContainers) - 1
-			c.Assert(pod.Spec.EphemeralContainers[indexEphemeralContainer].Name, check.Equals, p.expected.debugContainerName)
-			c.Assert(pod.Spec.EphemeralContainers[indexEphemeralContainer].Image, check.Equals, p.expected.debugContainerImage)
+			require.Equal(s.t, p.expected.debugContainerName, pod.Spec.EphemeralContainers[indexEphemeralContainer].Name)
+			require.Equal(s.t, p.expected.debugContainerImage, pod.Spec.EphemeralContainers[indexEphemeralContainer].Image)
 			createEphemeralContainer = true
 			return true, pod, nil
 		})
 		c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: p.input.customData})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		pod := apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
 		}
@@ -123,13 +124,13 @@ func (s *S) TestShouldReturnContainerNameOfDebug(c *check.C) {
 			client: c1,
 		})
 
-		c.Assert(err, check.IsNil)
-		c.Assert(containerName, check.Equals, p.expected.debugContainerName)
-		c.Assert(createEphemeralContainer, check.Equals, p.expected.shouldCreateEphemeralContainer)
+		require.NoError(s.t, err)
+		require.Equal(s.t, p.expected.debugContainerName, containerName)
+		require.Equal(s.t, p.expected.shouldCreateEphemeralContainer, createEphemeralContainer)
 	}
 }
 
-func (s *S) TestShouldReturnContainerNameNotDebug(c *check.C) {
+func (s *S) TestShouldReturnContainerNameNotDebug(_ *check.C) {
 	pod := apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
 		Spec: apiv1.PodSpec{
@@ -139,11 +140,11 @@ func (s *S) TestShouldReturnContainerNameNotDebug(c *check.C) {
 		},
 	}
 	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	containerName, err := getContainerName(context.Background(), s.clusterClient, &pod, execOpts{
 		debug:  false,
 		client: c1,
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(containerName, check.Equals, "container1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "container1", containerName)
 }
