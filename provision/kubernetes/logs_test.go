@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -29,15 +31,15 @@ func (s *S) Test_LogsProvisioner_parsek8sLogLine(c *check.C) {
 	tsuruLog := parsek8sLogLine(logLine)
 
 	t, _ := time.Parse(time.RFC3339Nano, "2020-06-18T18:47:01.885491991Z")
-	c.Check(tsuruLog.Date, check.Equals, t)
-	c.Check(tsuruLog.Message, check.Equals, "its a log line")
+	require.Equal(s.t, t, tsuruLog.Date)
+	require.Equal(s.t, "its a log line", tsuruLog.Message)
 
 	logLine = "2020-06-18T18:47:02Z its a log line"
 	tsuruLog = parsek8sLogLine(logLine)
 
 	t, _ = time.Parse(time.RFC3339, "2020-06-18T18:47:02Z")
-	c.Check(tsuruLog.Date, check.Equals, t)
-	c.Check(tsuruLog.Message, check.Equals, "its a log line")
+	require.Equal(s.t, t, tsuruLog.Date)
+	require.Equal(s.t, "its a log line", tsuruLog.Message)
 }
 
 func loggableApp(a *appTypes.App) *logTypes.LogabbleObject {
@@ -63,26 +65,26 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 10)
-	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
-	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
-	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].Name, check.Equals, a.Name)
-	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 10)
+	require.NotZero(s.t, logs[0].Date)
+	require.Equal(s.t, "its a message log: 1", logs[0].Message)
+	require.Equal(s.t, "web", logs[0].Source)
+	require.Equal(s.t, a.Name, logs[0].Name)
+	require.Equal(s.t, "myapp-web-pod-1-1", logs[0].Unit)
 }
 
 func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
@@ -102,25 +104,25 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 1)
-	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
-	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].Name, check.Equals, a.Name)
-	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 1)
+	require.NotZero(s.t, logs[0].Date)
+	require.Equal(s.t, "web", logs[0].Source)
+	require.Equal(s.t, a.Name, logs[0].Name)
+	require.Equal(s.t, "myapp-web-pod-1-1", logs[0].Unit)
 }
 
 func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
@@ -139,13 +141,13 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
@@ -153,13 +155,13 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 		Limit: 10,
 		Units: []string{"myapp-web-pod-1-1"},
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 10)
-	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
-	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
-	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].Name, check.Equals, a.Name)
-	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 10)
+	require.NotZero(s.t, logs[0].Date)
+	require.Equal(s.t, "its a message log: 1", logs[0].Message)
+	require.Equal(s.t, "web", logs[0].Source)
+	require.Equal(s.t, a.Name, logs[0].Name)
+	require.Equal(s.t, "myapp-web-pod-1-1", logs[0].Unit)
 
 	logs, err = s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
@@ -167,8 +169,8 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 		Limit: 10,
 		Units: []string{"myapp-unit-not-found"},
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 0)
 }
 
 func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
@@ -187,13 +189,13 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:   a.Name,
@@ -201,13 +203,13 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 		Limit:  10,
 		Source: "web",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 10)
-	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
-	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
-	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].Name, check.Equals, a.Name)
-	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 10)
+	require.NotZero(s.t, logs[0].Date)
+	require.Equal(s.t, "its a message log: 1", logs[0].Message)
+	require.Equal(s.t, "web", logs[0].Source)
+	require.Equal(s.t, a.Name, logs[0].Name)
+	require.Equal(s.t, "myapp-web-pod-1-1", logs[0].Unit)
 
 	logs, err = s.p.ListLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:   a.Name,
@@ -215,8 +217,8 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 		Limit:  10,
 		Source: "not-found",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 0)
 }
 
 func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
@@ -235,26 +237,26 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			p.Status.Phase = apiv1.PodFailed
 			p.Status.Reason = "Evicted"
 			_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), &p, metav1.UpdateOptions{})
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 		}
 	})
 
@@ -263,8 +265,8 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, logs, 0)
 }
 
 func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
@@ -292,20 +294,20 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	logChan := watcher.Chan()
 
 	receivedLogs := []appTypes.Applog{}
@@ -322,7 +324,7 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 		}
 	}
 
-	c.Check(receivedLogs, check.HasLen, 3)
+	require.Len(s.t, receivedLogs, 3)
 }
 
 func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
@@ -352,20 +354,20 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	logChan := watcher.Chan()
 
 	receivedLogs := []appTypes.Applog{}
@@ -382,8 +384,8 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 		}
 	}
 
-	c.Check(receivedLogs, check.HasLen, 1)
-	if !c.Check(strings.HasPrefix(receivedLogs[0].Message, "its a long message log: long galaxy away"), check.Equals, true) {
+	require.Len(s.t, receivedLogs, 1)
+	if !assert.True(s.t, strings.HasPrefix(receivedLogs[0].Message, "its a long message log: long galaxy away")) {
 		fmt.Println("received message:", receivedLogs[0].Message)
 	}
 }
@@ -414,13 +416,13 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), loggableApp(a), appTypes.ListLogArgs{
 		Name:  a.Name,
@@ -428,7 +430,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 		Limit: 10,
 		Units: []string{"myapp-web-pod-1-1", "not-found-unit"},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	logChan := watcher.Chan()
 
 	receivedLogs := []appTypes.Applog{}
@@ -450,7 +452,7 @@ loop:
 		}
 	}
 
-	c.Check(receivedLogs, check.HasLen, 3)
+	require.Len(s.t, receivedLogs, 3)
 }
 
 func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
@@ -479,26 +481,26 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			p.Status.Phase = apiv1.PodFailed
 			p.Status.Reason = "Evicted"
 			_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), &p, metav1.UpdateOptions{})
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 		}
 	})
 
@@ -507,7 +509,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	logChan := watcher.Chan()
 
 	receivedLogs := []appTypes.Applog{}
@@ -525,5 +527,5 @@ loop:
 		}
 	}
 
-	c.Check(receivedLogs, check.HasLen, 0)
+	require.Len(s.t, receivedLogs, 0)
 }
