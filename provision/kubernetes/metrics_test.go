@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -31,18 +32,18 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	s.client.MetricsClientset.PrependReactor("list", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		listAction := action.(ktesting.ListAction)
-		c.Assert(listAction.GetListRestrictions().Labels.String(), check.DeepEquals, "tsuru.io/app-name=myapp")
+		require.Equal(s.t, "tsuru.io/app-name=myapp", listAction.GetListRestrictions().Labels.String())
 		return true, &metricsv1beta1.PodMetricsList{
 			Items: []metricsv1beta1.PodMetrics{
 				{
@@ -73,17 +74,16 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 			},
 		}, nil
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	metrics, err := s.p.UnitsMetrics(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(metrics, check.HasLen, 1)
-	c.Assert(metrics, check.DeepEquals, []provTypes.UnitMetric{
+	require.NoError(s.t, err)
+	require.Len(s.t, metrics, 1)
+	require.EqualValues(s.t, []provTypes.UnitMetric{
 		{
 			ID:     "myapp-123",
 			CPU:    "2200m",
 			Memory: "110Mi",
 		},
-	})
-
+	}, metrics)
 }
