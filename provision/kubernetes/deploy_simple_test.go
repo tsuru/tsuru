@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -176,7 +177,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 			appName := fmt.Sprintf("myapp%d", i)
 			a := &appTypes.App{Name: appName, TeamOwner: s.team.Name}
 			err := app.CreateApp(context.TODO(), a, s.user)
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 			for j, step := range tt.steps {
 				c.Logf("test %v step %v", i, j)
 				if step.deployStep != nil {
@@ -190,7 +191,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 					var oldVersionNumber int
 					if !step.deployStep.newVersion {
 						oldVersionNumber, err = baseVersionForApp(context.TODO(), s.clusterClient, a)
-						c.Assert(err, check.IsNil)
+						require.NoError(s.t, err)
 					}
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, oldVersionNumber, provision.DeployArgs{
 						App:              a,
@@ -198,48 +199,48 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 						PreserveVersions: step.deployStep.newVersion,
 						OverrideVersions: step.deployStep.overrideVersions,
 					}, procSpec)
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					waitDep()
 					a.Deploys++
 					if step.deployStep.routable {
 						err = app.SetRoutable(context.TODO(), a, version, true)
-						c.Assert(err, check.IsNil)
+						require.NoError(s.t, err)
 					}
 				}
 				if step.unitStep != nil {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					err = servicecommon.ChangeUnits(context.TODO(), &m, a, step.unitStep.units, step.unitStep.proc, version)
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					waitDep()
 				}
 				if step.stopStep != nil {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					s.updatePastUnits(a.Name, version, step.stopStep.proc)
 					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.stopStep.proc, servicecommon.ProcessState{Stop: true}, version)
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					waitDep()
 				}
 				if step.startStep != nil {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.startStep.proc, servicecommon.ProcessState{Start: true}, version)
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 					waitDep()
 				}
 				if step.restartStep != nil {
 					var versions []appTypes.AppVersion
 					if step.restartStep.version == 0 {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.restartStep.proc, true)
-						c.Assert(err, check.IsNil)
+						require.NoError(s.t, err)
 					} else {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
-						c.Assert(err, check.IsNil)
+						require.NoError(s.t, err)
 						versions = append(versions, version)
 					}
 
@@ -248,7 +249,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 							client: s.clusterClient,
 							writer: bytes.NewBuffer(nil),
 						}, a, step.restartStep.proc, servicecommon.ProcessState{Start: true, Restart: true}, v)
-						c.Assert(err, check.IsNil)
+						require.NoError(s.t, err)
 						waitDep()
 					}
 				}
