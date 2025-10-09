@@ -13,12 +13,11 @@ import (
 
 	kedav1alpha1clientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	fakekedaclientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
-	"github.com/tsuru/config"
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
@@ -34,7 +33,6 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/volume"
 	_ "go.uber.org/automaxprocs"
-	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -68,12 +66,12 @@ type S struct {
 	factory                       informers.SharedInformerFactory
 	vpaFactory                    vpaInformers.SharedInformerFactory
 	defaultSharedInformerDuration time.Duration
-
-	builders map[string]builder.Builder
 }
 
-var suiteInstance = &S{}
-var _ = check.Suite(suiteInstance)
+var (
+	suiteInstance = &S{}
+	_             = check.Suite(suiteInstance)
+)
 
 func Test(t *testing.T) {
 	suiteInstance.t = t
@@ -81,36 +79,18 @@ func Test(t *testing.T) {
 }
 
 func (s *S) SetUpSuite(c *check.C) {
-	config.Set("log:disable-syslog", true)
-	config.Set("auth:hash-cost", bcrypt.MinCost)
-	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "provision_kubernetes_tests_s")
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queue_provision_kubernetes_tests")
-	config.Set("queue:mongo-polling-interval", 0.01)
-	config.Set("routers:fake:type", "fake")
-	config.Set("routers:fake:default", true)
-
-	storagev2.Reset()
-
-	s.builders = builder.List()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	for n, b := range s.builders {
-		builder.Register(n, b)
-	}
-
 	stopClusterController(s.p, s.clusterClient)
 }
 
 func (s *S) SetUpTest(c *check.C) {
 	err := storagev2.ClearAllCollections(nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	clus := &provision.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"https://clusteraddr"},
@@ -119,7 +99,7 @@ func (s *S) SetUpTest(c *check.C) {
 		CustomData:  map[string]string{},
 	}
 	s.clusterClient, err = NewClusterClient(clus)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	s.client = &kTesting.ClientWrapper{
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
@@ -158,16 +138,16 @@ func (s *S) SetUpTest(c *check.C) {
 		Default:     true,
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "pool1",
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypePlan, Values: []string{"c2m1"}})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	s.defaultSharedInformerDuration, err = time.ParseDuration("1s")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.vpaFactory = vpaInformers.NewSharedInformerFactory(s.client.VPAClientset, s.defaultSharedInformerDuration)
 	InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
@@ -185,10 +165,10 @@ func (s *S) SetUpTest(c *check.C) {
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(context.TODO(), s.user)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	s.team = &authTypes.Team{Name: "admin"}
 	s.token, err = nativeScheme.Login(context.TODO(), map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{*s.team}, nil
@@ -263,11 +243,11 @@ func (s *S) SetUpTest(c *check.C) {
 		return ret, nil
 	}
 	servicemanager.App, err = app.AppService()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	servicemanager.AppVersion, err = version.AppVersionService()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	servicemanager.Volume, err = volume.VolumeService()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func sortPods(pods []*apiv1.Pod) {
@@ -278,16 +258,16 @@ func sortPods(pods []*apiv1.Pod) {
 
 func (s *S) waitPodUpdate(c *check.C, fn func()) {
 	controller, err := getClusterController(s.p, s.clusterClient)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podInformer, err := controller.getPodInformer()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	pods, err := podInformer.Lister().List(labels.Everything())
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	fn()
 	timeout := time.After(5 * time.Second)
 	for {
 		podsAfter, err := podInformer.Lister().List(labels.Everything())
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		sortPods(pods)
 		sortPods(podsAfter)
 		if !reflect.DeepEqual(pods, podsAfter) {

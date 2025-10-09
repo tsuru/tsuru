@@ -1725,7 +1725,8 @@ func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
 func (s *S) TestStartupMessage(c *check.C) {
 	msg, err := s.p.StartupMessage()
 	require.NoError(s.t, err)
-	require.Equal(s.t, `Kubernetes provisioner on cluster "c1" - https://clusteraddr\n`, msg)
+	require.Equal(s.t, `Kubernetes provisioner on cluster "c1" - https://clusteraddr
+`, msg)
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
 		return nil, nil
 	}
@@ -1918,10 +1919,18 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	require.NoError(s.t, err)
 	require.Len(s.t, sList.Items, 4)
-	require.Contains(s.t, sList.Items, "myapp-web")
-	require.Contains(s.t, sList.Items, "myapp-web-units")
-	require.Contains(s.t, sList.Items, "myapp-web-v1")
-	require.Contains(s.t, sList.Items, "myapp-web-v2")
+	contains := func(svcList []apiv1.Service, name string) bool {
+		for _, svc := range svcList {
+			if svc.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	require.True(s.t, contains(sList.Items, "myapp-web"))
+	require.True(s.t, contains(sList.Items, "myapp-web-units"))
+	require.True(s.t, contains(sList.Items, "myapp-web-v1"))
+	require.True(s.t, contains(sList.Items, "myapp-web-v2"))
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
@@ -1976,7 +1985,15 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	buf := new(bytes.Buffer)
 	err = s.p.Stop(context.TODO(), a, "", version1, buf)
 	require.NoError(s.t, err)
-	replicaCount := func(name string, depList []appsv1.Deployment, expectedReplicas int) bool {
+	contains := func(depList []appsv1.Deployment, name string) bool {
+		for _, dep := range depList {
+			if dep.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	replicaCount := func(depList []appsv1.Deployment, name string, expectedReplicas int) bool {
 		for _, dep := range depList {
 			if dep.Name == name {
 				return *dep.Spec.Replicas == int32(expectedReplicas)
@@ -1987,10 +2004,10 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	depList, err := s.client.AppsV1().Deployments("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	require.NoError(s.t, err)
 	require.Len(s.t, depList.Items, 2)
-	require.Contains(s.t, depList.Items, "myapp-web-v2")
-	require.Contains(s.t, depList.Items, "myapp-web")
-	require.True(s.t, replicaCount("myapp-web", depList.Items, 0))
-	require.True(s.t, replicaCount("myapp-web-v2", depList.Items, 1))
+	require.True(s.t, contains(depList.Items, "myapp-web-v2"))
+	require.True(s.t, contains(depList.Items, "myapp-web"))
+	require.True(s.t, replicaCount(depList.Items, "myapp-web", 0))
+	require.True(s.t, replicaCount(depList.Items, "myapp-web-v2", 1))
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
 	require.Error(s.t, err)
 	expectedError := &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
@@ -2183,7 +2200,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	})
 	require.NoError(s.t, err)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
-	require.NoError(s.t, err)
+	require.Error(s.t, err)
 	require.ErrorContains(s.t, err, "can't change the pool of an app with binded volumes")
 }
 
@@ -2377,7 +2394,7 @@ func (s *S) TestProvisionerValidation(c *check.C) {
 			Cluster: clientcmdapi.Cluster{},
 		},
 	})
-	require.ErrorContains(s.t, err, "when kubeConfig is set the use of addresses is not used")
+	require.ErrorContains(s.t, err, "when kubeConfig is set the use of cacert is not used")
 	require.ErrorContains(s.t, err, "when kubeConfig is set the use of clientcert is not used")
 	require.ErrorContains(s.t, err, "when kubeConfig is set the use of clientkey is not used")
 
