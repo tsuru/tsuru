@@ -55,113 +55,113 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 				{
 					deployStep: &deployStep{procs: []string{"p1"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p1", 1, 1)
-						s.hasSvc(c, "myapp0-p1")
+						s.hasDepWithVersion("myapp0-p1", 1, 1)
+						s.hasSvc("myapp0-p1")
 
-						s.noSvc(c, "myapp0-p1-v1")
+						s.noSvc("myapp0-p1-v1")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p1", 2, 1)
-						s.hasSvc(c, "myapp0-p1")
+						s.hasDepWithVersion("myapp0-p1", 2, 1)
+						s.hasSvc("myapp0-p1")
 
-						s.noSvc(c, "myapp0-p1-v2")
+						s.noSvc("myapp0-p1-v2")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p1", 2, 1)
-						s.hasDepWithVersion(c, "myapp0-p1-v3", 3, 1)
-						s.hasSvc(c, "myapp0-p1")
-						s.hasSvc(c, "myapp0-p1-v2")
-						s.hasSvc(c, "myapp0-p1-v3")
+						s.hasDepWithVersion("myapp0-p1", 2, 1)
+						s.hasDepWithVersion("myapp0-p1-v3", 3, 1)
+						s.hasSvc("myapp0-p1")
+						s.hasSvc("myapp0-p1-v2")
+						s.hasSvc("myapp0-p1-v3")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p1", 4, 1)
-						s.hasSvc(c, "myapp0-p1")
+						s.hasDepWithVersion("myapp0-p1", 4, 1)
+						s.hasSvc("myapp0-p1")
 
-						s.noDep(c, "myapp0-p1-v3")
-						s.noSvc(c, "myapp0-p1-v2")
-						s.noSvc(c, "myapp0-p1-v3")
-						s.noSvc(c, "myapp0-p1-v4")
+						s.noDep("myapp0-p1-v3")
+						s.noSvc("myapp0-p1-v2")
+						s.noSvc("myapp0-p1-v3")
+						s.noSvc("myapp0-p1-v4")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p2"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 1)
+						s.hasSvc("myapp0-p2")
 
-						s.noDep(c, "myapp0-p1")
-						s.noSvc(c, "myapp0-p1")
-						s.noSvc(c, "myapp0-p2-v5")
+						s.noDep("myapp0-p1")
+						s.noSvc("myapp0-p1")
+						s.noSvc("myapp0-p2-v5")
 					},
 				},
 				{
 					unitStep: &unitStep{version: 4, units: 2, proc: "p1"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
-						s.hasSvc(c, "myapp0-p2")
-						s.hasDepWithVersion(c, "myapp0-p1-v4", 4, 2)
-						s.hasSvc(c, "myapp0-p1-v4")
+						s.hasDepWithVersion("myapp0-p2", 5, 1)
+						s.hasSvc("myapp0-p2")
+						s.hasDepWithVersion("myapp0-p1-v4", 4, 2)
+						s.hasSvc("myapp0-p1-v4")
 
-						s.noDep(c, "myapp0-p1")
-						s.noSvc(c, "myapp0-p2-v5")
-						s.noSvc(c, "myapp0-p1")
+						s.noDep("myapp0-p1")
+						s.noSvc("myapp0-p2-v5")
+						s.noSvc("myapp0-p1")
 					},
 				},
 				{
 					stopStep: &stopStep{version: 4, proc: "p1"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 1)
+						s.hasSvc("myapp0-p2")
 
-						s.noDep(c, "myapp0-p1-v4")
-						s.noDep(c, "myapp0-p1")
-						s.noSvc(c, "myapp0-p1-v4")
-						s.noSvc(c, "myapp0-p1")
-						s.noSvc(c, "myapp0-p2-v5")
+						s.noDep("myapp0-p1-v4")
+						s.noDep("myapp0-p1")
+						s.noSvc("myapp0-p1-v4")
+						s.noSvc("myapp0-p1")
+						s.noSvc("myapp0-p2-v5")
 					},
 				},
 				{
 					stopStep: &stopStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 0)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 0)
+						s.hasSvc("myapp0-p2")
 					},
 				},
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 1)
+						s.hasSvc("myapp0-p2")
 					},
 				},
 				{
 					unitStep: &unitStep{version: 5, units: 2, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 3)
+						s.hasSvc("myapp0-p2")
 					},
 				},
 				{
 					stopStep: &stopStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 0)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 0)
+						s.hasSvc("myapp0-p2")
 					},
 				},
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
-						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion("myapp0-p2", 5, 3)
+						s.hasSvc("myapp0-p2")
 					},
 				},
 			},
@@ -218,7 +218,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 					c.Assert(err, check.IsNil)
-					s.updatePastUnits(c, a.Name, version, step.stopStep.proc)
+					s.updatePastUnits(a.Name, version, step.stopStep.proc)
 					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.stopStep.proc, servicecommon.ProcessState{Stop: true}, version)
 					c.Assert(err, check.IsNil)
 					waitDep()
