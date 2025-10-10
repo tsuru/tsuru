@@ -436,6 +436,26 @@ func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, erro
 	return set, nil
 }
 
+func parseTag(tag string) (string, string) {
+	parts := strings.SplitN(tag, "=", 2)
+	var key, value string
+	if len(parts) > 0 {
+		key = parts[0]
+	}
+	if len(parts) > 1 {
+		value = parts[1]
+	}
+	if key == "" {
+		return "", ""
+	}
+	key = labelCustomTagsPrefix + key
+	if len(validation.IsQualifiedName(key)) > 0 {
+		// Ignoring tags that are not valid identifiers for labels or annotations
+		return "", ""
+	}
+	return key, value
+}
+
 func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 	ls := &LabelSet{
 		Labels: map[string]string{
@@ -459,20 +479,8 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 	}
 
 	for _, tag := range job.Tags {
-		parts := strings.SplitN(tag, "=", 2)
-		var key, value string
-		if len(parts) > 0 {
-			key = parts[0]
-		}
-		if len(parts) > 1 {
-			value = parts[1]
-		}
+		key, value := parseTag(tag)
 		if key == "" {
-			continue
-		}
-		key = labelCustomTagsPrefix + key
-		if len(validation.IsQualifiedName(key)) > 0 {
-			// Ignoring tags that are not valid identifiers for labels or annotations
 			continue
 		}
 		ls.Labels[key] = value
@@ -501,20 +509,8 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 		Prefix: opts.Prefix,
 	}
 	for _, tag := range opts.App.Tags {
-		parts := strings.SplitN(tag, "=", 2)
-		var key, value string
-		if len(parts) > 0 {
-			key = parts[0]
-		}
-		if len(parts) > 1 {
-			value = parts[1]
-		}
+		key, value := parseTag(tag)
 		if key == "" {
-			continue
-		}
-		key = labelCustomTagsPrefix + key
-		if len(validation.IsQualifiedName(key)) > 0 {
-			// Ignoring tags that are not valid identifiers for labels or annotations
 			continue
 		}
 		ls.Labels[key] = value

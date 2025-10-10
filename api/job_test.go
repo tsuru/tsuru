@@ -3706,4 +3706,21 @@ func (s *S) TestJobListFilteringByTags(c *check.C) {
 	c.Assert(jobs, check.HasLen, 1)
 	c.Assert(jobs[0].Name, check.Equals, "job1")
 	c.Assert(jobs[0].Tags, check.DeepEquals, []string{"tag1", "tag2"})
+
+	// Test filtering by tag2 (should return job1 and job2)
+	request, err = http.NewRequest("GET", "/jobs?tag=tag2", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs = []jobTypes.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(jobs, check.HasLen, 2)
+	c.Assert(jobs[0].Name, check.Equals, "job1")
+	c.Assert(jobs[1].Name, check.Equals, "job2")
+	c.Assert(jobs[0].Tags, check.DeepEquals, []string{"tag1", "tag2"})
+	c.Assert(jobs[1].Tags, check.DeepEquals, []string{"tag2", "tag3"})
 }
