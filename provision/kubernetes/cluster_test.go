@@ -11,9 +11,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"testing"
 	"time"
 
 	"github.com/elazarl/goproxy"
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -94,505 +96,22 @@ qni/3jTJOxDGMH+x06HZjWietWmbY+aKWkKCyGGVVzlKTEBUMSSU
 -----END RSA PRIVATE KEY-----`)
 )
 
-func (s *S) TestClusterInitClient(c *check.C) {
-	c1 := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		CaCert:      testCA,
-		ClientCert:  testCert,
-		ClientKey:   testKey,
-		Default:     true,
-		Provisioner: provisionerName,
-	}
-	cli, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(cli.Interface, check.NotNil)
-	c.Assert(cli.restConfig, check.NotNil)
-	expected := &rest.Config{
-		APIPath: "/api",
-		Host:    "addr1",
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData:   testCA,
-			CertData: testCert,
-			KeyData:  testKey,
-		},
-		Timeout: time.Minute,
-	}
-	expected.ContentConfig = cli.restConfig.ContentConfig
-	cli.restConfig.Dial = nil
-	c.Assert(cli.restConfig.APIPath, check.DeepEquals, expected.APIPath)
-	c.Assert(cli.restConfig.Host, check.DeepEquals, expected.Host)
-	c.Assert(cli.restConfig.TLSClientConfig, check.DeepEquals, expected.TLSClientConfig)
-	c.Assert(cli.restConfig.Timeout, check.DeepEquals, expected.Timeout)
-}
-
-func (s *S) TestClusterInitClientByKubeConfig(c *check.C) {
-	c1 := provTypes.Cluster{
-		Name:        "c1",
-		Default:     true,
-		Provisioner: provisionerName,
-		KubeConfig: &provTypes.KubeConfig{
-			Cluster: clientcmdapi.Cluster{
-				Server:                   "http://blah.com",
-				CertificateAuthorityData: testCA,
-			},
-			AuthInfo: clientcmdapi.AuthInfo{
-				ClientCertificateData: testCert,
-				ClientKeyData:         testKey,
-			},
-		},
-	}
-	cli, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(cli.Interface, check.NotNil)
-	c.Assert(cli.restConfig, check.NotNil)
-	expected := &rest.Config{
-		Host: "http://blah.com",
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData: testCA,
-		},
-		Timeout: time.Minute,
-	}
-	c.Assert(cli.restConfig.Host, check.DeepEquals, expected.Host)
-	c.Assert(cli.restConfig.Timeout, check.DeepEquals, expected.Timeout)
-}
-
-func (s *S) TestClusterInitClientByKubeConfigWithProxyANDTLS(c *check.C) {
-	fakeK8SServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/namespaces/default/endpoints/kubernetes" {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(&corev1.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "kubernetes",
-				},
-				Subsets: []corev1.EndpointSubset{
-					{
-						Addresses: []corev1.EndpointAddress{
-							{
-								IP: "1.2.3.4",
-							},
-						},
-					},
-				},
-			})
-			return
-		}
-		http.Error(w, "Unepected path: "+r.URL.Path, http.StatusInternalServerError)
-	}))
-	fakeK8SServer.StartTLS()
-	defer fakeK8SServer.Close()
-
-	proxy := goproxy.NewProxyHttpServer()
-	proxy.Verbose = true
-
-	fakeProxy := httptest.NewServer(proxy)
-	defer fakeProxy.Close()
-
-	c1 := provTypes.Cluster{
-		Name:        "c1",
-		Default:     true,
-		Provisioner: provisionerName,
-		KubeConfig: &provTypes.KubeConfig{
-			Cluster: clientcmdapi.Cluster{
-				Server:                fakeK8SServer.URL,
-				InsecureSkipTLSVerify: true,
-			},
-			AuthInfo: clientcmdapi.AuthInfo{
-				AuthProvider: &clientcmdapi.AuthProviderConfig{
-					Name: "gcp-with-proxy",
-					Config: map[string]string{
-						"dry-run":    "true",
-						"http-proxy": fakeProxy.URL,
-					},
-				},
-			},
-		},
-		HTTPProxy: fakeProxy.URL,
-	}
-	restConfig, err := getRestConfigByKubeConfig(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(restConfig.APIPath, check.DeepEquals, "/api")
-
-	k8s, err := kubernetes.NewForConfig(restConfig)
-	c.Assert(err, check.IsNil)
-
-	endpoint, err := k8s.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(endpoint.Subsets[0].Addresses[0].IP, check.Equals, "1.2.3.4")
-}
-
-func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
-	c1 := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1", "addr2"},
-		Default:     true,
-		Provisioner: provisionerName,
-	}
-	// reinitialize rand seed
-	randomGenerator = rand.New(rand.NewSource(3))
-	defer func() {
-		randomGenerator = nil
-	}()
-
-	cfg, err := getRestConfig(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(cfg.Host, check.Equals, "addr1")
-	cfg, err = getRestConfig(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(cfg.Host, check.Equals, "addr2")
-}
-
-func (s *S) TestClusterClientSetTimeout(c *check.C) {
-	c1 := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1", "addr2"},
-		Default:     true,
-		Provisioner: provisionerName,
-	}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	client.SetTimeout(time.Hour)
-	c.Assert(client.restConfig.Timeout, check.Equals, time.Hour)
-}
-
-func (s *S) TestClusterClientConfigPrecedenceMaxSurge(c *check.C) {
-	client, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(client.maxSurge("mypool"), check.Equals, intstr.FromString("100%"))
-	config.Set("clusters:defaults:max-surge", "1%")
-	defer config.Unset("clusters:defaults:max-surge")
-	client, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(client.maxSurge("mypool"), check.Equals, intstr.FromString("1%"))
-	client, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"max-surge": "20%", "mypool2:max-surge": "30%"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(client.maxSurge("mypool"), check.Equals, intstr.FromString("20%"))
-	c.Assert(client.maxSurge("mypool2"), check.Equals, intstr.FromString("30%"))
-}
-
-func (s *S) TestClusterAppNamespace(c *check.C) {
+func (s *S) TestClusterAppNamespace(_ *check.C) {
 	c1 := provTypes.Cluster{Addresses: []string{"addr1"}}
 	s.mockService.Cluster.OnFindByPool = func(_, _ string) (*provTypes.Cluster, error) {
 		return &c1, nil
 	}
 	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err = s.p.Provision(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	ns, err := client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(ns, check.Equals, "default")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "default", ns)
 }
 
-func (s *S) TestClusterNamespace(c *check.C) {
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("mypool"), check.Equals, "x")
-	c1 = provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("mypool"), check.Equals, "default")
-	c1 = provTypes.Cluster{Addresses: []string{"addr1"}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("mypool"), check.Equals, "default")
-}
-
-func (s *S) TestClusterNamespacePerPool(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("mypool"), check.Equals, "x-mypool")
-	c.Assert(client.PoolNamespace(""), check.Equals, "x")
-	c1 = provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("mypool"), check.Equals, "tsuru-mypool")
-	c1 = provTypes.Cluster{Addresses: []string{"addr1"}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("mypool"), check.Equals, "tsuru-mypool")
-	c.Assert(client.PoolNamespace(""), check.Equals, "tsuru")
-}
-
-func (s *S) TestClusterNamespacePerPoolWithInvalidCharacters(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "tsuru"}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.PoolNamespace("my_pool has *INVALID* chars"), check.Equals, "tsuru-my-pool-has--invalid--chars")
-}
-
-func (s *S) TestClusterOvercommitFactor(c *check.C) {
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
-		"overcommit-factor":         "2",
-		"my-pool:overcommit-factor": "3",
-		"invalid:overcommit-factor": "a",
-		"float:overcommit-factor":   "1.5",
-	}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	ovf, err := client.OvercommitFactor("my-pool")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(3))
-	ovf, err = client.OvercommitFactor("global")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(2))
-	ovf, err = client.OvercommitFactor("invalid")
-	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-	c.Assert(ovf, check.Equals, float64(0))
-	ovf, err = client.OvercommitFactor("float")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(1.5))
-}
-
-func (s *S) TestClusterCPUOvercommitFactor(c *check.C) {
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
-		"cpu-overcommit-factor":         "3",
-		"my-pool:cpu-overcommit-factor": "4",
-		"invalid:cpu-overcommit-factor": "a",
-		"float:cpu-overcommit-factor":   "1.5",
-	}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	ovf, err := client.CPUOvercommitFactor("my-pool")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(4))
-	ovf, err = client.CPUOvercommitFactor("global")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(3))
-	ovf, err = client.CPUOvercommitFactor("invalid")
-	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-	c.Assert(ovf, check.Equals, float64(0))
-	ovf, err = client.CPUOvercommitFactor("float")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(1.5))
-}
-
-func (s *S) TestClusterMemoryOvercommitFactor(c *check.C) {
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
-		"memory-overcommit-factor":         "3",
-		"my-pool:memory-overcommit-factor": "4",
-		"invalid:memory-overcommit-factor": "a",
-		"float:memory-overcommit-factor":   "1.5",
-	}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	ovf, err := client.MemoryOvercommitFactor("my-pool")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(4))
-	ovf, err = client.MemoryOvercommitFactor("global")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(3))
-	ovf, err = client.MemoryOvercommitFactor("invalid")
-	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-	c.Assert(ovf, check.Equals, float64(0))
-	ovf, err = client.MemoryOvercommitFactor("float")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(1.5))
-}
-
-func (s *S) TestClusterCPUBurstFactor(c *check.C) {
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
-		"cpu-burst-factor":         "3",
-		"my-pool:cpu-burst-factor": "4",
-		"invalid:cpu-burst-factor": "a",
-		"float:cpu-burst-factor":   "1.5",
-	}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	ovf, err := client.CPUBurstFactor("my-pool")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(4))
-	ovf, err = client.CPUBurstFactor("global")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(3))
-	ovf, err = client.CPUBurstFactor("invalid")
-	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-	c.Assert(ovf, check.Equals, float64(0))
-	ovf, err = client.CPUBurstFactor("float")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, float64(1.5))
-}
-
-func (s *S) TestClusterSinglePool(c *check.C) {
-	tests := []struct {
-		customData map[string]string
-		expected   struct {
-			val bool
-			err bool
-		}
-	}{
-		{
-			customData: map[string]string{
-				"single-pool": "",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{false, false},
-		},
-		{
-			customData: map[string]string{
-				"single-pool": "true",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{true, false},
-		},
-		{
-			customData: map[string]string{
-				"single-pool": "0",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{false, false},
-		},
-		{
-			customData: map[string]string{
-				"single-pool": "a",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{false, true},
-		},
-	}
-	for _, tt := range tests {
-		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
-		client, err := NewClusterClient(&c1)
-		c.Assert(err, check.IsNil)
-		ovf, err := client.SinglePool()
-		if tt.expected.err {
-			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-			c.Assert(ovf, check.Equals, false)
-		} else {
-			c.Assert(err, check.IsNil)
-			c.Assert(ovf, check.Equals, tt.expected.val)
-		}
-	}
-}
-
-func (s *S) TestClusterAvoidMultipleServicesFlag(c *check.C) {
-	tests := []struct {
-		customData map[string]string
-		expected   struct {
-			val bool
-			err bool
-		}
-	}{
-		{
-			customData: map[string]string{
-				"enable-versioned-services": "",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{false, false},
-		},
-		{
-			customData: map[string]string{
-				"enable-versioned-services": "true",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{true, false},
-		},
-		{
-			customData: map[string]string{
-				"enable-versioned-services": "0",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{false, false},
-		},
-		{
-			customData: map[string]string{
-				"enable-versioned-services": "a",
-			},
-			expected: struct {
-				val bool
-				err bool
-			}{false, true},
-		},
-	}
-	for _, tt := range tests {
-		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
-		client, err := NewClusterClient(&c1)
-		c.Assert(err, check.IsNil)
-		ovf, err := client.EnableVersionedServices()
-		if tt.expected.err {
-			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-			c.Assert(ovf, check.Equals, false)
-		} else {
-			c.Assert(err, check.IsNil)
-			c.Assert(ovf, check.Equals, tt.expected.val)
-		}
-	}
-}
-
-func (s *S) TestClusterBaseServiceAnnotations(c *check.C) {
-	tests := []struct {
-		customData          map[string]string
-		expectedAnnotations map[string]string
-		expectedErr         bool
-	}{
-		{
-			customData:          map[string]string{},
-			expectedAnnotations: nil,
-		},
-		{
-			customData: map[string]string{
-				"base-services-annotations": "",
-			},
-			expectedAnnotations: nil,
-		},
-		{
-			customData: map[string]string{
-				"base-services-annotations": `{"xpto.io/name": "custom-name"}`,
-			},
-			expectedAnnotations: map[string]string{
-				"xpto.io/name": "custom-name",
-			},
-		},
-		{
-			customData: map[string]string{
-				"base-services-annotations": `xpto.io/name: custom-name
-abc.io/name: test`,
-			},
-			expectedAnnotations: map[string]string{
-				"abc.io/name":  "test",
-				"xpto.io/name": "custom-name",
-			},
-		},
-	}
-	for _, tt := range tests {
-		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
-		client, err := NewClusterClient(&c1)
-		c.Assert(err, check.IsNil)
-		annotations, err := client.ServiceAnnotations(baseServicesAnnotations)
-		if tt.expectedErr {
-			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-			c.Assert(annotations, check.Equals, nil)
-		} else {
-			c.Assert(err, check.IsNil)
-			c.Assert(annotations, check.DeepEquals, tt.expectedAnnotations)
-		}
-
-	}
-
-}
-
-func (s *S) TestClustersForApps(c *check.C) {
+func (s *S) TestClustersForApps(_ *check.C) {
 	c1 := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
@@ -607,7 +126,7 @@ func (s *S) TestClustersForApps(c *check.C) {
 	}
 	s.mockService.Cluster.OnFindByPools = func(prov string, pools []string) (map[string]provTypes.Cluster, error) {
 		sort.Strings(pools)
-		c.Assert(pools, check.DeepEquals, []string{"abc", "deleted-pool", "p1", "p2", "xyz"})
+		require.EqualValues(s.t, []string{"abc", "deleted-pool", "p1", "p2", "xyz"}, pools)
 		return map[string]provTypes.Cluster{
 			"p1":  c2,
 			"p2":  c2,
@@ -626,57 +145,495 @@ func (s *S) TestClustersForApps(c *check.C) {
 	a5 := provisiontest.NewFakeApp("myapp5", "python", 0)
 	a5.Pool = "deleted-pool"
 	cApps, err := clustersForApps(context.TODO(), []*appTypes.App{a1, a2, a3, a4, a5})
-	c.Assert(err, check.IsNil)
-	c.Assert(cApps, check.HasLen, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, cApps, 2)
 	sort.Slice(cApps, func(i, j int) bool {
 		return cApps[i].client.Name < cApps[j].client.Name
 	})
-	c.Assert(cApps[0].client.Name, check.Equals, "c1")
-	c.Assert(cApps[1].client.Name, check.Equals, "c2")
+	require.Equal(s.t, "c1", cApps[0].client.Name)
+	require.Equal(s.t, "c2", cApps[1].client.Name)
 	for idx := range cApps {
 		sort.Slice(cApps[idx].apps, func(i, j int) bool {
 			return cApps[idx].apps[i].Name < cApps[idx].apps[j].Name
 		})
 	}
-	c.Assert(cApps[0].apps, check.DeepEquals, []*appTypes.App{a1, a4})
-	c.Assert(cApps[1].apps, check.DeepEquals, []*appTypes.App{a2, a3})
+	require.EqualValues(s.t, []*appTypes.App{a1, a4}, cApps[0].apps)
+	require.EqualValues(s.t, []*appTypes.App{a2, a3}, cApps[1].apps)
 }
 
-func (s *S) TestClusterDisablePDB(c *check.C) {
-	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c1.disablePDB("mypool"), check.Equals, false)
-	c2, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "true", "mypool2:disable-pdb": "false"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c2.disablePDB("mypool"), check.Equals, true)
-	c3, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "false", "mypool:disable-pdb": "true"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c3.disablePDB("mypool"), check.Equals, true)
-	c4, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "true", "mypool:disable-pdb": "false"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c4.disablePDB("mypool"), check.Equals, false)
-}
+func TestClusterClient(t *testing.T) {
+	t.Run("Cluster Init Client", func(t *testing.T) {
+		c := provTypes.Cluster{
+			Name:        "c1",
+			Addresses:   []string{"addr1"},
+			CaCert:      testCA,
+			ClientCert:  testCert,
+			ClientKey:   testKey,
+			Default:     true,
+			Provisioner: provisionerName,
+		}
+		cli, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		require.NotNil(t, cli.Interface)
+		require.NotNil(t, cli.restConfig)
+		expected := &rest.Config{
+			APIPath: "/api",
+			Host:    "addr1",
+			TLSClientConfig: rest.TLSClientConfig{
+				CAData:   testCA,
+				CertData: testCert,
+				KeyData:  testKey,
+			},
+			Timeout: time.Minute,
+		}
+		expected.ContentConfig = cli.restConfig.ContentConfig
+		cli.restConfig.Dial = nil
+		require.Equal(t, expected.APIPath, cli.restConfig.APIPath)
+		require.Equal(t, expected.Host, cli.restConfig.Host)
+		require.Equal(t, expected.Timeout, cli.restConfig.Timeout)
+		require.EqualValues(t, expected.TLSClientConfig, cli.restConfig.TLSClientConfig)
+	})
 
-func (s *S) TestCluster_Registry(c *check.C) {
-	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(string(c1.Registry()), check.Equals, "")
+	t.Run("Cluster Init Client By Kube Config", func(t *testing.T) {
+		c := provTypes.Cluster{
+			Name:        "c1",
+			Default:     true,
+			Provisioner: provisionerName,
+			KubeConfig: &provTypes.KubeConfig{
+				Cluster: clientcmdapi.Cluster{
+					Server:                   "http://blah.com",
+					CertificateAuthorityData: testCA,
+				},
+				AuthInfo: clientcmdapi.AuthInfo{
+					ClientCertificateData: testCert,
+					ClientKeyData:         testKey,
+				},
+			},
+		}
+		cli, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		require.NotNil(t, cli.Interface)
+		require.NotNil(t, cli.restConfig)
+		expected := &rest.Config{
+			Host: "http://blah.com",
+			TLSClientConfig: rest.TLSClientConfig{
+				CAData: testCA,
+			},
+			Timeout: time.Minute,
+		}
+		require.Equal(t, expected.Host, cli.restConfig.Host)
+		require.Equal(t, expected.Timeout, cli.restConfig.Timeout)
+	})
 
-	c1, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry": "169.196.0.100:5000/tsuru"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(string(c1.Registry()), check.Equals, "169.196.0.100:5000/tsuru")
-}
+	t.Run("Cluster Init Client By Kube Config With Proxy and TLS", func(t *testing.T) {
+		fakeK8SServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v1/namespaces/default/endpoints/kubernetes" {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(&corev1.Endpoints{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kubernetes",
+					},
+					Subsets: []corev1.EndpointSubset{
+						{
+							Addresses: []corev1.EndpointAddress{
+								{
+									IP: "1.2.3.4",
+								},
+							},
+						},
+					},
+				})
+				return
+			}
+			http.Error(w, "Unepected path: "+r.URL.Path, http.StatusInternalServerError)
+		}))
+		fakeK8SServer.StartTLS()
+		defer fakeK8SServer.Close()
 
-func (s *S) TestCluster_InsecureRegistry(c *check.C) {
-	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c1.InsecureRegistry(), check.Equals, false)
+		proxy := goproxy.NewProxyHttpServer()
+		proxy.Verbose = true
 
-	c1, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry-insecure": "true"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c1.InsecureRegistry(), check.Equals, true)
+		fakeProxy := httptest.NewServer(proxy)
+		defer fakeProxy.Close()
 
-	c1, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry-insecure": "false"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(c1.InsecureRegistry(), check.Equals, false)
+		c := provTypes.Cluster{
+			Name:        "c1",
+			Default:     true,
+			Provisioner: provisionerName,
+			KubeConfig: &provTypes.KubeConfig{
+				Cluster: clientcmdapi.Cluster{
+					Server:                fakeK8SServer.URL,
+					InsecureSkipTLSVerify: true,
+				},
+				AuthInfo: clientcmdapi.AuthInfo{
+					AuthProvider: &clientcmdapi.AuthProviderConfig{
+						Name: "gcp-with-proxy",
+						Config: map[string]string{
+							"dry-run":    "true",
+							"http-proxy": fakeProxy.URL,
+						},
+					},
+				},
+			},
+			HTTPProxy: fakeProxy.URL,
+		}
+		restConfig, err := getRestConfigByKubeConfig(&c)
+		require.NoError(t, err)
+		require.Equal(t, "/api", restConfig.APIPath)
+
+		k8s, err := kubernetes.NewForConfig(restConfig)
+		require.NoError(t, err)
+
+		endpoint, err := k8s.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, "1.2.3.4", endpoint.Subsets[0].Addresses[0].IP)
+	})
+
+	t.Run("Cluster Get Rest Config Multiple Addrs Random", func(t *testing.T) {
+		c := provTypes.Cluster{
+			Name:        "c1",
+			Addresses:   []string{"addr1", "addr2"},
+			Default:     true,
+			Provisioner: provisionerName,
+		}
+		// reinitialize rand seed
+		randomGenerator = rand.New(rand.NewSource(3))
+		defer func() {
+			randomGenerator = nil
+		}()
+
+		cfg, err := getRestConfig(&c)
+		require.NoError(t, err)
+		require.Equal(t, "addr1", cfg.Host)
+		cfg, err = getRestConfig(&c)
+		require.NoError(t, err)
+		require.Equal(t, "addr2", cfg.Host)
+	})
+
+	t.Run("Cluster Client Set Timeout", func(t *testing.T) {
+		c1 := provTypes.Cluster{
+			Name:        "c1",
+			Addresses:   []string{"addr1", "addr2"},
+			Default:     true,
+			Provisioner: provisionerName,
+		}
+		client, err := NewClusterClient(&c1)
+		require.NoError(t, err)
+		client.SetTimeout(time.Hour)
+		require.Equal(t, time.Hour, client.restConfig.Timeout)
+	})
+
+	t.Run("Cluster Client Config Precedente Max Surge", func(t *testing.T) {
+		client, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+		require.NoError(t, err)
+		require.Equal(t, intstr.FromString("100%"), client.maxSurge("mypool"))
+		config.Set("clusters:defaults:max-surge", "1%")
+		defer config.Unset("clusters:defaults:max-surge")
+		client, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+		require.NoError(t, err)
+		require.Equal(t, intstr.FromString("1%"), client.maxSurge("mypool"))
+		client, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"max-surge": "20%", "mypool2:max-surge": "30%"}})
+		require.NoError(t, err)
+		require.Equal(t, intstr.FromString("20%"), client.maxSurge("mypool"))
+		require.Equal(t, intstr.FromString("30%"), client.maxSurge("mypool2"))
+	})
+
+	// here
+
+	t.Run("Cluster Namespace", func(t *testing.T) {
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "x", client.PoolNamespace("mypool"))
+		c = provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
+		client, err = NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "default", client.PoolNamespace("mypool"))
+		c = provTypes.Cluster{Addresses: []string{"addr1"}}
+		client, err = NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "default", client.PoolNamespace("mypool"))
+	})
+
+	t.Run("Cluster Namespace Per Pool", func(t *testing.T) {
+		config.Set("kubernetes:use-pool-namespaces", true)
+		defer config.Unset("kubernetes:use-pool-namespaces")
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "x-mypool", client.PoolNamespace("mypool"))
+		require.Equal(t, "x", client.PoolNamespace(""))
+		c = provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
+		client, err = NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "tsuru-mypool", client.PoolNamespace("mypool"))
+		c = provTypes.Cluster{Addresses: []string{"addr1"}}
+		client, err = NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "tsuru-mypool", client.PoolNamespace("mypool"))
+		require.Equal(t, "tsuru", client.PoolNamespace(""))
+	})
+
+	t.Run("Cluster Namespace Per Pool With Invalid Characters", func(t *testing.T) {
+		config.Set("kubernetes:use-pool-namespaces", true)
+		defer config.Unset("kubernetes:use-pool-namespaces")
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "tsuru"}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		require.Equal(t, "tsuru-my-pool-has--invalid--chars", client.PoolNamespace("my_pool has *INVALID* chars"))
+	})
+
+	t.Run("Cluster Overcommit Factor", func(t *testing.T) {
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+			"overcommit-factor":         "2",
+			"my-pool:overcommit-factor": "3",
+			"invalid:overcommit-factor": "a",
+			"float:overcommit-factor":   "1.5",
+		}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		ovf, err := client.OvercommitFactor("my-pool")
+		require.NoError(t, err)
+		require.Equal(t, float64(3), ovf)
+		ovf, err = client.OvercommitFactor("global")
+		require.NoError(t, err)
+		require.Equal(t, float64(2), ovf)
+		ovf, err = client.OvercommitFactor("invalid")
+		require.Error(t, err)
+		require.ErrorContains(t, err, "invalid syntax")
+		require.Equal(t, float64(0), ovf)
+		ovf, err = client.OvercommitFactor("float")
+		require.NoError(t, err)
+		require.Equal(t, float64(1.5), ovf)
+	})
+
+	t.Run("Cluster CPU Overcommit Factor", func(t *testing.T) {
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+			"cpu-overcommit-factor":         "3",
+			"my-pool:cpu-overcommit-factor": "4",
+			"invalid:cpu-overcommit-factor": "a",
+			"float:cpu-overcommit-factor":   "1.5",
+		}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		ovf, err := client.CPUOvercommitFactor("my-pool")
+		require.NoError(t, err)
+		require.Equal(t, float64(4), ovf)
+		ovf, err = client.CPUOvercommitFactor("global")
+		require.NoError(t, err)
+		require.Equal(t, float64(3), ovf)
+		ovf, err = client.CPUOvercommitFactor("invalid")
+		require.ErrorContains(t, err, "invalid syntax")
+		require.Equal(t, float64(0), ovf)
+		ovf, err = client.CPUOvercommitFactor("float")
+		require.NoError(t, err)
+		require.Equal(t, float64(1.5), ovf)
+	})
+
+	t.Run("Cluster Memory Overcommit Factor", func(t *testing.T) {
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+			"memory-overcommit-factor":         "3",
+			"my-pool:memory-overcommit-factor": "4",
+			"invalid:memory-overcommit-factor": "a",
+			"float:memory-overcommit-factor":   "1.5",
+		}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		ovf, err := client.MemoryOvercommitFactor("my-pool")
+		require.NoError(t, err)
+		require.Equal(t, float64(4), ovf)
+		ovf, err = client.MemoryOvercommitFactor("global")
+		require.NoError(t, err)
+		require.Equal(t, float64(3), ovf)
+		ovf, err = client.MemoryOvercommitFactor("invalid")
+		require.Error(t, err)
+		require.ErrorContains(t, err, "invalid syntax")
+		require.Equal(t, float64(0), ovf)
+		ovf, err = client.MemoryOvercommitFactor("float")
+		require.NoError(t, err)
+		require.Equal(t, float64(1.5), ovf)
+	})
+
+	t.Run("Cluster CPU Burst Factor", func(t *testing.T) {
+		c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+			"cpu-burst-factor":         "3",
+			"my-pool:cpu-burst-factor": "4",
+			"invalid:cpu-burst-factor": "a",
+			"float:cpu-burst-factor":   "1.5",
+		}}
+		client, err := NewClusterClient(&c)
+		require.NoError(t, err)
+		ovf, err := client.CPUBurstFactor("my-pool")
+		require.NoError(t, err)
+		require.Equal(t, float64(4), ovf)
+		ovf, err = client.CPUBurstFactor("global")
+		require.NoError(t, err)
+		require.Equal(t, float64(3), ovf)
+		ovf, err = client.CPUBurstFactor("invalid")
+		require.ErrorContains(t, err, "invalid syntax")
+		require.Equal(t, float64(0), ovf)
+		ovf, err = client.CPUBurstFactor("float")
+		require.NoError(t, err)
+		require.Equal(t, float64(1.5), ovf)
+	})
+
+	t.Run("Cluster single pool", func(t *testing.T) {
+		t.Run("Empty value", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"single-pool": ""}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			ovf, err := client.SinglePool()
+			require.NoError(t, err)
+			require.False(t, ovf)
+		})
+		t.Run("True value", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"single-pool": "true"}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			ovf, err := client.SinglePool()
+			require.NoError(t, err)
+			require.True(t, ovf)
+		})
+		t.Run("Zero value", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"single-pool": "0"}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			ovf, err := client.SinglePool()
+			require.NoError(t, err)
+			require.False(t, ovf)
+		})
+		t.Run("Invalid value", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"single-pool": "a"}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			ovf, err := client.SinglePool()
+			require.ErrorContains(t, err, "invalid syntax")
+			require.False(t, ovf)
+		})
+	})
+
+	t.Run("Cluster versioned services", func(t *testing.T) {
+		t.Run("Empty value", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"enable-versioned-services": ""}})
+			require.NoError(t, err)
+			val, err := c.EnableVersionedServices()
+			require.NoError(t, err)
+			require.Equal(t, false, val)
+		})
+		t.Run("True value", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"enable-versioned-services": "true"}})
+			require.NoError(t, err)
+			val, err := c.EnableVersionedServices()
+			require.NoError(t, err)
+			require.Equal(t, true, val)
+		})
+		t.Run("Zero value", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"enable-versioned-services": "0"}})
+			require.NoError(t, err)
+			val, err := c.EnableVersionedServices()
+			require.NoError(t, err)
+			require.Equal(t, false, val)
+		})
+		t.Run("Invalid value", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"enable-versioned-services": "a"}})
+			require.NoError(t, err)
+			val, err := c.EnableVersionedServices()
+			require.Error(t, err)
+			require.ErrorContains(t, err, "invalid syntax")
+			require.False(t, val)
+		})
+	})
+
+	t.Run("Cluster Base Service Annotations", func(t *testing.T) {
+		t.Run("Default no annotations", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			annotations, err := client.ServiceAnnotations(baseServicesAnnotations)
+			require.NoError(t, err)
+			require.Nil(t, annotations)
+		})
+		t.Run("Empty value anotations should not be persisted", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"base-services-annotations": ""}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			annotations, err := client.ServiceAnnotations(baseServicesAnnotations)
+			require.NoError(t, err)
+			require.Nil(t, annotations)
+		})
+		t.Run("Should parse JSON annotations", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"base-services-annotations": `{"xpto.io/name": "custom-name"}`}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			annotations, err := client.ServiceAnnotations(baseServicesAnnotations)
+			require.NoError(t, err)
+			require.EqualValues(t, map[string]string{"xpto.io/name": "custom-name"}, annotations)
+		})
+		t.Run("Should parse YAML annotations", func(t *testing.T) {
+			c := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"base-services-annotations": `xpto.io/name: custom-name
+abc.io/name: test`}}
+			client, err := NewClusterClient(&c)
+			require.NoError(t, err)
+			annotations, err := client.ServiceAnnotations(baseServicesAnnotations)
+			require.NoError(t, err)
+			require.EqualValues(t, map[string]string{
+				"abc.io/name":  "test",
+				"xpto.io/name": "custom-name",
+			}, annotations)
+		})
+	})
+
+	t.Run("Disable PDB", func(t *testing.T) {
+		t.Run("PDB Enabled by default", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+			require.NoError(t, err)
+			require.False(t, c.disablePDB("mypool"))
+		})
+		t.Run("Cluster wide PDB disabled", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "true", "mypool2:disable-pdb": "false"}})
+			require.NoError(t, err)
+			require.True(t, c.disablePDB("mypool"))
+		})
+		t.Run("Pool specific PDB disabled", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "false", "mypool:disable-pdb": "true"}})
+			require.NoError(t, err)
+			require.True(t, c.disablePDB("mypool"))
+		})
+		t.Run("Pool specific PDB enabled", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "true", "mypool:disable-pdb": "false"}})
+			require.NoError(t, err)
+			require.False(t, c.disablePDB("mypool"))
+		})
+	})
+
+	t.Run("Cluster Registry", func(t *testing.T) {
+		t.Run("Default empty registry", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+			require.NoError(t, err)
+			require.Equal(t, "", string(c.Registry()))
+		})
+		t.Run("Defined registry", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry": "169.196.0.100:5000/tsuru"}})
+			require.NoError(t, err)
+			require.Equal(t, "169.196.0.100:5000/tsuru", string(c.Registry()))
+		})
+	})
+
+	t.Run("Insecure Cluster Registry", func(t *testing.T) {
+		t.Run("Default secure registry", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+			require.NoError(t, err)
+			require.False(t, c.InsecureRegistry())
+		})
+		t.Run("Insecure registry", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry-insecure": "true"}})
+			require.NoError(t, err)
+			require.True(t, c.InsecureRegistry())
+		})
+		t.Run("Secure registry", func(t *testing.T) {
+			c, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry-insecure": "false"}})
+			require.NoError(t, err)
+			require.False(t, c.InsecureRegistry())
+		})
+	})
 }
