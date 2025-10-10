@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
 type inputJob struct {
@@ -44,6 +45,7 @@ type inputJob struct {
 	Description string            `json:"description"`
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
+	Tags        []string          `json:"tags"`
 
 	DeployOptions *jobTypes.DeployOptions `json:"deployOptions"`
 
@@ -117,6 +119,9 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if pool := r.URL.Query().Get("pool"); pool != "" {
 		filter.Pool = pool
+	}
+	if tags := r.URL.Query()["tag"]; len(tags) > 0 {
+		filter.Tags = tags
 	}
 	contexts := permission.ContextsForPermission(ctx, t, permission.PermJobRead)
 	contexts = append(contexts, permission.ContextsForPermission(ctx, t, permission.PermJobRead)...)
@@ -374,6 +379,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description: ij.Description,
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
+		Tags:        ij.Tags,
 		Spec: jobTypes.JobSpec{
 			ConcurrencyPolicy:     ij.ConcurrencyPolicy,
 			Schedule:              ij.Schedule,
@@ -392,6 +398,20 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 
 	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
 		newJob.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
+	}
+
+	if len(ij.Tags) > 0 {
+		var tagResponse *tagTypes.ValidationResponse
+		tagResponse, err = servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+			Operation: tagTypes.OperationKind_OPERATION_KIND_UPDATE,
+			Tags:      newJob.Tags,
+		})
+		if err != nil {
+			return err
+		}
+		if !tagResponse.Valid {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
+		}
 	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(newJob.Name),
@@ -452,6 +472,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description:   ij.Description,
 		Pool:          ij.Pool,
 		Metadata:      ij.Metadata,
+		Tags:          ij.Tags,
 		DeployOptions: ij.DeployOptions,
 		Spec: jobTypes.JobSpec{
 			ConcurrencyPolicy: ij.ConcurrencyPolicy,
@@ -463,6 +484,18 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
 		j.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
 	}
+
+	tagResponse, err := servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+		Operation: tagTypes.OperationKind_OPERATION_KIND_CREATE,
+		Tags:      j.Tags,
+	})
+	if err != nil {
+		return err
+	}
+	if !tagResponse.Valid {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
+	}
+
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermJobCreate)
 		if err != nil {

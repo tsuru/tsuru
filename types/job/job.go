@@ -27,6 +27,7 @@ type Job struct {
 	Metadata    appTypes.Metadata `json:"metadata"`
 	Pool        string            `json:"pool"`
 	Description string            `json:"description"`
+	Tags        []string          `json:"tags"`
 
 	DeployOptions *DeployOptions `json:"deployOptions"`
 
@@ -66,6 +67,7 @@ type Filter struct {
 	UserOwner string
 	Pool      string
 	Pools     []string
+	Tags      []string
 	Extra     map[string][]string
 }
 
