@@ -303,6 +303,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
@@ -355,6 +356,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      app.Plan{Name: "c2m1", Memory: 1024, CPUMilli: 2000},
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
@@ -398,6 +400,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * 31 2 *",
 					Manual:   true,
@@ -447,6 +450,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Manual:   false,
@@ -494,6 +498,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -536,6 +541,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -577,6 +583,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -731,6 +738,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -780,6 +788,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -828,6 +837,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
@@ -874,6 +884,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
+				Tags:      []string{},
 				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
 					Kind:  provisionTypes.DeployImage,
