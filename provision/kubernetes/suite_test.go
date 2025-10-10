@@ -225,7 +225,7 @@ func (s *S) SetUpTest(c *check.C) {
 		return nil
 	}
 	clust := s.client.GetCluster()
-	c.Assert(clust, check.NotNil)
+	require.NotNil(s.t, clust)
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provision.Cluster, error) {
 		return []provision.Cluster{*clust}, nil
 	}

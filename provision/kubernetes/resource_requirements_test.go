@@ -21,7 +21,7 @@ func TestGetResourceRequirements(t *testing.T) {
 	clusterClient := &ClusterClient{Cluster: &provTypes.Cluster{}}
 	testsCases := []testCase{
 		{
-			test: "Normal factord",
+			test: "Normal factors",
 			factors: requirementsFactors{
 				overCommit: 1,
 			},

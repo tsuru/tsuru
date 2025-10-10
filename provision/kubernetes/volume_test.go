@@ -314,7 +314,6 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistentEphemeral(_ *check.C) {
 		},
 	}
 	require.EqualValues(s.t, expectedVolume, volumes)
-	require.EqualValues(s.t, expectedVolume, volumes)
 	require.EqualValues(s.t, expectedMount, mounts)
 	_, err = s.client.CoreV1().PersistentVolumes().Get(context.TODO(), volumeName(v.Name), metav1.GetOptions{})
 	require.True(s.t, k8sErrors.IsNotFound(err))
