@@ -172,3 +172,64 @@ func (s *S) TestPDBLabels(c *check.C) {
 		Prefix: "tsuru.io/",
 	})
 }
+
+func (s *S) TestJobLabels(c *check.C) {
+	job := provisiontest.NewFakeJob("my-job", "test-pool", "test-team")
+	job.Spec.Manual = true
+	ls := provision.JobLabels(context.TODO(), job)
+
+	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
+		Labels: map[string]string{
+			"is-tsuru":   "true",
+			"job-name":   "my-job",
+			"job-team":   "test-team",
+			"job-pool":   "test-pool",
+			"is-job":     "true",
+			"job-manual": "true",
+			"is-service": "true",
+			"is-build":   "false",
+		},
+		RawLabels: map[string]string{
+			"app.kubernetes.io/name":       "tsuru-job",
+			"app.kubernetes.io/instance":   "my-job",
+			"app.kubernetes.io/component":  "job",
+			"app.kubernetes.io/managed-by": "tsuru",
+		},
+		Prefix: "tsuru.io/",
+	})
+}
+
+func (s *S) TestJobLabelsWithTags(c *check.C) {
+	job := provisiontest.NewFakeJob("my-job", "test-pool", "test-team")
+	job.Tags = []string{
+		"tag1=1",
+		"tag2",
+		"space tag",
+		"weird %$! tag",
+		"tag3=a=b=c obla di obla da",
+	}
+	ls := provision.JobLabels(context.TODO(), job)
+
+	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
+		Labels: map[string]string{
+			"is-tsuru":        "true",
+			"job-name":        "my-job",
+			"job-team":        "test-team",
+			"job-pool":        "test-pool",
+			"is-job":          "true",
+			"job-manual":      "false",
+			"is-service":      "true",
+			"is-build":        "false",
+			"custom-tag-tag1": "1",
+			"custom-tag-tag2": "",
+			"custom-tag-tag3": "a=b=c obla di obla da",
+		},
+		RawLabels: map[string]string{
+			"app.kubernetes.io/name":       "tsuru-job",
+			"app.kubernetes.io/instance":   "my-job",
+			"app.kubernetes.io/component":  "job",
+			"app.kubernetes.io/managed-by": "tsuru",
+		},
+		Prefix: "tsuru.io/",
+	})
+}
