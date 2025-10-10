@@ -9,9 +9,11 @@ import (
 	"context"
 	"sort"
 	"strconv"
+	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kr/pretty"
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/config"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -226,7 +228,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	cpu := resource.MustParse("500m")
@@ -241,7 +243,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 					MaxUnits:   2,
 					AverageCPU: "500m",
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: autoscalingv2.MetricTarget{
 				Type:         autoscalingv2.AverageValueMetricType,
@@ -255,7 +257,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 					MaxUnits:   2,
 					AverageCPU: "50%",
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: autoscalingv2.MetricTarget{
 				Type:         autoscalingv2.AverageValueMetricType,
@@ -269,7 +271,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 					MaxUnits:   2,
 					AverageCPU: "50",
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: autoscalingv2.MetricTarget{
 				Type:         autoscalingv2.AverageValueMetricType,
@@ -285,7 +287,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 					MaxUnits:   2,
 					AverageCPU: "500m",
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: autoscalingv2.MetricTarget{
 				Type:               autoscalingv2.UtilizationMetricType,
@@ -301,7 +303,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 					MaxUnits:   2,
 					AverageCPU: "50%",
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: autoscalingv2.MetricTarget{
 				Type:               autoscalingv2.UtilizationMetricType,
@@ -317,7 +319,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 					MaxUnits:   2,
 					AverageCPU: "50",
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: autoscalingv2.MetricTarget{
 				Type:               autoscalingv2.UtilizationMetricType,
@@ -329,11 +331,11 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		tt.scenario()
 
 		ns, err := s.client.AppNamespace(context.TODO(), a)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		hpa, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		expected := testHPAWithTarget(tt.expectedTarget)
-		c.Assert(hpa, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(hpa, expected)))
+		require.EqualValues(s.t, expected, hpa, "diff", pretty.Diff(hpa, expected))
 	}
 }
 
@@ -344,7 +346,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	schedulesList := []provTypes.AutoScaleSchedule{
@@ -381,7 +383,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 					AverageCPU: "500m",
 					Schedules:  schedulesList[:1],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			cpuTrigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -400,7 +402,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 					AverageCPU: "50%",
 					Schedules:  schedulesList[:2],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			cpuTrigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -419,7 +421,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 					AverageCPU: "50",
 					Schedules:  schedulesList[:3],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			cpuTrigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -439,7 +441,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 					AverageCPU: "500m",
 					Schedules:  schedulesList[:3],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			cpuTrigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -457,7 +459,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 					MaxUnits:  2,
 					Schedules: schedulesList[:1],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			cpuTrigger:    nil,
 			scheduleSpecs: schedulesList[:1],
@@ -467,11 +469,11 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		tt.scenario()
 
 		ns, err := s.client.AppNamespace(context.TODO(), a)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs, []provTypes.AutoScalePrometheus{}, "default")
-		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+		require.EqualValues(s.t, expected, scaledObject, "diff", pretty.Diff(scaledObject, expected))
 	}
 }
 
@@ -486,7 +488,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	prometheusList := []provTypes.AutoScalePrometheus{
@@ -528,7 +530,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 					AverageCPU: "500m",
 					Prometheus: prometheusList[:1],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -547,7 +549,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 					AverageCPU: "50%",
 					Prometheus: prometheusList[:2],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -566,7 +568,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 					AverageCPU: "50",
 					Prometheus: prometheusList[:3],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -586,7 +588,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 					AverageCPU: "500m",
 					Prometheus: prometheusList[:3],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			trigger: &kedav1alpha1.ScaleTriggers{
 				Type:       "cpu",
@@ -604,7 +606,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 					MaxUnits:   2,
 					Prometheus: prometheusList[:1],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			trigger:         nil,
 			prometheusSpecs: prometheusList[:1],
@@ -618,7 +620,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 						prometheusList[3],
 					},
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			trigger: &kedav1alpha1.ScaleTriggers{
 				Type: "prometheus",
@@ -640,11 +642,11 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		tt.scenario()
 
 		ns, err := s.client.AppNamespace(context.TODO(), a)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		expected := testKEDAScaledObject(tt.trigger, []provTypes.AutoScaleSchedule{}, tt.prometheusSpecs, "default")
-		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+		require.EqualValues(s.t, expected, scaledObject, "diff", pretty.Diff(scaledObject, expected))
 	}
 }
 
@@ -656,7 +658,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	prometheusList := []provTypes.AutoScalePrometheus{
@@ -685,13 +687,13 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 					MaxUnits:   2,
 					Prometheus: prometheusList[:1],
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			prometheusSpecs: prometheusList[:1],
 			assertion: func(err error, scaledObject *kedav1alpha1.ScaledObject) {
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				expected := testKEDAScaledObject(nil, []provTypes.AutoScaleSchedule{}, prometheusList[:1], "default")
-				c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+				require.EqualValues(s.t, expected, scaledObject, "diff", pretty.Diff(scaledObject, expected))
 			},
 		},
 		{
@@ -703,12 +705,12 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 					Prometheus: prometheusList[1:],
 				})
 				expectedError := config.ErrKeyNotFound{Key: "kubernetes:keda:prometheus-address-template"}
-				c.Assert(err.Error(), check.Equals, expectedError.Error())
+				require.ErrorContains(s.t, err, expectedError.Error())
 			},
 			prometheusSpecs: prometheusList[:1],
 			assertion: func(err error, scaledObject *kedav1alpha1.ScaledObject) {
-				c.Assert(err.Error(), check.Equals, "scaledobjects.keda \"myapp-web\" not found")
-				c.Assert(scaledObject, check.IsNil)
+				require.ErrorContains(s.t, err, `scaledobjects.keda "myapp-web" not found`)
+				require.Nil(s.t, scaledObject)
 			},
 		},
 	}
@@ -716,7 +718,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 		tt.scenario()
 
 		ns, err := s.client.AppNamespace(context.TODO(), a)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		tt.assertion(err, scaledObject)
 		s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Delete(context.TODO(), "myapp-web", metav1.DeleteOptions{})
@@ -735,14 +737,14 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 	}
 
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	tests := []struct {
 		scenario           func()
@@ -757,7 +759,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[1], nil)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web",
@@ -766,10 +768,10 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[2], nil)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 				err = s.p.ToggleRoutable(context.TODO(), a, versions[2], true)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedDeployment: "myapp-web",
 			expectedVersion:    1,
@@ -777,7 +779,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[3], nil)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web",
@@ -786,7 +788,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.Stop(context.TODO(), a, "web", versions[0], &bytes.Buffer{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web-v3",
@@ -795,7 +797,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.Stop(context.TODO(), a, "web", versions[2], &bytes.Buffer{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web-v2",
@@ -804,7 +806,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.Stop(context.TODO(), a, "web", versions[1], &bytes.Buffer{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web-v4",
@@ -813,20 +815,20 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 	}
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	for i, tt := range tests {
 		c.Logf("test %d", i)
 		tt.scenario()
 
 		hpas, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		for _, hpa := range hpas.Items {
 			dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), hpa.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 			if dep.Spec.Replicas != nil && *dep.Spec.Replicas > 0 {
-				c.Assert(hpa.Spec.ScaleTargetRef.Name, check.Equals, tt.expectedDeployment)
-				c.Assert(hpa.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(tt.expectedVersion))
+				require.Equal(s.t, tt.expectedDeployment, hpa.Spec.ScaleTargetRef.Name)
+				require.Equal(s.t, strconv.Itoa(tt.expectedVersion), hpa.Labels["tsuru.io/app-version"])
 			}
 		}
 	}
@@ -843,7 +845,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		})
 	}
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
@@ -866,7 +868,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 			},
 		},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	tests := []struct {
 		scenario           func()
@@ -881,7 +883,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[1], nil)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web",
@@ -890,10 +892,10 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[2], nil)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 				err = s.p.ToggleRoutable(context.TODO(), a, versions[2], true)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedDeployment: "myapp-web",
 			expectedVersion:    1,
@@ -901,7 +903,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[3], nil)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web",
@@ -910,7 +912,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.Stop(context.TODO(), a, "web", versions[0], &bytes.Buffer{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web-v3",
@@ -919,7 +921,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.Stop(context.TODO(), a, "web", versions[2], &bytes.Buffer{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web-v2",
@@ -928,7 +930,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 		{
 			scenario: func() {
 				err = s.p.Stop(context.TODO(), a, "web", versions[1], &bytes.Buffer{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				wait()
 			},
 			expectedDeployment: "myapp-web-v4",
@@ -937,20 +939,20 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 	}
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	for i, tt := range tests {
 		c.Logf("test %d", i)
 		tt.scenario()
 
 		hpas, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		for _, hpa := range hpas.Items {
 			dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), hpa.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 			if dep.Spec.Replicas != nil && *dep.Spec.Replicas > 0 {
-				c.Assert(hpa.Spec.ScaleTargetRef.Name, check.Equals, tt.expectedDeployment)
-				c.Assert(hpa.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(tt.expectedVersion))
+				require.Equal(s.t, tt.expectedDeployment, hpa.Spec.ScaleTargetRef.Name)
+				require.Equal(s.t, strconv.Itoa(tt.expectedVersion), hpa.Labels["tsuru.io/app-version"])
 			}
 		}
 	}
@@ -963,7 +965,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
@@ -971,13 +973,13 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 		MaxUnits:   20,
 		AverageCPU: "500m",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	existingPDB, err := s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	pdb_expected := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(a, "web"),
@@ -1000,13 +1002,13 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 			},
 		},
 	}
-	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
+	require.EqualValues(s.t, pdb_expected, existingPDB)
 	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	existingPDB, err = s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	pdb_expected = &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(a, "web"),
@@ -1029,7 +1031,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 			},
 		},
 	}
-	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
+	require.EqualValues(s.t, pdb_expected, existingPDB)
 }
 
 func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
@@ -1039,7 +1041,7 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
@@ -1063,17 +1065,17 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 			},
 		},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 }
 
 func (s *S) TestProvisionerGetAutoScale(c *check.C) {
@@ -1084,10 +1086,10 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 		"worker": {"python worker.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	err = s.p.AddUnits(context.TODO(), a, 1, "worker", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
@@ -1096,7 +1098,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 		AverageCPU: "500m",
 		Process:    "web",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   2,
@@ -1104,14 +1106,14 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 		AverageCPU: "200m",
 		Process:    "worker",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	scales, err := s.p.GetAutoScale(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	sort.Slice(scales, func(i, j int) bool {
 		return scales[i].Process < scales[j].Process
 	})
-	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
+	require.EqualValues(s.t, []provTypes.AutoScaleSpec{
 		{
 			MinUnits:   1,
 			MaxUnits:   2,
@@ -1140,7 +1142,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 				},
 			},
 		},
-	})
+	}, scales)
 }
 
 func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
@@ -1151,10 +1153,10 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 		"worker": {"python worker.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	err = s.p.AddUnits(context.TODO(), a, 1, "worker", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
@@ -1171,7 +1173,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 			},
 		},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   2,
@@ -1194,23 +1196,23 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 			},
 		},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-web"), metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-worker"), metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	scales, err := s.p.GetAutoScale(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	sort.Slice(scales, func(i, j int) bool {
 		return scales[i].Process < scales[j].Process
 	})
-	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
+	require.EqualValues(s.t, []provTypes.AutoScaleSpec{
 		{
 			MinUnits:   1,
 			MaxUnits:   2,
@@ -1255,7 +1257,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 				},
 			},
 		},
-	})
+	}, scales)
 }
 
 func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
@@ -1270,10 +1272,10 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 		"worker": {"python worker.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	err = s.p.AddUnits(context.TODO(), a, 1, "worker", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
@@ -1296,7 +1298,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 			},
 		},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   2,
@@ -1317,23 +1319,23 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 			},
 		},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-web"), metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-worker"), metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	scales, err := s.p.GetAutoScale(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	sort.Slice(scales, func(i, j int) bool {
 		return scales[i].Process < scales[j].Process
 	})
-	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
+	require.EqualValues(s.t, []provTypes.AutoScaleSpec{
 		{
 			MinUnits:   1,
 			MaxUnits:   2,
@@ -1384,7 +1386,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 				},
 			},
 		},
-	})
+	}, scales)
 }
 
 func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
@@ -1394,11 +1396,11 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.Stop(context.TODO(), a, "web", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	autoScaleSpec := provTypes.AutoScaleSpec{
 		MinUnits:   5,
@@ -1422,24 +1424,24 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
 		},
 	}
 	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(scaledObject.GetAnnotations(), check.DeepEquals, map[string]string{AnnotationKEDAPausedReplicas: "0"})
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, map[string]string{AnnotationKEDAPausedReplicas: "0"}, scaledObject.GetAnnotations())
 
 	err = s.p.Start(context.TODO(), a, "web", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	scaledObject, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(scaledObject.GetAnnotations(), check.DeepEquals, map[string]string(nil))
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, map[string]string(nil), scaledObject.GetAnnotations())
 }
 
 func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
@@ -1449,11 +1451,11 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.Stop(context.TODO(), a, "web", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	autoScaleSpec := provTypes.AutoScaleSpec{
 		MinUnits:   5,
@@ -1484,15 +1486,15 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
 		},
 	}
 	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	scaleDown := scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior.ScaleDown
-	c.Assert(*scaleDown.StabilizationWindowSeconds, check.DeepEquals, int32(300))
-	c.Assert(scaleDown.Policies[0].Value, check.Equals, int32(50))
-	c.Assert(scaleDown.Policies[1].Value, check.Equals, int32(2))
+	require.Equal(s.t, int32(300), *scaleDown.StabilizationWindowSeconds)
+	require.Equal(s.t, int32(50), scaleDown.Policies[0].Value)
+	require.Equal(s.t, int32(2), scaleDown.Policies[1].Value)
 }
 
 func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
@@ -1502,7 +1504,7 @@ func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 		"web": {"cm1"},
 	})
 	err := s.p.AddUnits(context.Background(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	vpaUpdateOff := vpav1.UpdateModeOff
 
@@ -1522,7 +1524,7 @@ func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 					ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
 				}
 				_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedVPA: nil,
 		},
@@ -1579,14 +1581,14 @@ func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 			tt.scenario()
 		}
 		err := ensureVPAIfEnabled(context.TODO(), s.clusterClient, a, "web")
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		ns, err := s.client.AppNamespace(context.TODO(), a)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		vpa, err := s.client.VPAClientset.AutoscalingV1().VerticalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		if tt.expectedVPA == nil {
-			c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+			require.True(s.t, k8sErrors.IsNotFound(err))
 		} else {
-			c.Assert(vpa, check.DeepEquals, tt.expectedVPA)
+			require.EqualValues(s.t, tt.expectedVPA, vpa)
 		}
 	}
 }
@@ -1595,11 +1597,11 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	rec, err := s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(rec, check.IsNil)
+	require.NoError(s.t, err)
+	require.Nil(s.t, rec)
 
 	vpa := &vpav1.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1638,21 +1640,21 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 		},
 	}
 	_, err = s.client.VPAClientset.AutoscalingV1().VerticalPodAutoscalers(ns).Create(context.TODO(), vpa, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	rec, err = s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(rec, check.IsNil)
+	require.NoError(s.t, err)
+	require.Nil(s.t, rec)
 
 	vpaCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
 	}
 	_, err = s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	rec, err = s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(rec, check.DeepEquals, []provTypes.RecommendedResources{
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, []provTypes.RecommendedResources{
 		{
 			Process: "web",
 			Recommendations: []provTypes.RecommendedProcessResources{
@@ -1662,7 +1664,7 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 				{Type: "upperBound", CPU: "103m", Memory: "96Mi"},
 			},
 		},
-	})
+	}, rec)
 }
 
 func (s *S) TestEnsureHPA(c *check.C) {
@@ -1672,7 +1674,7 @@ func (s *S) TestEnsureHPA(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	cpu := resource.MustParse("80000m")
@@ -1683,16 +1685,16 @@ func (s *S) TestEnsureHPA(c *check.C) {
 	})
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	newHPA, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(newHPA, check.DeepEquals, initialHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, initialHPA)))
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, initialHPA, newHPA, "diff", pretty.Diff(newHPA, initialHPA))
 }
 
 func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
@@ -1702,7 +1704,7 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	a.Plan.CPUMilli = 2000
@@ -1715,12 +1717,12 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 	})
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	expectedHPA := testHPAWithTarget(autoscalingv2.MetricTarget{
 		Type:               autoscalingv2.UtilizationMetricType,
@@ -1728,15 +1730,15 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 	})
 
 	newHPA, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(newHPA, check.DeepEquals, expectedHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, expectedHPA)))
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, expectedHPA, newHPA, "diff", pretty.Diff(newHPA, expectedHPA))
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	newHPA, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(newHPA, check.DeepEquals, expectedHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, expectedHPA)))
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, expectedHPA, newHPA, "diff", pretty.Diff(newHPA, expectedHPA))
 }
 
 func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
@@ -1746,7 +1748,7 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	a.Plan.CPUMilli = 2000
@@ -1759,84 +1761,70 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 	})
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
-	c.Assert(err, check.ErrorMatches, `autoscale cpu value cannot be greater than 95%`)
+	require.ErrorContains(s.t, err, "autoscale cpu value cannot be greater than 95%")
 }
 
-func (s *S) TestValidateBehaviorPercentageNoFail(c *check.C) {
-	tests := []struct {
-		params             *provTypes.ScaleDownPolicy
-		defaultValue       int32
-		expectedPercentage int32
-	}{
-		{
-			params:             nil,
-			defaultValue:       50,
-			expectedPercentage: 50,
-		},
-		{
-			params:             &provTypes.ScaleDownPolicy{},
-			defaultValue:       10,
-			expectedPercentage: 10,
-		},
-		{
-			params: &provTypes.ScaleDownPolicy{
-				PercentagePolicyValue: toInt32Ptr(20),
-			},
-			defaultValue:       10,
-			expectedPercentage: 20,
-		},
-		{
-			params: &provTypes.ScaleDownPolicy{
-				StabilizationWindow: toInt32Ptr(300),
-			},
-			defaultValue:       10,
-			expectedPercentage: 10,
-		},
-	}
-	for _, tt := range tests {
-		percentage := getBehaviorPercentageNoFail(tt.params, tt.defaultValue)
-		c.Assert(percentage, check.Equals, tt.expectedPercentage)
-	}
+func TestValidateBehaviorPercentageNoFail(t *testing.T) {
+	t.Run("nil params returns default value", func(t *testing.T) {
+		defaultValue := int32(50)
+		got := getBehaviorPercentageNoFail(nil, defaultValue)
+		require.Equal(t, defaultValue, got)
+	})
+
+	t.Run("empty ScaleDownPolicy returns default value", func(t *testing.T) {
+		defaultValue := int32(10)
+		got := getBehaviorPercentageNoFail(&provTypes.ScaleDownPolicy{}, defaultValue)
+		require.Equal(t, defaultValue, got)
+	})
+
+	t.Run("PercentagePolicyValue set returns its value", func(t *testing.T) {
+		val := int32(20)
+		policy := &provTypes.ScaleDownPolicy{PercentagePolicyValue: &val}
+		defaultValue := int32(10)
+		got := getBehaviorPercentageNoFail(policy, defaultValue)
+		require.Equal(t, val, got)
+	})
+
+	t.Run("StabilizationWindow set, PercentagePolicyValue nil returns default value", func(t *testing.T) {
+		win := int32(300)
+		policy := &provTypes.ScaleDownPolicy{StabilizationWindow: &win}
+		defaultValue := int32(10)
+		got := getBehaviorPercentageNoFail(policy, defaultValue)
+		require.Equal(t, defaultValue, got)
+	})
 }
 
-func (s *S) TestValidateBehaviorUnitsNoFail(c *check.C) {
-	tests := []struct {
-		params        *provTypes.ScaleDownPolicy
-		defaultValue  int32
-		expectedUnits int32
-	}{
-		{
-			params:        nil,
-			defaultValue:  2,
-			expectedUnits: 2,
-		},
-		{
-			params:        &provTypes.ScaleDownPolicy{},
-			defaultValue:  10,
-			expectedUnits: 10,
-		},
-		{
-			params: &provTypes.ScaleDownPolicy{
-				UnitsPolicyValue: toInt32Ptr(20),
-			},
-			defaultValue:  10,
-			expectedUnits: 20,
-		},
-		{
-			params: &provTypes.ScaleDownPolicy{
-				StabilizationWindow: toInt32Ptr(300),
-			},
-			defaultValue:  10,
-			expectedUnits: 10,
-		},
-	}
-	for _, tt := range tests {
-		units := getBehaviorUnitsNoFail(tt.params, tt.defaultValue)
-		c.Assert(units, check.Equals, tt.expectedUnits)
-	}
+func TestValidateBehaviorUnitsNoFail(t *testing.T) {
+	t.Run("nil params returns default value", func(t *testing.T) {
+		defaultValue := int32(2)
+		got := getBehaviorUnitsNoFail(nil, defaultValue)
+		require.Equal(t, defaultValue, got)
+	})
+
+	t.Run("empty ScaleDownPolicy returns default value", func(t *testing.T) {
+		defaultValue := int32(10)
+		got := getBehaviorUnitsNoFail(&provTypes.ScaleDownPolicy{}, defaultValue)
+		require.Equal(t, defaultValue, got)
+	})
+
+	t.Run("UnitsPolicyValue set returns its value", func(t *testing.T) {
+		val := int32(20)
+		policy := &provTypes.ScaleDownPolicy{UnitsPolicyValue: &val}
+		defaultValue := int32(10)
+		got := getBehaviorUnitsNoFail(policy, defaultValue)
+		require.Equal(t, val, got)
+	})
+
+	t.Run("StabilizationWindow set, UnitsPolicyValue nil returns default value", func(t *testing.T) {
+		win := int32(300)
+		policy := &provTypes.ScaleDownPolicy{StabilizationWindow: &win}
+		defaultValue := int32(10)
+		got := getBehaviorUnitsNoFail(policy, defaultValue)
+		require.Equal(t, defaultValue, got)
+	})
 }

@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kr/pretty"
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -57,7 +57,7 @@ import (
 	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
-func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
+func (s *S) prepareMultiCluster(_ *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
 	cluster1 := &provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"https://clusteraddr1"},
@@ -66,7 +66,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		CustomData:  map[string]string{},
 	}
 	clusterClient1, err := NewClusterClient(cluster1)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	client1 := &kTesting.ClientWrapper{
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
@@ -86,7 +86,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		CustomData:  map[string]string{},
 	}
 	clusterClient2, err := NewClusterClient(cluster2)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	client2 := &kTesting.ClientWrapper{
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
@@ -106,7 +106,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		CustomData:  map[string]string{},
 	}
 	clusterClient3, err := NewClusterClient(cluster2)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	client3 := &kTesting.ClientWrapper{
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
@@ -149,7 +149,7 @@ func (s *S) TestUnits(c *check.C) {
 	_, err := s.client.CoreV1().Pods("default").Create(context.TODO(), &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
 		Name: "non-app-pod",
 	}}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	s.client.PrependReactor("create", "services", s.mock.ServiceWithPortReaction(c, []apiv1.ServicePort{
@@ -161,28 +161,28 @@ func (s *S) TestUnits(c *check.C) {
 		"web":    {"python", "myapp.py"},
 		"worker": {"myworker"},
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 2)
 	sort.Slice(units, func(i, j int) bool {
 		return units[i].ProcessName < units[j].ProcessName
 	})
 	for i, u := range units {
 		splittedName := strings.Split(u.ID, "-")
-		c.Assert(splittedName, check.HasLen, 5)
-		c.Assert(splittedName[0], check.Equals, "myapp")
+		require.Len(s.t, splittedName, 5)
+		require.Equal(s.t, splittedName[0], "myapp")
 		units[i].ID = ""
 		units[i].Name = ""
-		c.Assert(units[i].CreatedAt, check.Not(check.IsNil))
+		require.NotNil(s.t, units[i].CreatedAt)
 		units[i].CreatedAt = nil
 	}
 	restarts := int32(0)
 	ready := false
-	c.Assert(units, check.DeepEquals, []provTypes.Unit{
+	require.EqualValues(s.t, []provTypes.Unit{
 		{
 			AppName:     "myapp",
 			ProcessName: "web",
@@ -205,7 +205,7 @@ func (s *S) TestUnits(c *check.C) {
 			Restarts:    &restarts,
 			Ready:       &ready,
 		},
-	})
+	}, units)
 }
 
 func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
@@ -240,7 +240,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 						HostIP: fmt.Sprintf("192.168.99.%d", i),
 					},
 				}, metav1.CreateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			})
 		}
 	}
@@ -257,7 +257,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Type: apiv1.ServiceTypeNodePort,
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.CoreV1().Services("default").Create(context.TODO(), &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "otherapp-web",
@@ -271,16 +271,16 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Type: apiv1.ServiceTypeNodePort,
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	units, err := s.p.Units(context.TODO(), a1, a2)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 4)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 4)
 	sort.Slice(units, func(i, j int) bool {
 		return units[i].ID < units[j].ID
 	})
 	restarts := int32(0)
 	ready := false
-	c.Assert(units, check.DeepEquals, []provTypes.Unit{
+	require.EqualValues(s.t, []provTypes.Unit{
 		{
 			ID:          "myapp-1",
 			Name:        "myapp-1",
@@ -333,7 +333,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Ready:       &ready,
 			CreatedAt:   &t0,
 		},
-	})
+	}, units)
 }
 
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
@@ -349,31 +349,31 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 2)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			if p.Labels["tsuru.io/app-process"] == "worker" {
 				deadline := int64(10)
 				p.Spec.ActiveDeadlineSeconds = &deadline
 				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			}
 		}
 	})
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, "web", units[0].ProcessName)
 }
 
 func (s *S) TestUnitsSkipEvicted(c *check.C) {
@@ -389,31 +389,31 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 2)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			if p.Labels["tsuru.io/app-process"] == "worker" {
 				p.Status.Phase = apiv1.PodFailed
 				p.Status.Reason = "Evicted"
 				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			}
 		}
 	})
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, "web", units[0].ProcessName)
 }
 
 func (s *S) TestUnitsStarting(c *check.C) {
@@ -428,17 +428,17 @@ func (s *S) TestUnitsStarting(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			if p.Labels["tsuru.io/app-process"] == "web" {
@@ -449,14 +449,14 @@ func (s *S) TestUnitsStarting(c *check.C) {
 					},
 				}
 				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			}
 		}
 	})
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusStarting)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.EqualValues(s.t, provTypes.UnitStatusStarting, units[0].Status)
 }
 
 func (s *S) TestUnitsStartingError(c *check.C) {
@@ -471,17 +471,17 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			if p.Labels["tsuru.io/app-process"] == "web" {
@@ -497,16 +497,15 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 					},
 				}
 				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			}
 		}
 	})
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusError)
-	c.Assert(units[0].StatusReason, check.DeepEquals, "OOMKilled")
-
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.EqualValues(s.t, provTypes.UnitStatusError, units[0].Status)
+	require.EqualValues(s.t, "OOMKilled", units[0].StatusReason)
 }
 
 func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
@@ -521,17 +520,17 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			if p.Labels["tsuru.io/app-process"] == "web" {
@@ -552,16 +551,15 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 					},
 				}
 				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			}
 		}
 	})
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusError)
-	c.Assert(units[0].StatusReason, check.DeepEquals, "OOMKilled")
-
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, provTypes.UnitStatusError, units[0].Status)
+	require.Equal(s.t, "OOMKilled", units[0].StatusReason)
 }
 
 func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
@@ -576,17 +574,17 @@ func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, podlist.Items, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			if p.Labels["tsuru.io/app-process"] == "web" {
@@ -608,21 +606,20 @@ func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
 					},
 				}
 				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			}
 		}
 	})
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusError)
-	c.Assert(units[0].StatusReason, check.DeepEquals, "exitCode: 1")
-
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, provTypes.UnitStatusError, units[0].Status)
+	require.Equal(s.t, "exitCode: 1", units[0].StatusReason)
 }
 
-func (s *S) TestUnitsEmpty(c *check.C) {
+func (s *S) TestUnitsEmpty(_ *check.C) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		require.Equal(s.t, "tsuru.io/app-name in (myapp)", r.FormValue("labelSelector"))
 		output := `{"items": []}`
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(output))
@@ -630,16 +627,16 @@ func (s *S) TestUnitsEmpty(c *check.C) {
 	defer srv.Close()
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
 }
 
-func (s *S) TestUnitsNoApps(c *check.C) {
+func (s *S) TestUnitsNoApps(_ *check.C) {
 	units, err := s.p.Units(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
 }
 
 func (s *S) TestAddUnits(c *check.C) {
@@ -649,28 +646,28 @@ func (s *S) TestAddUnits(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 3)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 3)
 }
 
 func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Destroy(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	version := newSuccessfulVersion(c, a, map[string][]string{
 		"web": {"python", "myapp.py"},
 	})
 	a.Deploys = 1
 	err = s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
@@ -680,17 +677,17 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 3)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 3)
 	err = s.p.RemoveUnits(context.TODO(), a, 2, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
 }
 
 func (s *S) TestRemoveUnits_SetUnitsToZero(c *check.C) {
@@ -700,28 +697,28 @@ func (s *S) TestRemoveUnits_SetUnitsToZero(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 5, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 5)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 5)
 	var buffer bytes.Buffer
 	err = s.p.RemoveUnits(context.TODO(), a, 5, "web", version, &buffer)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
-	c.Assert(buffer.String(), check.Matches, "(?s).*---- Calling app stop internally as the number of units is zero ----.*")
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
+	require.Contains(s.t, buffer.String(), "---- Calling app stop internally as the number of units is zero ----")
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep, check.NotNil)
-	c.Assert(dep.Labels["tsuru.io/is-stopped"], check.Equals, "true")
+	require.NoError(s.t, err)
+	require.NotNil(s.t, dep)
+	require.Equal(s.t, "true", dep.Labels["tsuru.io/is-stopped"])
 	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: "tsuru.io/app-name=myapp"})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(svcs.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, svcs.Items, 2)
 }
 
 func (s *S) TestRestart(c *check.C) {
@@ -731,32 +728,32 @@ func (s *S) TestRestart(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
 	id := units[0].ID
 	err = s.p.Restart(context.TODO(), a, "", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(units[0].ID, check.Not(check.Equals), id)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.NotEqual(s.t, id, units[0].ID)
 }
 
 func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Destroy(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	version := newSuccessfulVersion(c, a, map[string][]string{
 		"web": {"python", "myapp.py"},
 	})
 	a.Deploys = 1
 	err = s.p.Restart(context.TODO(), a, "", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScaledToZero(c *check.C) {
@@ -773,16 +770,16 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{
 		App:     a,
 		Version: v1,
 		Event:   evt1,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = evt1.Done(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	wait()
 
@@ -796,7 +793,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{
 		App:              a,
@@ -804,32 +801,32 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 		Event:            evt2,
 		PreserveVersions: true,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = evt2.Done(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	wait()
 
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 2)
 
 	err = s.p.RemoveUnits(context.TODO(), a, 1, "", v1, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(units[0].Version, check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, 2, units[0].Version)
 
 	err = s.p.Restart(context.TODO(), a, "", nil, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(units[0].Version, check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, 2, units[0].Version)
 }
 
 func (s *S) TestStopStart(c *check.C) {
@@ -839,31 +836,31 @@ func (s *S) TestStopStart(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	err = s.p.Stop(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(svcs.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, svcs.Items, 2)
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	svcs, err = s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(svcs.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, svcs.Items, 2)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
@@ -875,33 +872,33 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.Destroy(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 0)
 	services, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(services.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, services.Items, 0)
 	serviceAccounts, err := s.client.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(serviceAccounts.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, serviceAccounts.Items, 0)
 	pdbList, err := s.client.PolicyV1().PodDisruptionBudgets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pdbList.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pdbList.Items, 0)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(appList.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 0)
 }
 
 func (s *S) TestProvisionerDestroyVersion(c *check.C) {
@@ -914,13 +911,13 @@ func (s *S) TestProvisionerDestroyVersion(c *check.C) {
 		Allowed:     event.Allowed(permission.PermAppDeploy),
 		DisableLock: true,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData1 := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version1 := newCommittedVersion(c, a, customData1)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: deployEvent})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	wait()
 
 	customData2 := map[string][]string{
@@ -928,35 +925,35 @@ func (s *S) TestProvisionerDestroyVersion(c *check.C) {
 	}
 	version2 := newCommittedVersion(c, a, customData2)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: deployEvent, PreserveVersions: true})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	wait()
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	services, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(services.Items, check.HasLen, 4)
+	require.NoError(s.t, err)
+	require.Len(s.t, services.Items, 4)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web-v2", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.DestroyVersion(context.TODO(), a, version2)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 1)
 	services, err = s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(services.Items, check.HasLen, 3)
+	require.NoError(s.t, err)
+	require.Len(s.t, services.Items, 3)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web-v2", metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	serviceAccounts, err := s.client.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(serviceAccounts.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, serviceAccounts.Items, 1)
 	pdbList, err := s.client.PolicyV1().PodDisruptionBudgets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pdbList.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pdbList.Items, 1)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(appList.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
 }
 
 func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
@@ -968,17 +965,17 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web":   {"run", "mycmd", "arg1"},
 		"other": {"my", "other", "cmd"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	addrs, err := s.p.RoutableAddresses(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	sort.Slice(addrs, func(i, j int) bool {
 		return addrs[i].Prefix < addrs[j].Prefix
 	})
@@ -1028,7 +1025,7 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 			},
 		},
 	}
-	c.Assert(addrs, check.DeepEquals, expected)
+	require.EqualValues(s.t, expected, addrs)
 }
 
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
@@ -1040,16 +1037,16 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	addrs, err := s.p.RoutableAddresses(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	sort.Slice(addrs, func(i, j int) bool {
 		return addrs[i].Prefix < addrs[j].Prefix
 	})
@@ -1081,7 +1078,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 			},
 		},
 	}
-	c.Assert(addrs, check.DeepEquals, expected)
+	require.EqualValues(s.t, expected, addrs)
 }
 
 func (s *S) TestDeploy(c *check.C) {
@@ -1093,62 +1090,62 @@ func (s *S) TestDeploy(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run mycmd arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 1)
+	require.Equal(s.t, "myapp-web", deps.Items[0].Name)
 	containers := deps.Items[0].Spec.Template.Spec.Containers
-	c.Assert(containers, check.HasLen, 1)
-	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+	require.Len(s.t, containers, 1)
+	require.EqualValues(s.t, []string{
 		"/bin/sh",
 		"-lc",
 		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
-	})
+	}, containers[0].Command[len(containers[0].Command)-3:])
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(units, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
+	require.EqualValues(s.t, tsuruv1.AppSpec{
 		NamespaceName:        "default",
 		ServiceAccountName:   "app-myapp",
 		Deployments:          map[string][]string{"web": {"myapp-web"}},
 		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
-	})
+	}, appList.Items[0].Spec)
 }
 
 func (s *S) TestDeployCreatesAppCR(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Destroy(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
@@ -1160,11 +1157,11 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		new := atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
-		c.Assert(ok, check.Equals, true)
+		require.True(s.t, ok)
 		if new == 2 {
-			c.Assert(ns.ObjectMeta.Name, check.Equals, "tsuru-test-default")
+			require.Equal(s.t, "tsuru-test-default", ns.ObjectMeta.Name)
 		} else {
-			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
+			require.Equal(s.t, s.client.Namespace(), ns.ObjectMeta.Name)
 		}
 		return false, nil, nil
 	})
@@ -1174,26 +1171,26 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	wait()
-	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(3))
+	require.Equal(s.t, int32(3), atomic.LoadInt32(&counter))
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
+	require.EqualValues(s.t, tsuruv1.AppSpec{
 		NamespaceName:        "tsuru-test-default",
 		ServiceAccountName:   "app-myapp",
 		Deployments:          map[string][]string{"web": {"myapp-web"}},
 		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
-	})
+	}, appList.Items[0].Spec)
 }
 
 func (s *S) TestInternalAddresses(c *check.C) {
@@ -1233,24 +1230,24 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web":  {"run", "mycmd", "web"},
 		"jobs": {"run", "mycmd", "jobs"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
-	c.Assert(addrs, check.DeepEquals, []appTypes.AppInternalAddress{
+	require.EqualValues(s.t, []appTypes.AppInternalAddress{
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, Process: "web"},
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, Process: "web"},
 		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, Process: "jobs"},
-	})
+	}, addrs)
 }
 
 func (s *S) TestInternalAddressesNoService(c *check.C) {
@@ -1263,7 +1260,7 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	processes := map[string][]string{
 		"web": {"run", "mycmd", "web"},
 	}
@@ -1280,13 +1277,13 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 	}
 	version := newCommittedVersion(c, a, processes, customData)
 	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
-	c.Assert(addrs, check.HasLen, 0)
+	require.Len(s.t, addrs, 0)
 }
 
 func (s *S) TestDeployWithCustomConfig(c *check.C) {
@@ -1298,7 +1295,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	processes := map[string][]string{
 		"web": {"run mycmd arg1"},
 	}
@@ -1338,28 +1335,28 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	}
 	version := newCommittedVersion(c, a, processes, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 1)
+	require.Equal(s.t, "myapp-web", deps.Items[0].Name)
 	containers := deps.Items[0].Spec.Template.Spec.Containers
-	c.Assert(containers, check.HasLen, 1)
-	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+	require.Len(s.t, containers, 1)
+	require.EqualValues(s.t, []string{
 		"/bin/sh",
 		"-lc",
 		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
-	})
+	}, containers[0].Command[len(containers[0].Command)-3:])
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(units, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(len(appList.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
 	expected := tsuruv1.AppSpec{
 		NamespaceName:        "default",
 		ServiceAccountName:   "app-myapp",
@@ -1391,7 +1388,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 			},
 		},
 	}
-	c.Assert(appList.Items[0].Spec, check.DeepEquals, expected, check.Commentf("diff:\n%s", strings.Join(pretty.Diff(appList.Items[0].Spec, expected), "\n")))
+	require.EqualValues(s.t, expected, appList.Items[0].Spec)
 }
 
 func (s *S) TestDeployRollback(c *check.C) {
@@ -1403,52 +1400,52 @@ func (s *S) TestDeployRollback(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run mycmd arg1"},
 	}
 	version1 := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: deployEvt})
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	customData = map[string][]string{
 		"web": {"run mycmd arg2"},
 	}
 	version2 := newCommittedVersion(c, a, customData)
 	img, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: deployEvt})
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v2", img)
 	deployEvt.Done(context.TODO(), err)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	rollbackEvt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeployRollback,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeployRollback),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	img, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: rollbackEvt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	testBaseImage, err := version1.BaseImageName()
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, testBaseImage)
+	require.NoError(s.t, err)
+	require.Equal(s.t, testBaseImage, img)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 1)
+	require.Equal(s.t, "myapp-web", deps.Items[0].Name)
 	containers := deps.Items[0].Spec.Template.Spec.Containers
-	c.Assert(containers, check.HasLen, 1)
-	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+	require.Len(s.t, containers, 1)
+	require.EqualValues(s.t, []string{
 		"/bin/sh",
 		"-lc",
 		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
-	})
+	}, containers[0].Command[len(containers[0].Command)-3:])
 	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(units, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
 }
 
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
@@ -1458,7 +1455,7 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
@@ -1474,16 +1471,16 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 		Units:  []string{"myapp-web-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1"},
 	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
+	require.Equal(s.t, "echo test", s.mock.Stream["myapp-web"].Stdin)
 	var sz remotecommand.TerminalSize
 	err = json.Unmarshal([]byte(s.mock.Stream["myapp-web"].Resize), &sz)
-	c.Assert(err, check.IsNil)
-	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, remotecommand.TerminalSize{Width: 99, Height: 42}, sz)
+	require.Len(s.t, s.mock.Stream["myapp-web"].Urls, 1)
+	require.Equal(s.t, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec", s.mock.Stream["myapp-web"].Urls[0].Path)
+	require.EqualValues(s.t, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"}, s.mock.Stream["myapp-web"].Urls[0].Query()["command"])
 }
 
 func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
@@ -1493,7 +1490,7 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
@@ -1506,12 +1503,12 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 		Units:  []string{"myapp-web-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1"},
 	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+	require.Equal(s.t, "echo test", s.mock.Stream["myapp-web"].Stdin)
+	require.Len(s.t, s.mock.Stream["myapp-web"].Urls, 1)
+	require.Equal(s.t, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec", s.mock.Stream["myapp-web"].Urls[0].Path)
+	require.EqualValues(s.t, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"}, s.mock.Stream["myapp-web"].Urls[0].Query()["command"])
 }
 
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
@@ -1521,7 +1518,7 @@ func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	buf := bytes.NewBuffer(nil)
 	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
@@ -1531,7 +1528,9 @@ func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 		Height: 42,
 		Units:  []string{"invalid-unit"},
 	})
-	c.Assert(err, check.DeepEquals, &provision.UnitNotFoundError{ID: "invalid-unit"})
+	require.Error(s.t, err)
+	expectedError := &provision.UnitNotFoundError{ID: "invalid-unit"}
+	require.ErrorContains(s.t, err, expectedError.Error())
 }
 
 func (s *S) TestExecuteCommand(c *check.C) {
@@ -1541,7 +1540,7 @@ func (s *S) TestExecuteCommand(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
 	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
@@ -1551,15 +1550,15 @@ func (s *S) TestExecuteCommand(c *check.C) {
 		Units:  []string{"myapp-web-pod-1-1", "myapp-web-pod-2-2"},
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	rollback()
-	c.Assert(stdout.String(), check.Equals, "stdout datastdout data")
-	c.Assert(stderr.String(), check.Equals, "stderr datastderr data")
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 2)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
-	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	require.Equal(s.t, "stdout datastdout data", stdout.String())
+	require.Equal(s.t, "stderr datastderr data", stderr.String())
+	require.Len(s.t, s.mock.Stream["myapp-web"].Urls, 2)
+	require.Equal(s.t, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec", s.mock.Stream["myapp-web"].Urls[0].Path)
+	require.Equal(s.t, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec", s.mock.Stream["myapp-web"].Urls[1].Path)
+	require.Equal(s.t, []string{"mycmd", "arg1", "arg2"}, s.mock.Stream["myapp-web"].Urls[0].Query()["command"])
+	require.Equal(s.t, []string{"mycmd", "arg1", "arg2"}, s.mock.Stream["myapp-web"].Urls[1].Query()["command"])
 }
 
 func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
@@ -1569,7 +1568,7 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
 	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
@@ -1579,13 +1578,13 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 		Units:  []string{"myapp-web-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	require.NoError(s.t, err)
 	rollback()
-	c.Assert(stdout.String(), check.Equals, "stdout data")
-	c.Assert(stderr.String(), check.Equals, "stderr data")
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	require.Equal(s.t, "stdout data", stdout.String())
+	require.Equal(s.t, "stderr data", stderr.String())
+	require.Len(s.t, s.mock.Stream["myapp-web"].Urls, 1)
+	require.Equal(s.t, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec", s.mock.Stream["myapp-web"].Urls[0].Path)
+	require.EqualValues(s.t, []string{"mycmd", "arg1", "arg2"}, s.mock.Stream["myapp-web"].Urls[0].Query()["command"])
 }
 
 func (s *S) TestExecuteCommandNoUnits(c *check.C) {
@@ -1601,19 +1600,19 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 		Stderr: stderr,
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(stdout.String(), check.Equals, "stdout data")
-	c.Assert(stderr.String(), check.Equals, "stderr data")
-	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "stdout data", stdout.String())
+	require.Equal(s.t, "stderr data", stderr.String())
+	require.Len(s.t, s.mock.Stream["myapp-isolated-run"].Urls, 1)
+	require.Equal(s.t, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach", s.mock.Stream["myapp-isolated-run"].Urls[0].Path)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 0)
 	account, err := s.client.CoreV1().ServiceAccounts(ns).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, &apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "app-myapp",
 			Namespace: ns,
@@ -1622,7 +1621,7 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 				"tsuru.io/app-name": "myapp",
 			},
 		},
-	})
+	}, account)
 }
 
 func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
@@ -1634,14 +1633,14 @@ func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 	a.Plan.CPUMilli = 250000
 	a.Plan.Memory = 100000
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	shouldFail := true
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		shouldFail = false
 		var ephemeral resource.Quantity
 		ephemeral, err = s.clusterClient.ephemeralStorage(a.Pool)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		expectedLimits := &apiv1.ResourceList{
 			apiv1.ResourceMemory:           *resource.NewQuantity(a.Plan.Memory, resource.BinarySI),
 			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.Plan.CPUMilli), resource.DecimalSI),
@@ -1652,8 +1651,8 @@ func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.Plan.CPUMilli), resource.DecimalSI),
 			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 		}
-		c.Assert(pod.Spec.Containers[0].Resources.Limits, check.DeepEquals, *expectedLimits)
-		c.Assert(pod.Spec.Containers[0].Resources.Requests, check.DeepEquals, *expectedRequests)
+		require.EqualValues(s.t, *expectedLimits, pod.Spec.Containers[0].Resources.Limits)
+		require.EqualValues(s.t, *expectedRequests, pod.Spec.Containers[0].Resources.Requests)
 
 		return false, nil, nil
 	})
@@ -1664,8 +1663,8 @@ func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 		Stderr: stderr,
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
-	c.Assert(shouldFail, check.Equals, false)
-	c.Assert(err, check.IsNil)
+	require.False(s.t, shouldFail)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
@@ -1673,7 +1672,7 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 	defer rollback()
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(ok, check.Equals, true)
+		require.True(s.t, ok)
 		pod.Status.Phase = apiv1.PodFailed
 		return false, nil, nil
 	})
@@ -1687,7 +1686,7 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 		Stderr: stderr,
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
-	c.Assert(err, check.ErrorMatches, `(?s)invalid pod phase "Failed".*`)
+	require.ErrorContains(s.t, err, `invalid pod phase "Failed"`)
 }
 
 func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
@@ -1700,15 +1699,15 @@ func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 	var checked bool
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Labels["tsuru.io/app-name"], check.Equals, "myapp")
-		c.Assert(pod.Labels["tsuru.io/is-isolated-run"], check.Equals, "true")
-		c.Assert(pod.Spec.NodeSelector, check.IsNil)
-		c.Assert(pod.Spec.Affinity, check.IsNil)
+		require.Equal(s.t, "myapp", pod.Labels["tsuru.io/app-name"])
+		require.Equal(s.t, "true", pod.Labels["tsuru.io/is-isolated-run"])
+		require.Nil(s.t, pod.Spec.NodeSelector)
+		require.Nil(s.t, pod.Spec.Affinity)
 		checked = true
 		return false, nil, nil
 	})
@@ -1719,21 +1718,21 @@ func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
 		Stderr: stderr,
 		Cmds:   []string{"sh", "-l"},
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(checked, check.Equals, true)
+	require.NoError(s.t, err)
+	require.True(s.t, checked)
 }
 
 func (s *S) TestStartupMessage(c *check.C) {
 	msg, err := s.p.StartupMessage()
-	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster "c1" - https://clusteraddr
-`)
+	require.NoError(s.t, err)
+	require.Equal(s.t, `Kubernetes provisioner on cluster "c1" - https://clusteraddr
+`, msg)
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
 		return nil, nil
 	}
 	msg, err = s.p.StartupMessage()
-	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Equals, "")
+	require.NoError(s.t, err)
+	require.Zero(s.t, msg)
 }
 
 func (s *S) TestGetKubeConfig(c *check.C) {
@@ -1745,27 +1744,27 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	config.Set("kubernetes:headless-service-port", 8889)
 	defer config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
-	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
+	require.EqualValues(s.t, kubernetesConfig{
 		APITimeout:                          10 * time.Second,
 		PodReadyTimeout:                     6 * time.Second,
 		PodRunningTimeout:                   2 * time.Minute,
 		DeploymentProgressTimeout:           3 * time.Minute,
 		AttachTimeoutAfterContainerFinished: 5 * time.Second,
 		HeadlessServicePort:                 8889,
-	})
+	}, kubeConf)
 }
 
 func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
-	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
+	require.EqualValues(s.t, kubernetesConfig{
 		APITimeout:                          60 * time.Second,
 		PodReadyTimeout:                     time.Minute,
 		PodRunningTimeout:                   10 * time.Minute,
 		DeploymentProgressTimeout:           10 * time.Minute,
 		AttachTimeoutAfterContainerFinished: time.Minute,
 		HeadlessServicePort:                 8888,
-	})
+	}, kubeConf)
 }
 
 func (s *S) TestProvisionerProvision(c *check.C) {
@@ -1773,16 +1772,16 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 	defer rollback()
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	crdList, err := s.client.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(crdList.Items, check.HasLen, 1)
-	c.Assert(crdList.Items[0].Name, check.DeepEquals, "apps.tsuru.io")
+	require.NoError(s.t, err)
+	require.Len(s.t, crdList.Items, 1)
+	require.Equal(s.t, "apps.tsuru.io", crdList.Items[0].Name)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].Name, check.DeepEquals, a.Name)
-	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "default")
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
+	require.Equal(s.t, a.Name, appList.Items[0].Name)
+	require.Equal(s.t, "default", appList.Items[0].Spec.NamespaceName)
 }
 
 func (s *S) TestProvisionerUpdateApp(c *check.C) {
@@ -1790,7 +1789,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
@@ -1802,37 +1801,37 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 			Routers: a.Routers,
 		}, nil
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	wait()
 	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 2)
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	var recreatedPods bool
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+		require.EqualValues(s.t, map[string]string{
 			"tsuru.io/pool": newApp.Pool,
-		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
+		}, pod.Spec.NodeSelector)
+		require.Equal(s.t, newApp.Pool, pod.ObjectMeta.Labels["tsuru.io/app-pool"])
 		recreatedPods = true
 		return true, nil, nil
 	})
@@ -1854,22 +1853,22 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 			Addresses: []apiv1.NodeAddress{{Type: apiv1.NodeInternalIP, Address: "192.168.100.1"}},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
-	c.Assert(err, check.IsNil)
-	c.Assert(strings.Contains(buf.String(), "Done updating units"), check.Equals, true)
-	c.Assert(recreatedPods, check.Equals, true)
+	require.NoError(s.t, err)
+	require.Contains(s.t, buf.String(), "Done updating units")
+	require.True(s.t, recreatedPods)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].Name, check.DeepEquals, a.Name)
-	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "tsuru-test-pool-2")
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
+	require.Equal(s.t, a.Name, appList.Items[0].Name)
+	require.Equal(s.t, "tsuru-test-pool-2", appList.Items[0].Spec.NamespaceName)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 2)
 }
 
 func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
@@ -1877,7 +1876,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
@@ -1889,14 +1888,14 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 			Routers: a.Routers,
 		}, nil
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	{
 		customData := map[string][]string{
 			"web": {"run", "mycmd", "arg1"},
@@ -1904,23 +1903,23 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 		version1 := newCommittedVersion(c, a, customData)
 		var img1 string
 		img1, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
-		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+		require.NoError(s.t, err)
+		require.Equal(s.t, "tsuru/app-myapp:v1", img1)
 		wait()
 		version2 := newCommittedVersion(c, a, customData)
 		var img2 string
 		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
-		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+		require.NoError(s.t, err)
+		require.Equal(s.t, "tsuru/app-myapp:v2", img2)
 		wait()
 	}
 	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 4)
-	contains := func(name string, svcList []apiv1.Service) bool {
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 4)
+	contains := func(svcList []apiv1.Service, name string) bool {
 		for _, svc := range svcList {
 			if svc.Name == name {
 				return true
@@ -1928,14 +1927,16 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 		}
 		return false
 	}
-	c.Assert(contains("myapp-web", sList.Items), check.Equals, true)
-	c.Assert(contains("myapp-web-units", sList.Items), check.Equals, true)
-	c.Assert(contains("myapp-web-v1", sList.Items), check.Equals, true)
-	c.Assert(contains("myapp-web-v2", sList.Items), check.Equals, true)
+	require.True(s.t, contains(sList.Items, "myapp-web"))
+	require.True(s.t, contains(sList.Items, "myapp-web-units"))
+	require.True(s.t, contains(sList.Items, "myapp-web-v1"))
+	require.True(s.t, contains(sList.Items, "myapp-web-v2"))
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
-	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
+	require.Error(s.t, err)
+	expectedError := &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
+	require.ErrorContains(s.t, err, expectedError.Error())
 }
 
 func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
@@ -1943,7 +1944,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
@@ -1955,36 +1956,36 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 			Routers: a.Routers,
 		}, nil
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version1 := newCommittedVersion(c, a, customData)
 	img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img1)
 	wait()
 	version2 := newCommittedVersion(c, a, customData)
 	img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v2", img2)
 	wait()
 
 	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 0)
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	err = s.p.Stop(context.TODO(), a, "", version1, buf)
-	c.Assert(err, check.IsNil)
-	contains := func(name string, depList []appsv1.Deployment) bool {
+	require.NoError(s.t, err)
+	contains := func(depList []appsv1.Deployment, name string) bool {
 		for _, dep := range depList {
 			if dep.Name == name {
 				return true
@@ -1992,7 +1993,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 		}
 		return false
 	}
-	replicaCount := func(name string, depList []appsv1.Deployment, expectedReplicas int) bool {
+	replicaCount := func(depList []appsv1.Deployment, name string, expectedReplicas int) bool {
 		for _, dep := range depList {
 			if dep.Name == name {
 				return *dep.Spec.Replicas == int32(expectedReplicas)
@@ -2001,14 +2002,16 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 		return false
 	}
 	depList, err := s.client.AppsV1().Deployments("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(depList.Items), check.Equals, 2)
-	c.Assert(contains("myapp-web-v2", depList.Items), check.DeepEquals, true)
-	c.Assert(contains("myapp-web", depList.Items), check.DeepEquals, true)
-	c.Assert(replicaCount("myapp-web", depList.Items, 0), check.Equals, true)
-	c.Assert(replicaCount("myapp-web-v2", depList.Items, 1), check.Equals, true)
+	require.NoError(s.t, err)
+	require.Len(s.t, depList.Items, 2)
+	require.True(s.t, contains(depList.Items, "myapp-web-v2"))
+	require.True(s.t, contains(depList.Items, "myapp-web"))
+	require.True(s.t, replicaCount(depList.Items, "myapp-web", 0))
+	require.True(s.t, replicaCount(depList.Items, "myapp-web-v2", 1))
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
-	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
+	require.Error(s.t, err)
+	expectedError := &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
+	require.ErrorContains(s.t, err, expectedError.Error())
 }
 
 func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
@@ -2025,14 +2028,14 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		Name:        pool2,
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	{
 		customData := map[string][]string{
 			"web": {"run", "mycmd", "arg1"},
@@ -2040,8 +2043,8 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		version1 := newCommittedVersion(c, a, customData)
 		var img1 string
 		img1, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
-		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+		require.NoError(s.t, err)
+		require.Equal(s.t, "tsuru/app-myapp:v1", img1)
 		wait()
 		customData = map[string][]string{
 			"web": {"run", "mycmd", "arg1"},
@@ -2049,22 +2052,22 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		version2 := newCommittedVersion(c, a, customData)
 		var img2 string
 		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
-		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+		require.NoError(s.t, err)
+		require.Equal(s.t, "tsuru/app-myapp:v2", img2)
 		wait()
 	}
 
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.Pool,
-		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
+		require.EqualValues(s.t, map[string]string{"tsuru.io/pool": newApp.Pool}, pod.Spec.NodeSelector)
+		require.Equal(s.t, newApp.Pool, pod.ObjectMeta.Labels["tsuru.io/app-pool"])
 		return true, nil, nil
 	})
 	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
-	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
+	require.Error(s.t, err)
+	expectedError := &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
+	require.ErrorContains(s.t, err, expectedError.Error())
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C) {
@@ -2074,7 +2077,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	config.Set("kubernetes:use-pool-namespaces", false)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
@@ -2085,26 +2088,24 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	wait()
 	sList, err := s.client.CoreV1().Services("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 2)
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.Pool,
-		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
+		require.EqualValues(s.t, map[string]string{"tsuru.io/pool": newApp.Pool}, pod.Spec.NodeSelector)
+		require.Equal(s.t, newApp.Pool, pod.ObjectMeta.Labels["tsuru.io/app-pool"])
 		return true, nil, nil
 	})
 	v := volumeTypes.Volume{
@@ -2122,16 +2123,16 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 		TeamOwner: "admin",
 	}
 	err = servicemanager.Volume.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
 		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check.C) {
@@ -2141,7 +2142,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
@@ -2152,29 +2153,27 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newCommittedVersion(c, a, customData)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "tsuru/app-myapp:v1", img)
 	wait()
 	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, sList.Items, 2)
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.Pool,
-		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.Pool)
+		require.EqualValues(s.t, map[string]string{"tsuru.io/pool": newApp.Pool}, pod.Spec.NodeSelector)
+		require.Equal(s.t, newApp.Pool, pod.ObjectMeta.Labels["tsuru.io/app-pool"])
 		return true, nil, nil
 	})
 	v := volumeTypes.Volume{
@@ -2192,16 +2191,17 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 		TeamOwner: "admin",
 	}
 	err = servicemanager.Volume.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
 		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
-	c.Assert(err, check.ErrorMatches, "can't change the pool of an app with binded volumes")
+	require.Error(s.t, err)
+	require.ErrorContains(s.t, err, "can't change the pool of an app with binded volumes")
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
@@ -2220,7 +2220,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 		Name:        pool2,
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	s.client = client2
 	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = kTesting.NewKubeMock(s.client, s.p, s.p, s.factory)
@@ -2244,23 +2244,23 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 		TeamOwner: "admin",
 	}
 	err = servicemanager.Volume.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
 		AppName:    a.Name,
 		MountPoint: "/mnt1",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
 		AppName:    a.Name,
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
@@ -2268,22 +2268,22 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	version := newSuccessfulVersion(c, a, customData)
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pvcs.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pvcs.Items, 1)
 
 	err = s.p.Restart(context.TODO(), a, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	// Check if old volume was removed
 	pvcs, err = client1.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pvcs.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pvcs.Items, 0)
 	// Check if new volume was created
 	pvcs, err = client2.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pvcs.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pvcs.Items, 1)
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.C) {
@@ -2302,7 +2302,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 		Name:        pool2,
 		Provisioner: "kubernetes",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	s.client = client2
 	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = kTesting.NewKubeMock(s.client, s.p, s.p, s.factory)
@@ -2327,19 +2327,19 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 		TeamOwner: "admin",
 	}
 	err = servicemanager.Volume.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
 		AppName:    a.Name,
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	a2 := provisiontest.NewFakeApp("myapp2", "python", 0)
 	err = s.p.Provision(context.TODO(), a2)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	client1.TsuruClientset.PrependReactor("create", "apps", s.mock.AppReaction(a2, c))
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
 		Volume:     &v,
@@ -2347,41 +2347,41 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 		MountPoint: "/mnt",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a2)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	customData := map[string][]string{
 		"web": {"run", "mycmd", "arg1"},
 	}
 	version := newSuccessfulVersion(c, a, customData)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pvcs.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pvcs.Items, 1)
 
 	err = s.p.Restart(context.TODO(), a, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	newApp := provisiontest.NewFakeAppWithPool(a.Name, a.Platform, pool2, 0)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	// Check if old volume was not removed
 	pvcs, err = client1.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pvcs.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pvcs.Items, 1)
 	// Check if new volume was created
 	pvcs, err = client2.CoreV1().PersistentVolumeClaims("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pvcs.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pvcs.Items, 1)
 }
 
 func (s *S) TestProvisionerInitialize(c *check.C) {
 	_, ok := s.p.clusterControllers[s.clusterClient.Name]
-	c.Assert(ok, check.Equals, false)
+	require.False(s.t, ok)
 	err := s.p.Initialize()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, ok = s.p.clusterControllers[s.clusterClient.Name]
-	c.Assert(ok, check.Equals, true)
+	require.True(s.t, ok)
 }
 
 func (s *S) TestProvisionerValidation(c *check.C) {
@@ -2394,17 +2394,17 @@ func (s *S) TestProvisionerValidation(c *check.C) {
 			Cluster: clientcmdapi.Cluster{},
 		},
 	})
-	c.Assert(strings.Contains(err.Error(), "when kubeConfig is set the use of cacert is not used"), check.Equals, true)
-	c.Assert(strings.Contains(err.Error(), "when kubeConfig is set the use of clientcert is not used"), check.Equals, true)
-	c.Assert(strings.Contains(err.Error(), "when kubeConfig is set the use of clientkey is not used"), check.Equals, true)
+	require.ErrorContains(s.t, err, "when kubeConfig is set the use of cacert is not used")
+	require.ErrorContains(s.t, err, "when kubeConfig is set the use of clientcert is not used")
+	require.ErrorContains(s.t, err, "when kubeConfig is set the use of clientkey is not used")
 
 	err = s.p.ValidateCluster(&provTypes.Cluster{
 		KubeConfig: &provTypes.KubeConfig{
 			Cluster: clientcmdapi.Cluster{},
 		},
 	})
-	c.Assert(err, check.Not(check.IsNil))
-	c.Assert(err.Error(), check.Equals, "kubeConfig.cluster.server field is required")
+	require.Error(s.t, err)
+	require.ErrorContains(s.t, err, "kubeConfig.cluster.server field is required")
 }
 
 func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
@@ -2412,13 +2412,13 @@ func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
 		return nil, provTypes.ErrNoCluster
 	}
 	err := s.p.Initialize()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	version := newCommittedVersion(c, a, map[string][]string{
 		"proc1": {"python", "proc1.py"},
 		"proc2": {"python", "proc2.py"},
@@ -2466,7 +2466,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 				},
 			},
 		})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 
 	if fa.Env == nil {
@@ -2475,7 +2475,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	fa.Env["e1"] = bindTypes.EnvVar{Name: "e1", Value: "v1"}
 
 	envs := EnvsForApp(fa, "proc1", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
@@ -2484,10 +2484,10 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "PORT_proc1", Value: "8080,9000"},
-	})
+	}, envs)
 
 	envs = EnvsForApp(fa, "proc2", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
@@ -2496,10 +2496,10 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "PORT_proc2", Value: "8000"},
-	})
+	}, envs)
 
 	envs = EnvsForApp(fa, "proc3", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
@@ -2508,10 +2508,10 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "PORT_proc3", Value: "8080"},
-	})
+	}, envs)
 
 	envs = EnvsForApp(fa, "proc4", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
@@ -2522,10 +2522,10 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_proc4", Value: "8888"},
-	})
+	}, envs)
 
 	envs = EnvsForApp(fa, "proc5", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
@@ -2533,10 +2533,10 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
-	})
+	}, envs)
 
 	envs = EnvsForApp(fa, "proc6", version)
-	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
+	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru"},
 		{Name: "TSURU_SERVICES", Value: "{}", ManagedBy: "tsuru"},
@@ -2546,7 +2546,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
-	})
+	}, envs)
 }
 
 func (s *S) TestProvisionerToggleRoutable(c *check.C) {
@@ -2556,52 +2556,52 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	err = s.p.ToggleRoutable(context.TODO(), a, version, false)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	dep, err := s.client.AppsV1().Deployments("default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Paused, check.Equals, false)
-	c.Assert(dep.Labels["tsuru.io/is-routable"], check.Equals, "false")
-	c.Assert(dep.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
+	require.NoError(s.t, err)
+	require.False(s.t, dep.Spec.Paused)
+	require.Equal(s.t, "false", dep.Labels["tsuru.io/is-routable"])
+	require.Equal(s.t, "false", dep.Spec.Template.Labels["tsuru.io/is-routable"])
 
 	rsList, err := s.client.AppsV1().ReplicaSets("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	for _, rs := range rsList.Items {
-		c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "false")
-		c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
+		require.Equal(s.t, "false", rs.Labels["tsuru.io/is-routable"])
+		require.Equal(s.t, "false", rs.Spec.Template.Labels["tsuru.io/is-routable"])
 	}
 
 	pods, err := s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 1)
-	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "false")
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 1)
+	require.Equal(s.t, "false", pods.Items[0].Labels["tsuru.io/is-routable"])
 
 	err = s.p.ToggleRoutable(context.TODO(), a, version, true)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	dep, err = s.client.AppsV1().Deployments("default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Paused, check.Equals, false)
-	c.Assert(dep.Labels["tsuru.io/is-routable"], check.Equals, "true")
-	c.Assert(dep.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
+	require.NoError(s.t, err)
+	require.False(s.t, dep.Spec.Paused)
+	require.Equal(s.t, "true", dep.Labels["tsuru.io/is-routable"])
+	require.Equal(s.t, "true", dep.Spec.Template.Labels["tsuru.io/is-routable"])
 
 	rsList, err = s.client.AppsV1().ReplicaSets("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	for _, rs := range rsList.Items {
-		c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "true")
-		c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
+		require.Equal(s.t, "true", rs.Labels["tsuru.io/is-routable"])
+		require.Equal(s.t, "true", rs.Spec.Template.Labels["tsuru.io/is-routable"])
 	}
 
 	pods, err = s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 1)
-	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "true")
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 1)
+	require.Equal(s.t, "true", pods.Items[0].Labels["tsuru.io/is-routable"])
 }
 
 func (s *S) TestProvisionerToggleRoutableAtomic(c *check.C) {
@@ -2611,24 +2611,24 @@ func (s *S) TestProvisionerToggleRoutableAtomic(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	dep, err := s.client.AppsV1().Deployments("default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	dep.Spec.Template.ObjectMeta.Labels["tsuru.io/test-atomic"] = "true"
 	_, err = s.client.AppsV1().Deployments("default").Update(context.TODO(), dep, metav1.UpdateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.ToggleRoutable(context.TODO(), a, version, false)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	dep, err = s.client.AppsV1().Deployments("default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
-	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/test-atomic"], check.Equals, "true")
+	require.Equal(s.t, "true", dep.Spec.Template.ObjectMeta.Labels["tsuru.io/test-atomic"])
 }
 
 func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
@@ -2639,37 +2639,37 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(ctx, a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	tclient, err := TsuruClientForConfig(s.clusterClient.restConfig)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	foundTsuruApp.ObjectMeta.Annotations = map[string]string{
 		"external.io/teste": "true",
 	}
 
 	_, err = tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Update(ctx, foundTsuruApp, metav1.UpdateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = ensureAppCustomResourceSynced(context.TODO(), s.clusterClient, a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
-	c.Assert(appCRD.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
+	require.EqualValues(s.t, metav1.ObjectMeta{
 		Namespace: "tsuru",
 		Name:      "myapp",
 		Annotations: map[string]string{
 			"external.io/teste": "true",
 		},
-	})
+	}, appCRD.ObjectMeta)
 
-	c.Assert(appCRD.Spec, check.DeepEquals, tsuruv1.AppSpec{
+	require.EqualValues(s.t, tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
 		Deployments: map[string][]string{
@@ -2681,8 +2681,7 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
 		PodDisruptionBudgets: map[string][]string{
 			"web": {"myapp-web"},
 		},
-	})
-
+	}, appCRD.Spec)
 }
 
 func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
@@ -2693,14 +2692,14 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 		"web": {"python", "myapp.py"},
 	})
 	err := s.p.AddUnits(ctx, a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	wait()
 
 	tclient, err := TsuruClientForConfig(s.clusterClient.restConfig)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	foundTsuruApp.ObjectMeta.Annotations = map[string]string{
 		"external.io/teste": "true",
@@ -2708,23 +2707,23 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 	foundTsuruApp.Spec.ServiceAccountName = "another" // this is the unique line different from previous test
 
 	_, err = tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Update(ctx, foundTsuruApp, metav1.UpdateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = ensureAppCustomResourceSynced(context.TODO(), s.clusterClient, a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.Name, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
-	c.Assert(appCRD.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
+	require.EqualValues(s.t, metav1.ObjectMeta{
 		Namespace: "tsuru",
 		Name:      "myapp",
 		Annotations: map[string]string{
 			"external.io/teste": "true",
 		},
-	})
+	}, appCRD.ObjectMeta)
 
-	c.Assert(appCRD.Spec, check.DeepEquals, tsuruv1.AppSpec{
+	require.EqualValues(s.t, tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
 		Deployments: map[string][]string{
@@ -2736,6 +2735,5 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 		PodDisruptionBudgets: map[string][]string{
 			"web": {"myapp-web"},
 		},
-	})
-
+	}, appCRD.Spec)
 }

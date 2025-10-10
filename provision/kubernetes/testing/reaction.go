@@ -364,7 +364,6 @@ func (s *KubeMock) MockfakeNodes(urls ...string) {
 		s.client.GetCluster().Addresses = urls
 		s.client.ClusterInterface.RestConfig().Host = urls[0]
 	}
-
 }
 
 func (s *KubeMock) AppReaction(a *appTypes.App, c *check.C) ktesting.ReactionFunc {

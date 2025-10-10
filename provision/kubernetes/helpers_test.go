@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	check "gopkg.in/check.v1"
@@ -22,8 +24,8 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
-func (s *S) TestServiceAccountNameForApp(c *check.C) {
-	var tests = []struct {
+func TestServiceAccountNameForApp(t *testing.T) {
+	tests := []struct {
 		name, expected string
 	}{
 		{"myapp", "app-myapp"},
@@ -31,13 +33,15 @@ func (s *S) TestServiceAccountNameForApp(c *check.C) {
 		{"my-app_app", "app-my-app-app"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		t.Run(fmt.Sprintf("Test %d", i), func(t *testing.T) {
+			a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+			require.Equal(t, tt.expected, serviceAccountNameForApp(a))
+		})
 	}
 }
 
-func (s *S) TestDeploymentNameForAppBase(c *check.C) {
-	var tests = []struct {
+func TestDeploymentNameForAppBase(t *testing.T) {
+	tests := []struct {
 		name, process, expected string
 	}{
 		{"myapp", "p1", "myapp-p1"},
@@ -49,13 +53,15 @@ func (s *S) TestDeploymentNameForAppBase(c *check.C) {
 		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(deploymentNameForAppBase(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		t.Run(fmt.Sprintf("Test %d", i), func(t *testing.T) {
+			a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+			require.Equal(t, tt.expected, deploymentNameForAppBase(a, tt.process))
+		})
 	}
 }
 
-func (s *S) TestDeploymentNameForApp(c *check.C) {
-	var tests = []struct {
+func TestDeploymentNameForApp(t *testing.T) {
+	tests := []struct {
 		name, process string
 		version       int
 		expected      string
@@ -70,13 +76,15 @@ func (s *S) TestDeploymentNameForApp(c *check.C) {
 		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", 5, "app-with-a-very-very-long-name-fc2ee6e1b0ba94ee2bbfbacf"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(deploymentNameForApp(a, tt.process, tt.version), check.Equals, tt.expected, check.Commentf("test %d", i))
+		t.Run(fmt.Sprintf("Test %d", i), func(t *testing.T) {
+			a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+			require.Equal(t, tt.expected, deploymentNameForApp(a, tt.process, tt.version))
+		})
 	}
 }
 
-func (s *S) TestHeadlessServiceName(c *check.C) {
-	var tests = []struct {
+func TestHeadlessServiceName(t *testing.T) {
+	tests := []struct {
 		name, process, expected string
 	}{
 		{"myapp", "p1", "myapp-p1-units"},
@@ -88,13 +96,15 @@ func (s *S) TestHeadlessServiceName(c *check.C) {
 		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-91b0cf4eb3ea4241ee2e84ab"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(headlessServiceName(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		t.Run(fmt.Sprintf("Test %d", i), func(t *testing.T) {
+			a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+			require.Equal(t, tt.expected, headlessServiceName(a, tt.process))
+		})
 	}
 }
 
-func (s *S) TestExecCommandPodNameForApp(c *check.C) {
-	var tests = []struct {
+func TestExecCommandPodNameForApp(t *testing.T) {
+	tests := []struct {
 		name, expected string
 	}{
 		{"myapp", "myapp-isolated-run"},
@@ -102,18 +112,20 @@ func (s *S) TestExecCommandPodNameForApp(c *check.C) {
 		{"my-app_app", "my-app-app-isolated-run"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		t.Run(fmt.Sprintf("Test %d", i), func(t *testing.T) {
+			a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+			require.Equal(t, tt.expected, execCommandPodNameForApp(a))
+		})
 	}
 }
 
-func (s *S) TestWaitFor(c *check.C) {
+func TestWaitFor(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err := waitFor(ctx, func() (bool, error) {
 		return true, nil
 	}, nil)
 	cancel()
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	called := false
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
@@ -123,14 +135,14 @@ func (s *S) TestWaitFor(c *check.C) {
 		return nil
 	})
 	cancel()
-	c.Assert(err, check.IsNil)
-	c.Assert(called, check.Equals, false)
+	require.NoError(t, err)
+	require.False(t, called)
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
 	}, nil)
 	cancel()
-	c.Assert(err, check.ErrorMatches, `canceled after .*`)
+	require.ErrorContains(t, err, `canceled after`)
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
@@ -138,7 +150,8 @@ func (s *S) TestWaitFor(c *check.C) {
 		return errors.New("my error")
 	})
 	cancel()
-	c.Assert(err, check.ErrorMatches, `canceled after .*?: my error: context deadline exceeded$`)
+	require.ErrorContains(t, err, "canceled after")
+	require.ErrorContains(t, err, "my error: context deadline exceeded")
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
@@ -146,26 +159,27 @@ func (s *S) TestWaitFor(c *check.C) {
 		return nil
 	})
 	cancel()
-	c.Assert(err, check.ErrorMatches, `canceled after .*?: <nil>: context deadline exceeded$`)
+	require.ErrorContains(t, err, "canceled after")
+	require.ErrorContains(t, err, "<nil>: context deadline exceeded")
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
 		return true, errors.New("myerr")
 	}, nil)
 	cancel()
-	c.Assert(err, check.ErrorMatches, `myerr`)
+	require.ErrorContains(t, err, `myerr`)
 }
 
-func (s *S) TestWaitForPodContainersRunning(c *check.C) {
+func (s *S) TestWaitForPodContainersRunning(_ *check.C) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	ns := "default"
 	err := waitForPodContainersRunning(ctx, s.clusterClient, &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}}, ns)
 	cancel()
-	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
+	require.ErrorContains(s.t, err, `"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
 	var wantedStates []apiv1.ContainerState
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(ok, check.Equals, true)
+		require.True(s.t, ok)
 		pod.Status.Phase = wantedPhase
 		statuses := make([]apiv1.ContainerStatus, len(wantedStates))
 		for i, s := range wantedStates {
@@ -180,15 +194,15 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 		err    string
 	}{
 		{phase: apiv1.PodSucceeded},
-		{phase: apiv1.PodPending, err: `canceled after .*`},
+		{phase: apiv1.PodPending, err: "canceled after"},
 		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
 		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
 		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{},
-		}, err: `canceled after .*`},
+		}, err: "canceled after"},
 		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{Running: &apiv1.ContainerStateRunning{}}, {},
-		}, err: `canceled after .*`},
+		}, err: "canceled after"},
 		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{Running: &apiv1.ContainerStateRunning{}}, {Running: &apiv1.ContainerStateRunning{}},
 		}},
@@ -208,17 +222,17 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 			},
 		}
 		_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), podObj, metav1.CreateOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		err = waitForPodContainersRunning(ctx, s.clusterClient, podObj, ns)
 		cancel()
 		if tt.err == "" {
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 		} else {
-			c.Assert(err, check.ErrorMatches, tt.err)
+			require.ErrorContains(s.t, err, tt.err)
 		}
 		err = cleanupPod(context.TODO(), s.clusterClient, "pod1", ns)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}
 }
 
@@ -230,12 +244,12 @@ func (s *S) TestWaitForPod(c *check.C) {
 	ns := "default"
 	err := waitForPod(ctx, s.clusterClient, &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}}, ns, false)
 	cancel()
-	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
+	require.ErrorContains(s.t, err, `"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
 	var wantedMessage string
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(ok, check.Equals, true)
+		require.True(s.t, ok)
 		pod.Status.Phase = wantedPhase
 		pod.Status.Message = wantedMessage
 		return false, nil, nil
@@ -252,11 +266,11 @@ func (s *S) TestWaitForPod(c *check.C) {
 		running    bool
 	}{
 		{phase: apiv1.PodSucceeded},
-		{phase: apiv1.PodRunning, err: `canceled after .*`},
+		{phase: apiv1.PodRunning, err: "canceled after "},
 		{phase: apiv1.PodRunning, running: true},
-		{phase: apiv1.PodPending, err: `canceled after .*`},
+		{phase: apiv1.PodPending, err: "canceled after "},
 		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
-		{phase: apiv1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
+		{phase: apiv1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"("my error msg")`},
 		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
 		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed" - last event: my evt message`, evt: &apiv1.Event{
 			ObjectMeta: metav1.ObjectMeta{
@@ -288,29 +302,29 @@ func (s *S) TestWaitForPod(c *check.C) {
 			pod.Spec.Containers = tt.containers
 		}
 		_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		if tt.evt != nil {
 			_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), tt.evt, metav1.CreateOptions{})
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		err = waitForPod(ctx, s.clusterClient, pod, ns, tt.running)
 		cancel()
 		if tt.err == "" {
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 		} else {
-			c.Assert(err, check.ErrorMatches, tt.err)
+			require.ErrorContains(s.t, err, tt.err)
 		}
 		err = cleanupPod(context.TODO(), s.clusterClient, "pod1", ns)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 		if tt.evt != nil {
 			err = s.client.CoreV1().Events(ns).Delete(context.TODO(), tt.evt.Name, metav1.DeleteOptions{})
-			c.Assert(err, check.IsNil)
+			require.NoError(s.t, err)
 		}
 	}
 }
 
-func (s *S) TestCleanupPods(c *check.C) {
+func (s *S) TestCleanupPods(_ *check.C) {
 	ns := "default"
 	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -318,7 +332,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 			Namespace: ns,
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	controllerKind := appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
 	for i := 0; i < 3; i++ {
 		labels := map[string]string{"a": "x"}
@@ -335,15 +349,15 @@ func (s *S) TestCleanupPods(c *check.C) {
 				},
 			},
 		}, metav1.CreateOptions{})
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}
 	err = cleanupPods(context.TODO(), s.clusterClient, metav1.ListOptions{
 		LabelSelector: "a=x",
 	}, rs)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.DeepEquals, []apiv1.Pod{{
+	require.NoError(s.t, err)
+	require.EqualValues(s.t, []apiv1.Pod{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod-2",
 			Namespace: ns,
@@ -352,7 +366,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 				*metav1.NewControllerRef(rs, controllerKind),
 			},
 		},
-	}})
+	}}, pods.Items)
 }
 
 func (s *S) TestCleanupDeployment(c *check.C) {
@@ -372,9 +386,9 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/app-version":     "1",
 	}
 	err := s.p.Provision(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	dep, err := s.client.AppsV1().Deployments(ns).Create(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
@@ -398,7 +412,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 			},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
@@ -409,7 +423,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 			},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
@@ -420,21 +434,21 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 			},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version.Version())
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 0)
 	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(replicas.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, replicas.Items, 0)
 }
 
-func (s *S) TestCleanupReplicas(c *check.C) {
+func (s *S) TestCleanupReplicas(_ *check.C) {
 	ns := "tsuru_pool"
 	dep, err := s.client.AppsV1().Deployments(ns).Create(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -452,7 +466,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 			},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
@@ -465,7 +479,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 			},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
@@ -478,21 +492,21 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 			},
 		},
 	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = cleanupReplicas(context.TODO(), s.clusterClient, dep)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, deps.Items, 1)
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 0)
 	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(replicas.Items, check.HasLen, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, replicas.Items, 0)
 }
 
-func (s *S) TestLabelSetFromMeta(c *check.C) {
+func TestLabelSetFromMeta(t *testing.T) {
 	meta := metav1.ObjectMeta{
 		Labels: map[string]string{
 			"tsuru.io/x": "a",
@@ -504,7 +518,7 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 		},
 	}
 	ls := labelSetFromMeta(&meta)
-	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
+	require.EqualValues(t, &provision.LabelSet{
 		Labels: map[string]string{
 			"tsuru.io/x": "a",
 			"tsuru.io/a": "1",
@@ -514,11 +528,11 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 			"y": "b",
 		},
 		Prefix: tsuruLabelPrefix,
-	})
+	}, ls)
 }
 
-func (s *S) TestTopologySpreadConstraints(c *check.C) {
-	var tests = []struct {
+func TestTopologySpreadConstraints(t *testing.T) {
+	tests := []struct {
 		labels     map[string]string
 		constraint string
 		expected   []apiv1.TopologySpreadConstraint
@@ -533,7 +547,8 @@ func (s *S) TestTopologySpreadConstraints(c *check.C) {
 					TopologyKey:       "zone",
 					WhenUnsatisfiable: apiv1.ScheduleAnyway,
 					LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}},
-				}},
+				},
+			},
 		},
 		{
 			labels:     map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1", "tsuru.io/app-pool": "pool1"},
@@ -549,11 +564,13 @@ func (s *S) TestTopologySpreadConstraints(c *check.C) {
 					MaxSkew:           3,
 					TopologyKey:       "hostname",
 					WhenUnsatisfiable: apiv1.ScheduleAnyway,
-					LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}}},
+					LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}},
+				},
 			},
 		},
 		{
-			labels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}, constraint: "", expected: nil},
+			labels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}, constraint: "", expected: nil,
+		},
 		{
 			constraint: "[{\"topologykey\":\"testing\"}]",
 			errorMsg:   "maxskew and topologykey are required in each topologySpreadConstraint",
@@ -566,10 +583,10 @@ func (s *S) TestTopologySpreadConstraints(c *check.C) {
 	for _, tt := range tests {
 		constraints, err := topologySpreadConstraints(tt.labels, tt.constraint)
 		if tt.errorMsg != "" {
-			c.Assert(err, check.ErrorMatches, tt.errorMsg)
+			require.ErrorContains(t, err, tt.errorMsg)
 			continue
 		}
-		c.Assert(err, check.IsNil)
-		c.Assert(constraints, check.DeepEquals, tt.expected)
+		require.NoError(t, err)
+		require.EqualValues(t, tt.expected, constraints)
 	}
 }

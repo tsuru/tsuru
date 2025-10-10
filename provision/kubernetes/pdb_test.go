@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -15,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (s *S) TestNewPDB(c *check.C) {
+func (s *S) TestNewPDB(_ *check.C) {
 	tests := map[string]struct {
 		app      *appTypes.App
 		setup    func() (teardown func())
@@ -99,11 +100,11 @@ func (s *S) TestNewPDB(c *check.C) {
 		}
 
 		err := app.CreateApp(context.TODO(), tt.app, s.user)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 
 		pdb, err := newPDB(context.TODO(), s.clusterClient, tt.app, "p1")
-		c.Assert(err, check.IsNil)
-		c.Assert(pdb, check.DeepEquals, tt.expected)
+		require.NoError(s.t, err)
+		require.EqualValues(s.t, tt.expected, pdb)
 		if teardown != nil {
 			teardown()
 		}

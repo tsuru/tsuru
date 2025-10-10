@@ -34,6 +34,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.11.0
 	github.com/sajari/fuzzy v1.0.0
+	github.com/stretchr/testify v1.11.1
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
 	github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560
 	github.com/tsuru/deploy-agent v0.0.0-20241004132402-8b6d39f21671
@@ -65,6 +66,7 @@ require (
 
 require (
 	github.com/containerd/log v0.1.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 )
 

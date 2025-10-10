@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -36,7 +37,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		scenario  func()
 		namespace string
 		jobName   string
-		assertion func(c *check.C, gotCron *batchv1.CronJob)
+		assertion func(gotCron *batchv1.CronJob)
 		teardown  func()
 	}{
 		{
@@ -52,10 +53,10 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					},
 				}
 				err := s.p.DestroyJob(context.TODO(), &j)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 
 				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
-				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+				require.True(s.t, k8sErrors.IsNotFound(err))
 			},
 			scenario: func() {
 				cj := jobTypes.Job{
@@ -90,9 +91,9 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
-			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
+			assertion: func(gotCron *batchv1.CronJob) {
 				expectedTarget := &batchv1.CronJob{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob-1cec0fa1", // Hash-based name for "* * * * *"
@@ -168,12 +169,12 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						},
 					},
 				}
-				c.Assert(*gotCron, check.DeepEquals, *expectedTarget)
+				require.EqualValues(s.t, *expectedTarget, *gotCron)
 				jobName := "myjob" // original job name
 				serviceAccountName := "job-" + jobName
 				account, err := s.client.CoreV1().ServiceAccounts(expectedTarget.Namespace).Get(context.TODO(), serviceAccountName, metav1.GetOptions{})
-				c.Assert(err, check.IsNil)
-				c.Assert(account, check.DeepEquals, &corev1.ServiceAccount{
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      serviceAccountName,
 						Namespace: expectedTarget.Namespace,
@@ -182,7 +183,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 							"tsuru.io/job-name": jobName,
 						},
 					},
-				})
+				}, account)
 			},
 		},
 		{
@@ -212,14 +213,14 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
-			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
+			assertion: func(gotCron *batchv1.CronJob) {
 				jobName := "myjob" // original job name
 				serviceAccountName := "job-" + jobName
 				account, err := s.client.CoreV1().ServiceAccounts(gotCron.Namespace).Get(context.TODO(), serviceAccountName, metav1.GetOptions{})
-				c.Assert(err, check.IsNil)
-				c.Assert(account, check.DeepEquals, &corev1.ServiceAccount{
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      serviceAccountName,
 						Namespace: gotCron.Namespace,
@@ -231,7 +232,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 							"iam.gke.io/gcp-service-account": "test@test.com",
 						},
 					},
-				})
+				}, account)
 			},
 			teardown: func() {
 				j := jobTypes.Job{
@@ -242,10 +243,10 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					},
 				}
 				err := s.p.DestroyJob(context.TODO(), &j)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 
 				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
-				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+				require.True(s.t, k8sErrors.IsNotFound(err))
 			},
 		},
 		{
@@ -268,10 +269,10 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
-			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
-				c.Assert(gotCron.Spec.ConcurrencyPolicy, check.DeepEquals, batchv1.ForbidConcurrent)
+			assertion: func(gotCron *batchv1.CronJob) {
+				require.EqualValues(s.t, batchv1.ForbidConcurrent, gotCron.Spec.ConcurrencyPolicy)
 			},
 			teardown: func() {
 				j := jobTypes.Job{
@@ -282,18 +283,18 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					},
 				}
 				err := s.p.DestroyJob(context.TODO(), &j)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 
 				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
-				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+				require.True(s.t, k8sErrors.IsNotFound(err))
 			},
 		},
 	}
 	for _, tt := range tests {
 		tt.scenario()
 		gotCron, err := s.client.BatchV1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
-		tt.assertion(c, gotCron)
+		require.NoError(s.t, err)
+		tt.assertion(gotCron)
 		tt.teardown()
 	}
 }
@@ -343,7 +344,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			scenario: func() {
 				newCJ := jobTypes.Job{
@@ -380,7 +381,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &newCJ)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: &batchv1.CronJob{
 				ObjectMeta: metav1.ObjectMeta{
@@ -476,7 +477,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			scenario: func() {
 				newCJ := jobTypes.Job{
@@ -494,7 +495,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				}
 				err := s.p.EnsureJob(context.TODO(), &newCJ)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			expectedTarget: &batchv1.CronJob{
 				ObjectMeta: metav1.ObjectMeta{
@@ -572,8 +573,8 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 		tt.setup()
 		tt.scenario()
 		gotCron, err := s.client.BatchV1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
-		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
+		require.NoError(s.t, err)
+		require.EqualValues(s.t, *tt.expectedTarget, *gotCron)
 
 		j := jobTypes.Job{
 			Name: "myjob",
@@ -583,7 +584,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 			},
 		}
 		err = s.p.DestroyJob(context.TODO(), &j)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}
 }
 
@@ -613,17 +614,17 @@ func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 			setup: func() {
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			scenario: func() {
 				err := s.p.DestroyJob(context.TODO(), &cj)
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				waitCron()
 			},
 			testScenario: func(c *check.C) {
 				_, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "mycronjob", metav1.GetOptions{})
-				c.Assert(err, check.NotNil)
-				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+				require.Error(s.t, err)
+				require.True(s.t, k8sErrors.IsNotFound(err))
 			},
 		},
 	}
@@ -678,18 +679,18 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 			setup: func() {
 				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 			scenario: func(t *time.Time) {
 				*t = time.Now()
 				err := s.p.TriggerCron(context.TODO(), &cj, "test-default")
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				waitCron()
 			},
 			testScenario: func(c *check.C, t *time.Time) {
 				expectedCronJobName := "myjob-1cec0fa1" // Hash-based name for "* * * * *"
 				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), expectedCronJobName, metav1.GetOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				expected := &batchv1.Job{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      fmt.Sprintf("%s-manual-job-%d", cronParent.Name, t.Unix()/60),
@@ -772,14 +773,14 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 					},
 				}
 				listJobs, err := s.client.BatchV1().Jobs(expected.Namespace).List(context.TODO(), metav1.ListOptions{})
-				c.Assert(err, check.IsNil)
-				c.Assert(len(listJobs.Items), check.Equals, 1)
+				require.NoError(s.t, err)
+				require.Len(s.t, listJobs.Items, 1)
 				gotJob, err := s.client.BatchV1().Jobs(expected.Namespace).Get(context.TODO(), expected.Name, metav1.GetOptions{})
-				c.Assert(err, check.IsNil)
-				c.Assert(gotJob, check.DeepEquals, expected)
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, expected, gotJob)
 				// cleanup
 				err = s.client.BatchV1().CronJobs(expected.Namespace).Delete(context.TODO(), cronParent.Name, metav1.DeleteOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 			},
 		},
 	}
@@ -827,7 +828,7 @@ func (s *S) TestBackwardCompatibilityOldNaming(c *check.C) {
 	}
 
 	_, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), oldCronJob, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	job := &jobTypes.Job{
 		Name: "legacy-job",
@@ -838,19 +839,19 @@ func (s *S) TestBackwardCompatibilityOldNaming(c *check.C) {
 	}
 
 	err = s.p.TriggerCron(context.TODO(), job, "test-default")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	waitCron()
 
 	jobs, err := s.client.BatchV1().Jobs("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(jobs.Items), check.Equals, 1)
-	c.Assert(jobs.Items[0].Name, check.Matches, "legacy-job-manual-job-.*")
+	require.NoError(s.t, err)
+	require.Len(s.t, jobs.Items, 1)
+	require.Contains(s.t, jobs.Items[0].Name, "legacy-job-manual-job-")
 
 	err = s.p.DestroyJob(context.TODO(), job)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "legacy-job", metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 }
 
 func (s *S) TestScheduleChangeTriggersNameMigration(c *check.C) {
@@ -872,32 +873,32 @@ func (s *S) TestScheduleChangeTriggersNameMigration(c *check.C) {
 
 	err := s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	originalHash := "26f58082" // Hash of "0 1 * * *"
 	originalName := fmt.Sprintf("schedule-change-job-%s", originalHash)
 
 	originalCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), originalName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(originalCronJob.Spec.Schedule, check.Equals, "0 1 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "0 1 * * *", originalCronJob.Spec.Schedule)
 
 	job.Spec.Schedule = "0 2 * * *"
 	err = s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	newHash := "746248f8" // Hash of "0 2 * * *"
 	newName := fmt.Sprintf("schedule-change-job-%s", newHash)
 
 	newCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), newName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(newCronJob.Spec.Schedule, check.Equals, "0 2 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "0 2 * * *", newCronJob.Spec.Schedule)
 
 	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), originalName, metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	err = s.p.DestroyJob(context.TODO(), job)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestMixedOldAndNewJobsCoexisting(c *check.C) {
@@ -934,7 +935,7 @@ func (s *S) TestMixedOldAndNewJobsCoexisting(c *check.C) {
 		},
 	}
 	_, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), oldCronJob, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	newJob := &jobTypes.Job{
 		Name:      "new-style-job",
@@ -951,11 +952,11 @@ func (s *S) TestMixedOldAndNewJobsCoexisting(c *check.C) {
 
 	err = s.p.EnsureJob(context.TODO(), newJob)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	cronJobs, err := s.client.BatchV1().CronJobs("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(cronJobs.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, cronJobs.Items, 2)
 
 	var foundOld, foundNew *batchv1.CronJob
 	for i := range cronJobs.Items {
@@ -967,34 +968,34 @@ func (s *S) TestMixedOldAndNewJobsCoexisting(c *check.C) {
 		}
 	}
 
-	c.Assert(foundOld, check.NotNil)
-	c.Assert(foundNew, check.NotNil)
-	c.Assert(foundOld.Spec.Schedule, check.Equals, "0 3 * * *")
-	c.Assert(foundNew.Spec.Schedule, check.Equals, "0 4 * * *")
+	require.NotNil(s.t, foundOld)
+	require.NotNil(s.t, foundNew)
+	require.Equal(s.t, "0 3 * * *", foundOld.Spec.Schedule)
+	require.Equal(s.t, "0 4 * * *", foundNew.Spec.Schedule)
 
 	oldJobSpec := &jobTypes.Job{Name: "old-style-job", Pool: "test-default", Spec: jobTypes.JobSpec{Schedule: "0 3 * * *"}}
 	err = s.p.TriggerCron(context.TODO(), oldJobSpec, "test-default")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	err = s.p.TriggerCron(context.TODO(), newJob, "test-default")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	waitCron()
 
 	jobs, err := s.client.BatchV1().Jobs("default").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(jobs.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, jobs.Items, 2)
 
 	err = s.p.DestroyJob(context.TODO(), oldJobSpec)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	err = s.p.DestroyJob(context.TODO(), newJob)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestCreateJobEvent(c *check.C) {
 	boolTrue := true
 	cleanup := func() {
 		err := storagev2.ClearAllCollections(nil)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}
 	tests := []struct {
 		name         string
@@ -1073,14 +1074,14 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(context.TODO(), &event.Filter{})
-				c.Assert(err, check.IsNil)
-				c.Assert(len(evts), check.Equals, 1)
+				require.NoError(s.t, err)
+				require.Len(s.t, evts, 1)
 				gotEvt := evts[0]
-				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "cronjob-parent"})
-				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "cronjob-parent")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
-				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				require.NotNil(s.t, gotEvt)
+				require.EqualValues(s.t, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "cronjob-parent"}, gotEvt.Target)
+				require.EqualValues(s.t, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "cronjob-parent")), gotEvt.Allowed)
+				require.EqualValues(s.t, eventTypes.OwnerTypeInternal, gotEvt.Owner.Type)
+				require.False(s.t, gotEvt.Cancelable)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
 					"job-controller":     "cronjob-parent",
@@ -1091,9 +1092,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
-				c.Assert(err, check.IsNil)
-				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
-				c.Assert(gotEvt.Error, check.Equals, "")
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, expectedCustomData, gotCustomData)
+				require.Equal(s.t, "", gotEvt.Error)
 			},
 		},
 		{
@@ -1158,14 +1159,14 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(context.TODO(), &event.Filter{})
-				c.Assert(err, check.IsNil)
-				c.Assert(len(evts), check.Equals, 1)
+				require.NoError(s.t, err)
+				require.Len(s.t, evts, 1)
 				gotEvt := evts[0]
-				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"})
-				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
-				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				require.NotNil(s.t, gotEvt)
+				require.EqualValues(s.t, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"}, gotEvt.Target)
+				require.EqualValues(s.t, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")), gotEvt.Allowed)
+				require.EqualValues(s.t, eventTypes.OwnerTypeInternal, gotEvt.Owner.Type)
+				require.False(s.t, gotEvt.Cancelable)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
 					"job-controller":     "myjob",
@@ -1176,8 +1177,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
-				c.Assert(err, check.IsNil)
-				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, expectedCustomData, gotCustomData)
 			},
 		},
 		{
@@ -1242,8 +1243,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(context.TODO(), &event.Filter{})
-				c.Assert(err, check.IsNil)
-				c.Assert(len(evts), check.Equals, 0)
+				require.NoError(s.t, err)
+				require.Len(s.t, evts, 0)
 			},
 		},
 		{
@@ -1303,10 +1304,10 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					},
 				}
 				realCj, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), cj, metav1.CreateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				defer func() {
 					err := s.client.BatchV1().CronJobs("default").Delete(context.TODO(), cj.Name, metav1.DeleteOptions{})
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 				}()
 				j.OwnerReferences = []metav1.OwnerReference{
 					{
@@ -1342,14 +1343,14 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(context.TODO(), &event.Filter{})
-				c.Assert(err, check.IsNil)
-				c.Assert(len(evts), check.Equals, 1)
+				require.NoError(s.t, err)
+				require.Len(s.t, evts, 1)
 				gotEvt := evts[0]
-				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"})
-				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
-				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				require.NotNil(s.t, gotEvt)
+				require.EqualValues(s.t, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"}, gotEvt.Target)
+				require.EqualValues(s.t, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")), gotEvt.Allowed)
+				require.EqualValues(s.t, eventTypes.OwnerTypeInternal, gotEvt.Owner.Type)
+				require.False(s.t, gotEvt.Cancelable)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
 					"job-controller":     "myjob",
@@ -1360,12 +1361,12 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
-				c.Assert(err, check.IsNil)
-				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
-				c.Assert(gotEvt.Error, check.Equals, "")
-				c.Assert(gotEvt.ExpireAt, check.NotNil)
-				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(61*time.Minute)), check.Equals, false)
-				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(59*time.Minute)), check.Equals, true)
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, expectedCustomData, gotCustomData)
+				require.Equal(s.t, "", gotEvt.Error)
+				require.NotNil(s.t, gotEvt.ExpireAt)
+				require.False(s.t, gotEvt.ExpireAt.After(time.Now().Add(61*time.Minute)))
+				require.True(s.t, gotEvt.ExpireAt.After(time.Now().Add(59*time.Minute)))
 			},
 		},
 		{
@@ -1425,10 +1426,10 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					},
 				}
 				realCj, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), cj, metav1.CreateOptions{})
-				c.Assert(err, check.IsNil)
+				require.NoError(s.t, err)
 				defer func() {
 					err := s.client.BatchV1().CronJobs("default").Delete(context.TODO(), cj.Name, metav1.DeleteOptions{})
-					c.Assert(err, check.IsNil)
+					require.NoError(s.t, err)
 				}()
 				j.OwnerReferences = []metav1.OwnerReference{
 					{
@@ -1464,14 +1465,14 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(context.TODO(), &event.Filter{})
-				c.Assert(err, check.IsNil)
-				c.Assert(len(evts), check.Equals, 1)
+				require.NoError(s.t, err)
+				require.Len(s.t, evts, 1)
 				gotEvt := evts[0]
-				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"})
-				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
-				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				require.NotNil(s.t, gotEvt)
+				require.EqualValues(s.t, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"}, gotEvt.Target)
+				require.EqualValues(s.t, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")), gotEvt.Allowed)
+				require.EqualValues(s.t, eventTypes.OwnerTypeInternal, gotEvt.Owner.Type)
+				require.False(s.t, gotEvt.Cancelable)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
 					"job-controller":     "myjob",
@@ -1482,12 +1483,12 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
-				c.Assert(err, check.IsNil)
-				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
-				c.Assert(gotEvt.Error, check.Equals, "")
-				c.Assert(gotEvt.ExpireAt, check.NotNil)
-				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(25*time.Hour)), check.Equals, false)
-				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(23*time.Hour)), check.Equals, true)
+				require.NoError(s.t, err)
+				require.EqualValues(s.t, expectedCustomData, gotCustomData)
+				require.Equal(s.t, "", gotEvt.Error)
+				require.NotNil(s.t, gotEvt.ExpireAt)
+				require.False(s.t, gotEvt.ExpireAt.After(time.Now().Add(25*time.Hour)))
+				require.True(s.t, gotEvt.ExpireAt.After(time.Now().Add(23*time.Hour)))
 			},
 		},
 	}
@@ -1517,10 +1518,10 @@ func (s *S) TestKillJobUnit(c *check.C) {
 			Pool: "pool1",
 		}
 		err = s.p.DestroyJob(context.TODO(), &j)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}()
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myjob-unit1",
@@ -1531,14 +1532,14 @@ func (s *S) TestKillJobUnit(c *check.C) {
 		},
 	}
 	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(k8sJob, check.NotNil)
-	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1")
+	require.NoError(s.t, err)
+	require.NotNil(s.t, k8sJob)
+	require.Equal(s.t, "myjob-unit1", k8sJob.Name)
 	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1", false)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
-	c.Assert(err, check.NotNil)
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.Error(s.t, err)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 }
 
 func (s *S) TestKillJobUnitUnknow(c *check.C) {
@@ -1559,10 +1560,10 @@ func (s *S) TestKillJobUnitUnknow(c *check.C) {
 			Pool: "pool1",
 		}
 		err = s.p.DestroyJob(context.TODO(), &j)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}()
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myjob-unit1",
@@ -1573,14 +1574,14 @@ func (s *S) TestKillJobUnitUnknow(c *check.C) {
 		},
 	}
 	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(k8sJob, check.NotNil)
-	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1")
+	require.NoError(s.t, err)
+	require.NotNil(s.t, k8sJob)
+	require.Equal(s.t, "myjob-unit1", k8sJob.Name)
 	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1", false)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `unit "myjob-unit1" not found`)
+	require.Error(s.t, err)
+	require.ErrorContains(s.t, err, `unit "myjob-unit1" not found`)
 	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestFindJobFailedReason(c *check.C) {
@@ -1629,7 +1630,7 @@ func (s *S) TestFindJobFailedReason(c *check.C) {
 
 	for _, tc := range testCases {
 		reason := findJobFailedReason(tc.job)
-		c.Assert(reason, check.Equals, tc.expectedReason)
+		require.Equal(s.t, tc.expectedReason, reason)
 	}
 }
 
@@ -1651,10 +1652,10 @@ func (s *S) TestKillJobUnitWithPodCleanup(c *check.C) {
 			Pool: "pool1",
 		}
 		err = s.p.DestroyJob(context.TODO(), &j)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}()
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1680,9 +1681,9 @@ func (s *S) TestKillJobUnitWithPodCleanup(c *check.C) {
 		},
 	}
 	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(k8sJob, check.NotNil)
-	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1")
+	require.NoError(s.t, err)
+	require.NotNil(s.t, k8sJob)
+	require.Equal(s.t, "myjob-unit1", k8sJob.Name)
 
 	pod1 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1724,28 +1725,28 @@ func (s *S) TestKillJobUnitWithPodCleanup(c *check.C) {
 	}
 
 	_, err = s.client.CoreV1().Pods("default").Create(context.TODO(), pod1, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.CoreV1().Pods("default").Create(context.TODO(), pod2, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	pods, err := s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "job-name=myjob-unit1",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(pods.Items), check.Equals, 2)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 2)
 
 	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1", false)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
-	c.Assert(err, check.NotNil)
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.Error(s.t, err)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	pods, err = s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "job-name=myjob-unit1",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(pods.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 0)
 }
 
 func (s *S) TestKillJobUnitWithPodCleanupForced(c *check.C) {
@@ -1766,10 +1767,10 @@ func (s *S) TestKillJobUnitWithPodCleanupForced(c *check.C) {
 			Pool: "pool1",
 		}
 		err = s.p.DestroyJob(context.TODO(), &j)
-		c.Assert(err, check.IsNil)
+		require.NoError(s.t, err)
 	}()
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1795,9 +1796,9 @@ func (s *S) TestKillJobUnitWithPodCleanupForced(c *check.C) {
 		},
 	}
 	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(k8sJob, check.NotNil)
-	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1-forced")
+	require.NoError(s.t, err)
+	require.NotNil(s.t, k8sJob)
+	require.Equal(s.t, "myjob-unit1-forced", k8sJob.Name)
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1820,26 +1821,26 @@ func (s *S) TestKillJobUnitWithPodCleanupForced(c *check.C) {
 	}
 
 	_, err = s.client.CoreV1().Pods("default").Create(context.TODO(), pod, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	pods, err := s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "job-name=myjob-unit1-forced",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(pods.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 1)
 
 	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1-forced", true)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1-forced", metav1.GetOptions{})
-	c.Assert(err, check.NotNil)
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.Error(s.t, err)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	pods, err = s.client.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "job-name=myjob-unit1-forced",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(pods.Items), check.Equals, 0)
+	require.NoError(s.t, err)
+	require.Len(s.t, pods.Items, 0)
 }
 
 func (s *S) TestScheduleChangeDeletesAllOldCronJobs(c *check.C) {
@@ -1861,51 +1862,51 @@ func (s *S) TestScheduleChangeDeletesAllOldCronJobs(c *check.C) {
 
 	err := s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	initialName := generateJobNameWithScheduleHash(job)
 
 	initialCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), initialName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(initialCronJob.Spec.Schedule, check.Equals, "0 1 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "0 1 * * *", initialCronJob.Spec.Schedule)
 
 	job.Spec.Schedule = "0 2 * * *"
 	err = s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	secondName := generateJobNameWithScheduleHash(job)
 
 	secondCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), secondName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(secondCronJob.Spec.Schedule, check.Equals, "0 2 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "0 2 * * *", secondCronJob.Spec.Schedule)
 
 	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), initialName, metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	job.Spec.Schedule = "0 3 * * *"
 	err = s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	thirdName := generateJobNameWithScheduleHash(job)
 
 	thirdCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), thirdName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(thirdCronJob.Spec.Schedule, check.Equals, "0 3 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, "0 3 * * *", thirdCronJob.Spec.Schedule)
 
 	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), secondName, metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	allCronJobs, err := s.client.BatchV1().CronJobs("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "tsuru.io/job-name=multi-change-job",
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(allCronJobs.Items), check.Equals, 1)
-	c.Assert(allCronJobs.Items[0].Name, check.Equals, thirdName)
+	require.NoError(s.t, err)
+	require.Len(s.t, allCronJobs.Items, 1)
+	require.Equal(s.t, thirdName, allCronJobs.Items[0].Name)
 
 	err = s.p.DestroyJob(context.TODO(), job)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestMaxJobNameLengthWithHash(c *check.C) {
@@ -1913,7 +1914,7 @@ func (s *S) TestMaxJobNameLengthWithHash(c *check.C) {
 	defer waitCron()
 
 	maxJobName := "this-is-a-very-long-job-name-exactly-40c"
-	c.Assert(len(maxJobName), check.Equals, 40)
+	require.Len(s.t, maxJobName, 40)
 
 	job := &jobTypes.Job{
 		Name:      maxJobName,
@@ -1930,42 +1931,42 @@ func (s *S) TestMaxJobNameLengthWithHash(c *check.C) {
 
 	err := s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	expectedName := generateJobNameWithScheduleHash(job)
-	c.Assert(len(expectedName), check.Equals, 49)
+	require.Len(s.t, expectedName, 49)
 
 	cronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), expectedName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(cronJob.Name, check.Equals, expectedName)
-	c.Assert(cronJob.Spec.Schedule, check.Equals, "0 1 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, expectedName, cronJob.Name)
+	require.Equal(s.t, "0 1 * * *", cronJob.Spec.Schedule)
 
 	job.Spec.Schedule = "0 2 * * *"
 	err = s.p.EnsureJob(context.TODO(), job)
 	waitCron()
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	newExpectedName := generateJobNameWithScheduleHash(job)
-	c.Assert(len(newExpectedName), check.Equals, 49)
+	require.Len(s.t, newExpectedName, 49)
 
 	newCronJob, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), newExpectedName, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(newCronJob.Name, check.Equals, newExpectedName)
-	c.Assert(newCronJob.Spec.Schedule, check.Equals, "0 2 * * *")
+	require.NoError(s.t, err)
+	require.Equal(s.t, newExpectedName, newCronJob.Name)
+	require.Equal(s.t, "0 2 * * *", newCronJob.Spec.Schedule)
 
 	_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), expectedName, metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	err = s.p.TriggerCron(context.TODO(), job, "test-default")
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 	waitCron()
 
 	manualJobs, err := s.client.BatchV1().Jobs("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tsuru.io/job-name=%s", maxJobName),
 	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(manualJobs.Items), check.Equals, 1)
+	require.NoError(s.t, err)
+	require.Len(s.t, manualJobs.Items, 1)
 
 	err = s.p.DestroyJob(context.TODO(), job)
-	c.Assert(err, check.IsNil)
+	require.NoError(s.t, err)
 }
