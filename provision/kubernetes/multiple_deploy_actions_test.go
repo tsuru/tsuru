@@ -297,6 +297,11 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 	}
 }
 
+// NOTE:(ravilock) This test is flaky (other tests that depend on KubeMock might be as well)
+// The reason for this is that some reactions defined for the fake kubernetes client
+// might actually call the fake client again to create some other objects
+// e.g. after creating a deployment, the reaction might call the fake client to create replicasets and pods
+// those subsequente calls need to happen inside a goroutine, leading to race conditions
 func (s *S) TestDoubleStartDoesNotIncreaseAppUnits(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
