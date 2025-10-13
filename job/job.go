@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
@@ -413,6 +414,22 @@ func (*jobService) Trigger(ctx context.Context, job *jobTypes.Job) error {
 	return action.NewPipeline([]*action.Action{&triggerCron}...).Execute(ctx, job)
 }
 
+func processTags(tags []string) []string {
+	if tags == nil {
+		return nil
+	}
+	processedTags := []string{}
+	usedTags := make(map[string]bool)
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if len(tag) > 0 && !usedTags[tag] {
+			processedTags = append(processedTags, tag)
+			usedTags[tag] = true
+		}
+	}
+	return processedTags
+}
+
 func filterQuery(f *jobTypes.Filter) mongoBSON.M {
 	if f == nil {
 		return mongoBSON.M{}
@@ -441,6 +458,10 @@ func filterQuery(f *jobTypes.Filter) mongoBSON.M {
 	}
 	if len(f.Pools) > 0 {
 		query["pool"] = mongoBSON.M{"$in": f.Pools}
+	}
+	tags := processTags(f.Tags)
+	if len(tags) > 0 {
+		query["tags"] = mongoBSON.M{"$all": tags}
 	}
 	return query
 }

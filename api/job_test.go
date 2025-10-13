@@ -37,6 +37,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	tagTypes "github.com/tsuru/tsuru/types/tag"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
@@ -230,6 +231,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Memory:  1024,
 			Default: true,
 		},
+		Tags: []string{},
 		Metadata: appTypes.Metadata{
 			Labels: []appTypes.MetadataItem{
 				{
@@ -326,6 +328,7 @@ func (s *S) TestCreateManualJob(c *check.C) {
 			Memory:  1024,
 			Default: true,
 		},
+		Tags: []string{},
 		Pool: "test1",
 		DeployOptions: &jobTypes.DeployOptions{
 			Kind:  provTypes.DeployImage,
@@ -488,6 +491,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Memory:  1024,
 			Default: true,
 		},
+		Tags: []string{},
 		Metadata: appTypes.Metadata{
 			Labels: []appTypes.MetadataItem{
 				{
@@ -3407,4 +3411,316 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 	msgSlice, ok := enc.msg.([]appTypes.Applog)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(msgSlice, check.DeepEquals, []appTypes.Applog{{Message: "xyz"}})
+}
+
+func (s *S) TestCreateJobWithTags(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	ij := inputJob{
+		Name:      "job-with-tags",
+		TeamOwner: s.team.Name,
+		Plan:      "default-plan",
+		Container: jobTypes.ContainerInfo{
+			OriginalImageSrc: "busybox:1.28",
+		},
+		Schedule: "* * * * *",
+		Pool:     "test1",
+		Tags:     []string{"tag1", "tag2", "tag3"},
+	}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated, check.Commentf("Response: %s", recorder.Body.String()))
+
+	// Verify tags are stored in the database
+	collection, err := storagev2.JobsCollection()
+	c.Assert(err, check.IsNil)
+
+	var gotJob jobTypes.Job
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": "job-with-tags"}).Decode(&gotJob)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotJob.Tags, check.DeepEquals, []string{"tag1", "tag2", "tag3"})
+}
+
+func (s *S) TestCreateJobWithTagsAndTagValidator(c *check.C) {
+	previousTagService := servicemanager.Tag
+	defer func() {
+		servicemanager.Tag = previousTagService
+	}()
+	servicemanager.Tag = &tagTypes.MockServiceTagServiceClient{
+		OnValidate: func(in *tagTypes.TagValidationRequest) (*tagTypes.ValidationResponse, error) {
+			c.Assert(in.Operation, check.Equals, tagTypes.OperationKind_OPERATION_KIND_CREATE)
+			c.Assert(in.Tags, check.DeepEquals, []string{"invalid-tag"})
+			return &tagTypes.ValidationResponse{Valid: false, Error: "invalid tag"}, nil
+		},
+	}
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	ij := inputJob{
+		Name:      "job-with-invalid-tags",
+		TeamOwner: s.team.Name,
+		Plan:      "default-plan",
+		Container: jobTypes.ContainerInfo{
+			OriginalImageSrc: "busybox:1.28",
+		},
+		Schedule: "* * * * *",
+		Pool:     "test1",
+		Tags:     []string{"invalid-tag"},
+	}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid tag\n")
+}
+
+func (s *S) TestUpdateJobWithTags(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	// Create a job without tags
+	j := jobTypes.Job{
+		Name:      "job-to-update",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "busybox:1.28",
+			},
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provTypes.DeployImage,
+			Image: "busybox:1.28",
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
+	c.Assert(err, check.IsNil)
+
+	// Update with tags
+	ij := inputJob{
+		Name:      "job-to-update",
+		TeamOwner: j.TeamOwner,
+		Pool:      "test1",
+		Tags:      []string{"new-tag1", "new-tag2"},
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("PUT", "/jobs/job-to-update", &buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
+
+	// Verify tags are updated in the database
+	collection, err := storagev2.JobsCollection()
+	c.Assert(err, check.IsNil)
+
+	var gotJob jobTypes.Job
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": "job-to-update"}).Decode(&gotJob)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotJob.Tags, check.DeepEquals, []string{"new-tag1", "new-tag2"})
+}
+
+func (s *S) TestUpdateJobWithTagsAndTagValidator(c *check.C) {
+	previousTagService := servicemanager.Tag
+	defer func() {
+		servicemanager.Tag = previousTagService
+	}()
+	servicemanager.Tag = &tagTypes.MockServiceTagServiceClient{
+		OnValidate: func(in *tagTypes.TagValidationRequest) (*tagTypes.ValidationResponse, error) {
+			c.Assert(in.Operation, check.Equals, tagTypes.OperationKind_OPERATION_KIND_UPDATE)
+			c.Assert(in.Tags, check.DeepEquals, []string{"invalid-tag"})
+			return &tagTypes.ValidationResponse{Valid: false, Error: "invalid tag on update"}, nil
+		},
+	}
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	// Create a job without tags
+	j := jobTypes.Job{
+		Name:      "job-to-update-invalid",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "busybox:1.28",
+			},
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provTypes.DeployImage,
+			Image: "busybox:1.28",
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
+	c.Assert(err, check.IsNil)
+
+	// Update with invalid tags
+	ij := inputJob{
+		Name:      "job-to-update-invalid",
+		TeamOwner: j.TeamOwner,
+		Pool:      "test1",
+		Tags:      []string{"invalid-tag"},
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("PUT", "/jobs/job-to-update-invalid", &buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid tag on update\n")
+}
+
+func (s *S) TestJobListFilteringByTags(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+
+	// Create job1 with tags
+	j1 := jobTypes.Job{
+		Name:      "job1",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Tags:      []string{"tag1", "tag2"},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "busybox:1.28",
+			},
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provTypes.DeployImage,
+			Image: "busybox:1.28",
+		},
+	}
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
+	c.Assert(err, check.IsNil)
+
+	// Create job2 with different tags
+	j2 := jobTypes.Job{
+		Name:      "job2",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Tags:      []string{"tag2", "tag3"},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "busybox:1.28",
+			},
+		},
+		DeployOptions: &jobTypes.DeployOptions{
+			Kind:  provTypes.DeployImage,
+			Image: "busybox:1.28",
+		},
+	}
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user)
+	c.Assert(err, check.IsNil)
+
+	// Test filtering by tag3 (should return only job2)
+	request, err := http.NewRequest("GET", "/jobs?tag=tag3", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []jobTypes.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(jobs, check.HasLen, 1)
+	c.Assert(jobs[0].Name, check.Equals, "job2")
+	c.Assert(jobs[0].Tags, check.DeepEquals, []string{"tag2", "tag3"})
+
+	// Test filtering by tag1 and tag2 (should return only job1)
+	request, err = http.NewRequest("GET", "/jobs?tag=tag1&tag=tag2", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs = []jobTypes.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(jobs, check.HasLen, 1)
+	c.Assert(jobs[0].Name, check.Equals, "job1")
+	c.Assert(jobs[0].Tags, check.DeepEquals, []string{"tag1", "tag2"})
+
+	// Test filtering by tag2 (should return job1 and job2)
+	request, err = http.NewRequest("GET", "/jobs?tag=tag2", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs = []jobTypes.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(jobs, check.HasLen, 2)
+	c.Assert(jobs[0].Name, check.Equals, "job1")
+	c.Assert(jobs[1].Name, check.Equals, "job2")
+	c.Assert(jobs[0].Tags, check.DeepEquals, []string{"tag1", "tag2"})
+	c.Assert(jobs[1].Tags, check.DeepEquals, []string{"tag2", "tag3"})
 }
