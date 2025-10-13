@@ -2996,8 +2996,8 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	})
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
-
 	require.NoError(s.t, err)
+
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version1,

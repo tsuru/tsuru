@@ -51,8 +51,7 @@ type stepDef struct {
 	*startStep
 	*unitStep
 	*deployStep
-	stepName string
-	check    func()
+	check func()
 }
 
 func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
@@ -269,7 +268,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			err := app.CreateApp(context.TODO(), a, s.user)
 			require.NoError(s.t, err)
 			for j, step := range tt.steps {
-				fmt.Printf("test %v step %v %s\n", i, j, step.stepName) // step.stepName == "stop step" || step.stepName == "start step" || step.stepName == "start step 2"
+				fmt.Printf("test %v step %v\n", i, j)
 				if step.deployStep != nil {
 					err := s.deployStep(c, a, &m, step.deployStep, waitDep)
 					require.NoError(s.t, err)
@@ -364,7 +363,6 @@ func (s *S) TestDoubleStartDoesNotIncreaseAppUnits(c *check.C) {
 			},
 		},
 		{
-			stepName: "stop step",
 			stopStep: &stopStep{},
 			check: func() {
 				s.hasDepWithVersion("myapp4-p1", 1, 0)
@@ -385,7 +383,6 @@ func (s *S) TestDoubleStartDoesNotIncreaseAppUnits(c *check.C) {
 			},
 		},
 		{
-			stepName:  "start step",
 			startStep: &startStep{},
 			check: func() {
 				s.hasDepWithVersion("myapp4-p1", 1, 2)
@@ -410,7 +407,6 @@ func (s *S) TestDoubleStartDoesNotIncreaseAppUnits(c *check.C) {
 		// previous, we had a bug that doubles the number of units
 		// to prevent regression we need to test this case
 		{
-			stepName:  "start step 2",
 			startStep: &startStep{},
 			check: func() {
 				s.hasDepWithVersion("myapp4-p1", 1, 2)
@@ -432,7 +428,7 @@ func (s *S) TestDoubleStartDoesNotIncreaseAppUnits(c *check.C) {
 		},
 	}
 	for j, step := range steps {
-		fmt.Printf("step %v %s\n", j, step.stepName) // step.stepName == "stop step" || step.stepName == "start step" || step.stepName == "start step 2"
+		fmt.Printf("step %v\n", j)
 		if step.deployStep != nil {
 			err := s.deployStep(c, a, &m, step.deployStep, waitDep)
 			require.NoError(s.t, err)

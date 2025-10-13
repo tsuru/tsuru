@@ -249,7 +249,6 @@ var updateServices = &action.Action{
 			if err != nil {
 				break
 			}
-			// TODO: On a app start after an app stop, this is resulting on 0 real reaplicas for the process.. might be a bug?
 			deployedProcesses[processName] = oldLabelsMap[processName]
 		}
 		errs := tsuruErrors.NewMultiError()

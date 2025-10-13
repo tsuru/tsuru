@@ -478,10 +478,10 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		}
 		wg.Add(1)
 		// NOTE:(ravilock) making those reaction calls in goroutines is leading to flaky tests,
-		// unfortunately, we cannot remove the goroutines here, because s.deployWithPodReaction might
+		// unfortunately, we cannot remove the goroutines because s.deployWithPodReaction might
 		// make other calls to the fake client.
-		// The fake client has an object tracker and it uses a mutex, so the subsequente calls
-		// to the fake client would block forever if the mutex is already locked by the current call
+		// The fake client has an object tracker that uses a mutexes, so subsequent calls to the
+		// fake client would block forever if the mutex is already locked by the current call
 		go func() {
 			defer wg.Done()
 			s.deployWithPodReaction(c, dep, specReplicas, &counter)

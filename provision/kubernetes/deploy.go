@@ -294,10 +294,6 @@ type hcResult struct {
 	startup   *apiv1.Probe
 }
 
-func (hc hcResult) Display() string {
-	return fmt.Sprintf("%s\n%s\n%s\n", hc.liveness.String(), hc.readiness.String(), hc.startup.String())
-}
-
 func probesFromCheckConfigs(healthcheck *provTypes.TsuruYamlHealthcheck, startupcheck *provTypes.TsuruYamlStartupcheck, port int) (hcResult, error) {
 	var result hcResult
 	if healthcheck != nil && !healthcheck.IsEmpty() {
@@ -1001,7 +997,6 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	processInUse := map[string]struct{}{}
 	versionInUse := map[processVersionKey]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
-	// check if the deployedVersion is on depGroups.bases, if it is, remove it from depGroups.versioned if preserveOldVersions is false
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
 			if shouldKeepDeployment(depData, baseVersion, deployedVersion, preserveOldVersions) {
