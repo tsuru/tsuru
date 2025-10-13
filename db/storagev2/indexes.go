@@ -68,6 +68,10 @@ var EnsureIndexes = []EnsureIndex{
 				Keys:    mongoBSON.D{{Key: "lock", Value: 1}},
 				Options: options.Index().SetBackground(true).SetSparse(true).SetUnique(true).SetBackground(true), //nolint
 			},
+			{
+				Keys:    mongoBSON.D{{Key: "locks.type", Value: 1}, {Key: "locks.value", Value: 1}},
+				Options: options.Index().SetBackground(true).SetSparse(true).SetUnique(true).SetBackground(true), //nolint
+			},
 		},
 	},
 
