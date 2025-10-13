@@ -2933,16 +2933,16 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", dep.Spec.Template.Labels["tsuru.io/app-version"])
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
@@ -2956,25 +2956,25 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 
 	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+	require.Equal(s.t, "2", dep.Spec.Template.Labels["tsuru.io/app-version"])
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	_, err = s.client.Clientset.CoreV1().Secrets(ns).Get(context.TODO(), appSecretPrefix+"myapp-p2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 }
 
 func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check.C) {
@@ -3014,18 +3014,18 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", dep.Spec.Template.Labels["tsuru.io/app-version"])
 	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", dep.Spec.Template.Labels["tsuru.io/app-version"])
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
@@ -3046,11 +3046,11 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	require.NoError(s.t, err)
 
@@ -3075,11 +3075,11 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v3", metav1.GetOptions{})
@@ -3097,25 +3097,25 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 
 	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+	require.Equal(s.t, "2", dep.Spec.Template.Labels["tsuru.io/app-version"])
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v3", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v3", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
@@ -3148,16 +3148,16 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
 
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", dep.Spec.Template.Labels["tsuru.io/app-version"])
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
@@ -3171,39 +3171,39 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
 
 	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", dep.Spec.Template.Labels["tsuru.io/app-version"])
 
 	depP2, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(depP2.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", depP2.Spec.Template.Labels["tsuru.io/app-version"])
 
 	depV2, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(depV2.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+	require.Equal(s.t, "2", depV2.Spec.Template.Labels["tsuru.io/app-version"])
 
 	svcList, err := s.client.Clientset.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Check(err, check.IsNil)
-	c.Check(len(svcList.Items), check.Equals, 6)
+	require.NoError(s.t, err)
+	require.Len(s.t, svcList.Items, 6)
 
 	// check all p1 services that should've been created
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	// check all p2 services that should still exist from first deployment
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-units", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
@@ -3412,10 +3412,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	require.Equal(s.t, "1", dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"])
 
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	require.Contains(s.t, buf.String(), "---- Updating units [p1] [version 1] ----")
 	require.Contains(s.t, buf.String(), "Healthcheck Timeout of 1s exceeded")
@@ -4128,17 +4128,17 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	require.NoError(s.t, err)
 	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+	require.Equal(s.t, "2", dep.Spec.Template.Labels["tsuru.io/app-version"])
 	dep, err = s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+	require.Equal(s.t, "1", dep.Spec.Template.Labels["tsuru.io/app-version"])
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-	c.Check(rolloutFailureCalled, check.Equals, true)
-	c.Check(evt.Done(context.TODO(), err), check.IsNil)
-	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*`)
+	require.NoError(s.t, err)
+	require.True(s.t, rolloutFailureCalled)
+	require.Nil(s.t, evt.Done(context.TODO(), err))
+	require.Contains(s.t, evt.Log(), "UPDATING BACK AFTER FAILURE")
 }
 
 func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C) {
@@ -4196,13 +4196,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	require.NoError(s.t, err)
 	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+	require.Equal(s.t, "2", dep.Spec.Template.Labels["tsuru.io/app-version"])
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	require.NoError(s.t, err)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
-	c.Check(evt.Done(context.TODO(), err), check.IsNil)
-	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*ERROR DURING ROLLBACK.*`)
+	require.True(s.t, k8sErrors.IsNotFound(err))
+	require.Nil(s.t, evt.Done(context.TODO(), err))
+	require.Contains(s.t, evt.Log(), "UPDATING BACK AFTER FAILURE")
+	require.Contains(s.t, evt.Log(), "ERROR DURING ROLLBACK")
 }
 
 func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *check.C) {

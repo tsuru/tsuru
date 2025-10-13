@@ -981,7 +981,6 @@ type serviceManager struct {
 var _ servicecommon.ServiceManager = &serviceManager{}
 
 func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, deployedVersion int, preserveOldVersions bool) error {
-	fmt.Println()
 	depGroups, err := deploymentsDataForApp(ctx, m.client, a)
 	if err != nil {
 		return err
@@ -998,7 +997,6 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Deployed Version: %d, baseVersion: %d, Preserve Old Versions: %v\n", deployedVersion, baseVersion, preserveOldVersions)
 
 	processInUse := map[string]struct{}{}
 	versionInUse := map[processVersionKey]struct{}{}
@@ -1006,7 +1004,6 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	// check if the deployedVersion is on depGroups.bases, if it is, remove it from depGroups.versioned if preserveOldVersions is false
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			fmt.Printf("Checking if versioned deployment process(%s):version(%d) should be kept...", depData.process, depData.version)
 			if shouldKeepDeployment(depData, baseVersion, deployedVersion, preserveOldVersions) {
 				processInUse[depData.process] = struct{}{}
 				versionInUse[processVersionKey{
@@ -1046,8 +1043,6 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 			version: svcVersion,
 		}]
 
-		fmt.Printf("Checking if service %s process(%s):version(%d) should be kept...", svc.Name, process, svcVersion)
-
 		if shouldKeepService(inUseVersion, inUseProcess, svcVersion) {
 			continue
 		}
@@ -1083,37 +1078,28 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 }
 
 func shouldKeepDeployment(depData deploymentInfo, baseVersion, deployedVersion int, preserveOldVersions bool) bool {
-	fmt.Printf(" - %d Replicas", depData.replicas)
 	if depData.isBase && depData.version == baseVersion {
-		fmt.Println(" - Keeping (base with base version)")
 		return true
 	}
 	if depData.replicas == 0 {
-		fmt.Println(" - Cleaning up (0 replicas)")
 		return false
 	}
 	if preserveOldVersions {
-		fmt.Println(" - Keeping (preserveOldVersions)")
 		return true
 	}
 	if depData.isBase && depData.version == deployedVersion {
-		fmt.Println(" - Keeping (base with deployed version)(the fix)")
 		return true
 	}
-	fmt.Println(" - Cleaning up (none")
 	return false
 }
 
 func shouldKeepService(inUseVersion, inUseProcess bool, serviceVersion int) bool {
 	if inUseVersion {
-		fmt.Println(" - Keeping (version in use)")
 		return true
 	}
 	if isBaseService(serviceVersion) && inUseProcess {
-		fmt.Println(" - Keeping (base version && process in use)")
 		return true
 	}
-	fmt.Println(" - Cleaning up (none)")
 	return false
 }
 
