@@ -999,7 +999,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			if shouldKeepDeployment(depData, baseVersion, deployedVersion, preserveOldVersions) {
+			if shouldKeepDeployment(depData, baseVersion, preserveOldVersions) {
 				processInUse[depData.process] = struct{}{}
 				versionInUse[processVersionKey{
 					process: depData.process,
@@ -1072,7 +1072,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	return multiErrors.ToError()
 }
 
-func shouldKeepDeployment(depData deploymentInfo, baseVersion, deployedVersion int, preserveOldVersions bool) bool {
+func shouldKeepDeployment(depData deploymentInfo, baseVersion int, preserveOldVersions bool) bool {
 	if depData.isBase && depData.version == baseVersion {
 		return true
 	}
@@ -1080,9 +1080,6 @@ func shouldKeepDeployment(depData deploymentInfo, baseVersion, deployedVersion i
 		return false
 	}
 	if preserveOldVersions {
-		return true
-	}
-	if depData.isBase && depData.version == deployedVersion {
 		return true
 	}
 	return false
