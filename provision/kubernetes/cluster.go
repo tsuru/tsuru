@@ -65,6 +65,7 @@ const (
 	disableHeadlessKey            = "disable-headless"
 	maxSurgeKey                   = "max-surge"
 	maxUnavailableKey             = "max-unavailable"
+	disableSecretsKey             = "disable-secrets"
 	singlePoolKey                 = "single-pool"
 	ephemeralStorageKey           = "ephemeral-storage"
 	preStopSleepKey               = "pre-stop-sleep"
@@ -510,6 +511,15 @@ func (c *ClusterClient) maxUnavailable(pool string) intstr.IntOrString {
 		return defaultUnvailable
 	}
 	return intstr.Parse(maxUnavailable)
+}
+
+func (c *ClusterClient) disableSecrets(pool string) bool {
+	disableSecrets := c.configForContext(pool, disableSecretsKey)
+	if disableSecrets == "" {
+		return false
+	}
+	d, _ := strconv.ParseBool(disableSecrets)
+	return d
 }
 
 func (c *ClusterClient) dnsConfigNdots(pool string) intstr.IntOrString {

@@ -519,13 +519,33 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 }
 
 type ServiceAccountLabelsOpts struct {
-	App               *appTypes.App
-	Job               *jobTypes.Job
-	NodeContainerName string
-	Prefix            string
+	App    *appTypes.App
+	Job    *jobTypes.Job
+	Prefix string
+}
+
+type SecretLabelsOpts struct {
+	App    *appTypes.App
+	Job    *jobTypes.Job
+	Prefix string
 }
 
 func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
+	labelMap := map[string]string{
+		labelIsTsuru: strconv.FormatBool(true),
+	}
+	if opts.App != nil {
+		labelMap[LabelAppName] = opts.App.Name
+	} else {
+		labelMap[LabelJobName] = opts.Job.Name
+	}
+	return &LabelSet{
+		Labels: labelMap,
+		Prefix: opts.Prefix,
+	}
+}
+
+func SecretLabels(opts SecretLabelsOpts) *LabelSet {
 	labelMap := map[string]string{
 		labelIsTsuru: strconv.FormatBool(true),
 	}

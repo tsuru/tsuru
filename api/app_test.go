@@ -3334,8 +3334,8 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 	expected := []bindTypes.EnvVar{
 		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		{Name: "DATABASE_USER", Value: "root", Public: true},
-		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: false},
-		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: false},
+		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: true},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: true},
 		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
 	}
 	result := []bindTypes.EnvVar{}
