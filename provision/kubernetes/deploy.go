@@ -999,7 +999,9 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			if shouldKeepDeployment(depData, baseVersion, preserveOldVersions) {
+			toKeep := (depData.isBase && depData.version == baseVersion) ||
+				(depData.replicas > 0 && preserveOldVersions)
+			if toKeep {
 				processInUse[depData.process] = struct{}{}
 				versionInUse[processVersionKey{
 					process: depData.process,
@@ -1038,7 +1040,9 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 			version: svcVersion,
 		}]
 
-		if shouldKeepService(inUseVersion, inUseProcess, svcVersion) {
+		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
+
+		if toKeep {
 			continue
 		}
 
@@ -1070,33 +1074,6 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	}
 
 	return multiErrors.ToError()
-}
-
-func shouldKeepDeployment(depData deploymentInfo, baseVersion int, preserveOldVersions bool) bool {
-	if depData.isBase && depData.version == baseVersion {
-		return true
-	}
-	if depData.replicas == 0 {
-		return false
-	}
-	if preserveOldVersions {
-		return true
-	}
-	return false
-}
-
-func shouldKeepService(inUseVersion, inUseProcess bool, serviceVersion int) bool {
-	if inUseVersion {
-		return true
-	}
-	if isBaseService(serviceVersion) && inUseProcess {
-		return true
-	}
-	return false
-}
-
-func isBaseService(serviceVersion int) bool {
-	return serviceVersion == 0
 }
 
 func (m *serviceManager) RemoveService(ctx context.Context, a *appTypes.App, process string, versionNumber int) error {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/stretchr/testify/require"
@@ -256,201 +257,161 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				},
 			},
 		},
+		{
+			steps: []stepDef{
+				{
+					deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 1)
+						s.hasDepWithVersion("myapp4-p2", 1, 1)
+						s.hasDepWithVersion("myapp4-p3", 1, 1)
+					},
+				},
+				{
+					deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}, newVersion: true},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 1)
+						s.hasDepWithVersion("myapp4-p2", 1, 1)
+						s.hasDepWithVersion("myapp4-p3", 1, 1)
+						s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
+					},
+				},
+				{
+					unitStep: &unitStep{version: 1, units: 1, process: "p1"},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 2)
+						s.hasDepWithVersion("myapp4-p2", 1, 1)
+						s.hasDepWithVersion("myapp4-p3", 1, 1)
+						s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
+					},
+				},
+				{
+					unitStep: &unitStep{version: 1, units: 1, process: "p2"},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 2)
+						s.hasDepWithVersion("myapp4-p2", 1, 2)
+						s.hasDepWithVersion("myapp4-p3", 1, 1)
+						s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
+					},
+				},
+				{
+					unitStep: &unitStep{version: 1, units: 1, process: "p3"},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 2)
+						s.hasDepWithVersion("myapp4-p2", 1, 2)
+						s.hasDepWithVersion("myapp4-p3", 1, 2)
+						s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
+					},
+				},
+				{
+					stopStep: &stopStep{},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 0)
+						s.hasDepWithVersion("myapp4-p2", 1, 0)
+						s.hasDepWithVersion("myapp4-p3", 1, 0)
+						s.noDep("myapp4-p1-v2")
+						s.noDep("myapp4-p2-v2")
+						s.noDep("myapp4-p3-v2")
+						s.hasSvc("myapp4-p1")
+						s.hasSvc("myapp4-p1-v1")
+						s.hasSvc("myapp4-p2")
+						s.hasSvc("myapp4-p2-v1")
+						s.hasSvc("myapp4-p3")
+						s.hasSvc("myapp4-p3-v1")
+						s.noSvc("myapp4-p1-v2")
+						s.noSvc("myapp4-p2-v2")
+						s.noSvc("myapp4-p3-v2")
+					},
+				},
+				{
+					startStep: &startStep{},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 2)
+						s.hasDepWithVersion("myapp4-p2", 1, 2)
+						s.hasDepWithVersion("myapp4-p3", 1, 2)
+						s.noDep("myapp4-p1-v2")
+						s.noDep("myapp4-p2-v2")
+						s.noDep("myapp4-p3-v2")
+						s.hasSvc("myapp4-p1")
+						s.hasSvc("myapp4-p1-v1")
+						s.hasSvc("myapp4-p2")
+						s.hasSvc("myapp4-p2-v1")
+						s.hasSvc("myapp4-p3")
+						s.hasSvc("myapp4-p3-v1")
+						s.noSvc("myapp4-p1-v2")
+						s.noSvc("myapp4-p2-v2")
+						s.noSvc("myapp4-p3-v2")
+					},
+				},
+
+				// redundant start
+				// previous, we had a bug that doubles the number of units
+				// to prevent regression we need to test this case
+				{
+					startStep: &startStep{},
+					check: func() {
+						s.hasDepWithVersion("myapp4-p1", 1, 2)
+						s.hasDepWithVersion("myapp4-p2", 1, 2)
+						s.hasDepWithVersion("myapp4-p3", 1, 2)
+						s.noDep("myapp4-p1-v2")
+						s.noDep("myapp4-p2-v2")
+						s.noDep("myapp4-p3-v2")
+						s.hasSvc("myapp4-p1")
+						s.hasSvc("myapp4-p1-v1")
+						s.hasSvc("myapp4-p2")
+						s.hasSvc("myapp4-p2-v1")
+						s.hasSvc("myapp4-p3")
+						s.hasSvc("myapp4-p3-v1")
+						s.noSvc("myapp4-p1-v2")
+						s.noSvc("myapp4-p2-v2")
+						s.noSvc("myapp4-p3-v2")
+					},
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
-		func() {
-			waitDep := s.mock.DeploymentReactions(c)
-			defer waitDep()
-			m := serviceManager{client: s.clusterClient}
-			appName := fmt.Sprintf("myapp%d", i)
-			a := &appTypes.App{Name: appName, TeamOwner: s.team.Name}
-			err := app.CreateApp(context.TODO(), a, s.user)
-			require.NoError(s.t, err)
-			for j, step := range tt.steps {
-				fmt.Printf("test %v step %v\n", i, j)
-				if step.deployStep != nil {
-					err := s.deployStep(c, a, &m, step.deployStep, waitDep)
-					require.NoError(s.t, err)
-				}
-				if step.unitStep != nil {
-					err := s.unitStep(c, a, &m, step.unitStep, waitDep)
-					require.NoError(s.t, err)
-				}
-				if step.stopStep != nil {
-					err := s.stopStep(c, a, &m, step.stopStep, waitDep)
-					require.NoError(s.t, err)
-				}
-				if step.startStep != nil {
-					err := s.startStep(c, a, &m, step.startStep, waitDep)
-					require.NoError(s.t, err)
-				}
-				if step.restartStep != nil {
-					err := s.restartStep(c, a, &m, step.restartStep, waitDep)
-					require.NoError(s.t, err)
-				}
-				waitDep()
-				step.check()
+		waitDep := s.mock.DeploymentReactions(c)
+		defer waitDep()
+		m := serviceManager{client: s.clusterClient}
+		appName := fmt.Sprintf("myapp%d", i)
+		a := &appTypes.App{Name: appName, TeamOwner: s.team.Name}
+		err := app.CreateApp(context.TODO(), a, s.user)
+		require.NoError(s.t, err)
+		for j, step := range tt.steps {
+			fmt.Printf("test %v step %v\n", i, j)
+			if step.deployStep != nil {
+				err := s.deployStep(c, a, &m, step.deployStep, waitDep)
+				require.NoError(s.t, err)
 			}
-		}()
-	}
-}
-
-// NOTE:(ravilock) This test is flaky (other tests that depend on KubeMock might be as well)
-// The reason for this is that some reactions defined for the fake kubernetes client
-// might actually call the fake client again to create some other objects
-// e.g. after creating a deployment, the reaction might call the fake client to create replicasets and pods
-// those subsequente calls need to happen inside a goroutine, leading to race conditions
-func (s *S) TestDoubleStartDoesNotIncreaseAppUnits(c *check.C) {
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
-	appName := "myapp4"
-	a := &appTypes.App{Name: appName, TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
-	require.NoError(s.t, err)
-	steps := []stepDef{
-		{
-			deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 1)
-				s.hasDepWithVersion("myapp4-p2", 1, 1)
-				s.hasDepWithVersion("myapp4-p3", 1, 1)
-			},
-		},
-		{
-			deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}, newVersion: true},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 1)
-				s.hasDepWithVersion("myapp4-p2", 1, 1)
-				s.hasDepWithVersion("myapp4-p3", 1, 1)
-				s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
-			},
-		},
-		{
-			unitStep: &unitStep{version: 1, units: 1, process: "p1"},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 2)
-				s.hasDepWithVersion("myapp4-p2", 1, 1)
-				s.hasDepWithVersion("myapp4-p3", 1, 1)
-				s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
-			},
-		},
-		{
-			unitStep: &unitStep{version: 1, units: 1, process: "p2"},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 2)
-				s.hasDepWithVersion("myapp4-p2", 1, 2)
-				s.hasDepWithVersion("myapp4-p3", 1, 1)
-				s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
-			},
-		},
-		{
-			unitStep: &unitStep{version: 1, units: 1, process: "p3"},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 2)
-				s.hasDepWithVersion("myapp4-p2", 1, 2)
-				s.hasDepWithVersion("myapp4-p3", 1, 2)
-				s.hasDepWithVersion("myapp4-p1-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p2-v2", 2, 1)
-				s.hasDepWithVersion("myapp4-p3-v2", 2, 1)
-			},
-		},
-		{
-			stopStep: &stopStep{},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 0)
-				s.hasDepWithVersion("myapp4-p2", 1, 0)
-				s.hasDepWithVersion("myapp4-p3", 1, 0)
-				s.noDep("myapp4-p1-v2")
-				s.noDep("myapp4-p2-v2")
-				s.noDep("myapp4-p3-v2")
-				s.hasSvc("myapp4-p1")
-				s.hasSvc("myapp4-p1-v1")
-				s.hasSvc("myapp4-p2")
-				s.hasSvc("myapp4-p2-v1")
-				s.hasSvc("myapp4-p3")
-				s.hasSvc("myapp4-p3-v1")
-				s.noSvc("myapp4-p1-v2")
-				s.noSvc("myapp4-p2-v2")
-				s.noSvc("myapp4-p3-v2")
-			},
-		},
-		{
-			startStep: &startStep{},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 2)
-				s.hasDepWithVersion("myapp4-p2", 1, 2)
-				s.hasDepWithVersion("myapp4-p3", 1, 2)
-				s.noDep("myapp4-p1-v2")
-				s.noDep("myapp4-p2-v2")
-				s.noDep("myapp4-p3-v2")
-				s.hasSvc("myapp4-p1")
-				s.hasSvc("myapp4-p1-v1")
-				s.hasSvc("myapp4-p2")
-				s.hasSvc("myapp4-p2-v1")
-				s.hasSvc("myapp4-p3")
-				s.hasSvc("myapp4-p3-v1")
-				s.noSvc("myapp4-p1-v2")
-				s.noSvc("myapp4-p2-v2")
-				s.noSvc("myapp4-p3-v2")
-			},
-		},
-
-		// redundant start
-		// previous, we had a bug that doubles the number of units
-		// to prevent regression we need to test this case
-		{
-			startStep: &startStep{},
-			check: func() {
-				s.hasDepWithVersion("myapp4-p1", 1, 2)
-				s.hasDepWithVersion("myapp4-p2", 1, 2)
-				s.hasDepWithVersion("myapp4-p3", 1, 2)
-				s.noDep("myapp4-p1-v2")
-				s.noDep("myapp4-p2-v2")
-				s.noDep("myapp4-p3-v2")
-				s.hasSvc("myapp4-p1")
-				s.hasSvc("myapp4-p1-v1")
-				s.hasSvc("myapp4-p2")
-				s.hasSvc("myapp4-p2-v1")
-				s.hasSvc("myapp4-p3")
-				s.hasSvc("myapp4-p3-v1")
-				s.noSvc("myapp4-p1-v2")
-				s.noSvc("myapp4-p2-v2")
-				s.noSvc("myapp4-p3-v2")
-			},
-		},
-	}
-	for j, step := range steps {
-		fmt.Printf("step %v\n", j)
-		if step.deployStep != nil {
-			err := s.deployStep(c, a, &m, step.deployStep, waitDep)
-			require.NoError(s.t, err)
+			if step.unitStep != nil {
+				err := s.unitStep(c, a, &m, step.unitStep, waitDep)
+				require.NoError(s.t, err)
+			}
+			if step.stopStep != nil {
+				err := s.stopStep(c, a, &m, step.stopStep, waitDep)
+				require.NoError(s.t, err)
+			}
+			if step.startStep != nil {
+				err := s.startStep(c, a, &m, step.startStep, waitDep)
+				require.NoError(s.t, err)
+			}
+			if step.restartStep != nil {
+				err := s.restartStep(c, a, &m, step.restartStep, waitDep)
+				require.NoError(s.t, err)
+			}
+			waitDep()
+			step.check()
 		}
-		if step.unitStep != nil {
-			err := s.unitStep(c, a, &m, step.unitStep, waitDep)
-			require.NoError(s.t, err)
-		}
-		if step.stopStep != nil {
-			err := s.stopStep(c, a, &m, step.stopStep, waitDep)
-			require.NoError(s.t, err)
-		}
-		if step.startStep != nil {
-			err := s.startStep(c, a, &m, step.startStep, waitDep)
-			require.NoError(s.t, err)
-		}
-		if step.restartStep != nil {
-			err := s.restartStep(c, a, &m, step.restartStep, waitDep)
-			require.NoError(s.t, err)
-		}
-		waitDep()
-		step.check()
 	}
 }
 
@@ -536,6 +497,15 @@ func (s *S) stopStep(c *check.C, a *appTypes.App, m *serviceManager, step *stopS
 			s.updatePastUnitsAllProcesses(a.Name, v)
 		}
 	}
+	slices.SortFunc(versions, func(a, b appTypes.AppVersion) int {
+		if a.Version() > b.Version() {
+			return -1
+		}
+		if a.Version() < b.Version() {
+			return 1
+		}
+		return 0
+	})
 	for _, v := range versions {
 		err = servicecommon.ChangeAppState(context.TODO(), &serviceManager{
 			client: s.clusterClient,
@@ -573,6 +543,16 @@ func (s *S) startStep(c *check.C, a *appTypes.App, m *serviceManager, step *star
 		}
 		versions = append(versions, version)
 	}
+	slices.SortFunc(versions, func(a, b appTypes.AppVersion) int {
+		if a.Version() > b.Version() {
+			return -1
+		}
+		if a.Version() < b.Version() {
+			return 1
+		}
+		return 0
+	})
+
 	for _, v := range versions {
 		err = servicecommon.ChangeAppState(context.TODO(), &serviceManager{
 			client: s.clusterClient,
