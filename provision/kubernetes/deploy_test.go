@@ -2977,6 +2977,16 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	require.True(s.t, k8sErrors.IsNotFound(err))
 }
 
+// NOTE:(ravilock) Regression test for app rollbacking into a state where the user cant manage the app
+// This scenario creates a app with multiversion deployment:
+// version 1 (base) with processes p1 and p2
+// version 2 (versioned) with process p1
+// version 3 (versioned) with process p1
+// rollbacking the app to version2 from this state, used to create two deployments
+// version 2 (base) with processes p1
+// version 2 (versioned) with process p1
+// now, rollbacking only keep the base deployment with correct version
+// version 2 (base) with processes p1
 func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
@@ -2998,6 +3008,7 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	require.NoError(s.t, err)
 
+	// Create version 1 (base) with processes p1 and p2
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version1,
@@ -3027,6 +3038,7 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	require.True(s.t, k8sErrors.IsNotFound(err))
 
+	// Add version 2 (versioned) with process p1
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version2,
@@ -3054,6 +3066,7 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	require.NoError(s.t, err)
 
+	// Add version 3 (versioned) with process p1
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version3,
@@ -3085,6 +3098,7 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v3", metav1.GetOptions{})
 	require.NoError(s.t, err)
 
+	// Rollbacking to version 2 with PreserveVersions false
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version2,
@@ -3095,11 +3109,14 @@ func (s *S) TestServiceManagerDeployServiceRemovingOtherVersionsCleanup(c *check
 	require.NoError(s.t, err)
 	waitDep()
 
+	// assert that the base deployment is version 2
 	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	require.NoError(s.t, err)
 	require.Equal(s.t, "2", dep.Spec.Template.Labels["tsuru.io/app-version"])
+	// assert that p2 process was removed
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	require.True(s.t, k8sErrors.IsNotFound(err))
+	// Assert that versioned deployment for version 2 does not exists
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	require.True(s.t, k8sErrors.IsNotFound(err))
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v3", metav1.GetOptions{})
