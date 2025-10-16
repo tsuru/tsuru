@@ -61,6 +61,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 		steps     []stepDef
 	}{
 		{
+			testTitle: "Overriding old versions with multiple processes should conserve the number of units",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1", "p2"}},
@@ -110,6 +111,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			},
 		},
 		{
+			testTitle: "Restarting stopped process versions should maintain the number of units as 0",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1"}},
@@ -151,6 +153,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			},
 		},
 		{
+			testTitle: "Starting stopped process versions should maintain the previous number of units",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1", "p2"}},
@@ -204,6 +207,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			},
 		},
 		{
+			testTitle: "Starting all process by version should maintain other versions stopped",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}},
@@ -253,11 +257,15 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						s.hasDepWithVersion("myapp3-p1", 1, 1)
 						s.hasDepWithVersion("myapp3-p2", 1, 1)
 						s.hasDepWithVersion("myapp3-p3", 1, 1)
+						s.noDep("myapp3-p1-v2")
+						s.noDep("myapp3-p2-v2")
+						s.noDep("myapp3-p3-v2")
 					},
 				},
 			},
 		},
 		{
+			testTitle: "Starting all processes should only start base version deployment - start running app shold not change number of units",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}},
@@ -353,7 +361,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				},
 
 				// redundant start
-				// previous, we had a bug that doubles the number of units
+				// previously, we had a bug that doubles the number of units
 				// to prevent regression we need to test this case
 				{
 					startStep: &startStep{},
@@ -380,6 +388,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 	}
 
 	for i, tt := range tests {
+		fmt.Printf("running test %d: %s\n", i, tt.testTitle)
 		waitDep := s.mock.DeploymentReactions(c)
 		defer waitDep()
 		m := serviceManager{client: s.clusterClient}
@@ -388,7 +397,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 		err := app.CreateApp(context.TODO(), a, s.user)
 		require.NoError(s.t, err)
 		for j, step := range tt.steps {
-			fmt.Printf("test %v step %v\n", i, j)
+			fmt.Printf("step %v\n", j)
 			if step.deployStep != nil {
 				err := s.deployStep(c, a, &m, step.deployStep, waitDep)
 				require.NoError(s.t, err)
