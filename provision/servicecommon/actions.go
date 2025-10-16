@@ -134,7 +134,6 @@ func rollbackAddedProcesses(ctx context.Context, args *pipelineArgs, processes m
 			Version:          args.oldVersion,
 			PreserveVersions: args.preserveVersions,
 		})
-
 		if err != nil {
 			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.Name, processName, args.oldVersionNumber, err))
 		}
@@ -247,7 +246,6 @@ var updateServices = &action.Action{
 				PreserveVersions: args.preserveVersions,
 				OverrideVersions: args.overrideVersions,
 			})
-
 			if err != nil {
 				break
 			}

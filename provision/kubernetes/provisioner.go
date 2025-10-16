@@ -225,7 +225,6 @@ func initLocalCluster() {
 			disableDefaultNodeSelectorKey: "true",
 		},
 	})
-
 	if err != nil {
 		log.Errorf("[kubernetes-provisioner] could not create default cluster: %v", err)
 	}
@@ -246,7 +245,6 @@ func initLocalCluster() {
 		Provisioner: provisionerName,
 		Default:     true,
 	})
-
 	if err != nil {
 		log.Errorf("[kubernetes-provisioner] could not create default pool: %v", err)
 	}
@@ -893,7 +891,6 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a *appTyp
 	list, err := client.CoreV1().Services(ns).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", a.Name),
 	})
-
 	if err != nil {
 		return nil, err
 	}

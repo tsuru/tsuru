@@ -1000,10 +1000,13 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
 			toKeep := (depData.isBase && depData.version == baseVersion) ||
-				(depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion))
+				(depData.replicas > 0 && preserveOldVersions)
 			if toKeep {
 				processInUse[depData.process] = struct{}{}
-				versionInUse[processVersionKey{process: depData.process, version: depData.version}] = struct{}{}
+				versionInUse[processVersionKey{
+					process: depData.process,
+					version: depData.version,
+				}] = struct{}{}
 				continue
 			}
 
@@ -1032,7 +1035,10 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 		svcVersion := labels.AppVersion()
 		process := labels.AppProcess()
 		_, inUseProcess := processInUse[process]
-		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
+		_, inUseVersion := versionInUse[processVersionKey{
+			process: labels.AppProcess(),
+			version: svcVersion,
+		}]
 
 		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
 

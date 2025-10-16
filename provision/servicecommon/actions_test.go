@@ -29,8 +29,10 @@ type S struct {
 	mockService servicemock.MockService
 }
 
-var _ = check.Suite(&S{})
-var _ ServiceManager = &recordManager{}
+var (
+	_                = check.Suite(&S{})
+	_ ServiceManager = &recordManager{}
+)
 
 func Test(t *testing.T) {
 	check.TestingT(t)
