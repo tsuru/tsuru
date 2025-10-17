@@ -344,7 +344,8 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 	}
 
 	oldSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if !k8sErrors.IsNotFound(err) && err != nil {
+	oldSecretNotFound := k8sErrors.IsNotFound(err)
+	if !oldSecretNotFound && err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -364,7 +365,7 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 		}
 	}
 
-	if oldSecret == nil {
+	if oldSecretNotFound {
 		newSecret, err := client.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{})
 		if err != nil {
 			return nil, errors.WithStack(err)
