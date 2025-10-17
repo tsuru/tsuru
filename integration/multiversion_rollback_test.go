@@ -32,7 +32,7 @@ func multiversionRollbackTest() ExecFlow {
 
 		// Use the existing versions-app fixture
 		appDir := path.Join(cwd, "fixtures", "versions-app")
-		appName := slugifyName(fmt.Sprintf("multiversion-rollback-%s-iapp", env.Get("pool")))
+		appName := slugifyName(fmt.Sprintf("mv-rollback-%s", env.Get("pool")))
 
 		// Define structs for JSON parsing
 
@@ -249,7 +249,7 @@ func multiversionRollbackTest() ExecFlow {
 	}
 
 	flow.backward = func(c *check.C, env *Environment) {
-		appName := slugifyName(fmt.Sprintf("multiversion-rollback-%s-iapp", env.Get("pool")))
+		appName := slugifyName(fmt.Sprintf("mv-rollback-%s", env.Get("pool")))
 		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
