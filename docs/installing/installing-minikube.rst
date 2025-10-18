@@ -18,7 +18,7 @@ To create a local Kubernetes cluster using minikube, run the command:
 
 ::
 
-    $ minikube start —-kubernetes-version=v1.24.0
+    $ minikube start --kubernetes-version=v1.24.0
 
 This example we use the docker driver to create a vm. If you want to use another driver see `minikube supported drivers <https://minikube.sigs.k8s.io/docs/drivers/>`_. In relation to the --kubernetes-version in the future we will have other versions available.
 
@@ -136,3 +136,27 @@ Check the app info and get the url:
 ::
 
    $ tsuru app info -a example-go
+
+Troubleshooting Newer Minikube Version
+--------------------------------------
+
+If you happen to use a newer Kubernetes version (e.g., v1.34.0), Minikube's default CNI configuration can cause DNS resolution and network connectivity issues — particularly affecting MongoDB connectivity.
+
+**Example log output:**
+
+.. code-block:: text
+   :class: wrapped
+
+   Error: error initializing services: could not initialize plan service: failed to create indexes: server selection error: server selection timeout, current topology: { Type: Unknown, Servers: [{ Addr: tsuru-mongodb:27017, Type: Unknown, Last error: dial tcp: lookup tsuru-mongodb: i/o timeout }, ] }
+
+In that case, start Minikube with the following command:
+
+.. code-block:: bash
+
+   $ minikube start --driver=docker --container-runtime=docker --cni=calico --cpus=3 --memory=12000
+
+Using `Calico <https://github.com/projectcalico/calico>`_ solves issues such as:
+
+- DNS resolution timing out
+- Pod-to-service connectivity failures
+- CoreDNS being unreachable from pods

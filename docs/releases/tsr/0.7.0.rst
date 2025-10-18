@@ -54,7 +54,7 @@ What's new in tsr 0.7.0
 - Now it's possible to configure a health check request path to be called during
   the deployment process of an application. tsuru will make sure the health check
   is passing before switching the router to the newly created units. See
-  :ref:`health check docs <yaml_healthcheck>` for more details.
+  `health check docs <yaml_healthcheck>` for more details.
 
 .. _bug-0.7.0:
 

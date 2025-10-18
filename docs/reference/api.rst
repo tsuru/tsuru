@@ -6,8 +6,6 @@
 API reference
 +++++++++++++
 
-.. tsuru-handlers:: 
-
 Swagger Spec based reference
 ============================
 

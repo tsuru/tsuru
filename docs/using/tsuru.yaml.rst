@@ -161,7 +161,7 @@ Example of a command based healthcheck:
   consecutive healthcheck failures. (Sets the liveness probe in the Pod.)
 
 Startupcheck
-===========
+============
 
 The ``startupcheck`` is similar to ``healthcheck`` but is only executed during pod starts,
 such as deployments, scaling, or restarts. It ensures the process is healthy before traffic is routed to it.

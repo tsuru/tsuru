@@ -7,6 +7,7 @@
 
 tsuru is an extensible and open source Platform as a Service (PaaS) that makes application deployments faster and easier.
 With tsuru, you don’t need to think about servers at all. As an application developer, you can:
+
 - Write apps in the programming language of your choice
 - Back apps with add-on resources such as SQL and NoSQL databases, including memcached, Redis, and many others
 - Manage apps using the `tsuru` command-line tool
@@ -18,7 +19,6 @@ Links:
 - How to Contribute: https://docs.tsuru.io/stable/contributing/
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
 - Talk to us on Gitter: https://gitter.im/tsuru/tsuru
-
 
 Popular platforms supported:
 
@@ -45,10 +45,9 @@ $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-
 
 ### Install Guides
 
-* [Minikube](https://tsuru.github.io/docs/getting_started/install_minikube/)
-* [GKE - Google Kubernetes Engine](https://tsuru.github.io/docs/getting_started/install_gke/)
+- [Minikube and Tsuru Installation Guide](https://tsuru.github.io/docs/getting_started/install_minikube/)
 
-
+- [GKE - (Google Kubernetes Engine) and Tsuru Installation Guide](https://tsuru.github.io/docs/getting_started/install_gke/)
 
 ### Testing
 
@@ -65,10 +64,10 @@ $ tsuru app list
 
 Before starting, make sure you have the following tools installed:
 
-* [docker](https://docs.docker.com/engine/install) (or [podman](https://podman.io/docs/installation))
-* [minikube](https://minikube.sigs.k8s.io/docs/start)
-* [go](https://go.dev/dl/)
-* [yq](https://github.com/mikefarah/yq#install)
+- [docker](https://docs.docker.com/engine/install) (or [podman](https://podman.io/docs/installation))
+- [minikube](https://minikube.sigs.k8s.io/docs/start)
+- [go](https://go.dev/dl/)
+- [yq](https://github.com/mikefarah/yq#install)
 
 You'll also need the [Tsuru Client](https://docs.tsuru.io/stable/using/install-client.html) to interact with the Tsuru API.
 If you haven't installed it yet, please do so.
@@ -76,8 +75,8 @@ If you haven't installed it yet, please do so.
 **For macOS users**: We recommend using the **_qemu_** driver with **_socket_vmnet_** for Minikube clusters.
 For more information on installing **_qemu_** and **_socket_vmnet_**, refer to the following links:
 
-* [qemu](https://www.qemu.org/download/)
-* [socket_vmnet](https://github.com/lima-vm/socket_vmnet)
+- [qemu](https://www.qemu.org/download/)
+- [socket_vmnet](https://github.com/lima-vm/socket_vmnet)
 
 **Note**: If you are using Docker-compatible alternatives like Podman, be sure to specify the `DOCKER` variable with the
 correct binary when running make commands. For example: `make local.run DOCKER=podman`.
@@ -120,6 +119,7 @@ tsuru cluster list
 If everything is working as expected, you should see your local Minikube cluster listed as the default provisioner.
 
 ### Creating an app or job
+
 For that, you will have to create a team, pool and set a label to the minikube nodes to allow deploys on it
 
 ```bash

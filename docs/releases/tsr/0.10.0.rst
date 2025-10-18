@@ -45,7 +45,7 @@ What's new in tsr 0.10.0
   (issue `#712 <https://github.com/tsuru/tsuru/issues/712>`_).
 
 * Extended the ``healthcheck`` entry in the ``tsuru.yaml`` file so users can
-  specify a threshold of allowed failures. Please refer to the :ref:`tsuru.yaml
+  specify a threshold of allowed failures. Please refer to the `tsuru.yaml
   documentation page <yaml_healthcheck>` for more details (thanks Samuel
   ROZE).
 
