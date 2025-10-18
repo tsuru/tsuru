@@ -45,25 +45,9 @@ $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-
 
 ### Install Guides
 
-[Minikube and Tsuru Installation Guide](https://tsuru.github.io/docs/getting_started/install_minikube/)
+- [Minikube and Tsuru Installation Guide](https://tsuru.github.io/docs/getting_started/install_minikube/)
 
-[GKE - Google Kubernetes Engine and Tsuru Installation Guide](https://tsuru.github.io/docs/getting_started/install_gke/)
-
-#### Troubleshooting Minikube setup
-
-Minikube's default CNI configuration can cause DNS resolution and network connectivity issues, particularly affecting MongoDB connectivity.
-
-Start Minikube with following command:
-
-```
-minikube start --driver=docker --container-runtime=docker --cni=calico --cpus=3 --memory=12000
-```
-
-Using [Calico](https://github.com/projectcalico/calico) solves some issues such as:
-
-- DNS Resolution timing out
-- Pod-to-service connectivity failures
-- CoreDNS being unreachable from pods
+- [GKE - (Google Kubernetes Engine) and Tsuru Installation Guide](https://tsuru.github.io/docs/getting_started/install_gke/)
 
 ### Testing
 

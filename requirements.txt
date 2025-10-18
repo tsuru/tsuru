@@ -1,8 +1,8 @@
-Sphinx==1.7.4
-sphinx-rtd-theme==0.3.1
-sphinx-tabs==1.1.13
-tsuru-sphinx==0.1.5
-sphinxcontrib-httpdomain==1.8.0
-sphinxcontrib-openapi==0.3.2
-pyrsistent==0.16.0
-docutils==0.12
+Sphinx>=7.0,<8.0
+sphinx-rtd-theme>=2.0.0,<3.0.0
+sphinx-tabs>=3.4.7,<4.0
+sphinxcontrib-openapi>=0.8
+docutils>=0.20.1,<0.21
+jinja2>=3.1.2,<4.0
+MarkupSafe>=2.1.2,<3.0
+requests>=2.31,<3.0
