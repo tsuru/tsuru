@@ -74,7 +74,6 @@ type TsuruHandler struct {
 }
 
 func fatal(err error) {
-	fmt.Println(err.Error())
 	log.Fatal(err.Error())
 }
 
@@ -522,7 +521,7 @@ func setupDatabase() error {
 	dbDriverName, err := config.GetString("database:driver")
 	if err != nil {
 		dbDriverName = storage.DefaultDbDriverName
-		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a database driver, using default driver.")
+		log.Infof("Warning: configuration didn't declare a database driver, using default driver.")
 	}
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
@@ -573,18 +572,18 @@ func startServer(handler http.Handler) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Registered router %q\n", routerDesc.Name)
+		log.Infof("Registered router %q", routerDesc.Name)
 	}
 	rebuild.Initialize(appFinder)
 	scheme, err := getAuthScheme()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare auth:scheme, using default scheme.")
+		log.Infof("Warning: configuration didn't declare auth:scheme, using default scheme.")
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Using %q auth scheme.\n", scheme)
+	log.Infof("Using %q auth scheme.", scheme)
 	err = provision.InitializeAll()
 	if err != nil {
 		return err
@@ -597,20 +596,20 @@ func startServer(handler http.Handler) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to initialize old image gc")
 	}
-	fmt.Println("Checking components status:")
+	log.Infof("Checking components status:")
 	results := hc.Check(ctx, "all")
 	for _, result := range results {
 		if result.Status != hc.HealthCheckOK {
-			fmt.Printf("    WARNING: %q is not working: %s\n", result.Name, result.Status)
+			log.Errorf("WARNING: %q is not working: %s", result.Name, result.Status)
 		}
 	}
-	fmt.Println("    Components checked.")
+	log.Infof("Components checked.")
 
 	err = <-srvConf.start()
 	if err != http.ErrServerClosed {
 		return errors.Wrap(err, "unexpected error in server while listening")
 	}
-	fmt.Printf("Listening stopped: %s\n", err)
+	log.Infof("Listening stopped: %s", err)
 	return nil
 }
 
@@ -828,7 +827,7 @@ func (cv *certificateValidator) start() {
 					log.Errorf("[certificate-validator] the currently loaded certificate is invalid: %v\n", err)
 					cv.shutdownServerFunc(err)
 				} else {
-					fmt.Printf("[certificate-validator] certificate is valid, next validation scheduled to %s\n", nextValidation)
+					log.Infof("[certificate-validator] certificate is valid, next validation scheduled to %s", nextValidation)
 				}
 				log.Debug("[certificate-validator] finishing certificate validator")
 				select {
