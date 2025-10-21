@@ -521,7 +521,7 @@ func setupDatabase() error {
 	dbDriverName, err := config.GetString("database:driver")
 	if err != nil {
 		dbDriverName = storage.DefaultDbDriverName
-		log.Infof("Warning: configuration didn't declare a database driver, using default driver.")
+		log.Debugf("Warning: configuration didn't declare a database driver, using default driver.")
 	}
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
@@ -572,18 +572,18 @@ func startServer(handler http.Handler) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("Registered router %q", routerDesc.Name)
+		log.Debugf("Registered router %q", routerDesc.Name)
 	}
 	rebuild.Initialize(appFinder)
 	scheme, err := getAuthScheme()
 	if err != nil {
-		log.Infof("Warning: configuration didn't declare auth:scheme, using default scheme.")
+		log.Debugf("Warning: configuration didn't declare auth:scheme, using default scheme.")
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {
 		return err
 	}
-	log.Infof("Using %q auth scheme.", scheme)
+	log.Debugf("Using %q auth scheme.", scheme)
 	err = provision.InitializeAll()
 	if err != nil {
 		return err
@@ -596,20 +596,20 @@ func startServer(handler http.Handler) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to initialize old image gc")
 	}
-	log.Infof("Checking components status:")
+	log.Debugf("Checking components status:")
 	results := hc.Check(ctx, "all")
 	for _, result := range results {
 		if result.Status != hc.HealthCheckOK {
 			log.Errorf("WARNING: %q is not working: %s", result.Name, result.Status)
 		}
 	}
-	log.Infof("Components checked.")
+	log.Debugf("Components checked.")
 
 	err = <-srvConf.start()
 	if err != http.ErrServerClosed {
 		return errors.Wrap(err, "unexpected error in server while listening")
 	}
-	log.Infof("Listening stopped: %s", err)
+	log.Debugf("Listening stopped: %s", err)
 	return nil
 }
 
@@ -827,7 +827,7 @@ func (cv *certificateValidator) start() {
 					log.Errorf("[certificate-validator] the currently loaded certificate is invalid: %v\n", err)
 					cv.shutdownServerFunc(err)
 				} else {
-					log.Infof("[certificate-validator] certificate is valid, next validation scheduled to %s", nextValidation)
+					log.Debugf("[certificate-validator] certificate is valid, next validation scheduled to %s", nextValidation)
 				}
 				log.Debug("[certificate-validator] finishing certificate validator")
 				select {
