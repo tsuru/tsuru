@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/types/app"
@@ -30,16 +32,52 @@ func multiversionRollbackTest() ExecFlow {
 		cwd, err := os.Getwd()
 		c.Assert(err, check.IsNil)
 
-		// Use the existing versions-app fixture
-		appDir := path.Join(cwd, "fixtures", "versions-app")
+		// Use the new multiversion-python-app fixture
+		appDir := path.Join(cwd, "fixtures", "multiversion-python-app")
 		appName := slugifyName(fmt.Sprintf("mv-rollback-%s", env.Get("pool")))
 
 		// Define structs for JSON parsing
-
 		type Deploy struct {
 			Image       string `json:"Image"`
 			CanRollback bool   `json:"CanRollback"`
 			Version     int    `json:"Version"`
+		}
+
+		type VersionResponse struct {
+			App     string `json:"app"`
+			Version string `json:"version"`
+			Hash    string `json:"hash"`
+		}
+
+		// Helper function to generate hash before deployment
+		generateHashForDeploy := func() string {
+			cmd := exec.Command("bash", "./generate_hash.sh")
+			cmd.Dir = appDir
+			err := cmd.Run()
+			c.Assert(err, check.IsNil)
+			
+			hashBytes, err := os.ReadFile(path.Join(appDir, "version_hash.txt"))
+			c.Assert(err, check.IsNil)
+			return strings.TrimSpace(string(hashBytes))
+		}
+
+		// Helper function to deploy and map image to hash
+		deployAndMapHash := func(imageToHash map[string]string, deployArgs ...string) string {
+			hash := generateHashForDeploy()
+			args := append([]string{"app", "deploy"}, deployArgs...)
+			res := T(args...).Run(env)
+			c.Assert(res, ResultOk)
+			
+			// Get the latest deploy and map image to hash
+			res = T("app", "deploy", "list", "-a", appName, "--json").Run(env)
+			c.Assert(res, ResultOk)
+			var deploys []Deploy
+			err := json.Unmarshal([]byte(res.Stdout.String()), &deploys)
+			c.Assert(err, check.IsNil)
+			if len(deploys) > 0 {
+				imageToHash[deploys[len(deploys)-1].Image] = hash
+			}
+			return hash
 		}
 
 		// Create the test application
@@ -47,7 +85,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Helper function to check application health and version using JSON
-		checkAppHealth := func(expectedVersion string, shouldBeHealthy bool) {
+		checkAppHealth := func(expectedVersion string, expectedHash string, shouldBeHealthy bool) {
 
 			ok := retry(3*time.Minute, func() bool {
 				res = T("app", "info", "-a", appName, "--json").Run(env)
@@ -93,22 +131,40 @@ func multiversionRollbackTest() ExecFlow {
 				c.Assert(err, check.IsNil)
 				c.Assert(len(appInfo.Units), check.Not(check.Equals), 0)
 				c.Assert(appInfo.Units[0].Version, check.Equals, expectedVersionInt)
+
+				// Verify the hash via /version endpoint
+				if expectedHash != "" {
+					versionCmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr+"/version")
+					ok = retryWait(30*time.Second, 2*time.Second, func() bool {
+						res = versionCmd.Run(env)
+						if res.ExitCode != 0 {
+							return false
+						}
+						var versionResp VersionResponse
+						err := json.Unmarshal([]byte(res.Stdout.String()), &versionResp)
+						if err != nil {
+							return false
+						}
+						return versionResp.Hash == expectedHash
+					})
+					c.Assert(ok, check.Equals, true, check.Commentf("hash verification failed, expected: %s", expectedHash))
+				}
 			}
 		}
 
+		// Map to track image -> hash relationship
+		imageToHash := make(map[string]string)
+
 		// Step 1: Deploy initial version (version 1)
-		res = T("app", "deploy", "-a", appName, appDir).Run(env)
-		c.Assert(res, ResultOk)
-		checkAppHealth("1", true)
+		hash1 := deployAndMapHash(imageToHash, "-a", appName, appDir)
+		checkAppHealth("1", hash1, true)
 
 		// Step 2: Deploy second version (version 2)
-		res = T("app", "deploy", "-a", appName, appDir).Run(env)
-		c.Assert(res, ResultOk)
-		checkAppHealth("2", true)
+		hash2 := deployAndMapHash(imageToHash, "-a", appName, appDir)
+		checkAppHealth("2", hash2, true)
 
 		// Step 3: Deploy third version with --new-version to create multiversion scenario
-		res = T("app", "deploy", "--new-version", "-a", appName, appDir).Run(env)
-		c.Assert(res, ResultOk)
+		hash3 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
 
 		// Verify we have multiple versions
 		res = T("app", "info", "-a", appName, "--json").Run(env)
@@ -134,8 +190,9 @@ func multiversionRollbackTest() ExecFlow {
 
 		routerAddrMulti := appInfoMulti.Routers[0].Address
 		cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddrMulti)
-		versionRE := regexp.MustCompile(`.* version: (\d+)$`)
+		hashRE := regexp.MustCompile(`.* version: (\d+) - hash: (\w+)$`)
 		versionsFound := map[string]bool{}
+		hashesFound := map[string]bool{}
 
 		// Test multiple requests to ensure we hit both versions
 		for i := 0; i < 20; i++ {
@@ -145,49 +202,59 @@ func multiversionRollbackTest() ExecFlow {
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("app not responding on attempt %d: %v", i, res))
 
-			versionParts := versionRE.FindStringSubmatch(res.Stdout.String())
-			c.Assert(versionParts, check.HasLen, 2)
-			versionsFound[versionParts[1]] = true
+			hashParts := hashRE.FindStringSubmatch(res.Stdout.String())
+			c.Assert(hashParts, check.HasLen, 3)
+			version := hashParts[1]
+			hash := hashParts[2]
+			versionsFound[version] = true
+			hashesFound[hash] = true
+			
+			// Verify hash matches expected version
+			if version == "2" {
+				c.Assert(hash, check.Equals, hash2)
+			} else if version == "3" {
+				c.Assert(hash, check.Equals, hash3)
+			}
+			
 			if len(versionsFound) == 2 {
 				break
 			}
 		}
 
-		// We should see both version 2 and version 3
+		// We should see both version 2 and version 3 with correct hashes
 		c.Assert(versionsFound["2"], check.Equals, true, check.Commentf("Version 2 not found in responses"))
 		c.Assert(versionsFound["3"], check.Equals, true, check.Commentf("Version 3 not found in responses"))
+		c.Assert(hashesFound[hash2], check.Equals, true, check.Commentf("Hash for version 2 not found"))
+		c.Assert(hashesFound[hash3], check.Equals, true, check.Commentf("Hash for version 3 not found"))
 
 		// Step 5: Test rollback scenario - remove one version and verify rollback works
 		res = T("app", "router", "version", "remove", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 
 		// Should now only see version 2
-		checkAppHealth("2", true)
+		checkAppHealth("2", hash2, true)
 
-		// Step 6: Test deployment failure and rollback by attempting to scale down to 0 and back
-		// This simulates a scenario where deployment might fail and rollback is needed
-		res = T("unit", "remove", "1", "-a", appName).Run(env)
+		// Step 6: Test unit remove and add
+		res = T("unit", "remove", "1", "-a", appName, "--version", "2").Run(env)
 		c.Assert(res, ResultOk)
-
-		// Verify app is still responsive
-		time.Sleep(2 * time.Second)
-		checkAppHealth("2", true)
+		res = T("unit", "add", "1", "-a", appName, "--version", "2").Run(env)
+		c.Assert(res, ResultOk)
 
 		// Step 7: Test the multiversion deployment
 		// Deploy with --new-version and then test override-old-versions
-		res = T("app", "deploy", "--new-version", "-a", appName, appDir).Run(env)
-		c.Assert(res, ResultOk)
+		hash4 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
 
 		// This should create version 4, but only version 2 should be routable initially
-		checkAppHealth("2", true)
+		checkAppHealth("2", hash2, true)
 
 		// Add version 4 to router
 		time.Sleep(1 * time.Second)
 		res = T("app", "router", "version", "add", "4", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 
-		// Verify multiversion again
+		// Verify multiversion again - check both versions and their hashes
 		versionsFound = map[string]bool{}
+		hashesFound = map[string]bool{}
 		for i := 0; i < 20; i++ {
 			ok := retryWait(30*time.Second, time.Second, func() bool {
 				res = cmd.Run(env)
@@ -195,17 +262,30 @@ func multiversionRollbackTest() ExecFlow {
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("app not responding: %v", res))
 
-			versionParts := versionRE.FindStringSubmatch(res.Stdout.String())
-			c.Assert(versionParts, check.HasLen, 2)
-			versionsFound[versionParts[1]] = true
+			hashParts := hashRE.FindStringSubmatch(res.Stdout.String())
+			c.Assert(hashParts, check.HasLen, 3)
+			version := hashParts[1]
+			hash := hashParts[2]
+			versionsFound[version] = true
+			hashesFound[hash] = true
+			
+			// Verify hash matches expected version
+			if version == "2" {
+				c.Assert(hash, check.Equals, hash2)
+			} else if version == "4" {
+				c.Assert(hash, check.Equals, hash4)
+			}
+			
 			if len(versionsFound) == 2 {
 				break
 			}
 		}
 
-		// Should see both version 2 and 4
+		// Should see both version 2 and 4 with correct hashes
 		c.Assert(versionsFound["2"], check.Equals, true, check.Commentf("Version 2 not found after multiversion deployment"))
 		c.Assert(versionsFound["4"], check.Equals, true, check.Commentf("Version 4 not found after multiversion deployment"))
+		c.Assert(hashesFound[hash2], check.Equals, true, check.Commentf("Hash for version 2 not found"))
+		c.Assert(hashesFound[hash4], check.Equals, true, check.Commentf("Hash for version 4 not found"))
 
 		// Step 8: Test the actual rollback command
 		// First get the list of available deployments to rollback to
@@ -228,17 +308,21 @@ func multiversionRollbackTest() ExecFlow {
 
 		// Use the second available rollbackable image (to simulate rolling back to previous version)
 		var rollbackImage string
+		var expectedRollbackHash string
 		if len(rollbackableDeploys) >= 2 {
 			rollbackImage = rollbackableDeploys[1].Image
 		} else {
 			rollbackImage = rollbackableDeploys[0].Image
 		}
+		// Get the expected hash for the rollback image
+		expectedRollbackHash = imageToHash[rollbackImage]
+		c.Assert(expectedRollbackHash, check.Not(check.Equals), "", check.Commentf("Hash not found for rollback image: %s", rollbackImage))
 
 		// Test rollback using the proper rollback command
-		res = T("app", "deploy", "rollback", "-a", appName, "-y", rollbackImage).Run(env)
+		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--new-version", rollbackImage).Run(env)
 		c.Assert(res, ResultOk)
 
-		// Verify rollback worked - get app info using JSON
+		// Verify rollback worked - get app info using JSON to find version 5 (rollback creates new version)
 		time.Sleep(5 * time.Second)
 		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
@@ -247,14 +331,27 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(err, check.IsNil)
 		c.Assert(len(appInfo.Routers), check.Not(check.Equals), 0, check.Commentf("No routers found"))
 
-		// Test app responsiveness using the router address
+		// Add version 5 (the rollback version) to router to make it routable
+		res = T("app", "router", "version", "add", "5", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+
+		// Test app responsiveness and verify the hash matches the expected rollback hash
 		routerAddr := appInfo.Routers[0].Address
-		cmd = NewCommand("curl", "-m5", "-sSf", routerAddr)
+		versionCmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr+"/version")
 		ok := retryWait(2*time.Minute, 2*time.Second, func() bool {
-			res = cmd.Run(env)
-			return res.ExitCode == 0
+			res = versionCmd.Run(env)
+			if res.ExitCode != 0 {
+				return false
+			}
+			var versionResp VersionResponse
+			err := json.Unmarshal([]byte(res.Stdout.String()), &versionResp)
+			if err != nil {
+				return false
+			}
+			// Verify the rollback (version 5) has the correct hash from the original image
+			return versionResp.Hash == expectedRollbackHash && versionResp.Version == "5"
 		})
-		c.Assert(ok, check.Equals, true, check.Commentf("app not responding after rollback: %v", res))
+		c.Assert(ok, check.Equals, true, check.Commentf("rollback hash verification failed, expected hash: %s for version 5", expectedRollbackHash))
 	}
 
 	flow.backward = func(c *check.C, env *Environment) {
