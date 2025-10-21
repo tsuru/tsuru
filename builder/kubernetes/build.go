@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	buildpb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
 	"google.golang.org/grpc/codes"
@@ -526,7 +527,34 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 }
 
 func callBuildService(ctx context.Context, bc buildpb.BuildClient, req *buildpb.BuildRequest, w io.Writer) (*buildpb.TsuruConfig, error) {
-	stream, err := bc.Build(ctx, req)
+	var stream buildpb.Build_BuildClient
+	var err error
+	// Retry on transient errors (e.g., connection refused/Unavailable) to allow
+	// build service to become ready right after installation.
+	backoff := 500 * time.Millisecond
+	for attempt := 0; attempt < 8; attempt++ { // ~ up to ~1m total
+		stream, err = bc.Build(ctx, req)
+		if err == nil {
+			break
+		}
+		if serr, ok := status.FromError(err); ok {
+			if serr.Code() == codes.Unavailable || serr.Code() == codes.DeadlineExceeded { // transient
+				time.Sleep(backoff)
+				if backoff < 5*time.Second {
+					backoff *= 2
+				}
+				continue
+			}
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "connection refused") {
+			time.Sleep(backoff)
+			if backoff < 5*time.Second {
+				backoff *= 2
+			}
+			continue
+		}
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}

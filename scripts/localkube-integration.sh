@@ -35,6 +35,41 @@ function onerror() {
   exit 1
 }
 
+wait_for_service() {
+  local ns=$1
+  local name=$2
+  local timeout=${3:-300}
+  local start_ts=$(date +%s)
+  until ${KUBECTL} get svc -n ${ns} ${name} >/dev/null 2>&1; do
+    sleep 3
+    if (( $(date +%s) - start_ts > timeout )); then
+      echo "Timed out waiting for service ${ns}/${name}"
+      return 1
+    fi
+  done
+}
+
+wait_for_deploy_ready() {
+  local ns=$1
+  local name=$2
+  ${KUBECTL} -n ${ns} rollout status deploy/${name} --timeout=5m
+  ${KUBECTL} -n ${ns} wait --for=condition=Available deploy/${name} --timeout=5m || true
+}
+
+wait_tcp() {
+  local host=$1
+  local port=$2
+  local timeout=${3:-120}
+  local start_ts=$(date +%s)
+  while ! (echo > /dev/tcp/${host}/${port}) >/dev/null 2>&1; do
+    sleep 2
+    if (( $(date +%s) - start_ts > timeout )); then
+      echo "Timed out waiting for ${host}:${port}"
+      return 1
+    fi
+  done
+}
+
 install_tsuru_stack() {
   trap onerror ERR
 
@@ -64,7 +99,7 @@ build_tsuru_api_container_image() {
       rm "tsuru-api.tar"
       ;;
     *)
-      print "Invalid local cluster provider (got ${CLUSTER_PROVIDER}, supported: kind, minikube)" >&2
+      echo "Invalid local cluster provider (got ${CLUSTER_PROVIDER}, supported: kind, minikube)" >&2
       exit 1;;
   esac
 }
@@ -92,23 +127,45 @@ main() {
   fi
   install_tsuru_stack
 
-  sleep 30
+  # Wait for API service and deployment
+  wait_for_service ${NAMESPACE} tsuru-api 600
+  wait_for_deploy_ready ${NAMESPACE} tsuru-api
+  # Wait for ingress service (it may take a while to appear)
+  wait_for_service ${NAMESPACE} tsuru-ingress-nginx-controller 600 || true
 
   local_tsuru_api_port=8080
   DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
   tsuru_api_port_forward_pid=${!}
+  # Ensure port-forward is accepting connections
+  wait_tcp 127.0.0.1 ${local_tsuru_api_port} 180
 
   local_nginx_ingress_port=8890
   DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-ingress-nginx-controller ${local_nginx_ingress_port}:80 --address=127.0.0.1 &
   nginx_ingress_port_forward_pid=${!}
+  # Wait for ingress port-forward as well (best-effort)
+  wait_tcp 127.0.0.1 ${local_nginx_ingress_port} 180 || true
 
-  set_initial_admin_password 
+  # Retry setting admin password until API is ready to exec
+  for i in $(seq 1 30); do
+    if set_initial_admin_password; then
+      break
+    fi
+    echo "Retrying set_initial_admin_password ($i)"
+    sleep 5
+  done
 
   if [ ! -d bin ]; then mkdir bin ; fi
   curl -fsSL "https://tsuru.io/get" | bash -s -- -b ${BINDIR}
 
   export TSURU_TARGET="http://127.0.0.1:${local_tsuru_api_port}"
-  echo "123456" | ${TSURU} login admin@admin.com
+  # Retry login in case API is not yet fully ready
+  for i in $(seq 1 30); do
+    if echo "123456" | ${TSURU} login admin@admin.com; then
+      break
+    fi
+    echo "Retrying tsuru login ($i)"
+    sleep 5
+  done
 
   PATH=$PATH:$PWD/bin make test-ci-integration
 
