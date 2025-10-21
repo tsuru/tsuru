@@ -138,7 +138,7 @@ func multiversionRollbackTest() ExecFlow {
 		versionsFound := map[string]bool{}
 
 		// Test multiple requests to ensure we hit both versions
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 20; i++ {
 			ok := retryWait(30*time.Second, time.Second, func() bool {
 				res = cmd.Run(env)
 				return res.ExitCode == 0
@@ -148,6 +148,9 @@ func multiversionRollbackTest() ExecFlow {
 			versionParts := versionRE.FindStringSubmatch(res.Stdout.String())
 			c.Assert(versionParts, check.HasLen, 2)
 			versionsFound[versionParts[1]] = true
+			if len(versionsFound) == 2 {
+				break
+			}
 		}
 
 		// We should see both version 2 and version 3
@@ -185,7 +188,7 @@ func multiversionRollbackTest() ExecFlow {
 
 		// Verify multiversion again
 		versionsFound = map[string]bool{}
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 20; i++ {
 			ok := retryWait(30*time.Second, time.Second, func() bool {
 				res = cmd.Run(env)
 				return res.ExitCode == 0
@@ -195,6 +198,9 @@ func multiversionRollbackTest() ExecFlow {
 			versionParts := versionRE.FindStringSubmatch(res.Stdout.String())
 			c.Assert(versionParts, check.HasLen, 2)
 			versionsFound[versionParts[1]] = true
+			if len(versionsFound) == 2 {
+				break
+			}
 		}
 
 		// Should see both version 2 and 4
