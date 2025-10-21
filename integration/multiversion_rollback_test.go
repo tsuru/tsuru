@@ -124,13 +124,16 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Verify multiversion is working - should see both version 2 and 3
-		addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
-		res = T("app", "info", "-a", appName).Run(env)
+		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
-		parts := addrRE.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
 
-		cmd := NewCommand("curl", "-m5", "-sSf", "http://"+parts[1])
+		var appInfoMulti app.AppInfo
+		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfoMulti)
+		c.Assert(err, check.IsNil)
+		c.Assert(len(appInfoMulti.Routers), check.Not(check.Equals), 0)
+
+		routerAddrMulti := appInfoMulti.Routers[0].Address
+		cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddrMulti)
 		versionRE := regexp.MustCompile(`.* version: (\d+)$`)
 		versionsFound := map[string]bool{}
 
