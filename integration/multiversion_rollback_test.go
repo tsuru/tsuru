@@ -55,7 +55,7 @@ func multiversionRollbackTest() ExecFlow {
 			cmd.Dir = appDir
 			err := cmd.Run()
 			c.Assert(err, check.IsNil)
-			
+
 			hashBytes, err := os.ReadFile(path.Join(appDir, "version_hash.txt"))
 			c.Assert(err, check.IsNil)
 			return strings.TrimSpace(string(hashBytes))
@@ -67,7 +67,7 @@ func multiversionRollbackTest() ExecFlow {
 			args := append([]string{"app", "deploy"}, deployArgs...)
 			res := T(args...).Run(env)
 			c.Assert(res, ResultOk)
-			
+
 			// Get the latest deploy and map image to hash
 			res = T("app", "deploy", "list", "-a", appName, "--json").Run(env)
 			c.Assert(res, ResultOk)
@@ -208,14 +208,14 @@ func multiversionRollbackTest() ExecFlow {
 			hash := hashParts[2]
 			versionsFound[version] = true
 			hashesFound[hash] = true
-			
+
 			// Verify hash matches expected version
 			if version == "2" {
 				c.Assert(hash, check.Equals, hash2)
 			} else if version == "3" {
 				c.Assert(hash, check.Equals, hash3)
 			}
-			
+
 			if len(versionsFound) == 2 {
 				break
 			}
@@ -268,14 +268,14 @@ func multiversionRollbackTest() ExecFlow {
 			hash := hashParts[2]
 			versionsFound[version] = true
 			hashesFound[hash] = true
-			
+
 			// Verify hash matches expected version
 			if version == "2" {
 				c.Assert(hash, check.Equals, hash2)
 			} else if version == "4" {
 				c.Assert(hash, check.Equals, hash4)
 			}
-			
+
 			if len(versionsFound) == 2 {
 				break
 			}
