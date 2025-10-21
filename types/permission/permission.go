@@ -88,26 +88,29 @@ func (s *PermissionScheme) IsParent(other *PermissionScheme) bool {
 
 func (s *PermissionScheme) Identifier() string {
 	parts := s.nameParts()
-	var str string
-	for i := len(parts) - 1; i >= 0; i-- {
-		str += strings.Replace(cases.Title(language.English).String(parts[i]), "-", "", -1)
-	}
-	if str == "" {
+	if len(parts) == 0 {
 		return "All"
 	}
-	return str
+	var b strings.Builder
+	for i := len(parts) - 1; i >= 0; i-- {
+		b.WriteString(strings.Replace(cases.Title(language.English).String(parts[i]), "-", "", -1))
+	}
+	return b.String()
 }
 
 func (s *PermissionScheme) FullName() string {
 	parts := s.nameParts()
-	var str string
+	if len(parts) == 0 {
+		return ""
+	}
+	var b strings.Builder
 	for i := len(parts) - 1; i >= 0; i-- {
-		str += parts[i]
+		b.WriteString(parts[i])
 		if i != 0 {
-			str += "."
+			b.WriteByte('.')
 		}
 	}
-	return str
+	return b.String()
 }
 
 func (s *PermissionScheme) AllowedContexts() []ContextType {

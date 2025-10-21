@@ -14,9 +14,10 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
+var jobNameRegexp = regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)
+
 func validateName(ctx context.Context, job *jobTypes.Job) error {
-	nameRegexp := regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)
-	if !nameRegexp.MatchString(job.Name) {
+	if !jobNameRegexp.MatchString(job.Name) {
 		return jobTypes.ErrInvalidJobName
 	}
 	// check if the given name is already in the database

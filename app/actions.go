@@ -36,6 +36,8 @@ var (
 	ErrCertIssuerNotAllowedByPoolConstraints = errors.New("cert issuer not allowed by constraints of this pool")
 )
 
+var cnameRegexp = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
+
 var reserveTeamApp = action.Action{
 	Name: "reserve-team-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -490,7 +492,6 @@ var validateNewCNames = action.Action{
 	Name: "validate-new-cnames",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*appTypes.App)
-		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 		cnames := ctx.Params[1].([]string)
 		collection, err := storagev2.AppsCollection()
 		if err != nil {
