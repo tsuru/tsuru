@@ -234,6 +234,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Should now only see version 2
+		time.Sleep(10 * time.Second)
 		checkAppHealth("2", hash2, true)
 
 		// Step 6: Test unit remove and add
