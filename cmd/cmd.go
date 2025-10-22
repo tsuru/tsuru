@@ -476,25 +476,25 @@ func maxLabelSize(labels []string) int {
 
 func (m *Manager) dumpCommands(commands []string) string {
 	sort.Strings(commands)
-	var b strings.Builder
+	var output string
 	maxCmdSize := maxLabelSize(commands)
 	for _, command := range commands {
-		b.WriteString(formatDescriptionLine(command, m.Commands[command].Info().Desc, maxCmdSize))
+		output += formatDescriptionLine(command, m.Commands[command].Info().Desc, maxCmdSize)
 	}
-	fmt.Fprintf(&b, "\nUse %s help <commandname> to get more information about a command.\n", m.name)
-	return b.String()
+	output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", m.name)
+	return output
 }
 
 func (m *Manager) dumpTopics() string {
 	topics := m.discoverTopics()
 	sort.Strings(topics)
 	maxTopicSize := maxLabelSize(topics)
-	var b strings.Builder
+	var output string
 	for _, topic := range topics {
-		b.WriteString(formatDescriptionLine(topic, m.topics[topic], maxTopicSize))
+		output += formatDescriptionLine(topic, m.topics[topic], maxTopicSize)
 	}
-	fmt.Fprintf(&b, "\nUse %s help <topicname> to get more information about a topic.\n", m.name)
-	return b.String()
+	output += fmt.Sprintf("\nUse %s help <topicname> to get more information about a topic.\n", m.name)
+	return output
 }
 
 func (m *Manager) normalizeCommandArgs(args []string) []string {

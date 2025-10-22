@@ -73,14 +73,12 @@ func (w *keepAliveWriter) Stop() {
 }
 
 func (w *keepAliveWriter) keepAlive() {
-	ticker := time.NewTicker(w.interval)
-	defer ticker.Stop()
 	for {
 		select {
 		case <-w.ping:
 		case <-w.done:
 			return
-		case <-ticker.C:
+		case <-time.After(w.interval):
 			go w.writeInterval()
 		}
 	}

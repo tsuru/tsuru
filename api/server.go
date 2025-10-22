@@ -830,18 +830,11 @@ func (cv *certificateValidator) start() {
 					log.Debugf("[certificate-validator] certificate is valid, next validation scheduled to %s", nextValidation)
 				}
 				log.Debug("[certificate-validator] finishing certificate validator")
-				t := time.NewTimer(nextValidation)
 				select {
-				case <-t.C:
+				case <-time.After(nextValidation):
 				case <-cv.conf.certificateReloadedCh:
-					if !t.Stop() {
-						<-t.C
-					}
 					continue
 				case <-cv.stopCh:
-					if !t.Stop() {
-						<-t.C
-					}
 					cv.stopDoneCh <- true
 					return
 				}
