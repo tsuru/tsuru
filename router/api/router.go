@@ -193,7 +193,9 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	defer func() {
 		done(err)
 	}()
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(r.endpoint, "/"), strings.TrimLeft(path, "/"))
+	base := strings.TrimRight(r.endpoint, "/")
+	p := strings.TrimLeft(path, "/")
+	url := base + "/" + p
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, 0, err
