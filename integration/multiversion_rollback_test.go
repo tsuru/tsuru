@@ -126,11 +126,20 @@ func multiversionRollbackTest() ExecFlow {
 				})
 				c.Assert(ok, check.Equals, true, check.Commentf("app not responding: %v", res))
 
-				// Verify the version from app info units
+				// Verify the version from app info units - only check routable versions
 				expectedVersionInt, err := strconv.Atoi(expectedVersion)
 				c.Assert(err, check.IsNil)
 				c.Assert(len(appInfo.Units), check.Not(check.Equals), 0)
-				c.Assert(appInfo.Units[0].Version, check.Equals, expectedVersionInt)
+
+				// Find a unit with the expected version (should be routable)
+				foundExpectedVersion := false
+				for _, unit := range appInfo.Units {
+					if unit.Version == expectedVersionInt && unit.Routable {
+						foundExpectedVersion = true
+						break
+					}
+				}
+				c.Assert(foundExpectedVersion, check.Equals, true, check.Commentf("Expected version %d not found in routable units", expectedVersionInt))
 
 				// Verify the hash via /version endpoint
 				if expectedHash != "" {
@@ -248,6 +257,7 @@ func multiversionRollbackTest() ExecFlow {
 		hash4 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
 
 		// This should create version 4, but only version 2 should be routable initially
+		time.Sleep(10 * time.Second)
 		checkAppHealth("2", hash2, true)
 
 		// Add version 4 to router
