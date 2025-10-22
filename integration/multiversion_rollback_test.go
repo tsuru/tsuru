@@ -219,6 +219,8 @@ func multiversionRollbackTest() ExecFlow {
 			if len(versionsFound) == 2 {
 				break
 			}
+
+			time.Sleep(500 * time.Millisecond)
 		}
 
 		// We should see both version 2 and version 3 with correct hashes
@@ -279,6 +281,8 @@ func multiversionRollbackTest() ExecFlow {
 			if len(versionsFound) == 2 {
 				break
 			}
+
+			time.Sleep(500 * time.Millisecond)
 		}
 
 		// Should see both version 2 and 4 with correct hashes
