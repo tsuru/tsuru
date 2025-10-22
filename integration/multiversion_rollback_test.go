@@ -330,6 +330,13 @@ func multiversionRollbackTest() ExecFlow {
 			rollbackImage = rollbackableDeploys[0].Image
 		}
 		// Get the expected hash for the rollback image
+		// Debug: Print all imageToHash contents
+		fmt.Printf("DEBUG: imageToHash contents:\n")
+		for image, hash := range imageToHash {
+			fmt.Printf("  Image: %s -> Hash: %s\n", image, hash)
+		}
+		fmt.Printf("DEBUG: Looking for rollbackImage: %s\n", rollbackImage)
+
 		expectedRollbackHash = imageToHash[rollbackImage]
 		c.Assert(expectedRollbackHash, check.Not(check.Equals), "", check.Commentf("Hash not found for rollback image: %s", rollbackImage))
 
