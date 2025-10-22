@@ -74,8 +74,10 @@ func multiversionRollbackTest() ExecFlow {
 			var deploys []Deploy
 			err := json.Unmarshal([]byte(res.Stdout.String()), &deploys)
 			c.Assert(err, check.IsNil)
-			if len(deploys) > 0 {
-				imageToHash[deploys[len(deploys)-1].Image] = hash
+			for _, deploy := range deploys {
+				if _, exists := imageToHash[deploy.Image]; !exists {
+					imageToHash[deploy.Image] = hash
+				}
 			}
 			return hash
 		}
