@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
 	trackerTypes "github.com/tsuru/tsuru/types/tracker"
+	"go.opentelemetry.io/otel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -69,13 +69,14 @@ type instanceTracker struct {
 
 func (t *instanceTracker) start() {
 	defer close(t.done)
+	tracer := otel.Tracer("tsuru/api/tracker")
 	for {
-		span, ctx := opentracing.StartSpanFromContext(context.Background(), "InstanceTracker notify")
+		ctx, span := tracer.Start(context.Background(), "InstanceTracker notify")
 		err := t.notify(ctx)
 		if err != nil {
 			log.Errorf("[instance-tracker] unable to track instance: %v", err)
 		}
-		span.Finish()
+		span.End()
 
 		var updateInterval time.Duration
 		updateIntervalSeconds, _ := config.GetFloat("tracker:update-interval")

@@ -10,10 +10,11 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Result is the value returned by Forward. It is used in the call of the next
@@ -161,9 +162,10 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 			p.rollback(ctx, i-1, params)
 		}
 	}()
+	tracer := otel.Tracer("tsuru/action")
 	for i, a = range p.actions {
 		log.Debugf("[pipeline] running the Forward for the %s action", a.Name)
-		span, actionCtx := opentracing.StartSpanFromContext(ctx, "Action forward "+a.Name)
+		actionCtx, span := tracer.Start(ctx, "Action forward "+a.Name)
 		if a.Forward == nil {
 			err = ErrPipelineForwardMissing
 		} else if len(fwCtx.Params) < a.MinParams {
@@ -178,9 +180,9 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 		}
 
 		if err != nil {
-			span.SetTag("error", true)
-			span.SetTag("error.object", err.Error())
-			span.Finish()
+			span.SetAttributes(attribute.Bool("error", true))
+			span.RecordError(err)
+			span.End()
 
 			log.Errorf("[pipeline] error running the Forward for the %s action - %s", a.Name, err)
 			if a.OnError != nil {
@@ -189,24 +191,25 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 			p.rollback(ctx, i-1, params)
 			return err
 		}
-		span.Finish()
+		span.End()
 	}
 	return nil
 }
 
 func (p *Pipeline) rollback(ctx context.Context, index int, params []interface{}) {
+	tracer := otel.Tracer("tsuru/action")
 	bwCtx := BWContext{Params: params}
 	for i := index; i >= 0; i-- {
 
 		log.Debugf("[pipeline] running Backward for %s action", p.actions[i].Name)
 		if p.actions[i].Backward != nil {
-			span, actionCtx := opentracing.StartSpanFromContext(ctx, "Action backward "+p.actions[i].Name)
+			actionCtx, span := tracer.Start(ctx, "Action backward "+p.actions[i].Name)
 			bwCtx.Context = tsuruNet.WithoutCancel(actionCtx)
 
 			bwCtx.FWResult = p.actions[i].result
 			p.actions[i].Backward(bwCtx)
 
-			span.Finish()
+			span.End()
 		}
 	}
 }

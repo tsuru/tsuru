@@ -10,10 +10,11 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
@@ -91,11 +92,13 @@ func AddRequestError(r *http.Request, err error) {
 		return
 	}
 	ctx := r.Context()
-	span := opentracing.SpanFromContext(ctx)
-	if span != nil {
-		span.LogFields(
-			log.String("event", "error"),
-			log.String("error.object", err.Error()),
+	span := trace.SpanFromContext(ctx)
+	if span != nil && span.IsRecording() {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("event", "error"),
+			attribute.String("error.object", err.Error()),
 		)
 	}
 	existingErr := ctx.Value(errorContextKey)

@@ -24,7 +24,6 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/felixge/fgprof"
 	"github.com/fsnotify/fsnotify"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tsuru/config"
@@ -33,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/api/tracker"
 	"github.com/tsuru/tsuru/app"
+	"go.opentelemetry.io/otel"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/app/version"
@@ -530,9 +530,9 @@ func appFinder(appName string) (*appTypes.App, error) {
 }
 
 func startServer(handler http.Handler) error {
-	span, ctx := opentracing.StartSpanFromContext(
-		context.Background(), "StartServer")
-	defer span.Finish()
+	tracer := otel.Tracer("tsuru/api")
+	ctx, span := tracer.Start(context.Background(), "StartServer")
+	defer span.End()
 
 	srvConf, err := createServers(handler)
 	if err != nil {

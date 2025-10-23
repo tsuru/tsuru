@@ -1,4 +1,4 @@
-// Copyright 2020 tsuru authors. All rights reserved.
+// Copyright 2024 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,9 +8,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/opentracing/opentracing-go"
-	opentracingExt "github.com/opentracing/opentracing-go/ext"
-	"github.com/opentracing/opentracing-go/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
@@ -30,32 +31,44 @@ var (
 	mongoSpanUpdateID  mongoOperation = "UpdateID"
 )
 
-var (
-	opentracingComponent = opentracing.Tag{Key: "component", Value: "mongodb"}
-	opentracingDBType    = opentracing.Tag{Key: "db.type", Value: "mongodb"}
-)
+var tracer = otel.Tracer("tsuru/storage/mongodb")
 
 type mongoDBSpan struct {
-	opentracing.Span
+	trace.Span
 }
 
 func newMongoDBSpan(ctx context.Context, operation mongoOperation, collection string) *mongoDBSpan {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	span, _ := opentracing.StartSpanFromContext(
-		ctx, string(operation)+" "+collection,
-		opentracingExt.SpanKindRPCClient,
-		opentracingComponent,
-		opentracingDBType,
+
+	spanName := string(operation) + " " + collection
+	ctx, span := tracer.Start(ctx, spanName,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("component", "mongodb"),
+			attribute.String("db.type", "mongodb"),
+			attribute.String("db.operation", string(operation)),
+			attribute.String("db.collection", collection),
+		),
 	)
 
 	return &mongoDBSpan{span}
 }
 
+// Finish is a compatibility method that calls End()
+func (s *mongoDBSpan) Finish() {
+	s.End()
+}
+
+// LogKV is a compatibility method for old logging API
+func (s *mongoDBSpan) LogKV(keyvals ...interface{}) {
+	// OpenTelemetry doesn't have direct equivalent, ignoring
+}
+
 func (s *mongoDBSpan) SetQueryStatement(query interface{}) {
 	value, _ := json.Marshal(query)
-	s.SetTag(string(opentracingExt.DBStatement), string(value))
+	s.SetAttributes(attribute.String("db.statement", string(value)))
 }
 
 func (s *mongoDBSpan) SetMongoID(id interface{}) {
@@ -66,9 +79,6 @@ func (s *mongoDBSpan) SetError(err error) {
 	if err == nil {
 		return
 	}
-	opentracingExt.Error.Set(s, true)
-	s.LogFields(
-		log.String("event", "error"),
-		log.String("error.object", err.Error()),
-	)
+	s.SetStatus(codes.Error, err.Error())
+	s.RecordError(err)
 }
