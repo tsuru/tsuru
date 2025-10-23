@@ -389,6 +389,12 @@ func parseForm(r *http.Request) error {
 }
 
 func getContentType(r *http.Request) string {
-	parts := strings.Split(r.Header.Get("Content-Type"), ";")
-	return parts[0]
+	v := r.Header.Get("Content-Type")
+	if v == "" {
+		return ""
+	}
+	if i := strings.IndexByte(v, ';'); i >= 0 {
+		return v[:i]
+	}
+	return v
 }
