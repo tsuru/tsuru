@@ -36,7 +36,7 @@ func init() {
 func initTracer() error {
 	ctx := context.Background()
 
-	// Create resource with service name
+	// Resource with service name
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
@@ -48,15 +48,13 @@ func initTracer() error {
 		return err
 	}
 
-	// Configure exporter - using OTLP with gRPC
-	// This is compatible with Jaeger 1.35+ which supports OTLP
-	// Users can also use other backends like OTLP collectors
+	// Configure OTLP gRPC exporter
 	var exporter *otlptrace.Exporter
-	
+
 	// Check if OTLP endpoint is configured
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
-		// Fallback to Jaeger's default OTLP endpoint if not specified
+		// Fallback to Jaeger env or default
 		otlpEndpoint = os.Getenv("JAEGER_ENDPOINT")
 		if otlpEndpoint == "" {
 			otlpEndpoint = "localhost:4317" // Default OTLP gRPC port
@@ -71,12 +69,12 @@ func initTracer() error {
 		return err
 	}
 
-	// Create sampler with custom logic
+	// Sampler
 	sampler := &tsuruSampler{
 		defaultSampler: sdktrace.TraceIDRatioBased(getSamplingRatio()),
 	}
 
-	// Create tracer provider
+	// Tracer provider
 	tracerProvider = sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
@@ -86,7 +84,7 @@ func initTracer() error {
 	// Set global tracer provider
 	otel.SetTracerProvider(tracerProvider)
 
-	// Set global propagator to use W3C Trace Context and B3 for compatibility
+	// Set propagator (TraceContext + B3)
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
 			propagation.TraceContext{}, // W3C Trace Context (recommended)
@@ -99,51 +97,37 @@ func initTracer() error {
 }
 
 func getSamplingRatio() float64 {
-	// Default sampling ratio
 	ratio := 0.001
-
-	// Check for JAEGER_SAMPLER_PARAM environment variable for backward compatibility
 	if param := os.Getenv("JAEGER_SAMPLER_PARAM"); param != "" {
 		var samplerParam float64
 		if _, err := fmt.Sscanf(param, "%f", &samplerParam); err == nil {
 			ratio = samplerParam
 		}
 	}
-
-	// OTEL standard environment variable takes precedence
 	if param := os.Getenv("OTEL_TRACES_SAMPLER_ARG"); param != "" {
 		var samplerParam float64
 		if _, err := fmt.Sscanf(param, "%f", &samplerParam); err == nil {
 			ratio = samplerParam
 		}
 	}
-
 	return ratio
 }
 
-// Shutdown gracefully shuts down the tracer provider
 func Shutdown(ctx context.Context) error {
 	if tracerProvider != nil {
 		return tracerProvider.Shutdown(ctx)
 	}
 	return nil
 }
-
 // tsuruSampler implements custom sampling logic
 type tsuruSampler struct {
 	defaultSampler sdktrace.Sampler
 }
-
 func (s *tsuruSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.SamplingResult {
-	// Extract operation name from attributes or span name
 	operation := p.Name
-
-	// Check if operation is in deny list
 	if isWriteOperationDenied(operation) {
 		return s.defaultSampler.ShouldSample(p)
 	}
-
-	// Always sample write operations (POST, PUT, DELETE)
 	for _, writeOp := range writeOperations {
 		if strings.HasPrefix(operation, writeOp) {
 			return sdktrace.SamplingResult{
@@ -152,8 +136,6 @@ func (s *tsuruSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.Samp
 			}
 		}
 	}
-
-	// Use default sampler for other operations
 	return s.defaultSampler.ShouldSample(p)
 }
 
@@ -170,7 +152,7 @@ func isWriteOperationDenied(operation string) bool {
 	return false
 }
 
-// b3Propagator implements B3 propagation for backward compatibility
+// b3Propagator provides B3 propagation
 type b3Propagator struct{}
 
 func (b3Propagator) Inject(ctx context.Context, carrier propagation.TextMapCarrier) {
@@ -178,28 +160,16 @@ func (b3Propagator) Inject(ctx context.Context, carrier propagation.TextMapCarri
 	if !sc.IsValid() {
 		return
 	}
-
-	// B3 single header format
-	carrier.Set("b3", fmt.Sprintf("%s-%s-%s",
-		sc.TraceID().String(),
-		sc.SpanID().String(),
-		sampledFlagToString(sc.IsSampled()),
-	))
-
-	// B3 multi-header format for compatibility
+	carrier.Set("b3", fmt.Sprintf("%s-%s-%s", sc.TraceID().String(), sc.SpanID().String(), sampledFlagToString(sc.IsSampled())))
 	carrier.Set("X-B3-TraceId", sc.TraceID().String())
 	carrier.Set("X-B3-SpanId", sc.SpanID().String())
 	carrier.Set("X-B3-Sampled", sampledFlagToString(sc.IsSampled()))
 }
 
 func (b3Propagator) Extract(ctx context.Context, carrier propagation.TextMapCarrier) context.Context {
-	// Try single header first
-	b3Header := carrier.Get("b3")
-	if b3Header != "" {
+	if b3Header := carrier.Get("b3"); b3Header != "" {
 		return extractB3Single(ctx, b3Header)
 	}
-
-	// Try multi-header format
 	return extractB3Multi(ctx, carrier)
 }
 
@@ -215,66 +185,44 @@ func sampledFlagToString(sampled bool) string {
 }
 
 func extractB3Single(ctx context.Context, b3 string) context.Context {
-	// Parse B3 single header format: {trace-id}-{span-id}-{sampled}
 	parts := strings.Split(b3, "-")
 	if len(parts) < 2 {
 		return ctx
 	}
-
 	traceID, err := trace.TraceIDFromHex(parts[0])
 	if err != nil {
 		return ctx
 	}
-
 	spanID, err := trace.SpanIDFromHex(parts[1])
 	if err != nil {
 		return ctx
 	}
-
 	var flags trace.TraceFlags
 	if len(parts) >= 3 && parts[2] == "1" {
 		flags = trace.FlagsSampled
 	}
-
-	sc := trace.NewSpanContext(trace.SpanContextConfig{
-		TraceID:    traceID,
-		SpanID:     spanID,
-		TraceFlags: flags,
-		Remote:     true,
-	})
-
+	sc := trace.NewSpanContext(trace.SpanContextConfig{TraceID: traceID, SpanID: spanID, TraceFlags: flags, Remote: true})
 	return trace.ContextWithRemoteSpanContext(ctx, sc)
 }
 
 func extractB3Multi(ctx context.Context, carrier propagation.TextMapCarrier) context.Context {
 	traceIDStr := carrier.Get("X-B3-TraceId")
 	spanIDStr := carrier.Get("X-B3-SpanId")
-
 	if traceIDStr == "" || spanIDStr == "" {
 		return ctx
 	}
-
 	traceID, err := trace.TraceIDFromHex(traceIDStr)
 	if err != nil {
 		return ctx
 	}
-
 	spanID, err := trace.SpanIDFromHex(spanIDStr)
 	if err != nil {
 		return ctx
 	}
-
 	var flags trace.TraceFlags
 	if carrier.Get("X-B3-Sampled") == "1" {
 		flags = trace.FlagsSampled
 	}
-
-	sc := trace.NewSpanContext(trace.SpanContextConfig{
-		TraceID:    traceID,
-		SpanID:     spanID,
-		TraceFlags: flags,
-		Remote:     true,
-	})
-
+	sc := trace.NewSpanContext(trace.SpanContextConfig{TraceID: traceID, SpanID: spanID, TraceFlags: flags, Remote: true})
 	return trace.ContextWithRemoteSpanContext(ctx, sc)
 }
