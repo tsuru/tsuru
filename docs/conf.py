@@ -27,7 +27,6 @@ sys.path.insert(0, os.path.abspath('.'))
 extensions = [
     'sphinx_tabs.tabs',
     'sphinx.ext.mathjax',
-    'tsuru_sphinx.handlers',
     'sphinxcontrib.openapi',
 ]
 
