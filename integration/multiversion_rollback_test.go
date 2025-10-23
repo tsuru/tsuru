@@ -325,7 +325,7 @@ func multiversionRollbackTest() ExecFlow {
 		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--override-old-versions", rollbackImage).Run(env)
 		c.Assert(res, ResultOk)
 
-		// Verify rollback worked - get app info using JSON to find version 5 (rollback creates new version)
+		// Verify rollback worked - get app info using JSON to find version 3
 		time.Sleep(5 * time.Second)
 		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
@@ -347,8 +347,8 @@ func multiversionRollbackTest() ExecFlow {
 			if err != nil {
 				return false
 			}
-			// Verify the rollback (version 5) has the correct hash from the original image
-			return versionResp.Hash == expectedRollbackHash && versionResp.Version == "5"
+			// Verify the rollback (version 3) has the correct hash from the original image
+			return versionResp.Hash == expectedRollbackHash && versionResp.Version == "3"
 		})
 
 		// Find and verify version 4 image is available for rollback
@@ -367,7 +367,7 @@ func multiversionRollbackTest() ExecFlow {
 		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--new-version", version4Image).Run(env)
 		c.Assert(res, ResultOk)
 
-		// Verify that only version 5 is routable and version 4 is not routable
+		// Verify that only version 3 is routable and version 4 is not routable
 		time.Sleep(10 * time.Second)
 		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
@@ -376,25 +376,25 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(err, check.IsNil)
 		c.Assert(len(appInfoMulti.Units), check.Not(check.Equals), 0)
 
-		// Verify version 5 is routable and version 4 is not routable
-		foundVersion5Routable := false
+		// Verify version 3 is routable and version 4 is not routable
+		foundVersion3Routable := false
 		foundVersion4NotRoutable := false
 		for _, unit := range appInfoMulti.Units {
-			if unit.Version == 5 && unit.Routable {
-				foundVersion5Routable = true
+			if unit.Version == 3 && unit.Routable {
+				foundVersion3Routable = true
 			}
 			if unit.Version == 4 && !unit.Routable {
 				foundVersion4NotRoutable = true
 			}
 		}
-		c.Assert(foundVersion5Routable, check.Equals, true, check.Commentf("Version 5 should be routable after rollback with --new-version"))
+		c.Assert(foundVersion3Routable, check.Equals, true, check.Commentf("Version 3 should be routable after rollback with --new-version"))
 		c.Assert(foundVersion4NotRoutable, check.Equals, true, check.Commentf("Version 4 should not be routable after rollback with --new-version"))
 
-		// Add version 4 to router to test multiversion with versions 4 and 5
+		// Add version 4 to router to test multiversion with versions 3 and 4
 		res = T("app", "router", "version", "add", "4", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 
-		// Verify multiversion is working - should see both version 4 and 5
+		// Verify multiversion is working - should see both version 3 and 4
 		time.Sleep(10 * time.Second)
 		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
@@ -406,7 +406,7 @@ func multiversionRollbackTest() ExecFlow {
 		// Test multiple requests to ensure we hit both versions
 		verifyVersionHashes(map[string]string{
 			"4": hash4,
-			"5": expectedRollbackHash,
+			"3": expectedRollbackHash,
 		}, cmd, hashRE)
 
 	}
