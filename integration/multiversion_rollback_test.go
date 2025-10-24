@@ -363,6 +363,10 @@ func multiversionRollbackTest() ExecFlow {
 		}
 		c.Assert(version4Image, check.Not(check.Equals), "", check.Commentf("Version 4 image not found in rollbackable deployments"))
 
+		// Get deploy list again for debugging
+		res = T("app", "deploy", "list", "-a", appName, "--json").Run(env)
+		c.Assert(res, ResultOk)
+
 		// Test rollback to run old version alongside currnent one
 		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--new-version", version4Image).Run(env)
 		c.Assert(res, ResultOk)
