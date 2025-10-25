@@ -25,7 +25,6 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmorie/go-open-service-broker-client v0.0.0-20180330214919-dca737037ce6
 	github.com/prometheus/client_golang v1.14.0
@@ -39,7 +38,6 @@ require (
 	github.com/tsuru/deploy-agent v0.0.0-20241004132402-8b6d39f21671
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
-	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/ugorji/go/codec v1.1.7
 	go.mongodb.org/mongo-driver v1.15.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0
@@ -88,7 +86,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/containerd/containerd v1.6.38
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
@@ -139,12 +136,10 @@ require (
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
