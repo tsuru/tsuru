@@ -43,7 +43,7 @@ func newMongoDBSpan(ctx context.Context, operation mongoOperation, collection st
 	}
 
 	spanName := string(operation) + " " + collection
-	ctx, span := tracer.Start(ctx, spanName,
+	_, span := tracer.Start(ctx, spanName,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("component", "mongodb"),
