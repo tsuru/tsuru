@@ -9,9 +9,9 @@ import (
 	"errors"
 	"testing"
 
-	check "gopkg.in/check.v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

@@ -8,11 +8,11 @@ import (
 	"context"
 	"encoding/json"
 
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 type mongoOperation string

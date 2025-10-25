@@ -32,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/api/tracker"
 	"github.com/tsuru/tsuru/app"
-	"go.opentelemetry.io/otel"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/app/version"
@@ -57,6 +56,7 @@ import (
 	"github.com/tsuru/tsuru/tag"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/net/websocket"
 )
 
