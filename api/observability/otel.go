@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tsuru/tsuru/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -19,11 +18,13 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 var (
-	tracerProvider     *sdktrace.TracerProvider
-	writeOperations    = []string{"POST", "PUT", "DELETE"}
+	tracerProvider          *sdktrace.TracerProvider
+	writeOperations         = []string{"POST", "PUT", "DELETE"}
 	writeOperationsDenyList = []string{"POST /node/status"}
 )
 
@@ -119,10 +120,12 @@ func Shutdown(ctx context.Context) error {
 	}
 	return nil
 }
+
 // tsuruSampler implements custom sampling logic
 type tsuruSampler struct {
 	defaultSampler sdktrace.Sampler
 }
+
 func (s *tsuruSampler) ShouldSample(p sdktrace.SamplingParameters) sdktrace.SamplingResult {
 	operation := p.Name
 	if isWriteOperationDenied(operation) {
