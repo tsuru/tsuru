@@ -233,7 +233,7 @@ func FinishSpan(r *http.Request, statusCode int) {
 	span := trace.SpanFromContext(r.Context())
 	if span != nil && span.IsRecording() {
 		span.SetAttributes(semconv.HTTPStatusCodeKey.Int(statusCode))
-		if statusCode >= 400 {
+		if statusCode >= 500 {
 			span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", statusCode))
 		}
 		span.End()
