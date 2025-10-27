@@ -328,6 +328,11 @@ func markOldImagesForAppVersion(ctx context.Context, a *appTypes.App, appVersion
 	for _, version := range selection.toRemove {
 		versionsMarkedToRemovalTotal.Inc()
 		versionIDs = append(versionIDs, version.Version)
+		log.Debugf("[image gc] marking version %d for removal from app %q - DeployImage: %s, BuildImage: %s", version.Version, a.Name, version.DeployImage, version.BuildImage)
+	}
+
+	if len(versionIDs) > 0 {
+		log.Debugf("[image gc] marked %d versions from app %q to removal: %v", len(versionIDs), a.Name, versionIDs)
 	}
 
 	err = servicemanager.AppVersion.MarkVersionsToRemoval(ctx, a.Name, versionIDs, &appTypes.AppVersionWriteOptions{
@@ -437,8 +442,11 @@ func sweepOldImages() error {
 			continue
 		}
 
+		log.Debugf("[image gc] sweeping %d versions from app %q", len(versions), appName)
+
 		versionsToRemove := []int{}
 		for _, version := range versions {
+			log.Debugf("[image gc] sweeping version %d from app %q - DeployImage: %s, BuildImage: %s", version.Version, appName, version.DeployImage, version.BuildImage)
 			err = pruneVersionFromRegistry(ctx, version)
 			if err != nil {
 				multi.Add(err)
@@ -448,10 +456,14 @@ func sweepOldImages() error {
 			versionsToRemove = append(versionsToRemove, version.Version)
 		}
 
-		err = pruneVersionFromStorage(ctx, mapAppVersions[appName], versionsToRemove)
-		if err != nil {
-			multi.Add(err)
-			continue
+		if len(versionsToRemove) > 0 {
+			log.Debugf("[image gc] removing %d versions from storage for app %q: %v", len(versionsToRemove), appName, versionsToRemove)
+			err = pruneVersionFromStorage(ctx, mapAppVersions[appName], versionsToRemove)
+			if err != nil {
+				multi.Add(err)
+				continue
+			}
+			log.Debugf("[image gc] successfully removed %d versions from storage for app %q", len(versionsToRemove), appName)
 		}
 	}
 
@@ -540,6 +552,8 @@ func pruneImageFromRegistry(ctx context.Context, image string) error {
 	timer := prometheus.NewTimer(registryPruneDuration)
 	defer timer.ObserveDuration()
 
+	log.Debugf("[image gc] removing image from registry: %s", image)
+
 	if err := registry.RemoveImageIgnoreNotFound(ctx, image); err != nil {
 		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
 		log.Errorf("[image gc] %s", err.Error())
@@ -547,6 +561,7 @@ func pruneImageFromRegistry(ctx context.Context, image string) error {
 		return err
 	}
 
+	log.Debugf("[image gc] successfully removed image from registry: %s", image)
 	return nil
 }
 
