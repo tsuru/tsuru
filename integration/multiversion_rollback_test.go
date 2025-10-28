@@ -367,6 +367,9 @@ func multiversionRollbackTest() ExecFlow {
 		res = T("app", "deploy", "list", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
 
+		// wait k8s sync
+		time.Sleep(60 * time.Second)
+
 		// Test rollback to run old version alongside currnent one
 		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--new-version", version4Image).Run(env)
 		c.Assert(res, ResultOk)
