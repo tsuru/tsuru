@@ -5,6 +5,8 @@
 package integration
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -12,8 +14,11 @@ import (
 	"testing"
 	"time"
 
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
+
+var dnsValidRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
 
 func Test(t *testing.T) { check.TestingT(t) }
 
@@ -94,8 +99,37 @@ func (r *resultTable) parse() {
 	}
 }
 
-var dnsValidRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
-
 func slugifyName(name string) string {
 	return strings.ToLower(dnsValidRegex.ReplaceAllString(name, "-"))
+}
+
+func checkAppReady(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+	res := T("app", "info", "-a", appName, "--json").Run(env)
+	c.Assert(res, ResultOk)
+
+	appInfo := new(appTypes.AppInfo)
+	err := json.NewDecoder(&res.Stdout).Decode(appInfo)
+	c.Assert(err, check.IsNil)
+
+	for _, unit := range appInfo.Units {
+		if unit.Ready == nil || !(*unit.Ready) {
+			fmt.Printf("DEBUG: unit not ready yet: %s\n", unit.Name)
+			return nil, false
+		}
+	}
+	return appInfo, true
+}
+
+func checkAppExternallyAddressable(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+	appInfo, ok := checkAppReady(c, appName, env)
+	if !ok {
+		return nil, false
+	}
+	c.Assert(appInfo.Routers, check.HasLen, 1)
+	c.Assert(appInfo.Routers[0].Addresses, check.HasLen, 1)
+	if len(appInfo.Routers[0].Addresses[0]) == 0 {
+		fmt.Printf("DEBUG: app not externally addressable yet: %s\n", appName)
+		return nil, false
+	}
+	return appInfo, true
 }

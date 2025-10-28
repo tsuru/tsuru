@@ -125,6 +125,21 @@ test-ci-integration:
 	TSURU_INTEGRATION_provisioners="minikube" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
+test-local-ci-integration:
+	#git clone https://github.com/tsuru/platforms /tmp/platforms
+	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
+	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=1 \
+	TSURU_INTEGRATION_platforms="python,go" \
+	TSURU_INTEGRATION_no_rollback="false" \
+	TSURU_INTEGRATION_provisioners="minikube" \
+	TSURU_INTEGRATION_targetaddr="http://127.0.0.1:8080" \
+	TSURU_INTEGRATION_adminuser="admin@admin.com" \
+	TSURU_INTEGRATION_adminpassword="admin@123" \
+	TSURU_INTEGRATION_local="true" \
+	CLUSTER_PROVIDER=minikube \
+	DEBUG="true" \
+	go test -v -timeout 120m github.com/tsuru/tsuru/integration -check.v
+
 generate-test-certs:
 	openssl genrsa -out ./app/testdata/private.key 1024
 	openssl req -new -x509 -sha256 -key ./app/testdata/private.key -subj '/CN=app.io' -addext 'subjectAltName = DNS:app.io' -out ./app/testdata/certificate.crt -days 3650

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -54,7 +53,7 @@ func multiversionRollbackTest() ExecFlow {
 			versionsFound := map[string]bool{}
 			hashesFound := map[string]bool{}
 
-			for i := 0; i < 20; i++ {
+			for i := range 20 {
 				var res *Result
 				ok := retryWait(30*time.Second, time.Second, func() bool {
 					res = testCmd.Run(env)
@@ -92,10 +91,9 @@ func multiversionRollbackTest() ExecFlow {
 
 		// Helper function to generate hash before deployment
 		generateHashForDeploy := func() string {
-			cmd := exec.Command("bash", "./generate_hash.sh")
-			cmd.Dir = appDir
-			err := cmd.Run()
-			c.Assert(err, check.IsNil)
+			cmd := NewCommand("bash", "./generate_hash.sh").WithPWD(appDir)
+			result := cmd.Run(env)
+			c.Assert(result.ExitCode == 0, check.Equals, true)
 
 			hashBytes, err := os.ReadFile(path.Join(appDir, "version_hash.txt"))
 			c.Assert(err, check.IsNil)
@@ -105,8 +103,13 @@ func multiversionRollbackTest() ExecFlow {
 		// Helper function to deploy and map image to hash
 		deployAndMapHash := func(imageToHash map[string]string, deployArgs ...string) string {
 			hash := generateHashForDeploy()
+			fmt.Println("DEBUG: Deploying with hash:", hash)
+
+			res := T("app", "update", "-a", appName, "-i").Run(env)
+			c.Assert(res, ResultOk)
+
 			args := append([]string{"app", "deploy"}, deployArgs...)
-			res := T(args...).Run(env)
+			res = T(args...).Run(env)
 			c.Assert(res, ResultOk)
 
 			// Get the latest deploy and map image to hash
@@ -128,80 +131,66 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Helper function to check application health and version using JSON
-		checkAppHealth := func(expectedVersion string, expectedHash string, shouldBeHealthy bool) {
-
-			ok := retry(3*time.Minute, func() bool {
-				res = T("app", "info", "-a", appName, "--json").Run(env)
-				c.Assert(res, ResultOk)
-
-				var appInfo app.AppInfo
-				err := json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
-				if err != nil {
-					return false
-				}
-
-				// Check if units are started/ready
-				for _, unit := range appInfo.Units {
-					if unit.Status == "started" || unit.Status == "ready" {
-						return true
-					}
-				}
-				return false
+		checkAppHealth := func(expectedVersion string, expectedHash string, shouldBeHealthy bool) *app.AppInfo {
+			appInfo := new(app.AppInfo)
+			ok := retry(3*time.Minute, func() (ready bool) {
+				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
+				return ready
 			})
 
-			if shouldBeHealthy {
-				c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 3 minutes: %v", res))
+			if !shouldBeHealthy {
+				return appInfo
+			}
 
-				// Get app info and test HTTP endpoint
-				res = T("app", "info", "-a", appName, "--json").Run(env)
-				c.Assert(res, ResultOk)
+			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 3 minutes: %v", res))
+			routerAddr := appInfo.Routers[0].Address
+			cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr)
+			ok = retryWait(2*time.Minute, 2*time.Second, func() bool {
+				res = cmd.Run(env)
+				return res.ExitCode == 0
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app not responding: %v", res))
 
-				var appInfo app.AppInfo
-				err := json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
-				c.Assert(err, check.IsNil)
-				c.Assert(len(appInfo.Routers), check.Not(check.Equals), 0)
+			// Verify the version from app info units - only check routable versions
+			expectedVersionInt, err := strconv.Atoi(expectedVersion)
+			c.Assert(err, check.IsNil)
+			c.Assert(len(appInfo.Units), check.Not(check.Equals), 0)
 
-				routerAddr := appInfo.Routers[0].Address
-				cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr)
-				ok = retryWait(2*time.Minute, 2*time.Second, func() bool {
-					res = cmd.Run(env)
-					return res.ExitCode == 0
-				})
-				c.Assert(ok, check.Equals, true, check.Commentf("app not responding: %v", res))
-
-				// Verify the version from app info units - only check routable versions
-				expectedVersionInt, err := strconv.Atoi(expectedVersion)
-				c.Assert(err, check.IsNil)
-				c.Assert(len(appInfo.Units), check.Not(check.Equals), 0)
-
-				// Find a unit with the expected version (should be routable)
-				foundExpectedVersion := false
-				for _, unit := range appInfo.Units {
-					if unit.Version == expectedVersionInt && unit.Routable {
-						foundExpectedVersion = true
-						break
-					}
-				}
-				c.Assert(foundExpectedVersion, check.Equals, true, check.Commentf("Expected version %d not found in routable units", expectedVersionInt))
-
-				// Verify the hash via /version endpoint
-				if expectedHash != "" {
-					versionCmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr+"/version")
-					ok = retryWait(30*time.Second, 2*time.Second, func() bool {
-						res = versionCmd.Run(env)
-						if res.ExitCode != 0 {
-							return false
-						}
-						var versionResp VersionResponse
-						err := json.Unmarshal([]byte(res.Stdout.String()), &versionResp)
-						if err != nil {
-							return false
-						}
-						return versionResp.Hash == expectedHash
-					})
-					c.Assert(ok, check.Equals, true, check.Commentf("hash verification failed, expected: %s", expectedHash))
+			// Find a unit with the expected version (should be routable)
+			foundExpectedVersion := false
+			for _, unit := range appInfo.Units {
+				if unit.Version == expectedVersionInt && unit.Routable {
+					foundExpectedVersion = true
+					break
 				}
 			}
+			c.Assert(foundExpectedVersion, check.Equals, true, check.Commentf("Expected version %d not found in routable units", expectedVersionInt))
+
+			if expectedHash == "" {
+				return appInfo
+			}
+			// Verify the hash via /version endpoint
+			versionCmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr+"/version")
+			ok = retryWait(30*time.Second, 2*time.Second, func() bool {
+				res = versionCmd.Run(env)
+				if res.ExitCode != 0 {
+					return false
+				}
+				var versionResp VersionResponse
+				err := json.Unmarshal([]byte(res.Stdout.String()), &versionResp)
+				if err != nil {
+					fmt.Printf("DEBUG: Failed to parse version response: %s\n", err.Error())
+					return false
+				}
+				if versionResp.Hash != expectedHash {
+					fmt.Printf("DEBUG: Hash mismatch: expected %s (version %s), got %s (version %s)\n",
+						expectedHash, expectedVersion, versionResp.Hash, versionResp.Version)
+					return false
+				}
+				return true
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("hash verification failed, expected: %s", expectedHash))
+			return appInfo
 		}
 
 		// Map to track image -> hash relationship
@@ -217,29 +206,14 @@ func multiversionRollbackTest() ExecFlow {
 
 		// Step 3: Deploy third version with --new-version to create multiversion scenario
 		hash3 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
-
-		// Verify we have multiple versions
-		res = T("app", "info", "-a", appName, "--json").Run(env)
-		c.Assert(res, ResultOk)
-
-		appInfo := app.AppInfo{}
-		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
-		c.Assert(err, check.IsNil)
+		checkAppHealth("2", hash2, true)
 
 		// Step 4: Add version 3 to router to create true multiversion deployment
-		time.Sleep(2 * time.Second)
 		res = T("app", "router", "version", "add", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 
 		// Verify multiversion is working - should see both version 2 and 3
-		res = T("app", "info", "-a", appName, "--json").Run(env)
-		c.Assert(res, ResultOk)
-
-		var appInfoMulti app.AppInfo
-		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfoMulti)
-		c.Assert(err, check.IsNil)
-		c.Assert(len(appInfoMulti.Routers), check.Not(check.Equals), 0)
-
+		appInfoMulti := checkAppHealth("3", hash3, true)
 		routerAddrMulti := appInfoMulti.Routers[0].Address
 		cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddrMulti)
 		hashRE := regexp.MustCompile(`.* version: (\d+) - hash: (\w+)$`)
@@ -255,7 +229,6 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Should now only see version 2
-		time.Sleep(10 * time.Second)
 		checkAppHealth("2", hash2, true)
 
 		// Step 6: Test unit remove and add
@@ -269,13 +242,12 @@ func multiversionRollbackTest() ExecFlow {
 		hash4 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
 
 		// This should create version 4, but only version 2 should be routable initially
-		time.Sleep(10 * time.Second)
 		checkAppHealth("2", hash2, true)
 
 		// Add version 4 to router
-		time.Sleep(1 * time.Second)
 		res = T("app", "router", "version", "add", "4", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
+		checkAppHealth("4", hash4, true)
 
 		// Verify multiversion again - check both versions and their hashes
 		verifyVersionHashes(map[string]string{
@@ -326,13 +298,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Verify rollback worked - get app info using JSON to find version 3
-		time.Sleep(5 * time.Second)
-		res = T("app", "info", "-a", appName, "--json").Run(env)
-		c.Assert(res, ResultOk)
-
-		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
-		c.Assert(err, check.IsNil)
-		c.Assert(len(appInfo.Routers), check.Not(check.Equals), 0, check.Commentf("No routers found"))
+		appInfo := checkAppHealth("3", expectedRollbackHash, true)
 
 		// Test app responsiveness and verify the hash matches the expected rollback hash
 		routerAddr := appInfo.Routers[0].Address
@@ -415,7 +381,6 @@ func multiversionRollbackTest() ExecFlow {
 			"4": hash4,
 			"3": expectedRollbackHash,
 		}, cmd, hashRE)
-
 	}
 
 	flow.backward = func(c *check.C, env *Environment) {
