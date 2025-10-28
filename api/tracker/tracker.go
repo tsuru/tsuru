@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	trackerTypes "github.com/tsuru/tsuru/types/tracker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -242,7 +243,13 @@ func (t *k8sInstanceTracker) CurrentInstance(ctx context.Context) (trackerTypes.
 }
 
 func (t *k8sInstanceTracker) LiveInstances(ctx context.Context) ([]trackerTypes.TrackedInstance, error) {
-	endpoints, err := t.cli.CoreV1().Endpoints(t.ns).Get(ctx, t.service, metav1.GetOptions{})
+	selector := labels.SelectorFromSet(labels.Set(map[string]string{
+		"kubernetes.io/service-name": t.service,
+	}))
+
+	endpointSlices, err := t.cli.DiscoveryV1().EndpointSlices(t.ns).List(ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -261,29 +268,31 @@ func (t *k8sInstanceTracker) LiveInstances(ctx context.Context) ([]trackerTypes.
 		defaultHTTPSPort = "443"
 	}
 
-	for _, subset := range endpoints.Subsets {
+	for _, endpointSlice := range endpointSlices.Items {
 		httpPort := defaultHTTPPort
 		httpsPort := defaultHTTPSPort
 
-		for _, port := range subset.Ports {
-			if port.Name == "http" {
-				httpPort = strconv.Itoa(int(port.Port))
+		for _, port := range endpointSlice.Ports {
+			if port.Port == nil || port.Name == nil {
+				continue
 			}
 
-			if port.Name == "https" {
-				httpsPort = strconv.Itoa(int(port.Port))
+			if *port.Name == "http" {
+				httpPort = strconv.Itoa(int(*port.Port))
+			}
+
+			if *port.Name == "https" {
+				httpsPort = strconv.Itoa(int(*port.Port))
 			}
 		}
 
-		for _, address := range subset.Addresses {
-			if address.TargetRef == nil {
+		for _, endpoint := range endpointSlice.Endpoints {
+			if endpoint.TargetRef == nil {
 				continue
 			}
 			instances = append(instances, trackerTypes.TrackedInstance{
-				Name: address.TargetRef.Name,
-				Addresses: []string{
-					address.IP,
-				},
+				Name:       endpoint.TargetRef.Name,
+				Addresses:  endpoint.Addresses,
 				Port:       httpPort,
 				TLSPort:    httpsPort,
 				LastUpdate: lastUpdate,

@@ -14,8 +14,10 @@ import (
 	"github.com/tsuru/tsuru/types/tracker"
 	check "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -70,35 +72,34 @@ func (s *S) Test_K8sInstanceService(c *check.C) {
 		},
 	}
 
-	cli.CoreV1().Endpoints(svc.ns).Create(context.TODO(), &v1.Endpoints{
+	cli.DiscoveryV1().EndpointSlices(svc.ns).Create(context.TODO(), &discoveryv1.EndpointSlice{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: svc.service,
+			Name: svc.service + "-slice",
+			Labels: map[string]string{
+				"kubernetes.io/service-name": svc.service,
+			},
 		},
-		Subsets: []v1.EndpointSubset{
+		Ports: []discoveryv1.EndpointPort{
 			{
-				Addresses: []v1.EndpointAddress{
-					{
-						IP: "10.1.1.1",
-						TargetRef: &v1.ObjectReference{
-							Name: "tsuru-api-0",
-						},
-					},
-					{
-						IP: "10.1.1.2",
-						TargetRef: &v1.ObjectReference{
-							Name: "tsuru-api-1",
-						},
-					},
+				Name: ptr.To("http"),
+				Port: ptr.To(int32(8080)),
+			},
+			{
+				Name: ptr.To("https"),
+				Port: ptr.To(int32(8043)),
+			},
+		},
+		Endpoints: []discoveryv1.Endpoint{
+			{
+				Addresses: []string{"10.1.1.1"},
+				TargetRef: &v1.ObjectReference{
+					Name: "tsuru-api-0",
 				},
-				Ports: []v1.EndpointPort{
-					{
-						Name: "http",
-						Port: 8080,
-					},
-					{
-						Name: "https",
-						Port: 8043,
-					},
+			},
+			{
+				Addresses: []string{"10.1.1.2"},
+				TargetRef: &v1.ObjectReference{
+					Name: "tsuru-api-1",
 				},
 			},
 		},
