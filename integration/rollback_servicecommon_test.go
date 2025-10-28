@@ -29,7 +29,7 @@ func rollbackServiceCommonTest() ExecFlow {
 		c.Assert(err, check.IsNil)
 
 		appDir := path.Join(cwd, "fixtures", "rollback-test-app")
-		appName := slugifyName(fmt.Sprintf("rollback-servicecommon-%s-iapp", env.Get("pool")))
+		appName := slugifyName(fmt.Sprintf("rollback-sc-%s-iapp", env.Get("pool")))
 
 		// Create test application
 		res := T("app", "create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
