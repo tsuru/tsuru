@@ -43,6 +43,7 @@ var (
 		serviceBind(),
 		appRouters(),
 		appVersions(),
+		multiversionRollbackTest(),
 	}
 )
 
