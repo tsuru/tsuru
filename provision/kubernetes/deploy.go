@@ -1015,8 +1015,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			toKeep := (depData.isBase && depData.version == baseVersion) ||
-				(depData.replicas > 0 && preserveOldVersions)
+			toKeep := (depData.isBase && depData.version == baseVersion) || preserveOldVersions
 			if toKeep {
 				processInUse[depData.process] = struct{}{}
 				versionInUse[processVersionKey{
@@ -1462,7 +1461,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		dep:        oldDep,
 	}
 	secret, err := ensureAppSecret(ctx, ensureAppSecretOptions)
-
 	if err != nil {
 		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
 		return err
@@ -1481,7 +1479,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		selector:      depArgs.selector,
 		secret:        secret,
 	})
-
 	if err != nil {
 		errs := tsuruErrors.NewMultiError()
 		errs.Add(err)
