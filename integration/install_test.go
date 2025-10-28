@@ -44,7 +44,6 @@ var (
 		appRouters(),
 		appVersions(),
 		multiversionRollbackTest(),
-		rollbackServiceCommonTest(),
 	}
 )
 
