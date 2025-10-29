@@ -107,7 +107,7 @@ func multiversionRollbackTest() ExecFlow {
 		checkAppHealth(c, appName, "4", hash4, env)
 
 		// Verify multiversion again - check both versions and their hashes
-		verifyVersionHases(c, map[string]string{
+		verifyVersionHashes(c, map[string]string{
 			"2": hash2,
 			"4": hash4,
 		}, cmd, hashRE, env)
