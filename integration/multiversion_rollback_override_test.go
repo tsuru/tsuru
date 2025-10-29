@@ -75,7 +75,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		cmd = NewCommand("curl", "-m5", "-sSf", "http://"+routerAddrMulti)
 
 		// Test multiple requests to ensure we hit both versions
-		verifyVersionHases(c, map[string]string{"1": hash1, "2": hash2, "3": hash3}, cmd, hashRE, env)
+		verifyVersionHashes(c, map[string]string{"1": hash1, "2": hash2, "3": hash3}, cmd, hashRE, env)
 
 		// Step 6: Rollback to version 2 with override
 		// First get the list of available deployments to rollback to
