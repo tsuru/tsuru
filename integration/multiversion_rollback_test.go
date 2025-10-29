@@ -30,6 +30,9 @@ func multiversionRollbackTest() ExecFlow {
 	flow.forward = func(c *check.C, env *Environment) {
 		cwd, err := os.Getwd()
 		c.Assert(err, check.IsNil)
+		NewCommand("kubectl", "config", "get-contexts").Run(env)
+		NewCommand("kubectl", "config", "view", "--minify").Run(env)
+		NewCommand("kubectl", "cluster-info").Run(env)
 
 		// Use the new multiversion-python-app fixture
 		appDir := path.Join(cwd, "fixtures", "multiversion-python-app")
@@ -131,16 +134,12 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Helper function to check application health and version using JSON
-		checkAppHealth := func(expectedVersion string, expectedHash string, shouldBeHealthy bool) *app.AppInfo {
+		checkAppHealth := func(expectedVersion string, expectedHash string) *app.AppInfo {
 			appInfo := new(app.AppInfo)
 			ok := retry(3*time.Minute, func() (ready bool) {
 				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
 				return ready
 			})
-
-			if !shouldBeHealthy {
-				return appInfo
-			}
 
 			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 3 minutes: %v", res))
 			routerAddr := appInfo.Routers[0].Address
@@ -198,22 +197,22 @@ func multiversionRollbackTest() ExecFlow {
 
 		// Step 1: Deploy initial version (version 1)
 		hash1 := deployAndMapHash(imageToHash, "-a", appName, appDir)
-		checkAppHealth("1", hash1, true)
+		checkAppHealth("1", hash1)
 
 		// Step 2: Deploy second version (version 2)
 		hash2 := deployAndMapHash(imageToHash, "-a", appName, appDir)
-		checkAppHealth("2", hash2, true)
+		checkAppHealth("2", hash2)
 
 		// Step 3: Deploy third version with --new-version to create multiversion scenario
 		hash3 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
-		checkAppHealth("2", hash2, true)
+		checkAppHealth("2", hash2)
 
 		// Step 4: Add version 3 to router to create true multiversion deployment
 		res = T("app", "router", "version", "add", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 
 		// Verify multiversion is working - should see both version 2 and 3
-		appInfoMulti := checkAppHealth("3", hash3, true)
+		appInfoMulti := checkAppHealth("3", hash3)
 		routerAddrMulti := appInfoMulti.Routers[0].Address
 		cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddrMulti)
 		hashRE := regexp.MustCompile(`.* version: (\d+) - hash: (\w+)$`)
@@ -229,7 +228,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Should now only see version 2
-		checkAppHealth("2", hash2, true)
+		checkAppHealth("2", hash2)
 
 		// Step 6: Test unit remove and add
 		res = T("unit", "remove", "1", "-a", appName, "--version", "2").Run(env)
@@ -242,12 +241,12 @@ func multiversionRollbackTest() ExecFlow {
 		hash4 := deployAndMapHash(imageToHash, "--new-version", "-a", appName, appDir)
 
 		// This should create version 4, but only version 2 should be routable initially
-		checkAppHealth("2", hash2, true)
+		checkAppHealth("2", hash2)
 
 		// Add version 4 to router
 		res = T("app", "router", "version", "add", "4", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		checkAppHealth("4", hash4, true)
+		checkAppHealth("4", hash4)
 
 		// Verify multiversion again - check both versions and their hashes
 		verifyVersionHashes(map[string]string{
@@ -298,7 +297,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// Verify rollback worked - get app info using JSON to find version 3
-		appInfo := checkAppHealth("3", expectedRollbackHash, true)
+		appInfo := checkAppHealth("3", expectedRollbackHash)
 
 		// Test app responsiveness and verify the hash matches the expected rollback hash
 		routerAddr := appInfo.Routers[0].Address
@@ -334,7 +333,19 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// wait k8s sync
-		time.Sleep(60 * time.Second)
+		webProcessDeploymentRE := regexp.MustCompile(fmt.Sprintf("%s-web", appName))
+		ok := retry(2*time.Minute, func() (ready bool) {
+			res = NewCommand("kubectl", "get", "deployments").Run(env)
+			c.Assert(res, ResultOk)
+			matches := webProcessDeploymentRE.FindStringSubmatch(res.Stdout.String())
+			c.Assert(len(matches), check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
+			if len(matches) > 1 {
+				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", matches)
+				return false
+			}
+			return true
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("Kubernetes sync did not happen within 2 minutes"))
 
 		// Test rollback to run old version alongside currnent one
 		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--new-version", version4Image).Run(env)
