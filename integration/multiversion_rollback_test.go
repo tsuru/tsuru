@@ -261,7 +261,7 @@ func multiversionRollbackTest() ExecFlow {
 	return flow
 }
 
-func verifyVersionHases(c *check.C, expectedVersions map[string]string, testCmd *Command, hashRE *regexp.Regexp, env *Environment) {
+func verifyVersionHashes(c *check.C, expectedVersions map[string]string, testCmd *Command, hashRE *regexp.Regexp, env *Environment) {
 	versionsFound := map[string]bool{}
 	hashesFound := map[string]bool{}
 
