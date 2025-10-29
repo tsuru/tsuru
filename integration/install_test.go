@@ -522,8 +522,8 @@ func serviceCreate() ExecFlow {
 				return appInfo.Routers[0].Addresses[0]
 			}
 			fmt.Println("DEBUG: Using internal address for service")
-			interalAddress := appInfo.InternalAddresses[0]
-			return fmt.Sprintf("%s:%d", interalAddress.Domain, interalAddress.Port)
+			internalAddress := appInfo.InternalAddresses[0]
+			return fmt.Sprintf("%s:%d", internalAddress.Domain, internalAddress.Port)
 		}
 		serviceAddress := getServiceAddress()
 		replaces := map[string]string{
