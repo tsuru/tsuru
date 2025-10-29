@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -28,6 +27,7 @@ import (
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/provision"
+	"go.opentelemetry.io/otel"
 
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -224,8 +224,9 @@ func runPeriodicGC() (err error) {
 func markOldImages(ctx context.Context) error {
 	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GC markOldImages")
-	defer span.Finish()
+	tracer := otel.Tracer("tsuru/app/image/gc")
+	ctx, span := tracer.Start(ctx, "GC markOldImages")
+	defer span.End()
 
 	gcExecutionsTotal.WithLabelValues("mark").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("mark"))
@@ -393,8 +394,9 @@ func versionsSafeToRemove(ctx context.Context, appVersions []appTypes.AppVersion
 }
 
 func sweepOldImages() error {
-	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC sweepOldImages")
-	defer span.Finish()
+	tracer := otel.Tracer("tsuru/app/image/gc")
+	ctx, span := tracer.Start(context.Background(), "GC sweepOldImages")
+	defer span.End()
 
 	gcExecutionsTotal.WithLabelValues("sweep").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("sweep"))

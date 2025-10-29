@@ -9,7 +9,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	check "gopkg.in/check.v1"
 )
 
@@ -23,15 +24,16 @@ var ctx = context.TODO()
 var _ = check.Suite(&S{})
 
 func (s *S) TestSuccessAndParameters(c *check.C) {
-	parentSpan, parentCtx := opentracing.StartSpanFromContext(ctx, "parent operation")
-	defer parentSpan.Finish()
+	tracer := otel.Tracer("test")
+	parentCtx, parentSpan := tracer.Start(ctx, "parent operation")
+	defer parentSpan.End()
 
 	actions := []*Action{
 		{
 			Forward: func(ctx FWContext) (Result, error) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello"})
 
-				currentSpan := opentracing.SpanFromContext(ctx.Context)
+				currentSpan := trace.SpanFromContext(ctx.Context)
 				c.Assert(currentSpan, check.Not(check.IsNil))
 				return "ok", nil
 			},
@@ -54,7 +56,7 @@ func (s *S) TestRollback(c *check.C) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
 				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
 
-				currentSpan := opentracing.SpanFromContext(ctx.Context)
+				currentSpan := trace.SpanFromContext(ctx.Context)
 				c.Assert(currentSpan, check.Not(check.IsNil))
 
 				backwardCalled = true
@@ -63,8 +65,9 @@ func (s *S) TestRollback(c *check.C) {
 		&errorAction,
 	}
 	pipeline := NewPipeline(actions...)
-	parentSpan, parentCtx := opentracing.StartSpanFromContext(ctx, "parent operation")
-	defer parentSpan.Finish()
+	tracer := otel.Tracer("test")
+	parentCtx, parentSpan := tracer.Start(ctx, "parent operation")
+	defer parentSpan.End()
 	err := pipeline.Execute(parentCtx, "hello", "world")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to execute.")
