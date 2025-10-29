@@ -34,7 +34,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
-	os.Setenv("KUBECONFIG", path.Join(os.Getenv("HOME"), ".kube", "config"))
+	os.Setenv("KUBECONFIG", path.Join(os.Getenv("HOME"), ".kube", "tsuru-integration-config"))
 	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
 	err = os.Setenv("HOME", s.tmpDir)
 	c.Assert(err, check.IsNil)

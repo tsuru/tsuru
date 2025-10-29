@@ -56,7 +56,7 @@ If everything's gone well you have the tsuru running in a Kubernetes Cluster.
 Call `app list` to see tsuru working, this command needs to return one app called tsuru-dashboard.
 
 ```
-$ tsuru app list
+tsuru app list
 ```
 
 ## Local development
@@ -120,6 +120,7 @@ tsuru cluster list
 If everything is working as expected, you should see your local Minikube cluster listed as the default provisioner.
 
 ### Creating an app or job
+
 For that, you will have to create a team, pool and set a label to the minikube nodes to allow deploys on it
 
 ```bash
@@ -128,6 +129,18 @@ tsuru pool add my-pool
 
 # make sure you are using the right kube config
 kubectl label nodes minikube tsuru.io/pool=my-pool
+```
+
+### Running Integration tests
+
+In order to run integration tests, you must:
+
+1. Ensure that your local Tsuru API instance is up and running.
+2. Create a Kubectl config file on `$HOME/.kube/tsuru-integration-config` that points to your Minikube cluster.
+3. Run the integration tests using the following command:
+
+```bash
+make local.test-ci-integration
 ```
 
 ### Cleaning up
