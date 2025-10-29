@@ -246,7 +246,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(len(appInfoMulti.Routers), check.Not(check.Equals), 0)
 
 		// Test multiple requests to ensure we hit both versions
-		verifyVersionHases(c, map[string]string{
+		verifyVersionHashes(c, map[string]string{
 			"4": hash4,
 			"3": expectedRollbackHash,
 		}, cmd, hashRE, env)
