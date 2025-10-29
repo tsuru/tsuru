@@ -58,7 +58,7 @@ var (
 func insecure(client *http.Client) *http.Client {
 	// Extract the base HTTP transport from the potentially wrapped otelhttp transport
 	var httpTransport *http.Transport
-	
+
 	if baseRT, ok := client.Transport.(*http.Transport); ok {
 		httpTransport = baseRT
 	} else {
