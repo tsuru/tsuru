@@ -76,7 +76,7 @@ func multiversionRollbackTest() ExecFlow {
 		hashRE := regexp.MustCompile(`.* version: (\d+) - hash: (\w+)$`)
 
 		// Test multiple requests to ensure we hit both versions
-		verifyVersionHases(c, map[string]string{
+		verifyVersionHashes(c, map[string]string{
 			"2": hash2,
 			"3": hash3,
 		}, cmd, hashRE, env)
