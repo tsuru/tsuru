@@ -30,10 +30,6 @@ func multiversionRollbackTest() ExecFlow {
 	flow.forward = func(c *check.C, env *Environment) {
 		cwd, err := os.Getwd()
 		c.Assert(err, check.IsNil)
-		NewCommand("kubectl", "config", "get-contexts").Run(env)
-		NewCommand("kubectl", "config", "view", "--minify").Run(env)
-		NewCommand("kubectl", "cluster-info").Run(env)
-
 		// Use the new multiversion-python-app fixture
 		appDir := path.Join(cwd, "fixtures", "multiversion-python-app")
 		appName := slugifyName(fmt.Sprintf("mv-rollback-%s", env.Get("pool")))
@@ -333,14 +329,14 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		// wait k8s sync
-		webProcessDeploymentRE := regexp.MustCompile(fmt.Sprintf("%s-web", appName))
 		ok := retry(2*time.Minute, func() (ready bool) {
 			res = NewCommand("kubectl", "get", "deployments").Run(env)
 			c.Assert(res, ResultOk)
-			matches := webProcessDeploymentRE.FindStringSubmatch(res.Stdout.String())
-			c.Assert(len(matches), check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
-			if len(matches) > 1 {
-				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", matches)
+			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
+			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
+			fmt.Println("DEBUG: Matches found for web process deployment:", count)
+			if count > 1 {
+				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", count)
 				return false
 			}
 			return true
