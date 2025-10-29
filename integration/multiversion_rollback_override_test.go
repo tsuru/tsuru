@@ -58,7 +58,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		hashRE := regexp.MustCompile(`.* version: (\d+) - hash: (\w+)$`)
 
 		// Test multiple requests to ensure we hit both versions
-		verifyVersionHases(c, map[string]string{"1": hash1, "2": hash2}, cmd, hashRE, env)
+		verifyVersionHashes(c, map[string]string{"1": hash1, "2": hash2}, cmd, hashRE, env)
 
 		// Step 4: Deploy third version with --new-version (version 3)
 		hash3 := deployAndMapHash(c, appDir, appName, []string{"--new-version"}, imageToHash, env)
