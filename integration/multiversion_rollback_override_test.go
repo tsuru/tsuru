@@ -110,7 +110,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		res = T("app", "deploy", "rollback", "-a", appName, "-y", "--override-old-versions", rollbackImage).Run(env)
 		c.Assert(res, ResultOk)
 		checkAppHealth(c, appName, "2", expectedRollbackHash, env)
-		verifyVersionHases(c, map[string]string{"2": expectedRollbackHash}, cmd, hashRE, env)
+		verifyVersionHashes(c, map[string]string{"2": expectedRollbackHash}, cmd, hashRE, env)
 
 		// wait k8s sync
 		ok = retry(2*time.Minute, func() (ready bool) {
