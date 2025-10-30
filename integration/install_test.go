@@ -22,7 +22,7 @@ import (
 
 var (
 	T            = NewCommand("tsuru").WithArgs
-	K            = NewCommand("kubectl --context=minikube").WithArgs
+	K            = NewCommand("kubectl").WithArgs("--context=minikube").WithArgs
 	platforms    = []string{}
 	provisioners = []string{"kubernetes"}
 	flows        = []ExecFlow{
