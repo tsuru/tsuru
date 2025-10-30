@@ -34,12 +34,20 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
-	os.Setenv("KUBECONFIG", path.Join(os.Getenv("HOME"), ".kube", "tsuru-integration-config"))
+	checkKubeconfig(c)
 	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
 	err = os.Setenv("HOME", s.tmpDir)
 	c.Assert(err, check.IsNil)
 	err = os.Setenv("TSURU_DISABLE_COLORS", "1")
 	c.Assert(err, check.IsNil)
+}
+
+func checkKubeconfig(c *check.C) {
+	defaultKubeConfig := path.Join(os.Getenv("HOME"), ".kube", "config")
+	integrationKubeConfig := os.Getenv("INTEGRATION_KUBECONFIG")
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), "", check.Commentf("INTEGRATION_KUBECONFIG must be set to run integration tests"))
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), defaultKubeConfig, check.Commentf("INTEGRATION_KUBECONFIG must not be the default kubeconfig path"))
+	os.Setenv("KUBECONFIG", integrationKubeConfig)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

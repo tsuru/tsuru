@@ -80,10 +80,6 @@ set_initial_admin_password() {
 main() {
   trap onerror ERR
 
-  ${KUBECTL} --kubeconfig="$HOME/.kube/config" config view --raw --minify --flatten --context=minikube >"$HOME/.kube/tsuru-integration-config" &&
-    chmod 600 "$HOME/.kube/tsuru-integration-config" &&
-    echo "Created $HOME/.kube/tsuru-integration-config"
-
   ${KUBECTL} cluster-info
   ${KUBECTL} get all
 

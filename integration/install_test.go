@@ -22,6 +22,7 @@ import (
 
 var (
 	T            = NewCommand("tsuru").WithArgs
+	K            = NewCommand("kubectl").WithArgs
 	platforms    = []string{}
 	provisioners = []string{"kubernetes"}
 	flows        = []ExecFlow{

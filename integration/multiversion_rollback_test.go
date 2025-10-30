@@ -192,7 +192,7 @@ func multiversionRollbackTest() ExecFlow {
 
 		// wait k8s sync
 		ok := retry(2*time.Minute, func() (ready bool) {
-			res = NewCommand("kubectl", "get", "deployments").Run(env)
+			res = K("get", "deployments").Run(env)
 			c.Assert(res, ResultOk)
 			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
 			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))

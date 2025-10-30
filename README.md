@@ -136,11 +136,11 @@ kubectl label nodes minikube tsuru.io/pool=my-pool
 In order to run integration tests, you must:
 
 1. Ensure that your local Tsuru API instance is up and running.
-2. Create a Kubectl config file on `$HOME/.kube/tsuru-integration-config` that points to your Minikube cluster.
+2. Create a Kubectl config file that **must not be** `$HOME/.kube/config` that points **only** to your Minikube cluster.
 3. Run the integration tests using the following command:
 
 ```bash
-make local.test-ci-integration
+INTEGRATION_KUBECONFIG=<your-minikube-kubeconfig> make local.test-ci-integration
 ```
 
 ### Cleaning up

@@ -114,7 +114,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 
 		// wait k8s sync
 		ok = retry(2*time.Minute, func() (ready bool) {
-			res = NewCommand("kubectl", "get", "deployments").Run(env)
+			res = K("get", "deployments").Run(env)
 			c.Assert(res, ResultOk)
 			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
 			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
@@ -128,7 +128,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		c.Assert(ok, check.Equals, true, check.Commentf("Kubernetes sync did not happen within 2 minutes"))
 
 		// Step 7: Ensure only one deployment exists after rollback with override
-		res = NewCommand("kubectl", "get", "deployments").Run(env)
+		res = K("get", "deployments").Run(env)
 		c.Assert(res, ResultOk)
 		count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
 		c.Assert(count, check.Equals, 1, check.Commentf("Expected only one web deployment after rollback, found %d (%v)", count, res))
