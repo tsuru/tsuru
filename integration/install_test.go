@@ -22,7 +22,7 @@ import (
 
 var (
 	T            = NewCommand("tsuru").WithArgs
-	K            = NewCommand("kubectl").WithArgs
+	K            = NewCommand("kubectl --context=minikube").WithArgs
 	platforms    = []string{}
 	provisioners = []string{"kubernetes"}
 	flows        = []ExecFlow{
@@ -606,7 +606,7 @@ func serviceBind() ExecFlow {
 }
 
 func (s *S) TestBase(c *check.C) {
-	s.config()
+	s.config(c)
 	if s.env == nil {
 		return
 	}

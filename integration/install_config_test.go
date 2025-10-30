@@ -6,7 +6,10 @@ package integration
 
 import (
 	"os"
+	"path"
 	"strings"
+
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) getPlatforms() []string {
@@ -41,11 +44,20 @@ func (s *S) getPlatforms() []string {
 	return selectedPlatforms
 }
 
-func (s *S) config() {
+func (s *S) config(c *check.C) {
+	checkKubeconfig(c)
 	env := NewEnvironment()
 	if !env.Has("enabled") {
 		return
 	}
 	s.env = env
 	platforms = s.getPlatforms()
+}
+
+func checkKubeconfig(c *check.C) {
+	defaultKubeConfig := path.Join(os.Getenv("HOME"), ".kube", "config")
+	integrationKubeConfig := os.Getenv("INTEGRATION_KUBECONFIG")
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), "", check.Commentf("INTEGRATION_KUBECONFIG must be set to run integration tests"))
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), defaultKubeConfig, check.Commentf("INTEGRATION_KUBECONFIG must not be the default kubeconfig path"))
+	os.Setenv("KUBECONFIG", integrationKubeConfig)
 }
