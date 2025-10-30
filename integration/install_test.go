@@ -610,7 +610,6 @@ func (s *S) TestBase(c *check.C) {
 	if s.env == nil {
 		return
 	}
-	checkKubeconfig(c)
 	var executedFlows []*ExecFlow
 	defer func() {
 		for i := len(executedFlows) - 1; i >= 0; i-- {

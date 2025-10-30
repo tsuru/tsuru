@@ -31,7 +31,7 @@ jobs:
         # tests that depend on fixture files.
     - run: git ls-tree -r -t --full-name --name-only HEAD | grep -v vendor | xargs -I{} -P4 sh -c 'touch -d $(git log --pretty=format:%cI -1 HEAD -- "{}") "{}"'
     - run: sudo apt-get update && sudo apt-get install -y xmlsec1
-    - run: go test -race ./...
+    - run: make race
   integration:
     runs-on: ubuntu-latest
     strategy:

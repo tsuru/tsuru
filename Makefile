@@ -20,7 +20,7 @@ all: test
 
 _go_test:
 	go clean ./...
-	go test ./... -check.v
+	go test `go list ./... | grep -v github.com/tsuru/tsuru/integration` -check.v
 
 _tsurud_dry:
 	go build -o tsurud ./cmd/tsurud
@@ -52,7 +52,7 @@ endif
 		|| ( echo "Please run 'make yamlfmt' to fix it (if a format error)" && exit 1 )
 
 race:
-	go test -race ./...
+	go test -race `go list ./... | grep -v  github.com/tsuru/tsuru/integration`
 
 _install_api_doc:
 	@go install github.com/tsuru/tsuru-api-docs@latest
