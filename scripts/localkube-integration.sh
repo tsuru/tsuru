@@ -35,6 +35,30 @@ function onerror() {
   exit 1
 }
 
+function check_kubectl_config() {
+  if [[ -z "${INTEGRATION_KUBECONFIG:-}" ]]; then
+    echo "INTEGRATION_KUBECONFIG is not set. Aborting." >&2
+    exit 1
+  fi
+  if [[ "${INTEGRATION_KUBECONFIG}" == "${HOME}/.kube/config" ]]; then
+    echo "INTEGRATION_KUBECONFIG cannot be equal to your default kubeconfig (${HOME}/.kube/config). Aborting." >&2
+    exit 1
+  fi
+  if [[ ! -f "${INTEGRATION_KUBECONFIG}" ]]; then
+    echo "INTEGRATION_KUBECONFIG file (${INTEGRATION_KUBECONFIG}) does not exist. Aborting." >&2
+    exit 1
+  fi
+  export KUBECONFIG="${INTEGRATION_KUBECONFIG}"
+  if ! ${KUBECTL} config get-contexts -o name | grep -qE '^(minikube|kind-kind)$'; then
+    echo "INTEGRATION_KUBECONFIG must have 'minikube' or 'kind-kind' context. Aborting." >&2
+    exit 1
+  fi
+  if [[ "$(${KUBECTL} config get-contexts -o name | wc -l)" -ne 1 ]]; then
+    echo "INTEGRATION_KUBECONFIG must have only one context. Aborting." >&2
+    exit 1
+  fi
+}
+
 install_tsuru_stack() {
   trap onerror ERR
 
@@ -79,6 +103,8 @@ set_initial_admin_password() {
 
 main() {
   trap onerror ERR
+
+  check_kubectl_config
 
   ${KUBECTL} cluster-info
   ${KUBECTL} get all
