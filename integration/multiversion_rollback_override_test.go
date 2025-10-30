@@ -62,7 +62,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 
 		// Step 4: Deploy third version with --new-version (version 3)
 		hash3 := deployAndMapHash(c, appDir, appName, []string{"--new-version"}, imageToHash, env)
-		checkAppHealth(c, appName, "1", hash2, env)
+		checkAppHealth(c, appName, "1", hash1, env)
 		checkAppHealth(c, appName, "2", hash2, env)
 
 		// Step 5: Add version 3 to router to create true multiversion deployment
