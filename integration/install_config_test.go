@@ -44,8 +44,7 @@ func (s *S) getPlatforms() []string {
 	return selectedPlatforms
 }
 
-func (s *S) config(c *check.C) {
-	checkKubeconfig(c)
+func (s *S) config() {
 	env := NewEnvironment()
 	if !env.Has("enabled") {
 		return

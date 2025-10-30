@@ -146,7 +146,7 @@ local.test-ci-integration:
 	TSURU_INTEGRATION_local="true" \
 	CLUSTER_PROVIDER=minikube \
 	DEBUG="true" \
-	go test -v -timeout 120m github.com/tsuru/tsuru/integration -check.v
+	go test -v -timeout 120m github.com/tsuru/tsuru/integration -check.v | tee ./test-output.log
 
 generate-test-certs:
 	openssl genrsa -out ./app/testdata/private.key 1024
