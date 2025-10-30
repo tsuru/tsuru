@@ -34,15 +34,17 @@ func (m *baseMatcher) Check(params []interface{}, names []string) (bool, string)
 var ResultOk = &baseMatcher{
 	name:   "ResultOK",
 	params: []string{"result"},
-	check: func(result *Result, params []interface{}) (bool, string) {
-		if result.Error != nil || result.ExitCode != 0 {
-			return false, fmt.Sprintf("result error: %v", result)
-		}
-		if result.Timeout {
-			return false, fmt.Sprintf("result timeout after %v: %v", result.Command.Timeout, result)
-		}
-		return true, ""
-	},
+	check:  checkOk,
+}
+
+func checkOk(result *Result, params []interface{}) (bool, string) {
+	if result.Error != nil || result.ExitCode != 0 {
+		return false, fmt.Sprintf("result error: %v", result)
+	}
+	if result.Timeout {
+		return false, fmt.Sprintf("result timeout after %v: %v", result.Command.Timeout, result)
+	}
+	return true, ""
 }
 
 var ResultMatches = &baseMatcher{

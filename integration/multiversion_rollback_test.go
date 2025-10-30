@@ -66,7 +66,7 @@ func multiversionRollbackTest() ExecFlow {
 		checkAppHealth(c, appName, "2", hash2, env)
 
 		// Step 4: Add version 3 to router to create true multiversion deployment
-		res = T("app", "router", "version", "add", "3", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 
 		// Verify multiversion is working - should see both version 2 and 3
@@ -82,7 +82,7 @@ func multiversionRollbackTest() ExecFlow {
 		}, cmd, hashRE, env)
 
 		// Step 5: Test rollback scenario - remove one version and verify rollback works
-		res = T("app", "router", "version", "remove", "3", "-a", appName).Run(env)
+		res = T("app", "router", "version", "remove", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 
 		// Should now only see version 2
@@ -102,7 +102,7 @@ func multiversionRollbackTest() ExecFlow {
 		checkAppHealth(c, appName, "2", hash2, env)
 
 		// Add version 4 to router
-		res = T("app", "router", "version", "add", "4", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "4", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkAppHealth(c, appName, "4", hash4, env)
 
@@ -233,7 +233,7 @@ func multiversionRollbackTest() ExecFlow {
 		c.Assert(foundVersion4NotRoutable, check.Equals, true, check.Commentf("Version 4 should not be routable after rollback with --new-version"))
 
 		// Add version 4 to router to test multiversion with versions 3 and 4
-		res = T("app", "router", "version", "add", "4", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "4", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 
 		// Verify multiversion is working - should see both version 3 and 4

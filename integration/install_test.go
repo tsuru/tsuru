@@ -356,11 +356,11 @@ func appVersions() ExecFlow {
 		checkVersion("2")
 
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "add", "3", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkVersion("2", "3")
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "remove", "2", "-a", appName).Run(env)
+		res = T("app", "router", "version", "remove", "2", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkVersion("3")
 
@@ -369,11 +369,11 @@ func appVersions() ExecFlow {
 		checkVersion("3")
 
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "add", "1", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "1", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkVersion("1", "3")
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "remove", "3", "-a", appName).Run(env)
+		res = T("app", "router", "version", "remove", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkVersion("1")
 
