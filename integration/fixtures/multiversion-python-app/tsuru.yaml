@@ -1,2 +1,6 @@
+hooks:
+  build:
+  - find | grep version_hash.txt
+  - cat $(find | grep version_hash.txt)
 healthcheck:
   path: /health

@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"maps"
 	"strconv"
 	"sync"
 
@@ -66,9 +67,7 @@ func (f *ExecFlow) expandMatrix(env *Environment) []map[string]string {
 			for y := range values {
 				mapValue := map[string]string{}
 				if expanded[x] != nil {
-					for k, v := range expanded[x] {
-						mapValue[k] = v
-					}
+					maps.Copy(mapValue, expanded[x])
 				}
 				mapValue[k] = values[y]
 				entries = append(entries, mapValue)
