@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	provisionk8s "github.com/tsuru/tsuru/provision/kubernetes"
 
 	"github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -190,15 +196,23 @@ func multiversionRollbackTest() ExecFlow {
 		res = T("app", "deploy", "list", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
 
+		cluster, err := ClusterService.FindByPool(context.Background(), "kubernetes", env.Get("pool"))
+		c.Assert(err, check.IsNil)
+		clusterClient, err := provisionk8s.NewClusterClient(cluster)
+		c.Assert(err, check.IsNil)
+
 		// wait k8s sync
 		ok := retry(2*time.Minute, func() (ready bool) {
-			res = K("get", "deployments").Run(env)
-			c.Assert(res, ResultOk)
-			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
+			deployments, err := clusterClient.AppsV1().Deployments(clusterClient.PoolNamespace(env.Get("pool"))).List(context.Background(), metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
+			})
+			c.Assert(err, check.IsNil)
+
+			count := len(deployments.Items)
 			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
-			fmt.Println("DEBUG: Matches found for web process deployment:", count)
+			fmt.Println("DEBUG: Matches found for app deployment:", count)
 			if count > 1 {
-				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", count)
+				fmt.Printf("DEBUG: Multiple deployments found for app deployment: %v\n", count)
 				return false
 			}
 			return true
@@ -339,9 +353,28 @@ func deployAndMapHash(c *check.C, appDir, appName string, deployArgs []string, i
 func checkAppHealth(c *check.C, appName, expectedVersion, expectedHash string, env *Environment) *app.AppInfo {
 	res := new(Result)
 	appInfo := new(app.AppInfo)
+	cluster, err := ClusterService.FindByPool(context.Background(), "kubernetes", env.Get("pool"))
+	c.Assert(err, check.IsNil)
+	clusterClient, err := provisionk8s.NewClusterClient(cluster)
+	c.Assert(err, check.IsNil)
 	ok := retry(3*time.Minute, func() (ready bool) {
 		appInfo, ready = checkAppExternallyAddressable(c, appName, env)
-		return ready
+		if !ready {
+			return false
+		}
+		appPods, err := clusterClient.CoreV1().Pods(clusterClient.PoolNamespace(env.Get("pool"))).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
+		})
+		c.Assert(err, check.IsNil)
+		for _, appPod := range appPods.Items {
+			if appPod.Status.Phase != corev1.PodRunning {
+				return false
+			}
+			if appPod.DeletionTimestamp != nil {
+				return false
+			}
+		}
+		return true
 	})
 
 	c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 3 minutes: %v", appInfo))

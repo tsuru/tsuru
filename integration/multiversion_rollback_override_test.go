@@ -5,13 +5,17 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"regexp"
-	"strings"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	provisionk8s "github.com/tsuru/tsuru/provision/kubernetes"
 
 	"gopkg.in/check.v1"
 )
@@ -112,15 +116,23 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		checkAppHealth(c, appName, "2", expectedRollbackHash, env)
 		verifyVersionHashes(c, map[string]string{"2": expectedRollbackHash}, cmd, hashRE, env)
 
+		cluster, err := ClusterService.FindByPool(context.Background(), "kubernetes", env.Get("pool"))
+		c.Assert(err, check.IsNil)
+		clusterClient, err := provisionk8s.NewClusterClient(cluster)
+		c.Assert(err, check.IsNil)
+
 		// wait k8s sync
 		ok = retry(2*time.Minute, func() (ready bool) {
-			res = K("get", "deployments").Run(env)
-			c.Assert(res, ResultOk)
-			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
+			appDeployments, err := clusterClient.AppsV1().Deployments(clusterClient.PoolNamespace(env.Get("pool"))).List(context.Background(), metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
+			})
+			c.Assert(err, check.IsNil)
+
+			count := len(appDeployments.Items)
 			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
-			fmt.Println("DEBUG: Matches found for web process deployment:", count)
+			fmt.Println("DEBUG: Matches found for app deployment:", count)
 			if count > 1 {
-				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", count)
+				fmt.Printf("DEBUG: Multiple deployments found for app deployment: %v\n", count)
 				return false
 			}
 			return true
@@ -128,9 +140,11 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		c.Assert(ok, check.Equals, true, check.Commentf("Kubernetes sync did not happen within 2 minutes"))
 
 		// Step 7: Ensure only one deployment exists after rollback with override
-		res = K("get", "deployments").Run(env)
-		c.Assert(res, ResultOk)
-		count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
+		appDeployments, err := clusterClient.AppsV1().Deployments(clusterClient.PoolNamespace(env.Get("pool"))).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
+		})
+		c.Assert(err, check.IsNil)
+		count := len(appDeployments.Items)
 		c.Assert(count, check.Equals, 1, check.Commentf("Expected only one web deployment after rollback, found %d (%v)", count, res))
 
 		// Step 8: Ensure user is able to deploy new version after rollback with override
