@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/tsuru/provision/cluster"
-	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
@@ -33,6 +33,8 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	ClusterService, err = cluster.ClusterService()
+	c.Assert(err, check.IsNil)
+	_, err = ClusterService.List(context.Background())
 	c.Assert(err, check.IsNil)
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)

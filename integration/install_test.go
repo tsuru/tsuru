@@ -19,6 +19,7 @@ import (
 	provisionk8s "github.com/tsuru/tsuru/provision/kubernetes"
 	check "gopkg.in/check.v1"
 
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/provision"
 	corev1 "k8s.io/api/core/v1"
