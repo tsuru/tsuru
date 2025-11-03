@@ -406,9 +406,9 @@ func (c *Command) Run(e *Environment) *Result {
 	return res
 }
 
-func (c *Command) Retry(timeout time.Duration, env *Environment) *Result {
+func (c *Command) Retry(timeout time.Duration, env *Environment) (*Result, bool) {
 	res := new(Result)
-	retry(timeout, func() bool {
+	ok := retry(timeout, func() bool {
 		res = c.Run(env)
 		ok, reason := checkOk(res, nil)
 		if !ok {
@@ -417,7 +417,7 @@ func (c *Command) Retry(timeout time.Duration, env *Environment) *Result {
 		}
 		return true
 	})
-	return res
+	return res, ok
 }
 
 func retry(timeout time.Duration, fn func() bool) bool {

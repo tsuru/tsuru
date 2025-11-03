@@ -378,12 +378,14 @@ func appVersions() ExecFlow {
 		checkVersion("2")
 
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env)
+		res, ok := T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 		checkVersion("2", "3")
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "remove", "2", "-a", appName).Retry(time.Minute, env)
+		res, ok = T("app", "router", "version", "remove", "2", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 		checkVersion("3")
 
 		res = T("unit", "add", "1", "--version", "1", "-a", appName).Run(env)
@@ -391,12 +393,14 @@ func appVersions() ExecFlow {
 		checkVersion("3")
 
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "add", "1", "-a", appName).Retry(time.Minute, env)
+		res, ok = T("app", "router", "version", "add", "1", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkVersion("1", "3")
+		c.Assert(ok, check.Equals, true)
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "remove", "3", "-a", appName).Retry(time.Minute, env)
+		res, ok = T("app", "router", "version", "remove", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 		checkVersion("1")
 
 		res = T("app", "deploy", "--override-old-versions", "-a", appName, appDir).Run(env)
