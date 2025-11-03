@@ -192,13 +192,21 @@ func multiversionRollbackTest() ExecFlow {
 
 		// wait k8s sync
 		ok := retry(2*time.Minute, func() (ready bool) {
-			res = K("get", "deployments").Run(env)
+			res = K("get", "deployments", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", "json").Run(env)
 			c.Assert(res, ResultOk)
-			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
-			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
-			fmt.Println("DEBUG: Matches found for web process deployment:", count)
+
+			// Count deployments by parsing JSON output
+			var deploymentList struct {
+				Items []struct{} `json:"items"`
+			}
+			err := json.Unmarshal([]byte(res.Stdout.String()), &deploymentList)
+			c.Assert(err, check.IsNil)
+			count := len(deploymentList.Items)
+
+			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for app"))
+			fmt.Println("DEBUG: Matches found for app deployment:", count)
 			if count > 1 {
-				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", count)
+				fmt.Printf("DEBUG: Multiple deployments found for app deployment: %v\n", count)
 				return false
 			}
 			return true
@@ -341,7 +349,28 @@ func checkAppHealth(c *check.C, appName, expectedVersion, expectedHash string, e
 	appInfo := new(app.AppInfo)
 	ok := retry(3*time.Minute, func() (ready bool) {
 		appInfo, ready = checkAppExternallyAddressable(c, appName, env)
-		return ready
+		if !ready {
+			return false
+		}
+		// Check that all pods are running and not being deleted
+		res := K("get", "pods", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", `"jsonpath={range .items[*]}{.status.phase},{.metadata.deletionTimestamp}{'\\n'}{end}"`).Run(env)
+		c.Assert(res, ResultOk)
+		podStatuses := strings.Split(strings.TrimSpace(res.Stdout.String()), "\n")
+		for _, status := range podStatuses {
+			if status == "" {
+				continue
+			}
+			parts := strings.Split(status, ",")
+			phase := parts[0]
+			deletionTimestamp := ""
+			if len(parts) > 1 {
+				deletionTimestamp = parts[1]
+			}
+			if phase != "Running" || deletionTimestamp != "" {
+				return false
+			}
+		}
+		return true
 	})
 
 	c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 3 minutes: %v", appInfo))

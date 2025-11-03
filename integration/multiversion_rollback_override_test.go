@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"strings"
 	"time"
 
 	"gopkg.in/check.v1"
@@ -114,13 +113,21 @@ func multiversionRollbackOverrideTest() ExecFlow {
 
 		// wait k8s sync
 		ok = retry(2*time.Minute, func() (ready bool) {
-			res = K("get", "deployments").Run(env)
+			res = K("get", "deployments", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", "json").Run(env)
 			c.Assert(res, ResultOk)
-			count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
-			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for web process"))
-			fmt.Println("DEBUG: Matches found for web process deployment:", count)
+
+			// Count deployments by parsing JSON output
+			var deploymentList struct {
+				Items []struct{} `json:"items"`
+			}
+			err := json.Unmarshal([]byte(res.Stdout.String()), &deploymentList)
+			c.Assert(err, check.IsNil)
+			count := len(deploymentList.Items)
+
+			c.Assert(count, check.Not(check.Equals), 0, check.Commentf("No deployment found for app"))
+			fmt.Println("DEBUG: Matches found for app deployment:", count)
 			if count > 1 {
-				fmt.Printf("DEBUG: Multiple deployments found for web process: %v\n", count)
+				fmt.Printf("DEBUG: Multiple deployments found for app deployment: %v\n", count)
 				return false
 			}
 			return true
@@ -128,10 +135,15 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		c.Assert(ok, check.Equals, true, check.Commentf("Kubernetes sync did not happen within 2 minutes"))
 
 		// Step 7: Ensure only one deployment exists after rollback with override
-		res = K("get", "deployments").Run(env)
+		res = K("get", "deployments", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", "json").Run(env)
 		c.Assert(res, ResultOk)
-		count := strings.Count(res.Stdout.String(), fmt.Sprintf("%s-web", appName))
-		c.Assert(count, check.Equals, 1, check.Commentf("Expected only one web deployment after rollback, found %d (%v)", count, res))
+		var deploymentList struct {
+			Items []struct{} `json:"items"`
+		}
+		err = json.Unmarshal([]byte(res.Stdout.String()), &deploymentList)
+		c.Assert(err, check.IsNil)
+		count := len(deploymentList.Items)
+		c.Assert(count, check.Equals, 1, check.Commentf("Expected only one deployment after rollback, found %d", count))
 
 		// Step 8: Ensure user is able to deploy new version after rollback with override
 		hash4 := deployAndMapHash(c, appDir, appName, []string{}, imageToHash, env)

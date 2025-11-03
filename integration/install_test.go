@@ -315,7 +315,28 @@ func appVersions() ExecFlow {
 		checkVersion := func(expectedVersions ...string) {
 			ok := retry(5*time.Minute, func() (ready bool) {
 				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
-				return ready
+				if !ready {
+					return false
+				}
+				// Check that all pods are running and not being deleted
+				res := K("get", "pods", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", `"jsonpath={range .items[*]}{.status.phase},{.metadata.deletionTimestamp}{'\\n'}{end}"`).Run(env)
+				c.Assert(res, ResultOk)
+				podStatuses := strings.Split(strings.TrimSpace(res.Stdout.String()), "\n")
+				for _, status := range podStatuses {
+					if status == "" {
+						continue
+					}
+					parts := strings.Split(status, ",")
+					phase := parts[0]
+					deletionTimestamp := ""
+					if len(parts) > 1 {
+						deletionTimestamp = parts[1]
+					}
+					if phase != "Running" || deletionTimestamp != "" {
+						return false
+					}
+				}
+				return true
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
 			externalAddress := appInfo.Routers[0].Addresses[0]
