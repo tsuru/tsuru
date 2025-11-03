@@ -39,9 +39,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	ClusterService, err = cluster.ClusterService()
 	c.Assert(err, check.IsNil)
 	_, err = ClusterService.List(context.Background())
-	if err != nil {
-		err = errors.WithStack(err)
-	}
+	err = errors.WithStack(err)
+	fmt.Printf("%v\n", err.Error())
 	c.Assert(err, check.IsNil)
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
