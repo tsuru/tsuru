@@ -537,7 +537,7 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 
 	var versions []appTypes.AppVersion
 	if version == nil {
-		versions, err = versionsForAppProcess(ctx, client, a, process, false)
+		versions, err = versionsForAppProcess(ctx, client, a, process, state.Restart)
 		if err != nil {
 			return err
 		}
