@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/tsuru/provision/cluster"
-	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
