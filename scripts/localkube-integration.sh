@@ -84,6 +84,7 @@ copy_tsuru_conf_from_pod() {
   )
   "${KUBECTL}" cp -n "${NAMESPACE}" \
     "${tsuru_api_pod}:/etc/tsuru/tsuru.conf" "./etc/tsurud-integration.conf"
+  cat ./etc/tsurud-integration.conf
 }
 
 build_tsuru_api_container_image() {
