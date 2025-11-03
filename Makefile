@@ -123,7 +123,6 @@ test-ci-integration:
 	TSURU_INTEGRATION_platforms="python,go" \
 	TSURU_INTEGRATION_no_rollback="true" \
 	TSURU_INTEGRATION_provisioners="minikube" \
-	TSURU_CONFIG_FILE="./etc/tsurud-integration.conf" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
 local.test-ci-integration:
@@ -137,7 +136,6 @@ local.test-ci-integration:
 	TSURU_INTEGRATION_adminuser="admin@admin.com" \
 	TSURU_INTEGRATION_adminpassword="admin@123" \
 	TSURU_INTEGRATION_local="true" \
-	TSURU_CONFIG_FILE="./etc/tsurud.conf" \
 	CLUSTER_PROVIDER=minikube \
 	DEBUG="true" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration -check.v | tee ./test-output.log
