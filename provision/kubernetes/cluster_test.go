@@ -22,11 +22,13 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -227,17 +229,28 @@ func TestClusterClient(t *testing.T) {
 
 	t.Run("Cluster Init Client By Kube Config With Proxy and TLS", func(t *testing.T) {
 		fakeK8SServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/v1/namespaces/default/endpoints/kubernetes" {
+			if r.URL.Path == "/apis/discovery.k8s.io/v1/namespaces/default/endpointslices" {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(&corev1.Endpoints{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "kubernetes",
-					},
-					Subsets: []corev1.EndpointSubset{
+				httpsProtocol := corev1.ProtocolTCP
+				json.NewEncoder(w).Encode(&discoveryv1.EndpointSliceList{
+					Items: []discoveryv1.EndpointSlice{
 						{
-							Addresses: []corev1.EndpointAddress{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "kubernetes-abc123",
+								Labels: map[string]string{
+									"kubernetes.io/service-name": "kubernetes",
+								},
+							},
+							AddressType: discoveryv1.AddressTypeIPv4,
+							Ports: []discoveryv1.EndpointPort{
 								{
-									IP: "1.2.3.4",
+									Port:     ptr.To(int32(443)),
+									Protocol: &httpsProtocol,
+								},
+							},
+							Endpoints: []discoveryv1.Endpoint{
+								{
+									Addresses: []string{"1.2.3.4"},
 								},
 							},
 						},
@@ -284,9 +297,18 @@ func TestClusterClient(t *testing.T) {
 		k8s, err := kubernetes.NewForConfig(restConfig)
 		require.NoError(t, err)
 
-		endpoint, err := k8s.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", metav1.GetOptions{})
+		endpointSliceList, err := k8s.DiscoveryV1().EndpointSlices("default").List(context.Background(), metav1.ListOptions{
+			LabelSelector: "kubernetes.io/service-name=kubernetes",
+		})
 		require.NoError(t, err)
-		require.Equal(t, "1.2.3.4", endpoint.Subsets[0].Addresses[0].IP)
+		require.Len(t, endpointSliceList.Items, 1)
+
+		endpointSlice := endpointSliceList.Items[0]
+		require.Equal(t, discoveryv1.AddressTypeIPv4, endpointSlice.AddressType)
+		require.Len(t, endpointSlice.Ports, 1)
+		require.Equal(t, int32(443), *endpointSlice.Ports[0].Port)
+		require.Equal(t, corev1.ProtocolTCP, *endpointSlice.Ports[0].Protocol)
+		require.Equal(t, "1.2.3.4", endpointSlice.Endpoints[0].Addresses[0])
 	})
 
 	t.Run("Cluster Get Rest Config Multiple Addrs Random", func(t *testing.T) {
