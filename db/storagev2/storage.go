@@ -6,7 +6,6 @@ package storagev2
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
@@ -159,6 +158,7 @@ func connect() (*mongo.Client, *string, error) {
 
 	if swapped {
 		err = EnsureIndexesCreated(connectedClient.Database(databaseName))
+
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to create indexes")
 		}
@@ -169,11 +169,9 @@ func connect() (*mongo.Client, *string, error) {
 
 func dbConfig() (string, string) {
 	uri, _ := config.GetString("database:url")
-	fmt.Println("got database uri:", uri)
 	if uri == "" {
 		uri = DefaultDatabaseURL
 	}
-	fmt.Println("using database uri:", uri)
 
 	if !strings.HasPrefix(uri, "mongodb://") {
 		uri = "mongodb://" + uri
