@@ -123,7 +123,7 @@ test-ci-integration:
 	TSURU_INTEGRATION_platforms="python,go" \
 	TSURU_INTEGRATION_no_rollback="true" \
 	TSURU_INTEGRATION_provisioners="minikube" \
-	TSURU_CONFIG_FILE="/tmp/tsurud-integration.conf" \
+	TSURU_CONFIG_FILE="./etc/tsurud-integration.conf" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
 local.test-ci-integration:

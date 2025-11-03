@@ -76,8 +76,8 @@ install_tsuru_stack() {
 }
 
 copy_tsuru_conf_from_pod() {
-  "${KUBECTL}" -n "${NAMESPACE}" get configmap tsuru-api-config -o yaml | yq -r '.data."tsuru.conf"' | yq >"/tmp/tsurud-integration.conf"
-  cat /tmp/tsurud-integration.conf
+  "${KUBECTL}" -n "${NAMESPACE}" get configmap tsuru-api-config -o yaml | yq -r '.data."tsuru.conf"' | yq >./etc/tsurud-integration.conf
+  cat ./etc/tsurud-integration.conf
 }
 
 build_tsuru_api_container_image() {
