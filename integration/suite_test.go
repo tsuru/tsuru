@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision/cluster"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -36,6 +37,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	ClusterService, err = cluster.ClusterService()
 	c.Assert(err, check.IsNil)
 	_, err = ClusterService.List(context.Background())
+	if err != nil {
+		err = errors.WithStack(err)
+	}
 	c.Assert(err, check.IsNil)
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
