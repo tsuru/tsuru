@@ -5,16 +5,15 @@
 package integration
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/tsuru/tsuru/provision/cluster"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
@@ -32,10 +31,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
-	ClusterService, err = cluster.ClusterService()
-	c.Assert(err, check.IsNil)
-	_, err = ClusterService.List(context.Background())
-	c.Assert(err, check.IsNil)
+	checkKubeconfig(c)
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
 	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
@@ -43,6 +39,14 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = os.Setenv("TSURU_DISABLE_COLORS", "1")
 	c.Assert(err, check.IsNil)
+}
+
+func checkKubeconfig(c *check.C) {
+	defaultKubeConfig := path.Join(os.Getenv("HOME"), ".kube", "config")
+	integrationKubeConfig := os.Getenv("INTEGRATION_KUBECONFIG")
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), "", check.Commentf("INTEGRATION_KUBECONFIG must be set to run integration tests"))
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), defaultKubeConfig, check.Commentf("INTEGRATION_KUBECONFIG must not be the default kubeconfig path"))
+	os.Setenv("KUBECONFIG", integrationKubeConfig)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

@@ -5,7 +5,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -16,22 +15,18 @@ import (
 	"strings"
 	"time"
 
-	provisionk8s "github.com/tsuru/tsuru/provision/kubernetes"
 	check "gopkg.in/check.v1"
 
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/provision"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	T              = NewCommand("tsuru").WithArgs
-	ClusterService provision.ClusterService
-	platforms      = []string{}
-	provisioners   = []string{"kubernetes"}
-	flows          = []ExecFlow{
+	T            = NewCommand("tsuru").WithArgs
+	K            = NewCommand("kubectl").WithArgs("--context=minikube").WithArgs
+	platforms    = []string{}
+	provisioners = []string{"kubernetes"}
+	flows        = []ExecFlow{
 		platformsToInstall(),
 		targetTest(),
 		loginTest(),
@@ -39,17 +34,17 @@ var (
 		teamTest(),
 		poolAdd(),
 		platformAdd(),
-		// exampleApps(),
-		// unitAddRemove(),
-		// testCases(),
-		// testApps(),
-		// updateAppPools(),
-		// serviceImageSetup(),
-		// serviceCreate(),
-		// serviceBind(),
-		// appRouters(),
+		exampleApps(),
+		unitAddRemove(),
+		testCases(),
+		testApps(),
+		updateAppPools(),
+		serviceImageSetup(),
+		serviceCreate(),
+		serviceBind(),
+		appRouters(),
 		appVersions(),
-		// multiversionRollbackTest(),
+		multiversionRollbackTest(),
 		multiversionRollbackOverrideTest(),
 	}
 )
@@ -316,31 +311,11 @@ func appVersions() ExecFlow {
 		res := T("app", "create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 
-		cluster, err := ClusterService.FindByPool(context.Background(), "kubernetes", env.Get("pool"))
-		c.Assert(err, check.IsNil)
-		clusterClient, err := provisionk8s.NewClusterClient(cluster)
-		c.Assert(err, check.IsNil)
-
 		appInfo := new(appTypes.AppInfo)
 		checkVersion := func(expectedVersions ...string) {
 			ok := retry(5*time.Minute, func() (ready bool) {
 				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
-				if !ready {
-					return false
-				}
-				appPods, err := clusterClient.CoreV1().Pods(clusterClient.PoolNamespace(env.Get("pool"))).List(context.Background(), metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
-				})
-				c.Assert(err, check.IsNil)
-				for _, appPod := range appPods.Items {
-					if appPod.Status.Phase != corev1.PodRunning {
-						return false
-					}
-					if appPod.DeletionTimestamp != nil {
-						return false
-					}
-				}
-				return true
+				return ready
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
 			externalAddress := appInfo.Routers[0].Addresses[0]
