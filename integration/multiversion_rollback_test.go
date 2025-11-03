@@ -312,7 +312,7 @@ func verifyVersionHashes(c *check.C, expectedVersions map[string]string, testCmd
 func generateHashForDeploy(c *check.C, appDir string, env *Environment) string {
 	cmd := NewCommand("bash", "./generate_hash.sh").WithPWD(appDir)
 	result := cmd.Run(env)
-	c.Assert(result.ExitCode == 0, check.Equals, true)
+	c.Assert(result.ExitCode, check.Equals, 0)
 
 	hashBytes, err := os.ReadFile(path.Join(appDir, "version_hash.txt"))
 	c.Assert(err, check.IsNil)
