@@ -75,6 +75,17 @@ install_tsuru_stack() {
     tsuru tsuru/tsuru-stack
 }
 
+copy_tsuru_conf_from_pod() {
+  tsuru_api_pod=$(
+    "${KUBECTL}" get pods -n "${NAMESPACE}" \
+      -l app.kubernetes.io/name=api \
+      -l app.kubernetes.io/instance=tsuru \
+      -o jsonpath="{.items[0].metadata.name}"
+  )
+  "${KUBECTL}" cp -n "${NAMESPACE}" \
+    "${tsuru_api_pod}:/etc/tsuru/tsuru.conf" "./etc/tsurud-integration.conf"
+}
+
 build_tsuru_api_container_image() {
   ${DOCKER} build -t localhost/tsuru/tsuru-api:integration -f Dockerfile .
 
@@ -121,6 +132,8 @@ main() {
   install_tsuru_stack
 
   sleep 30
+
+  copy_tsuru_conf_from_pod
 
   local_tsuru_api_port=8080
   DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &

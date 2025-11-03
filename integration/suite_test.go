@@ -15,8 +15,8 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision/cluster"
-	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
@@ -34,6 +34,8 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
+	err = config.ReadConfigFile(os.Getenv("TSURU_CONFIG_FILE"))
+	c.Assert(err, check.IsNil)
 	ClusterService, err = cluster.ClusterService()
 	c.Assert(err, check.IsNil)
 	_, err = ClusterService.List(context.Background())
