@@ -76,15 +76,8 @@ install_tsuru_stack() {
 }
 
 copy_tsuru_conf_from_pod() {
-  local pod_name
-  pod_name=$("${KUBECTL}" -n "${NAMESPACE}" get pod -l app.kubernetes.io/name=api -o jsonpath='{.items[0].metadata.name}')
-  "${KUBECTL}" -n "${NAMESPACE}" exec "${pod_name}" -- tar czf - -C /etc/tsuru tsuru.conf | tar xzf - -C /tmp
-  mv /tmp/tsuru.conf /tmp/tsurud-integration.conf 2>/dev/null || true
-  # Verify file exists
-  if [[ ! -f /tmp/tsurud-integration.conf ]]; then
-    echo "Failed to copy config file from pod" >&2
-    return 1
-  fi
+  "${KUBECTL}" -n "${NAMESPACE}" get configmap tsuru-api-config -o yaml | yq -r '.data."tsuru.conf"' | yq >"/tmp/tsurud-integration.conf"
+  cat /tmp/tsurud-integration.conf
 }
 
 build_tsuru_api_container_image() {
