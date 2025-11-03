@@ -23,7 +23,7 @@ readonly CHART_VERSION_TSURU_STACK=${CHART_VERSION_TSURU_STACK:-0.8.6}
 function onerror() {
   set -e
   echo "TSURU API LOGS:"
-  ${KUBECTL} logs -n ${NAMESPACE} deploy/tsuru-api|| true
+  ${KUBECTL} logs -n ${NAMESPACE} deploy/tsuru-api || true
   echo
   ${KUBECTL} get pods -A
   echo
@@ -33,6 +33,30 @@ function onerror() {
   [[ -n ${minikube_tunnel_pid} ]] && kill ${minikube_tunnel_pid}
   set +e
   exit 1
+}
+
+function check_kubectl_config() {
+  if [[ -z "${INTEGRATION_KUBECONFIG:-}" ]]; then
+    echo "INTEGRATION_KUBECONFIG is not set. Aborting." >&2
+    exit 1
+  fi
+  if [[ "${INTEGRATION_KUBECONFIG}" == "${HOME}/.kube/config" ]]; then
+    echo "INTEGRATION_KUBECONFIG cannot be equal to your default kubeconfig (${HOME}/.kube/config). Aborting." >&2
+    exit 1
+  fi
+  if [[ ! -f "${INTEGRATION_KUBECONFIG}" ]]; then
+    echo "INTEGRATION_KUBECONFIG file (${INTEGRATION_KUBECONFIG}) does not exist. Aborting." >&2
+    exit 1
+  fi
+  export KUBECONFIG="${INTEGRATION_KUBECONFIG}"
+  if ! ${KUBECTL} config get-contexts -o name | grep -qE '^(minikube|kind-kind)$'; then
+    echo "INTEGRATION_KUBECONFIG must have 'minikube' or 'kind-kind' context. Aborting." >&2
+    exit 1
+  fi
+  if [[ "$(${KUBECTL} config get-contexts -o name | wc -l)" -ne 1 ]]; then
+    echo "INTEGRATION_KUBECONFIG must have only one context. Aborting." >&2
+    exit 1
+  fi
 }
 
 install_tsuru_stack() {
@@ -47,7 +71,7 @@ install_tsuru_stack() {
     --set tsuru-api.image.pullPolicy=Never \
     --set tsuru-api.service.type=ClusterIP \
     --set tsuru-api.tsuruConfig.debug=true \
-    --timeout 5m  \
+    --timeout 5m \
     tsuru tsuru/tsuru-stack
 }
 
@@ -55,18 +79,19 @@ build_tsuru_api_container_image() {
   ${DOCKER} build -t localhost/tsuru/tsuru-api:integration -f Dockerfile .
 
   case ${CLUSTER_PROVIDER} in
-    minikube)
-      ${DOCKER} save localhost/tsuru/tsuru-api:integration | ${MINIKUBE} image load -
-      ;;
+  minikube)
+    ${DOCKER} save localhost/tsuru/tsuru-api:integration | ${MINIKUBE} image load -
+    ;;
 
-    kind)
-      ${DOCKER} save "localhost/tsuru/tsuru-api:integration" -o "tsuru-api.tar"
-      ${KIND} load image-archive "tsuru-api.tar"
-      rm "tsuru-api.tar"
-      ;;
-    *)
-      print "Invalid local cluster provider (got ${CLUSTER_PROVIDER}, supported: kind, minikube)" >&2
-      exit 1;;
+  kind)
+    ${DOCKER} save "localhost/tsuru/tsuru-api:integration" -o "tsuru-api.tar"
+    ${KIND} load image-archive "tsuru-api.tar"
+    rm "tsuru-api.tar"
+    ;;
+  *)
+    print "Invalid local cluster provider (got ${CLUSTER_PROVIDER}, supported: kind, minikube)" >&2
+    exit 1
+    ;;
   esac
 }
 
@@ -79,10 +104,12 @@ set_initial_admin_password() {
 main() {
   trap onerror ERR
 
+  check_kubectl_config
+
   ${KUBECTL} cluster-info
   ${KUBECTL} get all
 
-  ${KUBECTL} get namespace ${NAMESPACE} >/dev/null 2>&1 || \
+  ${KUBECTL} get namespace ${NAMESPACE} >/dev/null 2>&1 ||
     ${KUBECTL} create namespace ${NAMESPACE}
 
   build_tsuru_api_container_image
@@ -103,9 +130,9 @@ main() {
   DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-ingress-nginx-controller ${local_nginx_ingress_port}:80 --address=127.0.0.1 &
   nginx_ingress_port_forward_pid=${!}
 
-  set_initial_admin_password 
+  set_initial_admin_password
 
-  if [ ! -d bin ]; then mkdir bin ; fi
+  if [ ! -d bin ]; then mkdir bin; fi
   curl -fsSL "https://tsuru.io/get" | bash -s -- -b ${BINDIR}
 
   export TSURU_TARGET="http://127.0.0.1:${local_tsuru_api_port}"

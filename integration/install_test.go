@@ -5,7 +5,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -18,11 +17,13 @@ import (
 
 	check "gopkg.in/check.v1"
 
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var (
 	T            = NewCommand("tsuru").WithArgs
+	K            = NewCommand("kubectl").WithArgs("--context=minikube").WithArgs
 	platforms    = []string{}
 	provisioners = []string{"kubernetes"}
 	flows        = []ExecFlow{
@@ -44,6 +45,7 @@ var (
 		appRouters(),
 		appVersions(),
 		multiversionRollbackTest(),
+		multiversionRollbackOverrideTest(),
 	}
 )
 
@@ -125,7 +127,6 @@ func poolAdd() ExecFlow {
 			res = T("pool", "constraint", "set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 		}
-
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		for _, prov := range provisioners {
@@ -184,20 +185,17 @@ func exampleApps() ExecFlow {
 		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		lang := strings.Replace(parts[1], "-iplat", "", -1)
+		lang := strings.ReplaceAll(parts[1], "-iplat", "")
 		res = T("app", "deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir") + "/" + lang).Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile("started|ready")
-		ok := retry(5*time.Minute, func() bool {
-			res = T("app", "info", "-a", appName).Run(env)
-			c.Assert(res, ResultOk)
-			return regex.MatchString(res.Stdout.String())
+		appInfo := new(appTypes.AppInfo)
+		ok := retry(5*time.Minute, func() (ready bool) {
+			appInfo, ready = checkAppExternallyAddressable(c, appName, env)
+			return ready
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-		addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
-		parts = addrRE.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
+		externalAddress := appInfo.Routers[0].Addresses[0]
+		cmd := NewCommand("curl", "-sSf", "http://"+externalAddress)
 		ok = retry(15*time.Minute, func() bool {
 			res = cmd.Run(env)
 			return res.ExitCode == 0
@@ -257,33 +255,25 @@ func unitAddRemove() ExecFlow {
 		res := T("unit", "add", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 
-		unitsReady := func() int {
-			res = T("app", "info", "-a", appName, "--json").Run(env)
-			c.Assert(res, ResultOk)
-
-			appInfo := appTypes.AppInfo{}
-			err := json.NewDecoder(&res.Stdout).Decode(&appInfo)
-			c.Assert(err, check.IsNil)
-
+		countReadyUnits := func() int {
+			appInfo, _ := checkAppReady(c, appName, env)
 			count := 0
-
 			for _, unit := range appInfo.Units {
 				if unit.Ready != nil && *unit.Ready {
 					count++
 				}
 			}
-
 			return count
 		}
 
 		ok := retry(5*time.Minute, func() bool {
-			return unitsReady() == 3
+			return countReadyUnits() == 3
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
 		res = T("unit", "remove", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 		ok = retry(5*time.Minute, func() bool {
-			return unitsReady() == 1
+			return countReadyUnits() == 1
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not removed after 5 minutes: %v", res))
 	}
@@ -321,18 +311,36 @@ func appVersions() ExecFlow {
 		res := T("app", "create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 
+		appInfo := new(appTypes.AppInfo)
 		checkVersion := func(expectedVersions ...string) {
-			regex := regexp.MustCompile("started|ready")
-			ok := retry(5*time.Minute, func() bool {
-				res = T("app", "info", "-a", appName).Run(env)
+			ok := retry(5*time.Minute, func() (ready bool) {
+				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
+				if !ready {
+					return false
+				}
+				// Check that all pods are running and not being deleted
+				res := K("get", "pods", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", `"jsonpath={range .items[*]}{.status.phase},{.metadata.deletionTimestamp}{'\\n'}{end}"`).Run(env)
 				c.Assert(res, ResultOk)
-				return regex.MatchString(res.Stdout.String())
+				podStatuses := strings.Split(strings.TrimSpace(res.Stdout.String()), "\n")
+				for _, status := range podStatuses {
+					if status == "" {
+						continue
+					}
+					parts := strings.Split(status, ",")
+					phase := parts[0]
+					deletionTimestamp := ""
+					if len(parts) > 1 {
+						deletionTimestamp = parts[1]
+					}
+					if phase != "Running" || deletionTimestamp != "" {
+						return false
+					}
+				}
+				return true
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-			addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
-			parts := addrRE.FindStringSubmatch(res.Stdout.String())
-			c.Assert(parts, check.HasLen, 2)
-			cmd := NewCommand("curl", "-m5", "-sSf", "http://"+parts[1])
+			externalAddress := appInfo.Routers[0].Addresses[0]
+			cmd := NewCommand("curl", "-m5", "-sSf", "http://"+externalAddress)
 			successCount := 0
 			ok = retryWait(15*time.Minute, 2*time.Second, func() bool {
 				res = cmd.Run(env)
@@ -344,13 +352,13 @@ func appVersions() ExecFlow {
 			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
 			versionRE := regexp.MustCompile(`.* version: (\d+)$`)
 			versionsCounter := map[string]int{}
-			for i := 0; i < 15; i++ {
+			for range 15 {
 				ok = retryWait(30*time.Second, time.Second, func() bool {
 					res = cmd.Run(env)
 					return res.ExitCode == 0
 				})
 				c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
-				parts = versionRE.FindStringSubmatch(res.Stdout.String())
+				parts := versionRE.FindStringSubmatch(res.Stdout.String())
 				c.Assert(parts, check.HasLen, 2)
 				versionsCounter[parts[1]]++
 			}
@@ -370,12 +378,14 @@ func appVersions() ExecFlow {
 		checkVersion("2")
 
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "add", "3", "-a", appName).Run(env)
+		res, ok := T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 		checkVersion("2", "3")
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "remove", "2", "-a", appName).Run(env)
+		res, ok = T("app", "router", "version", "remove", "2", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 		checkVersion("3")
 
 		res = T("unit", "add", "1", "--version", "1", "-a", appName).Run(env)
@@ -383,18 +393,19 @@ func appVersions() ExecFlow {
 		checkVersion("3")
 
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "add", "1", "-a", appName).Run(env)
+		res, ok = T("app", "router", "version", "add", "1", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
 		checkVersion("1", "3")
+		c.Assert(ok, check.Equals, true)
 		time.Sleep(1 * time.Second)
-		res = T("app", "router", "version", "remove", "3", "-a", appName).Run(env)
+		res, ok = T("app", "router", "version", "remove", "3", "-a", appName).Retry(time.Minute, env)
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 		checkVersion("1")
 
 		res = T("app", "deploy", "--override-old-versions", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("4")
-
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := slugifyName(fmt.Sprintf("versions-%s-iapp", env.Get("pool")))
@@ -414,8 +425,8 @@ func testApps() ExecFlow {
 		parallel: true,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		path := path.Join(env.Get("testcasesdir"), env.Get("case"), "platform")
-		plat, err := os.ReadFile(path)
+		platformPath := path.Join(env.Get("testcasesdir"), env.Get("case"), "platform")
+		plat, err := os.ReadFile(platformPath)
 		c.Assert(err, check.IsNil)
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("case"), env.Get("pool"))
 		res := T("app", "create", appName, string(plat)+"-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
@@ -424,11 +435,9 @@ func testApps() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("app", "deploy", "-a", appName, "{{.testcasesdir}}/{{.case}}/").Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
-			res = T("app", "info", "-a", appName).Run(env)
-			c.Assert(res, ResultOk)
-			return regex.MatchString(res.Stdout.String())
+			_, ready := checkAppReady(c, appName, env)
+			return ready
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
 	}
@@ -465,13 +474,15 @@ func updateAppPools() ExecFlow {
 			destPool := combination[1]
 			res := T("app", "update", "-a", appName, "-o", destPool).Run(env)
 			c.Assert(res, ResultOk)
-			res = T("app", "info", "-a", appName).Run(env)
-			c.Assert(res, ResultOk)
-			addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
-			parts := addrRE.FindStringSubmatch(res.Stdout.String())
-			c.Assert(parts, check.HasLen, 2)
-			cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
-			ok := retry(15*time.Minute, func() bool {
+			appInfo := new(appTypes.AppInfo)
+			ok := retry(5*time.Minute, func() (ready bool) {
+				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
+				return ready
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+			externalAddress := appInfo.Routers[0].Addresses[0]
+			cmd := NewCommand("curl", "-sSf", "http://"+externalAddress)
+			ok = retry(15*time.Minute, func() bool {
 				res = cmd.Run(env)
 				return res.ExitCode == 0
 			})
@@ -507,33 +518,16 @@ func serviceCreate() ExecFlow {
 		res = T("app", "deploy", "-a", appName, "-i", "{{.serviceimage}}").Run(env)
 		c.Assert(res, ResultOk)
 
-		appInfo := appTypes.AppInfo{}
-		ok := retry(5*time.Minute, func() bool {
-			res = T("app", "info", "-a", appName, "--json").Run(env)
-			c.Assert(res, ResultOk)
-
-			appInfo = appTypes.AppInfo{}
-			err := json.NewDecoder(&res.Stdout).Decode(&appInfo)
-			c.Assert(err, check.IsNil)
-
-			count := 0
-
-			for _, unit := range appInfo.Units {
-				if unit.Ready != nil && *unit.Ready {
-					count++
-				}
-			}
-
-			return count > 0
+		appInfo := new(appTypes.AppInfo)
+		ok := retry(5*time.Minute, func() (ready bool) {
+			appInfo, ready = checkAppExternallyAddressable(c, appName, env)
+			return ready
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+		c.Assert(appInfo.InternalAddresses, check.HasLen, 1)
 
-		c.Assert(appInfo.Routers, check.HasLen, 1)
-		c.Assert(appInfo.Routers[0].Addresses, check.HasLen, 1)
-
-		address := appInfo.Routers[0].Addresses[0]
-
-		cmd := NewCommand("curl", "-sS", "-o", "/dev/null", "--write-out", "%{http_code}", "http://"+address)
+		externalAddress := appInfo.Routers[0].Addresses[0]
+		cmd := NewCommand("curl", "-sS", "-o", "/dev/null", "--write-out", "%{http_code}", "http://"+externalAddress)
 		ok = retry(15*time.Minute, func() bool {
 			res = cmd.Run(env)
 			code, _ := strconv.Atoi(res.Stdout.String())
@@ -549,18 +543,28 @@ func serviceCreate() ExecFlow {
 		defer os.Chdir(currDir)
 		res = T("service", "template").Run(env)
 		c.Assert(res, ResultOk)
-
-		c.Assert(appInfo.InternalAddresses, check.HasLen, 1)
-
+		getServiceAddress := func() string {
+			if env.Get("local") == "true" {
+				fmt.Println("DEBUG: Using external address for service in local mode")
+				return appInfo.Routers[0].Addresses[0]
+			}
+			fmt.Println("DEBUG: Using internal address for service")
+			internalAddress := appInfo.InternalAddresses[0]
+			return fmt.Sprintf("%s:%d", internalAddress.Domain, internalAddress.Port)
+		}
+		serviceAddress := getServiceAddress()
 		replaces := map[string]string{
 			"team_responsible_to_provide_service": "integration-team",
-			"production-endpoint.com":             fmt.Sprintf("http://%s:%d", appInfo.InternalAddresses[0].Domain, appInfo.InternalAddresses[0].Port),
+			"production-endpoint.com":             fmt.Sprintf("http://%s", serviceAddress),
 			"servicename":                         "integration-service-" + env.Get("pool"),
 		}
 		for k, v := range replaces {
 			res = NewCommand("sed", "-i", "-e", "'s~"+k+"~"+v+"~'", "manifest.yaml").Run(env)
 			c.Assert(res, ResultOk)
 		}
+		res = T("service", "list").Run(env)
+		c.Assert(res, ResultOk)
+
 		res = T("service", "create", "manifest.yaml").Run(env)
 		c.Assert(res, ResultOk)
 
@@ -574,9 +578,9 @@ func serviceCreate() ExecFlow {
 		env.Add("servicename", "integration-service-"+env.Get("pool"))
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("app", "remove", "-y", "-a", appName).Run(env)
+		res := T("service", "destroy", "integration-service-{{.pool}}", "-y").Run(env)
 		c.Check(res, ResultOk)
-		res = T("service", "destroy", "integration-service-{{.pool}}", "-y").Run(env)
+		res = T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow

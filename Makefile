@@ -20,7 +20,7 @@ all: test
 
 _go_test:
 	go clean ./...
-	go test ./... -check.v
+	go test `go list ./... | grep -v github.com/tsuru/tsuru/integration` -check.v
 
 _tsurud_dry:
 	go build -o tsurud ./cmd/tsurud
@@ -52,7 +52,7 @@ endif
 		|| ( echo "Please run 'make yamlfmt' to fix it (if a format error)" && exit 1 )
 
 race:
-	go test -race ./...
+	go test -race `go list ./... | grep -v  github.com/tsuru/tsuru/integration`
 
 _install_api_doc:
 	@go install github.com/tsuru/tsuru-api-docs@latest
@@ -117,6 +117,10 @@ validate-api-spec: install-swagger
 	$(SWAGGER) validate ./docs/reference/api.yaml
 
 test-ci-integration:
+	if [ -z "$$INTEGRATION_KUBECONFIG" ]; then \
+		echo "INTEGRATION_KUBECONFIG is not set"; \
+		exit 1; \
+	fi
 	git clone https://github.com/tsuru/platforms /tmp/platforms
 	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=4 \
@@ -124,6 +128,25 @@ test-ci-integration:
 	TSURU_INTEGRATION_no_rollback="true" \
 	TSURU_INTEGRATION_provisioners="minikube" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
+
+local.test-ci-integration:
+	if [ -z "$$INTEGRATION_KUBECONFIG" ]; then \
+		echo "INTEGRATION_KUBECONFIG is not set"; \
+		exit 1; \
+	fi
+	#git clone https://github.com/tsuru/platforms /tmp/platforms
+	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
+	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=1 \
+	TSURU_INTEGRATION_platforms="python,go" \
+	TSURU_INTEGRATION_no_rollback="false" \
+	TSURU_INTEGRATION_provisioners="minikube" \
+	TSURU_INTEGRATION_targetaddr="http://127.0.0.1:8080" \
+	TSURU_INTEGRATION_adminuser="admin@admin.com" \
+	TSURU_INTEGRATION_adminpassword="admin@123" \
+	TSURU_INTEGRATION_local="true" \
+	CLUSTER_PROVIDER=minikube \
+	DEBUG="true" \
+	go test -v -timeout 120m github.com/tsuru/tsuru/integration -check.v | tee ./test-output.log
 
 generate-test-certs:
 	openssl genrsa -out ./app/testdata/private.key 1024

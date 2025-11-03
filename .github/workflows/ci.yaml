@@ -31,7 +31,7 @@ jobs:
         # tests that depend on fixture files.
     - run: git ls-tree -r -t --full-name --name-only HEAD | grep -v vendor | xargs -I{} -P4 sh -c 'touch -d $(git log --pretty=format:%cI -1 HEAD -- "{}") "{}"'
     - run: sudo apt-get update && sudo apt-get install -y xmlsec1
-    - run: go test -race ./...
+    - run: make race
   integration:
     runs-on: ubuntu-latest
     strategy:
@@ -70,6 +70,10 @@ jobs:
         TSURU_INTEGRATION_adminuser: "admin@admin.com"
         TSURU_INTEGRATION_adminpassword: "123456"
       run: |
+        kubectl --kubeconfig="$HOME/.kube/config" config view --raw --minify --flatten --context=minikube >"$HOME/.kube/tsuru-integration-config" &&
+            chmod 600 "$HOME/.kube/tsuru-integration-config" &&
+            echo "Created $HOME/.kube/tsuru-integration-config"
+        export INTEGRATION_KUBECONFIG="$HOME/.kube/tsuru-integration-config"
         ./scripts/localkube-integration.sh
   lint:
     runs-on: ubuntu-latest

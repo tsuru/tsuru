@@ -5,15 +5,20 @@
 package integration
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
+
+var dnsValidRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
 
 func Test(t *testing.T) { check.TestingT(t) }
 
@@ -26,6 +31,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
+	checkKubeconfig(c)
 	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
 	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
@@ -35,27 +41,17 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func checkKubeconfig(c *check.C) {
+	defaultKubeConfig := path.Join(os.Getenv("HOME"), ".kube", "config")
+	integrationKubeConfig := os.Getenv("INTEGRATION_KUBECONFIG")
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), "", check.Commentf("INTEGRATION_KUBECONFIG must be set to run integration tests"))
+	c.Assert(integrationKubeConfig, check.Not(check.Equals), defaultKubeConfig, check.Commentf("INTEGRATION_KUBECONFIG must not be the default kubeconfig path"))
+	os.Setenv("KUBECONFIG", integrationKubeConfig)
+}
+
 func (s *S) TearDownSuite(c *check.C) {
 	err := os.RemoveAll(s.tmpDir)
 	c.Assert(err, check.IsNil)
-}
-
-func retry(timeout time.Duration, fn func() bool) bool {
-	return retryWait(timeout, 5*time.Second, fn)
-}
-
-func retryWait(timeout, wait time.Duration, fn func() bool) bool {
-	timeoutTimer := time.After(timeout)
-	for {
-		if fn() {
-			return true
-		}
-		select {
-		case <-time.After(wait):
-		case <-timeoutTimer:
-			return false
-		}
-	}
 }
 
 type resultTable struct {
@@ -94,8 +90,37 @@ func (r *resultTable) parse() {
 	}
 }
 
-var dnsValidRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
-
 func slugifyName(name string) string {
 	return strings.ToLower(dnsValidRegex.ReplaceAllString(name, "-"))
+}
+
+func checkAppReady(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+	res := T("app", "info", "-a", appName, "--json").Run(env)
+	c.Assert(res, ResultOk)
+
+	appInfo := new(appTypes.AppInfo)
+	err := json.NewDecoder(&res.Stdout).Decode(appInfo)
+	c.Assert(err, check.IsNil)
+
+	for _, unit := range appInfo.Units {
+		if unit.Ready == nil || !(*unit.Ready) {
+			fmt.Printf("DEBUG: unit not ready yet: %s\n", unit.Name)
+			return nil, false
+		}
+	}
+	return appInfo, true
+}
+
+func checkAppExternallyAddressable(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+	appInfo, ok := checkAppReady(c, appName, env)
+	if !ok {
+		return nil, false
+	}
+	c.Assert(appInfo.Routers, check.HasLen, 1)
+	c.Assert(appInfo.Routers[0].Addresses, check.HasLen, 1)
+	if len(appInfo.Routers[0].Addresses[0]) == 0 {
+		fmt.Printf("DEBUG: app not externally addressable yet: %s\n", appName)
+		return nil, false
+	}
+	return appInfo, true
 }

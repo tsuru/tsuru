@@ -9,6 +9,7 @@ data
 dist/
 vendor/
 etc/tsuru-local.conf
+integration/fixtures/multiversion-python-app/version_hash.txt
 
 # Local Development generated files
 .env
