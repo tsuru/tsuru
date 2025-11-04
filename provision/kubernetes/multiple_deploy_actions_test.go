@@ -207,7 +207,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 			},
 		},
 		{
-			testTitle: "Starting all process by version should maintain other versions stopped",
+			testTitle: "Starting all process by version should maintain other versions stopped, when stopped should maintain deployments",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}},
@@ -246,9 +246,9 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						s.hasDepWithVersion("myapp3-p1", 1, 0)
 						s.hasDepWithVersion("myapp3-p2", 1, 0)
 						s.hasDepWithVersion("myapp3-p3", 1, 0)
-						s.noDep("myapp3-p1-v2")
-						s.noDep("myapp3-p2-v2")
-						s.noDep("myapp3-p3-v2")
+						s.hasDepWithVersion("myapp3-p1-v2", 2, 0)
+						s.hasDepWithVersion("myapp3-p2-v2", 2, 0)
+						s.hasDepWithVersion("myapp3-p3-v2", 2, 0)
 					},
 				},
 				{
@@ -257,15 +257,15 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						s.hasDepWithVersion("myapp3-p1", 1, 1)
 						s.hasDepWithVersion("myapp3-p2", 1, 1)
 						s.hasDepWithVersion("myapp3-p3", 1, 1)
-						s.noDep("myapp3-p1-v2")
-						s.noDep("myapp3-p2-v2")
-						s.noDep("myapp3-p3-v2")
+						s.hasDepWithVersion("myapp3-p1-v2", 2, 0)
+						s.hasDepWithVersion("myapp3-p2-v2", 2, 0)
+						s.hasDepWithVersion("myapp3-p3-v2", 2, 0)
 					},
 				},
 			},
 		},
 		{
-			testTitle: "Starting all processes should only start base version deployment - start running app shold not change number of units",
+			testTitle: "Starting all processes should only start all versions - start running app should not change number of units",
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{processes: []string{"p1", "p2", "p3"}},
@@ -325,18 +325,18 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						s.hasDepWithVersion("myapp4-p1", 1, 0)
 						s.hasDepWithVersion("myapp4-p2", 1, 0)
 						s.hasDepWithVersion("myapp4-p3", 1, 0)
-						s.noDep("myapp4-p1-v2")
-						s.noDep("myapp4-p2-v2")
-						s.noDep("myapp4-p3-v2")
+						s.hasDepWithVersion("myapp4-p1-v2", 2, 0)
+						s.hasDepWithVersion("myapp4-p2-v2", 2, 0)
+						s.hasDepWithVersion("myapp4-p3-v2", 2, 0)
 						s.hasSvc("myapp4-p1")
 						s.hasSvc("myapp4-p1-v1")
 						s.hasSvc("myapp4-p2")
 						s.hasSvc("myapp4-p2-v1")
 						s.hasSvc("myapp4-p3")
 						s.hasSvc("myapp4-p3-v1")
-						s.noSvc("myapp4-p1-v2")
-						s.noSvc("myapp4-p2-v2")
-						s.noSvc("myapp4-p3-v2")
+						s.hasSvc("myapp4-p1-v2")
+						s.hasSvc("myapp4-p2-v2")
+						s.hasSvc("myapp4-p3-v2")
 					},
 				},
 				{

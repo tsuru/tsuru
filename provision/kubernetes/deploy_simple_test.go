@@ -123,9 +123,9 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 						s.hasDepWithVersion("myapp0-p2", 5, 1)
 						s.hasSvc("myapp0-p2")
 
-						s.noDep("myapp0-p1-v4")
+						s.hasDepWithVersion("myapp0-p1-v4", 4, 0)
 						s.noDep("myapp0-p1")
-						s.noSvc("myapp0-p1-v4")
+						s.hasSvc("myapp0-p1-v4")
 						s.noSvc("myapp0-p1")
 						s.noSvc("myapp0-p2-v5")
 					},
