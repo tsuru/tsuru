@@ -18,7 +18,7 @@ readonly MINIKUBE=${MINIKUBE:-minikube}
 readonly CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 readonly NAMESPACE=${NAMESPACE:-tsuru-system}
 
-readonly CHART_VERSION_TSURU_STACK=${CHART_VERSION_TSURU_STACK:-0.8.6}
+readonly CHART_VERSION_TSURU_STACK=${CHART_VERSION_TSURU_STACK:-0.8.7}
 
 function onerror() {
   set -e
