@@ -33,15 +33,15 @@ func (s *S) TestPodListeners(_ *check.C) {
 
 	clusterController, err := getClusterController(s.p, s.clusterClient)
 	require.NoError(s.t, err)
-	clusterController.addPodListener("listerner1", podListener1)
+	clusterController.addPodListener("listener1", podListener1)
 	require.Len(s.t, clusterController.podListeners, 1)
-	clusterController.addPodListener("listerner2", podListener2)
-	clusterController.removePodListener("listerner1")
+	clusterController.addPodListener("listener2", podListener2)
+	clusterController.removePodListener("listener1")
 	require.Len(s.t, clusterController.podListeners, 1)
 
-	_, contains := clusterController.podListeners["listerner2"]
+	_, contains := clusterController.podListeners["listener2"]
 	require.True(s.t, contains)
-	clusterController.removePodListener("listerner2")
+	clusterController.removePodListener("listener2")
 	require.Len(s.t, clusterController.podListeners, 0)
 }
 
