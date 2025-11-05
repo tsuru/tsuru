@@ -7,27 +7,14 @@ package integration
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+	"os"
+	"path"
 	"time"
 
 	check "gopkg.in/check.v1"
 
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
-
-var jobFlows = []ExecFlow{
-	platformsToInstall(),
-	loginTest(),
-	quotaTest(),
-	teamTest(),
-	poolAdd(),
-	jobCreate(),
-	jobTrigger(),
-	jobLogs(),
-	jobUpdate(),
-	jobEnvSet(),
-	jobList(),
-}
 
 func jobCreate() ExecFlow {
 	flow := ExecFlow{
@@ -40,7 +27,6 @@ func jobCreate() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		jobName := fmt.Sprintf("simple-job-%s-ijob", env.Get("pool"))
-		fmt.Println("jobName:", jobName)
 
 		// Create a manual job (not scheduled to avoid automatic execution) with a simple docker image
 		// Using a custom image that logs and sleeps for testing
@@ -48,8 +34,6 @@ func jobCreate() ExecFlow {
 			"-t", "{{.team}}",
 			"-o", "{{.pool}}",
 			"--manual",
-			// "bash:5.2",
-			// `"/bin/bash -c echo 'Job started' && echo 'Waiting 5 seconds...' && sleep 5 && echo 'DONE'"`,
 		).Run(env)
 		c.Assert(res, ResultOk, check.Commentf("Failed to create job: %v", res))
 
@@ -58,10 +42,8 @@ func jobCreate() ExecFlow {
 		c.Assert(res, ResultOk, check.Commentf("Failed to get job info: %v", res))
 
 		jobInfo := new(jobTypes.JobInfo)
-		fmt.Println(jobInfo, res.Stdout.String())
 
 		err := json.NewDecoder(&res.Stdout).Decode(jobInfo)
-		fmt.Println(jobInfo)
 		c.Assert(err, check.IsNil)
 		c.Assert(jobInfo.Job.Name, check.Equals, jobName)
 		c.Assert(jobInfo.Job.Pool, check.Equals, env.Get("pool"))
@@ -73,6 +55,24 @@ func jobCreate() ExecFlow {
 		jobName := fmt.Sprintf("simple-job-%s-ijob", env.Get("pool"))
 		res := T("job", "delete", jobName).Run(env)
 		c.Check(res, ResultOk)
+	}
+	return flow
+}
+
+func jobDeploy() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"jobnames"},
+		matrix: map[string]string{
+			"job": "jobnames",
+		},
+		parallel: true,
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		cwd, err := os.Getwd()
+		c.Assert(err, check.IsNil)
+		jobDir := path.Join(cwd, "fixtures", "waiting-job")
+		res := T("job", "deploy", "-j", env.Get("job"), "--dockerfile", jobDir).Run(env)
+		c.Assert(res, ResultOk, check.Commentf("Failed to deploy job: %v", res))
 	}
 	return flow
 }
@@ -121,19 +121,12 @@ func jobLogs() ExecFlow {
 	flow.forward = func(c *check.C, env *Environment) {
 		jobName := env.Get("job")
 
-		// Wait for job to complete and check logs
-		var logs string
-		ok := retry(3*time.Minute, func() bool {
-			res := T("job", "log", jobName, "--lines", "100").Run(env)
-			if res.ExitCode != 0 {
-				return false
-			}
-			logs = res.Stdout.String()
-			return strings.Contains(logs, "DONE")
-		})
-		c.Assert(ok, check.Equals, true, check.Commentf("Job did not complete successfully. Logs: %s", logs))
-		c.Assert(logs, check.Matches, "(?s).*Job started.*")
-		c.Assert(logs, check.Matches, "(?s).*Waiting 5 seconds.*")
+		checkJobCompletedSuccessfully(c, jobName, env)
+		res := T("job", "log", jobName).Run(env)
+		c.Assert(res, ResultOk, check.Commentf("Failed to get job logs: %v", res))
+		logs := res.Stdout.String()
+		c.Assert(logs, check.Matches, "(?s).*Job Started.*")
+		c.Assert(logs, check.Matches, "(?s).*Waiting 5 Seconds.*")
 		c.Assert(logs, check.Matches, "(?s).*DONE.*")
 	}
 	return flow
@@ -151,17 +144,17 @@ func jobUpdate() ExecFlow {
 		jobName := jobNames[0]
 
 		// Update job description
-		res := T("job", "update", jobName, "-d", "Updated job description").Run(env)
+		res := T("job", "update", jobName, "-d", `"Updated job description"`).Run(env)
 		c.Assert(res, ResultOk, check.Commentf("Failed to update job: %v", res))
 
 		// Verify update
 		res = T("job", "info", jobName, "--json").Run(env)
 		c.Assert(res, ResultOk)
 
-		jobInfo := new(jobTypes.Job)
+		jobInfo := new(jobTypes.JobInfo)
 		err := json.NewDecoder(&res.Stdout).Decode(jobInfo)
 		c.Assert(err, check.IsNil)
-		c.Assert(jobInfo.Description, check.Equals, "Updated job description")
+		c.Assert(jobInfo.Job.Description, check.Equals, "Updated job description")
 	}
 	return flow
 }
@@ -170,6 +163,8 @@ func jobEnvSet() ExecFlow {
 	flow := ExecFlow{
 		requires: []string{"jobnames"},
 	}
+	envName := "TEST_ENV"
+	envValue := "integration_test"
 	flow.forward = func(c *check.C, env *Environment) {
 		jobNames := env.All("jobnames")
 		if len(jobNames) == 0 {
@@ -178,17 +173,34 @@ func jobEnvSet() ExecFlow {
 		jobName := jobNames[0]
 
 		// Set environment variable
-		res := T("env", "set", "-j", jobName, "TEST_ENV=integration_test").Run(env)
+		res := T("env", "set", "-j", jobName, fmt.Sprintf("%s=%s", envName, envValue)).Run(env)
 		c.Assert(res, ResultOk, check.Commentf("Failed to set env: %v", res))
 
 		// Verify environment variable was set
 		res = T("env", "get", "-j", jobName).Run(env)
 		c.Assert(res, ResultOk)
-		c.Assert(res.Stdout.String(), check.Matches, "(?s).*TEST_ENV.*")
+		c.Assert(res.Stdout.String(), check.Matches, fmt.Sprintf("(?s).*%s.*", envName))
 
-		// Unset environment variable
-		res = T("env", "unset", "-j", jobName, "TEST_ENV").Run(env)
-		c.Assert(res, ResultOk, check.Commentf("Failed to unset env: %v", res))
+		var logs string
+		ok := retry(3*time.Minute, func() bool {
+			res = T("job", "trigger", jobName).Run(env)
+			if res.ExitCode != 0 {
+				return false
+			}
+			logs = res.Stdout.String()
+			return true
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("Job did not trigger successfully. Logs: %s", logs))
+
+		// Wait for job to complete and check logs
+		checkJobCompletedSuccessfully(c, jobName, env)
+		res = T("job", "log", jobName).Run(env)
+		c.Assert(res, ResultOk, check.Commentf("Failed to get job logs: %v", res))
+		logs = res.Stdout.String()
+		c.Assert(logs, check.Matches, "(?s).*Job Started.*")
+		c.Assert(logs, check.Matches, "(?s).*Waiting 5 Seconds.*")
+		c.Assert(logs, check.Matches, fmt.Sprintf("(?s).*Environment variable %s is set to %s.*", envName, envValue))
+		c.Assert(logs, check.Matches, "(?s).*DONE.*")
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		jobNames := env.All("jobnames")
@@ -198,7 +210,7 @@ func jobEnvSet() ExecFlow {
 		jobName := jobNames[0]
 
 		// Cleanup: try to unset env if it still exists
-		T("env", "unset", "-j", jobName, "TEST_ENV").Run(env)
+		T("env", "unset", "-j", jobName, envName).Run(env)
 	}
 	return flow
 }
@@ -237,34 +249,20 @@ func jobList() ExecFlow {
 	return flow
 }
 
-func (s *S) TestJob(c *check.C) {
-	s.config()
-	if s.env == nil {
-		return
-	}
-
-	var executedFlows []*ExecFlow
-	defer func() {
-		for i := len(executedFlows) - 1; i >= 0; i-- {
-			executedFlows[i].Rollback(c, s.env)
-		}
-	}()
-
-	for i := range jobFlows {
-		f := &jobFlows[i]
-		if len(f.provides) > 0 {
-			providesAll := true
-			for _, envVar := range f.provides {
-				if s.env.Get(envVar) == "" {
-					providesAll = false
-					break
-				}
-			}
-			if providesAll {
-				continue
+func checkJobCompletedSuccessfully(c *check.C, jobName string, env *Environment) {
+	jobInfo := new(jobTypes.JobInfo)
+	ok := retry(3*time.Minute, func() bool {
+		res := T("job", "info", jobName, "--json").Run(env)
+		c.Assert(res, ResultOk)
+		err := json.NewDecoder(&res.Stdout).Decode(jobInfo)
+		c.Assert(err, check.IsNil)
+		for _, unit := range jobInfo.Units {
+			if unit.Status != "succeeded" {
+				fmt.Printf("Unit %s status is not succeeded: %s\n", unit.ID, unit.Status)
+				return false
 			}
 		}
-		executedFlows = append(executedFlows, f)
-		f.Run(c, s.env)
-	}
+		return true
+	})
+	c.Assert(ok, check.Equals, true, check.Commentf("Job %s did not complete successfully", jobName))
 }
