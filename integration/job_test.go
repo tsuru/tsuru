@@ -141,12 +141,7 @@ func jobUpdate() ExecFlow {
 		parallel: false,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		jobNames := env.All("jobnames")
-		if len(jobNames) == 0 {
-			return
-		}
-		jobName := jobNames[0]
-
+		jobName := env.Get("jobnames")
 		// Update job description
 		res := T("job", "update", jobName, "-d", `"Updated job description"`).Run(env)
 		c.Assert(res, ResultOk, check.Commentf("Failed to update job: %v", res))
@@ -174,12 +169,7 @@ func jobEnvSet() ExecFlow {
 	envName := "TEST_ENV"
 	envValue := "integration_test"
 	flow.forward = func(c *check.C, env *Environment) {
-		jobNames := env.All("jobnames")
-		if len(jobNames) == 0 {
-			return
-		}
-		jobName := jobNames[0]
-
+		jobName := env.Get("jobnames")
 		// Set environment variable
 		res := T("env", "set", "-j", jobName, fmt.Sprintf("%s=%s", envName, envValue)).Run(env)
 		c.Assert(res, ResultOk, check.Commentf("Failed to set env: %v", res))
@@ -211,12 +201,7 @@ func jobEnvSet() ExecFlow {
 		c.Assert(logs, check.Matches, "(?s).*DONE.*")
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		jobNames := env.All("jobnames")
-		if len(jobNames) == 0 {
-			return
-		}
-		jobName := jobNames[0]
-
+		jobName := env.Get("jobnames")
 		// Cleanup: try to unset env if it still exists
 		T("env", "unset", "-j", jobName, envName).Run(env)
 	}
