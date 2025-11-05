@@ -83,7 +83,7 @@ func jobTrigger() ExecFlow {
 		matrix: map[string]string{
 			"job": "jobnames",
 		},
-		parallel: true,
+		parallel: false,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		jobName := env.Get("job")
@@ -116,7 +116,7 @@ func jobLogs() ExecFlow {
 		matrix: map[string]string{
 			"job": "jobnames",
 		},
-		parallel: true,
+		parallel: false,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		jobName := env.Get("job")
@@ -135,6 +135,10 @@ func jobLogs() ExecFlow {
 func jobUpdate() ExecFlow {
 	flow := ExecFlow{
 		requires: []string{"jobnames"},
+		matrix: map[string]string{
+			"job": "jobnames",
+		},
+		parallel: false,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		jobNames := env.All("jobnames")
@@ -162,6 +166,10 @@ func jobUpdate() ExecFlow {
 func jobEnvSet() ExecFlow {
 	flow := ExecFlow{
 		requires: []string{"jobnames"},
+		matrix: map[string]string{
+			"job": "jobnames",
+		},
+		parallel: false,
 	}
 	envName := "TEST_ENV"
 	envValue := "integration_test"
@@ -218,6 +226,10 @@ func jobEnvSet() ExecFlow {
 func jobList() ExecFlow {
 	flow := ExecFlow{
 		requires: []string{"jobnames"},
+		matrix: map[string]string{
+			"job": "jobnames",
+		},
+		parallel: false,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		// List all jobs
