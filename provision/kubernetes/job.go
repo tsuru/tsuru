@@ -319,8 +319,12 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 	secretName := jobSecretPrefix + job.Name
 	namespace := client.PoolNamespace(job.Pool)
 
-	newJobName := generateJobNameWithScheduleHash(job)
-	cron, err := client.BatchV1().CronJobs(namespace).Get(ctx, newJobName, metav1.GetOptions{})
+	existingCronjob, err := getCronJobWithFallback(ctx, client, job, namespace)
+	if k8sErrors.IsNotFound(err) {
+		existingCronjob = nil
+	} else if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, errors.WithStack(err)
@@ -344,7 +348,8 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 	}
 
 	oldSecret, err := client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if !k8sErrors.IsNotFound(err) && err != nil {
+	oldSecretNotFound := k8sErrors.IsNotFound(err)
+	if !oldSecretNotFound && err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -358,13 +363,13 @@ func ensureSecretForJob(ctx context.Context, client *ClusterClient, job *jobType
 		Data: data,
 	}
 
-	if cron != nil {
+	if existingCronjob != nil {
 		secret.OwnerReferences = []metav1.OwnerReference{
-			*metav1.NewControllerRef(cron, batchv1.SchemeGroupVersion.WithKind("CronJob")),
+			*metav1.NewControllerRef(existingCronjob, batchv1.SchemeGroupVersion.WithKind("CronJob")),
 		}
 	}
 
-	if oldSecret == nil {
+	if oldSecretNotFound {
 		newSecret, err := client.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{})
 		if err != nil {
 			return nil, errors.WithStack(err)
