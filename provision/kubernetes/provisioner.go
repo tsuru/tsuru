@@ -554,7 +554,9 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 
 			versions = []appTypes.AppVersion{}
 			for _, u := range units {
-				versions = append(versions, versionsMap[u.Version])
+				if val, ok := versionsMap[u.Version]; ok {
+					versions = append(versions, val)
+				}
 			}
 		}
 	} else {
