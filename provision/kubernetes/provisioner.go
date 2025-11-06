@@ -547,8 +547,12 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 				versionsMap[v.VersionInfo().Version] = v
 			}
 
+			units, err := GetProvisioner().Units(ctx, a)
+			if err != nil {
+				return err
+			}
+
 			versions = []appTypes.AppVersion{}
-			units, _ := GetProvisioner().Units(ctx, a)
 			for _, u := range units {
 				versions = append(versions, versionsMap[u.Version])
 			}
