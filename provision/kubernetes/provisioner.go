@@ -537,9 +537,21 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 
 	var versions []appTypes.AppVersion
 	if version == nil {
-		versions, err = versionsForAppProcess(ctx, client, a, process, state.Restart)
+		versions, err = versionsForAppProcess(ctx, client, a, process, false)
 		if err != nil {
 			return err
+		}
+		if state.Restart {
+			versionsMap := make(map[int]appTypes.AppVersion)
+			for _, v := range versions {
+				versionsMap[v.VersionInfo().Version] = v
+			}
+
+			versions = []appTypes.AppVersion{}
+			units, _ := GetProvisioner().Units(ctx, a)
+			for _, u := range units {
+				versions = append(versions, versionsMap[u.Version])
+			}
 		}
 	} else {
 		versions = append(versions, version)
