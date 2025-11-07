@@ -37,6 +37,9 @@ const (
 	informerSyncTimeout = 10 * time.Second
 
 	leaderElectionName = "tsuru-controller"
+	leaseDuration      = 15 * time.Second
+	renewDeadline      = 10 * time.Second
+	retryPeriod        = 2 * time.Second
 )
 
 type podListener interface {
@@ -443,7 +446,7 @@ func (c *clusterController) createElector(hostID string) (*leaderelection.Leader
 		Component: leaderElectionName,
 	})
 	lock, err := resourcelock.New(
-		resourcelock.EndpointsLeasesResourceLock,
+		resourcelock.LeasesResourceLock,
 		c.cluster.Namespace(),
 		leaderElectionName,
 		c.cluster.CoreV1(),
@@ -458,9 +461,9 @@ func (c *clusterController) createElector(hostID string) (*leaderelection.Leader
 	}
 	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 		Lock:          lock,
-		LeaseDuration: 15 * time.Second,
-		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   2 * time.Second,
+		LeaseDuration: leaseDuration,
+		RenewDeadline: renewDeadline,
+		RetryPeriod:   retryPeriod,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				atomic.StoreInt32(&c.leader, 1)
