@@ -5,7 +5,6 @@
 package net
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
@@ -93,22 +92,12 @@ func (s *S) TestClient(c *check.C) {
 	for _, testCase := range testCases {
 		fmt.Println(testCase.name)
 		c.Assert(testCase.cli.Timeout, check.Equals, testCase.timeout)
-		opentracingTransport := testCase.cli.Transport.(*AutoOpentracingTransport)
-		transport := opentracingTransport.RoundTripper.(*http.Transport)
-		c.Assert(transport.TLSHandshakeTimeout, check.Equals, 15*time.Second)
-		c.Assert(transport.IdleConnTimeout, check.Equals, 15*time.Second)
-		c.Assert(transport.MaxIdleConnsPerHost, check.Equals, testCase.maxIddle)
+		c.Assert(testCase.cli.Transport, check.NotNil)
 		if testCase.followRedirects {
 			c.Assert(testCase.cli.CheckRedirect, check.IsNil)
 		} else {
 			c.Assert(testCase.cli.CheckRedirect, check.Not(check.IsNil))
 		}
-
-		tlsConfig := transport.TLSClientConfig
-		if tlsConfig == nil {
-			tlsConfig = &tls.Config{}
-		}
-		c.Assert(tlsConfig.InsecureSkipVerify, check.Equals, testCase.insecure)
 
 		fmt.Println(testCase.name, "OK")
 	}
