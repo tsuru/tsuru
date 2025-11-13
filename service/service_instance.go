@@ -552,12 +552,15 @@ func processTags(tags []string) []string {
 		return nil
 	}
 	processedTags := []string{}
-	usedTags := make(map[string]bool)
+	usedTags := make(map[string]struct{})
 	for _, tag := range tags {
 		tag = strings.TrimSpace(tag)
-		if len(tag) > 0 && !usedTags[tag] {
+		if len(tag) > 0 {
+			if _, ok := usedTags[tag]; ok {
+				continue
+			}
 			processedTags = append(processedTags, tag)
-			usedTags[tag] = true
+			usedTags[tag] = struct{}{}
 		}
 	}
 	return processedTags
@@ -610,7 +613,7 @@ func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, 
 
 	return endpoint.Proxy(ctx, &ProxyOpts{
 		Instance:  instance,
-		Path:      fmt.Sprintf("%s%s", prefix, path),
+		Path:      prefix + path,
 		Event:     evt,
 		RequestID: requestID,
 		Writer:    w,
