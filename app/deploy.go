@@ -403,7 +403,11 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		}
 	}
 
-	evt.SetCancelable(ctx, false)
+	err = evt.SetCancelable(ctx, false)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to set event as non-cancelable")
+	}
+
 	return deployer.Deploy(ctx, provision.DeployArgs{
 		App:              opts.App,
 		Version:          version,

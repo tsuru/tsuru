@@ -452,7 +452,7 @@ func GetRunning(ctx context.Context, target eventTypes.Target, kind string) (*Ev
 func GetByHexID(ctx context.Context, hexid string) (*Event, error) {
 	objectID, err := primitive.ObjectIDFromHex(hexid)
 	if err != nil {
-		return nil, errors.Errorf("receive ID is not a valid event object id: %q", hexid)
+		return nil, errors.Errorf("received ID is not a valid event object id: %q", hexid)
 	}
 
 	return GetByID(ctx, objectID)
