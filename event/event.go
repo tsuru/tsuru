@@ -451,7 +451,6 @@ func GetRunning(ctx context.Context, target eventTypes.Target, kind string) (*Ev
 
 func GetByHexID(ctx context.Context, hexid string) (*Event, error) {
 	objectID, err := primitive.ObjectIDFromHex(hexid)
-
 	if err != nil {
 		return nil, errors.Errorf("receive ID is not a valid event object id: %q", hexid)
 	}
@@ -839,7 +838,8 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 			Allowed:         opts.Allowed,
 			AllowedCancel:   opts.AllowedCancel,
 			Instance:        instance,
-		}}
+		},
+	}
 
 	if !opts.DisableLock {
 		evt.EventData.Lock = &opts.Target
@@ -984,11 +984,20 @@ func (e *Event) SetOtherCustomData(ctx context.Context, data interface{}) error 
 		"$set": mongoBSON.M{"othercustomdata": data},
 	})
 
+	return err
+}
+
+func (e *Event) SetCancelable(ctx context.Context, cancelable bool) error {
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
 	}
 
-	return nil
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{
+		"$set": mongoBSON.M{"cancelable": cancelable},
+	})
+
+	return err
 }
 
 func (e *Event) Logf(format string, params ...interface{}) {
