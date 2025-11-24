@@ -259,11 +259,11 @@ func (r *dockerRegistry) refreshToken(ctx context.Context, respHeaders http.Head
 		authResp.IssuedAt = time.Now()
 	}
 
-	if authResp.ExpiresIn == 0 {
-		authResp.ExpiresIn = defaultExpiration
+	if authResp.ExpiresInSeconds == 0 {
+		authResp.ExpiresInSeconds = defaultExpiration
 	}
 
-	expiry := authResp.IssuedAt.Add(time.Duration(float64(authResp.ExpiresIn)*0.9) * time.Second)
+	expiry := authResp.IssuedAt.Add(time.Duration(float64(authResp.ExpiresInSeconds)*0.9) * time.Second)
 	if time.Now().Before(expiry) {
 		r.expires = expiry
 	}
