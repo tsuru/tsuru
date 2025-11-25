@@ -6,6 +6,8 @@ package multicluster
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 
 	"github.com/tsuru/tsuru/servicemanager"
@@ -35,6 +37,14 @@ func Header(ctx context.Context, poolName string, existingHeader http.Header) (h
 	header.Set("X-Tsuru-Cluster-Provisioner", c.Provisioner)
 	for _, addr := range c.Addresses {
 		header.Add("X-Tsuru-Cluster-Addresses", addr)
+	}
+
+	if value, ok := c.CustomData["propagate-kubeconfig"]; ok && value == "true" {
+		jsonData, err := json.Marshal(c.KubeConfig)
+		if err != nil {
+			return header, err
+		}
+		header.Set("X-Tsuru-Cluster-KubeConfig", base64.StdEncoding.EncodeToString(jsonData))
 	}
 	return header, nil
 }
