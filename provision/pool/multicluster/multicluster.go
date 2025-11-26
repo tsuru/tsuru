@@ -39,7 +39,7 @@ func Header(ctx context.Context, poolName string, existingHeader http.Header) (h
 		header.Add("X-Tsuru-Cluster-Addresses", addr)
 	}
 
-	if value, ok := c.CustomData["propagate-kubeconfig"]; ok && value == "true" {
+	if value, ok := c.CustomData["propagate-kubeconfig"]; ok && value == "true" && c.KubeConfig != nil {
 		jsonData, err := json.Marshal(c.KubeConfig)
 		if err != nil {
 			return header, err
