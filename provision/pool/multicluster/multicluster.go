@@ -44,7 +44,7 @@ func Header(ctx context.Context, poolName string, existingHeader http.Header) (h
 		if err != nil {
 			return header, err
 		}
-		header.Set("X-Tsuru-Cluster-KubeConfig", base64.StdEncoding.EncodeToString(jsonData))
+		header.Set("X-Tsuru-Cluster-Kube-Config", base64.StdEncoding.EncodeToString(jsonData))
 	}
 	return header, nil
 }
