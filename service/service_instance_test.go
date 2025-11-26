@@ -1136,9 +1136,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWithKubeConfig(c *c
 		},
 	}
 
-	kubeConfigJson, err := json.Marshal(kubeConfig)
+	kubeConfigJSON, err := json.Marshal(kubeConfig)
 	c.Assert(err, check.IsNil)
-	kubeConfigBase64 := base64.StdEncoding.EncodeToString(kubeConfigJson)
+	kubeConfigBase64 := base64.StdEncoding.EncodeToString(kubeConfigJSON)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Header["X-Tsuru-Pool-Name"], check.DeepEquals, []string{"my-pool"})
