@@ -227,7 +227,7 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provTypes.AutoSc
 		case "cpu":
 			cpuValue := metric.Metadata["value"]
 			if metric.MetricType == autoscalingv2.UtilizationMetricType {
-				//percentage based, so multiple by 10
+				// percentage based, so multiple by 10
 				spec.AverageCPU = fmt.Sprintf("%s0m", cpuValue)
 			} else if metric.MetricType == autoscalingv2.AverageValueMetricType {
 				spec.AverageCPU = fmt.Sprintf("%sm", cpuValue)
@@ -332,6 +332,53 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a *appTypes
 	}
 
 	return nil
+}
+
+func (p *kubernetesProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, process, versionStr string) error {
+	version, _ := strconv.Atoi(versionStr)
+	return p.swapAutoScale(ctx, a, process, version)
+}
+
+func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.App, process string, version int) error {
+	client, err := clusterForPool(ctx, a.Pool)
+	if err != nil {
+		return err
+	}
+
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	hpaName := hpaNameForApp(a, process)
+	hpa, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if hpa == nil {
+		return errors.New("Cannot swap the autoscale, make sure the process (%s) exists and has an autoscale configured")
+	}
+
+	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		Version: version,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix: tsuruLabelPrefix,
+		},
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	labels = labels.WithoutIsolated().WithoutRoutable()
+	hpa.Labels = labels.ToLabels()
+	hpa.Spec.ScaleTargetRef = autoscalingv2.CrossVersionObjectReference{
+		APIVersion: appsv1.SchemeGroupVersion.String(),
+		Kind:       "Deployment",
+		Name:       provision.AppProcessName(a, process, version, ""),
+	}
+	_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
+	return err
 }
 
 func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string, scaledObjectName string) error {
@@ -475,7 +522,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 		return err
 	}
 
-	//remove HPA managed by tsuru so KEDA can takeover AutoScaling
+	// remove HPA managed by tsuru so KEDA can takeover AutoScaling
 	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
@@ -553,7 +600,7 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo 
 
 	var scaledObjectAnnotation map[string]string
 	if depInfo.replicas == 0 {
-		//this is to disable the scale object when the deployment is scaled to 0 (app stop)
+		// this is to disable the scale object when the deployment is scaled to 0 (app stop)
 		scaledObjectAnnotation = map[string]string{
 			AnnotationKEDAPausedReplicas: "0",
 		}
@@ -676,7 +723,6 @@ func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPolicy) (policies 
 }
 
 func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) (*deploymentInfo, error) {
-
 	depGroups, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return nil, err
