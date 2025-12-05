@@ -334,12 +334,12 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a *appTypes
 	return nil
 }
 
-func (p *kubernetesProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, process, versionStr string) error {
+func (p *kubernetesProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error {
 	version, _ := strconv.Atoi(versionStr)
-	return p.swapAutoScale(ctx, a, process, version)
+	return p.swapAutoScale(ctx, a, version)
 }
 
-func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.App, process string, version int) error {
+func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.App, version int) error {
 	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return err

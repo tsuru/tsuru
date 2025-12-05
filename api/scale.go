@@ -133,14 +133,6 @@ func swapAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return permission.ErrUnauthorized
 	}
 
-	process := InputValue(r, "process")
-	if process == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "process name is required to swap autoscale",
-		}
-	}
-
 	versionStr := InputValue(r, "version")
 	if versionStr == "" {
 		return &errors.HTTP{
@@ -162,7 +154,7 @@ func swapAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	}
 
 	defer func() { evt.Done(ctx, err) }()
-	return app.SwapAutoScale(ctx, a, process, versionStr)
+	return app.SwapAutoScale(ctx, a, versionStr)
 }
 
 // title: remove unit auto scale

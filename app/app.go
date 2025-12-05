@@ -2616,7 +2616,7 @@ func RemoveAutoScale(ctx context.Context, app *appTypes.App, process string) err
 	return autoscaleProv.RemoveAutoScale(ctx, app, process)
 }
 
-func SwapAutoScale(ctx context.Context, app *appTypes.App, process, versionStr string) error {
+func SwapAutoScale(ctx context.Context, app *appTypes.App, versionStr string) error {
 	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return err
@@ -2626,7 +2626,7 @@ func SwapAutoScale(ctx context.Context, app *appTypes.App, process, versionStr s
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
 
-	return autoscaleProv.SwapAutoScale(ctx, app, process, versionStr)
+	return autoscaleProv.SwapAutoScale(ctx, app, versionStr)
 }
 
 func envInSet(envName string, envs []bindTypes.EnvVar) bool {
