@@ -344,41 +344,22 @@ func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.A
 	if err != nil {
 		return err
 	}
-
-	ns, err := client.AppNamespace(ctx, a)
+	scaleSpecs, err := p.GetAutoScale(ctx, a)
 	if err != nil {
 		return err
 	}
-
-	hpaName := hpaNameForApp(a, process)
-	hpa, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if hpa == nil {
+	if len(scaleSpecs) == 0 {
 		return errors.New("Cannot swap the autoscale, make sure the process (%s) exists and has an autoscale configured")
 	}
-
-	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
-		App:     a,
-		Process: process,
-		Version: version,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix: tsuruLabelPrefix,
-		},
-	})
-	if err != nil {
-		return errors.WithStack(err)
+	multiErr := tsuruErrors.NewMultiError()
+	for _, spec := range scaleSpecs {
+		spec.Version = version
+		err := setAutoScale(ctx, client, a, spec, true)
+		if err != nil {
+			multiErr.Add(err)
+		}
 	}
-	labels = labels.WithoutIsolated().WithoutRoutable()
-	hpa.Labels = labels.ToLabels()
-	hpa.Spec.ScaleTargetRef = autoscalingv2.CrossVersionObjectReference{
-		APIVersion: appsv1.SchemeGroupVersion.String(),
-		Kind:       "Deployment",
-		Name:       provision.AppProcessName(a, process, version, ""),
-	}
-	_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
-	return err
+	return multiErr.ToError()
 }
 
 func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string, scaledObjectName string) error {
@@ -400,19 +381,26 @@ func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a *appTypes.Ap
 	if err != nil {
 		return err
 	}
-	return setAutoScale(ctx, client, a, spec)
+	return setAutoScale(ctx, client, a, spec, false)
 }
 
-func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, spec provTypes.AutoScaleSpec) error {
+func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, spec provTypes.AutoScaleSpec, preserveVersions bool) error {
 	depInfo, err := minimumAutoScaleVersion(ctx, client, a, spec.Process)
 	if err != nil {
 		return err
 	}
 
+	version := depInfo.version
+	if preserveVersions {
+		// TODO make sure the versions exists
+		// if not use the minimum auto scale version
+		version = spec.Version
+	}
+
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: depInfo.process,
-		Version: depInfo.version,
+		Version: version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix: tsuruLabelPrefix,
 		},
@@ -898,7 +886,7 @@ func ensureHPA(ctx context.Context, client *ClusterClient, a *appTypes.App, proc
 
 	multiErr := tsuruErrors.NewMultiError()
 	for _, spec := range autoScaleSpecs {
-		err = setAutoScale(ctx, client, a, spec)
+		err = setAutoScale(ctx, client, a, spec, true)
 		if err != nil && err != errNoDeploy {
 			multiErr.Add(err)
 		}
