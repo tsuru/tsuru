@@ -126,7 +126,7 @@ func swapAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleAdd,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleSwap,
 		contextsForApp(a)...,
 	)
 	if !allowed {
@@ -151,7 +151,7 @@ func swapAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateUnitAutoscaleAdd,
+		Kind:       permission.PermAppUpdateUnitAutoscaleSwap,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
