@@ -389,23 +389,27 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	if err != nil {
 		return err
 	}
-
 	version := depInfo.version
+	isBase := false
 	if preserveVersions {
 		depGroups, err := deploymentsDataForApp(ctx, client, a)
 		if err != nil {
 			return err
 		}
-		hasVersion := false
-		for depVersion := range depGroups.versioned {
-			if depVersion == spec.Version {
-				version = spec.Version
-				hasVersion = true
-				break
+		hasReplicas := false
+		if deps, ok := depGroups.versioned[spec.Version]; ok {
+			for _, dep := range deps {
+				if dep.replicas > 0 {
+					hasReplicas = true
+					isBase = dep.isBase
+					break
+				}
 			}
+			version = spec.Version
 		}
-		if !hasVersion {
-			return errors.New("Cannot swap the autoscale, make sure the version exists and is running")
+		if !hasReplicas {
+			version = depInfo.version
+			isBase = depInfo.isBase
 		}
 	}
 
@@ -498,7 +502,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	}
 
 	if existingHPA != nil {
-		if preserveVersions {
+		if preserveVersions && !isBase {
 			hpa.Spec.ScaleTargetRef.Name = provision.AppProcessName(a, depInfo.process, version, "")
 		}
 		hpa.ResourceVersion = existingHPA.ResourceVersion

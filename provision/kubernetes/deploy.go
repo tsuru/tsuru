@@ -1554,7 +1554,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return err
 	}
 
-	// FIXME or not?
 	err = ensureAutoScale(ctx, m.client, opts.App, opts.ProcessName)
 	if err != nil {
 		return errors.Wrap(err, "unable to ensure auto scale is configured")

@@ -110,7 +110,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 }
 
 // title: swap unit auto scale
-// path: /apps/{app}/units/autoscale/swap/{version}
+// path: /apps/{app}/units/autoscale/swap
 // method: POST
 // consume: application/json
 // responses:
