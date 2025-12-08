@@ -52,7 +52,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
-	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/tag"
@@ -153,14 +152,6 @@ func setupServices() error {
 	servicemanager.Cluster, err = cluster.ClusterService()
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize cluster service")
-	}
-	servicemanager.ServiceBroker, err = service.BrokerService()
-	if err != nil {
-		return errors.Wrapf(err, "could not initialize broker service")
-	}
-	servicemanager.ServiceBrokerCatalogCache, err = service.CatalogCacheService()
-	if err != nil {
-		return errors.Wrapf(err, "could not initialize catalog cache service")
 	}
 	servicemanager.LogService, err = applog.AppLogService()
 	if err != nil {
@@ -457,11 +448,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.6", http.MethodPost, "/tokens", AuthorizationRequiredHandler(tokenCreate))
 	m.Add("1.6", http.MethodDelete, "/tokens/{token_id}", AuthorizationRequiredHandler(tokenDelete))
 	m.Add("1.6", http.MethodPut, "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
-
-	m.Add("1.7", http.MethodGet, "/brokers", AuthorizationRequiredHandler(serviceBrokerList))
-	m.Add("1.7", http.MethodPost, "/brokers", AuthorizationRequiredHandler(serviceBrokerAdd))
-	m.Add("1.7", http.MethodPut, "/brokers/{broker}", AuthorizationRequiredHandler(serviceBrokerUpdate))
-	m.Add("1.7", http.MethodDelete, "/brokers/{broker}", AuthorizationRequiredHandler(serviceBrokerDelete))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.4", http.MethodPost, "/teams/{name}", AuthorizationRequiredHandler(updateTeam))

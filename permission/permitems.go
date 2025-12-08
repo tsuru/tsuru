@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2024 tsuru authors. All rights reserved.
+// Copyright 2025 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -160,12 +160,6 @@ var (
 	PermRouterReadEvents                 = PermissionRegistry.get("router.read.events")                  // [global router]
 	PermRouterUpdate                     = PermissionRegistry.get("router.update")                       // [global router]
 	PermService                          = PermissionRegistry.get("service")                             // [global service team]
-	PermServiceBroker                    = PermissionRegistry.get("service-broker")                      // [global]
-	PermServiceBrokerCreate              = PermissionRegistry.get("service-broker.create")               // [global]
-	PermServiceBrokerDelete              = PermissionRegistry.get("service-broker.delete")               // [global]
-	PermServiceBrokerRead                = PermissionRegistry.get("service-broker.read")                 // [global]
-	PermServiceBrokerReadEvents          = PermissionRegistry.get("service-broker.read.events")          // [global]
-	PermServiceBrokerUpdate              = PermissionRegistry.get("service-broker.update")               // [global]
 	PermServiceInstance                  = PermissionRegistry.get("service-instance")                    // [global service-instance team]
 	PermServiceInstanceCreate            = PermissionRegistry.get("service-instance.create")             // [global team]
 	PermServiceInstanceDelete            = PermissionRegistry.get("service-instance.delete")             // [global service-instance team]

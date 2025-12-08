@@ -66,31 +66,9 @@ type ServiceInstance struct {
 	// NOTE: after the service instance is created, this field turns immutable.
 	Pool string `json:"pool,omitempty"`
 
-	// BrokerData stores data used by Instances provisioned by Brokers
-	BrokerData *BrokerInstanceData `json:"broker_data,omitempty" bson:"broker_data"`
-
 	// ForceRemove indicates whether service instance should be removed even the
 	// related call to service API fails.
 	ForceRemove bool `bson:"-" json:"-"`
-}
-
-type BrokerInstanceData struct {
-	// UUID is a v4 UUID generated for this Instance on creation
-	UUID             string
-	ServiceID        string
-	PlanID           string
-	OrgID            string
-	SpaceID          string
-	LastOperationKey string
-
-	Binds map[string]BrokerInstanceBind
-}
-
-type BrokerInstanceBind struct {
-	// UUID is a v4 UUID generated when binding
-	UUID         string
-	OperationKey string
-	Parameters   map[string]interface{}
 }
 
 // DeleteInstance deletes the service instance from the database.

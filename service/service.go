@@ -76,9 +76,6 @@ var (
 )
 
 func Get(ctx context.Context, service string) (Service, error) {
-	if isBrokeredService(service) {
-		return getBrokeredService(ctx, service)
-	}
 	collection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return Service{}, err
@@ -246,11 +243,8 @@ func getServicesByFilter(ctx context.Context, filter mongoBSON.M) ([]Service, er
 	if err != nil {
 		return nil, err
 	}
-	brokerServices, err := getBrokeredServices(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return append(services, brokerServices...), err
+
+	return services, err
 }
 
 func (s *Service) HasTeam(team *authTypes.Team) bool {
@@ -325,9 +319,6 @@ func (s *Service) getClientForPool(ctx context.Context, pool string) (ServiceCli
 }
 
 func (s *Service) getClient(endpoints ...string) (ServiceClient, error) {
-	if isBrokeredService(s.Name) {
-		return newBrokeredServiceClient(s.Name)
-	}
 	var err error
 	for _, endpoint := range endpoints {
 		if e, ok := s.Endpoint[endpoint]; ok {
@@ -351,9 +342,6 @@ func (s *Service) validate(ctx context.Context, skipName bool) (err error) {
 	}()
 	if s.Name == "" {
 		return fmt.Errorf("Service id is required")
-	}
-	if isBrokeredService(s.Name) {
-		return fmt.Errorf("Brokered services are not managed.")
 	}
 	if !skipName && !validation.ValidateName(s.Name) {
 		return fmt.Errorf("Invalid service id, should have at most 40 " +

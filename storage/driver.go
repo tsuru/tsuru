@@ -17,31 +17,28 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/router"
-	"github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/types/tracker"
 	"github.com/tsuru/tsuru/types/volume"
 )
 
 type DbDriver struct {
-	TeamStorage                      auth.TeamStorage
-	PlatformStorage                  app.PlatformStorage
-	PlanStorage                      app.PlanStorage
-	AppCacheStorage                  cache.CacheStorage
-	TeamTokenStorage                 auth.TeamTokenStorage
-	UserQuotaStorage                 quota.QuotaStorage
-	AppQuotaStorage                  quota.QuotaStorage
-	TeamQuotaStorage                 quota.QuotaStorage
-	WebhookStorage                   event.WebhookStorage
-	ClusterStorage                   provision.ClusterStorage
-	ServiceBrokerStorage             service.ServiceBrokerStorage
-	ServiceBrokerCatalogCacheStorage cache.CacheStorage
-	PlatformImageStorage             image.PlatformImageStorage
-	InstanceTrackerStorage           tracker.InstanceStorage
-	AppVersionStorage                app.AppVersionStorage
-	DynamicRouterStorage             router.DynamicRouterStorage
-	AuthGroupStorage                 auth.GroupStorage
-	PoolStorage                      provision.PoolStorage
-	VolumeStorage                    volume.VolumeStorage
+	TeamStorage            auth.TeamStorage
+	PlatformStorage        app.PlatformStorage
+	PlanStorage            app.PlanStorage
+	AppCacheStorage        cache.CacheStorage
+	TeamTokenStorage       auth.TeamTokenStorage
+	UserQuotaStorage       quota.QuotaStorage
+	AppQuotaStorage        quota.QuotaStorage
+	TeamQuotaStorage       quota.QuotaStorage
+	WebhookStorage         event.WebhookStorage
+	ClusterStorage         provision.ClusterStorage
+	PlatformImageStorage   image.PlatformImageStorage
+	InstanceTrackerStorage tracker.InstanceStorage
+	AppVersionStorage      app.AppVersionStorage
+	DynamicRouterStorage   router.DynamicRouterStorage
+	AuthGroupStorage       auth.GroupStorage
+	PoolStorage            provision.PoolStorage
+	VolumeStorage          volume.VolumeStorage
 }
 
 var (

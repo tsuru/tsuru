@@ -232,7 +232,6 @@ handlers:
     200: Ok
     401: Unauthorized
     404: App not found
-    404: Version not found
 - title: unset cname
   path: /apps/{app}/cname
   method: DELETE
