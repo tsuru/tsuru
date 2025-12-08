@@ -349,7 +349,7 @@ func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.A
 		return err
 	}
 	if len(scaleSpecs) == 0 {
-		return errors.New("Cannot swap the autoscale, make sure the process (%s) exists and has an autoscale configured")
+		return errors.New("Cannot swap the autoscale, make sure the app has an autoscale configured")
 	}
 	multiErr := tsuruErrors.NewMultiError()
 	for _, spec := range scaleSpecs {
@@ -392,9 +392,21 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 
 	version := depInfo.version
 	if preserveVersions {
-		// TODO make sure the versions exists
-		// if not use the minimum auto scale version
-		version = spec.Version
+		depGroups, err := deploymentsDataForApp(ctx, client, a)
+		if err != nil {
+			return err
+		}
+		hasVersion := false
+		for depVersion := range depGroups.versioned {
+			if depVersion == spec.Version {
+				version = spec.Version
+				hasVersion = true
+				break
+			}
+		}
+		if !hasVersion {
+			return errors.New("Cannot swap the autoscale, make sure the version exists and is running")
+		}
 	}
 
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
@@ -410,7 +422,6 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	}
 	labels = labels.WithoutIsolated().WithoutRoutable()
 	hpaName := hpaNameForApp(a, depInfo.process)
-
 	if len(spec.Schedules) > 0 || len(spec.Prometheus) > 0 {
 		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels)
 		if err != nil {
@@ -487,6 +498,9 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	}
 
 	if existingHPA != nil {
+		if preserveVersions {
+			hpa.Spec.ScaleTargetRef.Name = provision.AppProcessName(a, depInfo.process, version, "")
+		}
 		hpa.ResourceVersion = existingHPA.ResourceVersion
 		_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
 	} else {
