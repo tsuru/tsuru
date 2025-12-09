@@ -659,6 +659,7 @@ func (p *FakeProvisioner) DeleteVolume(ctx context.Context, volName, pool string
 func (p *FakeProvisioner) ValidateVolume(ctx context.Context, vol *volumeTypes.Volume) error {
 	return nil
 }
+
 func (p *FakeProvisioner) IsVolumeProvisioned(ctx context.Context, name, pool string) (bool, error) {
 	return false, nil
 }
@@ -703,7 +704,6 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a *appTypes.App
 			Version:  "2",
 		},
 	}, nil
-
 }
 
 func (p *FakeProvisioner) ListLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
@@ -825,6 +825,17 @@ func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.A
 		p.autoscales = make(map[string][]provTypes.AutoScaleSpec)
 	}
 	p.autoscales[app.Name] = append(p.autoscales[app.Name], spec)
+	return nil
+}
+
+func (p *AutoScaleProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error {
+	// FIXME add tests and check if it makes sense
+	version, _ := strconv.Atoi(versionStr)
+	for key, autoscale := range p.autoscales {
+		for key1 := range autoscale {
+			p.autoscales[key][key1].Version = version
+		}
+	}
 	return nil
 }
 
