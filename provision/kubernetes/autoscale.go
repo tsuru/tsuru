@@ -390,26 +390,20 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 		return err
 	}
 	version := depInfo.version
-	isBase := false
+	isBase := depInfo.isBase
 	if preserveVersions {
 		depGroups, err := deploymentsDataForApp(ctx, client, a)
 		if err != nil {
 			return err
 		}
-		hasReplicas := false
 		if deps, ok := depGroups.versioned[spec.Version]; ok {
 			for _, dep := range deps {
 				if dep.replicas > 0 {
-					hasReplicas = true
+					version = dep.version
 					isBase = dep.isBase
 					break
 				}
 			}
-			version = spec.Version
-		}
-		if !hasReplicas {
-			version = depInfo.version
-			isBase = depInfo.isBase
 		}
 	}
 
@@ -747,6 +741,9 @@ func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appT
 				continue
 			}
 			if dep.dep.Spec.Replicas == nil {
+				continue
+			}
+			if dep.replicas < 1 {
 				continue
 			}
 			if dep.isRoutable {
