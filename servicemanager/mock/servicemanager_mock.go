@@ -14,31 +14,28 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/router"
-	"github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/types/tracker"
 	"github.com/tsuru/tsuru/types/volume"
 )
 
 // MockService is a struct to use in tests
 type MockService struct {
-	App                       *app.MockAppService
-	Cache                     *cache.MockAppCacheService
-	Plan                      *app.MockPlanService
-	Platform                  *app.MockPlatformService
-	PlatformImage             *image.MockPlatformImageService
-	Team                      *auth.MockTeamService
-	UserQuota                 *quota.MockQuotaService[quota.QuotaItem]
-	AppQuota                  *quota.MockQuotaService[*app.App]
-	TeamQuota                 *quota.MockQuotaService[*auth.Team]
-	Cluster                   *provision.MockClusterService
-	ServiceBroker             *service.MockServiceBrokerService
-	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
-	InstanceTracker           *tracker.MockInstanceService
-	DynamicRouter             *router.MockDynamicRouterService
-	AuthGroup                 *auth.MockGroupService
-	Pool                      *provision.MockPoolService
-	VolumeService             *volume.MockVolumeService
-	JobService                *job.MockJobService
+	App             *app.MockAppService
+	Cache           *cache.MockAppCacheService
+	Plan            *app.MockPlanService
+	Platform        *app.MockPlatformService
+	PlatformImage   *image.MockPlatformImageService
+	Team            *auth.MockTeamService
+	UserQuota       *quota.MockQuotaService[quota.QuotaItem]
+	AppQuota        *quota.MockQuotaService[*app.App]
+	TeamQuota       *quota.MockQuotaService[*auth.Team]
+	Cluster         *provision.MockClusterService
+	InstanceTracker *tracker.MockInstanceService
+	DynamicRouter   *router.MockDynamicRouterService
+	AuthGroup       *auth.MockGroupService
+	Pool            *provision.MockPoolService
+	VolumeService   *volume.MockVolumeService
+	JobService      *job.MockJobService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -53,8 +50,6 @@ func SetMockService(m *MockService) {
 	m.AppQuota = &quota.MockQuotaService[*app.App]{}
 	m.TeamQuota = &quota.MockQuotaService[*auth.Team]{}
 	m.Cluster = &provision.MockClusterService{}
-	m.ServiceBroker = &service.MockServiceBrokerService{}
-	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}
 	m.InstanceTracker = &tracker.MockInstanceService{}
 	m.DynamicRouter = &router.MockDynamicRouterService{}
 	m.AuthGroup = &auth.MockGroupService{}
@@ -74,8 +69,6 @@ func SetMockService(m *MockService) {
 	servicemanager.AppQuota = m.AppQuota
 	servicemanager.TeamQuota = m.TeamQuota
 	servicemanager.Cluster = m.Cluster
-	servicemanager.ServiceBroker = m.ServiceBroker
-	servicemanager.ServiceBrokerCatalogCache = m.ServiceBrokerCatalogCache
 	servicemanager.InstanceTracker = m.InstanceTracker
 	servicemanager.DynamicRouter = m.DynamicRouter
 	servicemanager.AuthGroup = m.AuthGroup
@@ -143,19 +136,6 @@ func (m *MockService) ResetCluster() {
 	m.Cluster.OnFindByProvisioner = nil
 	m.Cluster.OnFindByPool = nil
 	m.Cluster.OnDelete = nil
-}
-
-func (m *MockService) ResetServiceBroker() {
-	m.ServiceBroker.OnCreate = nil
-	m.ServiceBroker.OnUpdate = nil
-	m.ServiceBroker.OnDelete = nil
-	m.ServiceBroker.OnFind = nil
-	m.ServiceBroker.OnList = nil
-}
-
-func (m *MockService) ResetServiceBrokerCatalogCache() {
-	m.ServiceBrokerCatalogCache.OnSave = nil
-	m.ServiceBrokerCatalogCache.OnLoad = nil
 }
 
 func (m *MockService) ResetPool() {

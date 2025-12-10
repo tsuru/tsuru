@@ -164,27 +164,7 @@ var EnsureIndexes = []EnsureIndex{
 	},
 
 	{
-		Collection: "service_broker_catalog_cache",
-		Indexes: []mongo.IndexModel{
-			{
-				Keys:    mongoBSON.D{{Key: "expireat", Value: 1}},
-				Options: options.Index().SetExpireAfterSeconds(1),
-			},
-		},
-	},
-
-	{
 		Collection: "webhook",
-		Indexes: []mongo.IndexModel{
-			{
-				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
-				Options: options.Index().SetUnique(true),
-			},
-		},
-	},
-
-	{
-		Collection: "service_broker",
 		Indexes: []mongo.IndexModel{
 			{
 				Keys:    mongoBSON.D{{Key: "name", Value: 1}},
