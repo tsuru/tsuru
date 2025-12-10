@@ -13,5 +13,5 @@ builds:
 archives:
 - name_template: tsuru-server_{{.Version}}_{{.Os}}_{{.Arch}}
   formats:
-    - tar.gz
+  - tar.gz
   files: [etc/tsuru.conf]
