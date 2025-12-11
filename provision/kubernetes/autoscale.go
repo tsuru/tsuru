@@ -743,9 +743,6 @@ func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appT
 			if dep.dep.Spec.Replicas == nil {
 				continue
 			}
-			if dep.replicas < 1 {
-				continue
-			}
 			if dep.isRoutable {
 				if minRoutableVersion == -1 || version < minRoutableVersion {
 					minRoutableVersion = version
