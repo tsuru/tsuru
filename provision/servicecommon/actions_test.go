@@ -44,9 +44,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "servicecommon_tests_s")
 	config.Set("routers:fake:type", "fake")
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queue_servicecommon_tests_s")
-	config.Set("queue:mongo-polling-interval", 0.01)
 	servicemock.SetMockService(&s.mockService)
 }
 

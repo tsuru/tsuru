@@ -301,12 +301,6 @@ type UnitStatusData struct {
 	Status provTypes.UnitStatus
 }
 
-type NodeCheckResult struct {
-	Name       string
-	Err        string
-	Successful bool
-}
-
 type MultiRegistryProvisioner interface {
 	RegistryForPool(ctx context.Context, pool string) (imgTypes.ImageRegistry, error)
 }
