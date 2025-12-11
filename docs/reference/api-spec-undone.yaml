@@ -195,10 +195,6 @@ paths:
           description: App not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '409':
-          description: App locked
-          schema:
-            $ref: '#/definitions/ErrorMessage'
         '412':
           description: Number of units or platform don't match
           schema:
@@ -390,29 +386,6 @@ paths:
       produces:
       - application/json
       consumes:
-      - application/json
-      responses:
-        '200':
-          description: Ok
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: App not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /apps/{app}/lock:
-    delete:
-      description: app unlock
-      parameters:
-      - name: app
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: App name.
-      produces:
       - application/json
       responses:
         '200':

@@ -131,21 +131,6 @@ func GetDelayedHandler(r *http.Request) http.Handler {
 	return nil
 }
 
-func SetPreventUnlock(r *http.Request) {
-	newReq := r.WithContext(context.WithValue(r.Context(), preventUnlockKey, true))
-	*r = *newReq
-}
-
-func IsPreventUnlock(r *http.Request) bool {
-	if r == nil {
-		return false
-	}
-	if v, ok := r.Context().Value(preventUnlockKey).(bool); ok {
-		return v
-	}
-	return false
-}
-
 func SetRequestID(r *http.Request, requestIDHeader, requestID string) {
 	newReq := r.WithContext(context.WithValue(r.Context(), reqIDHeaderCtxKey(requestIDHeader), requestID))
 	*r = *newReq
