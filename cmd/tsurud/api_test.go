@@ -5,8 +5,6 @@
 package main
 
 import (
-	"bytes"
-
 	"github.com/tsuru/tsuru/cmd"
 	check "gopkg.in/check.v1"
 )
@@ -23,18 +21,6 @@ func (s *S) TestAPICmdInfo(c *check.C) {
 
 func (s *S) TestAPICmdIsACommand(c *check.C) {
 	var _ cmd.FlaggedCommand = &apiCmd{}
-}
-
-func (s *S) TestAPICmdCheckOnlyWarnings(c *check.C) {
-	command := apiCmd{checkOnly: true}
-	var stdout, stderr bytes.Buffer
-	context := cmd.Context{
-		Stdout: &stdout,
-		Stderr: &stderr,
-	}
-	err := command.Run(&context)
-	c.Assert(err, check.IsNil)
-	c.Assert(stderr.String(), check.Matches, "(?s)WARNING: Config entry \"queue:mongo-url\".*")
 }
 
 func (s *S) TestAPICmdFlags(c *check.C) {

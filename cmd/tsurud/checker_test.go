@@ -90,29 +90,6 @@ func (s *CheckerSuite) TestCheckDockerBasicConfigError(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *CheckerSuite) TestCheckSchedulerConfig(c *check.C) {
-	err := checkScheduler()
-	c.Assert(err, check.IsNil)
-}
-
-func (s *CheckerSuite) TestCheckDockerServersError(c *check.C) {
-	config.Set("docker:servers", []string{"srv1", "srv2"})
-	err := checkScheduler()
-	c.Assert(err, check.ErrorMatches, `Using docker:servers is deprecated, please remove it your config and use "tsuru docker-node-add" do add docker nodes.`)
-}
-
-func (s *CheckerSuite) TestCheckSchedulerConfigSegregate(c *check.C) {
-	config.Set("docker:segregate", true)
-	err := checkScheduler()
-	baseWarn := config.NewWarning("")
-	c.Assert(err, check.FitsTypeOf, baseWarn)
-	c.Assert(err, check.ErrorMatches, `Setting "docker:segregate" is not necessary anymore, this is the default behavior from now on.`)
-	config.Set("docker:segregate", false)
-	err = checkScheduler()
-	c.Assert(err, check.Not(check.FitsTypeOf), baseWarn)
-	c.Assert(err, check.ErrorMatches, `You must remove "docker:segregate" from your config.`)
-}
-
 func (s *CheckerSuite) TestCheckClusterWithMongo(c *check.C) {
 	err := checkCluster()
 	c.Assert(err, check.IsNil)
