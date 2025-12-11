@@ -34,24 +34,6 @@ func checkProvisioner() error {
 	return nil
 }
 
-func checkBeanstalkd() error {
-	if value, _ := config.Get("queue"); value == "beanstalkd" {
-		return errors.New("beanstalkd is no longer supported, please use redis instead")
-	}
-	if _, err := config.Get("queue-server"); err == nil {
-		return errors.New(`beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
-	}
-	return nil
-}
-
-func checkQueue() error {
-	queueConfig, _ := config.GetString("queue:mongo-url")
-	if queueConfig == "" {
-		return config.NewWarning(`Config entry "queue:mongo-url" is not set, default "localhost" will be used. Running "tsuru docker-node-{add,remove}" commands might not work.`)
-	}
-	return nil
-}
-
 // Check Docker configs
 func checkDocker() error {
 	if _, err := config.Get("docker"); err != nil {
