@@ -4504,12 +4504,12 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 
 func (s *S) TestGetProcessPortsFromNewKubernetesConfig(c *check.C) {
 	tests := []struct {
-		name              string
-		processes         []provTypes.TsuruYamlProcess
-		processName       string
-		expectedFound     bool
-		expectedPorts     []provTypes.TsuruYamlKubernetesProcessPortConfig
-		expectedErrorMsg  string
+		name             string
+		processes        []provTypes.TsuruYamlProcess
+		processName      string
+		expectedFound    bool
+		expectedPorts    []provTypes.TsuruYamlKubernetesProcessPortConfig
+		expectedErrorMsg string
 	}{
 		{
 			name: "process with ports configured",

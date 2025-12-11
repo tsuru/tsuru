@@ -2026,7 +2026,7 @@ func getProcessPortsFromNewKubernetesConfig(processes []provTypes.TsuruYamlProce
 		}
 		// Only treat as port config found if Ports field has actual port configurations
 		// Skip if nil or empty - let it fall through to default port logic
-		if process.Ports == nil || len(process.Ports) == 0 {
+		if len(process.Ports) == 0 {
 			continue
 		}
 		portConfigFound = true
