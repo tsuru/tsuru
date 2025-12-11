@@ -29,7 +29,7 @@ filtered by some criteria:
 - Success only: triggers only successful events
 - Kind type: ``permission`` or ``internal``
 - Kind name: one of the values returned by the ``tsuru permission-list`` command, like ``app.create`` or ``pool.update``
-- Target type: ``global``, ``app``, ``node``, ``container``, ``pool``, ``service``, ``service-instance``, ``team``, ``user``, ``iaas``, ``role``, ``platform``, ``plan``, ``node-container``, ``install-host``, ``event-block``, ``cluster``, ``volume`` or ``webhook``
+- Target type: ``global``, ``app``, ``node``, ``container``, ``pool``, ``service``, ``service-instance``, ``team``, ``user``, ``role``, ``platform``, ``plan``, ``node-container``, ``install-host``, ``event-block``, ``cluster``, ``volume`` or ``webhook``
 - Target value: the value according to the target type. When target type is ``app``, for instance, target value will be the app name
 
 Hook request configurations

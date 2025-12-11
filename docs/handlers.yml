@@ -674,53 +674,6 @@ handlers:
   responses:
     200: OK
     500: Internal server error
-- title: template update
-  path: /iaas/templates/{template_name}
-  method: PUT
-  consume: application/x-www-form-urlencoded
-  responses:
-    200: OK
-    400: Invalid data
-    401: Unauthorized
-    404: Not found
-- title: machine list
-  path: /iaas/machines
-  method: GET
-  produce: application/json
-  responses:
-    200: OK
-    401: Unauthorized
-- title: machine destroy
-  path: /iaas/machines/{machine_id}
-  method: DELETE
-  responses:
-    200: OK
-    400: Invalid data
-    401: Unauthorized
-    404: Not found
-- title: machine template list
-  path: /iaas/templates
-  method: GET
-  produce: application/json
-  responses:
-    200: OK
-    401: Unauthorized
-- title: template create
-  path: /iaas/templates
-  method: POST
-  consume: application/x-www-form-urlencoded
-  responses:
-    201: Template created
-    400: Invalid data
-    401: Unauthorized
-    409: Existent template
-- title: template destroy
-  path: /iaas/templates/{template_name}
-  method: DELETE
-  responses:
-    200: OK
-    401: Unauthorized
-    404: Not found
 - title: index
   path: /
   method: GET
