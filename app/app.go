@@ -933,11 +933,6 @@ func KillUnit(ctx context.Context, app *appTypes.App, unitName string, force boo
 	return unitProv.KillUnit(ctx, app, unitName, force)
 }
 
-type UpdateUnitsResult struct {
-	ID    string
-	Found bool
-}
-
 // available returns true if at least one of N units is started or unreachable.
 func available(ctx context.Context, app *appTypes.App) bool {
 	units, err := AppUnits(ctx, app)

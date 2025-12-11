@@ -42,5 +42,4 @@ func main() {
 	listenSignals()
 	m := buildManager()
 	m.Run(os.Args[1:])
-
 }
