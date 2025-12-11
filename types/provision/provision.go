@@ -56,10 +56,11 @@ type TsuruYamlStartupcheck struct {
 }
 
 type TsuruYamlProcess struct {
-	Healthcheck  *TsuruYamlHealthcheck  `json:"healthcheck,omitempty" bson:",omitempty"`
-	Startupcheck *TsuruYamlStartupcheck `json:"startupcheck,omitempty" bson:",omitempty"`
-	Name         string                 `json:"name"`
-	Command      string                 `json:"command" yaml:"command" bson:"command"`
+	Healthcheck  *TsuruYamlHealthcheck                  `json:"healthcheck,omitempty" bson:",omitempty"`
+	Startupcheck *TsuruYamlStartupcheck                 `json:"startupcheck,omitempty" bson:",omitempty"`
+	Name         string                                 `json:"name"`
+	Command      string                                 `json:"command" yaml:"command" bson:"command"`
+	Ports        []TsuruYamlKubernetesProcessPortConfig `json:"ports,omitempty" bson:",omitempty"`
 }
 
 type TsuruYamlKubernetesConfig struct {
