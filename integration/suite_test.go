@@ -46,6 +46,9 @@ func (s *S) SetUpSuite(c *check.C) {
 func checkKubeconfig(c *check.C) {
 	defaultKubeConfig := path.Join(os.Getenv("HOME"), ".kube", "config")
 	integrationKubeConfig := os.Getenv("INTEGRATION_KUBECONFIG")
+	if integrationKubeConfig == "" {
+		c.Skip("INTEGRATION_KUBECONFIG is not set, skipping kubernetes integration tests")
+	}
 	c.Assert(integrationKubeConfig, check.Not(check.Equals), "", check.Commentf("INTEGRATION_KUBECONFIG must be set to run integration tests"))
 	c.Assert(integrationKubeConfig, check.Not(check.Equals), defaultKubeConfig, check.Commentf("INTEGRATION_KUBECONFIG must not be the default kubeconfig path"))
 	os.Setenv("KUBECONFIG", integrationKubeConfig)
