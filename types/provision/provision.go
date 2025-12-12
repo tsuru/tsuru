@@ -16,11 +16,17 @@ const defaultHealthcheckScheme = "http"
 var ErrProcessNotFound = errors.New("process name could not be found on YAML data")
 
 type TsuruYamlData struct {
-	Hooks        *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
-	Healthcheck  *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
-	Startupcheck *TsuruYamlStartupcheck     `json:"startupcheck,omitempty" bson:",omitempty"`
-	Kubernetes   *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
-	Processes    []TsuruYamlProcess         `json:"processes,omitempty" bson:",omitempty"`
+	Hooks        *TsuruYamlHooks        `json:"hooks,omitempty" bson:",omitempty"`
+	Healthcheck  *TsuruYamlHealthcheck  `json:"healthcheck,omitempty" bson:",omitempty"`
+	Startupcheck *TsuruYamlStartupcheck `json:"startupcheck,omitempty" bson:",omitempty"`
+	Processes    []TsuruYamlProcess     `json:"processes,omitempty" bson:",omitempty"`
+
+	// The use of Kubernetes field is discouraged in favor of using
+	// the simple specific process definitions inside the Processes field.
+	//
+	// We may not drop this field due the backward compatibility reasons.
+	// Linus tolvards once said: "WE DO NOT BREAK USERSPACE".
+	Kubernetes *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
 }
 
 type TsuruYamlHooks struct {

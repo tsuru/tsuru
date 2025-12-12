@@ -1967,7 +1967,7 @@ func getProcessPortsForVersion(version appTypes.AppVersion, process string) ([]p
 		return nil, errors.WithStack(err)
 	}
 
-	found, ports, err := getProcessPortsFromNewKubernetesConfig(tsuruYamlData.Processes, process)
+	found, ports, err := getPortsFromProcessesByProcessName(tsuruYamlData.Processes, process)
 	if err != nil {
 		return nil, err
 	}
@@ -1977,7 +1977,7 @@ func getProcessPortsForVersion(version appTypes.AppVersion, process string) ([]p
 
 	if tsuruYamlData.Kubernetes != nil {
 		var found bool
-		found, ports, err = getProcessPortsFromOldKubernetesConfig(tsuruYamlData.Kubernetes, process)
+		found, ports, err = getPortsFromTsuruYamlKubernetesByProcessName(tsuruYamlData.Kubernetes, process)
 		if err != nil {
 			return nil, err
 		}
@@ -2013,7 +2013,7 @@ func getProcessPortsForVersion(version appTypes.AppVersion, process string) ([]p
 	return ports, nil
 }
 
-func getProcessPortsFromNewKubernetesConfig(processes []provTypes.TsuruYamlProcess, processName string) (bool, []provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+func getPortsFromProcessesByProcessName(processes []provTypes.TsuruYamlProcess, processName string) (bool, []provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
 	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
 	portConfigFound := false
 
@@ -2037,7 +2037,7 @@ func getProcessPortsFromNewKubernetesConfig(processes []provTypes.TsuruYamlProce
 	return portConfigFound, ports, nil
 }
 
-func getProcessPortsFromOldKubernetesConfig(kubernetes *provTypes.TsuruYamlKubernetesConfig, process string) (bool, []provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+func getPortsFromTsuruYamlKubernetesByProcessName(kubernetes *provTypes.TsuruYamlKubernetesConfig, process string) (bool, []provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
 	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
 	portConfigFound := false
 

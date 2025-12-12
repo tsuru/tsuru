@@ -4502,7 +4502,7 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 	}
 }
 
-func (s *S) TestGetProcessPortsFromNewKubernetesConfig(c *check.C) {
+func (s *S) TestGetPortsFromProcessesByProcessName(c *check.C) {
 	tests := []struct {
 		name             string
 		processes        []provTypes.TsuruYamlProcess
@@ -4645,7 +4645,7 @@ func (s *S) TestGetProcessPortsFromNewKubernetesConfig(c *check.C) {
 
 	for _, tt := range tests {
 		c.Logf("Test: %s", tt.name)
-		found, ports, err := getProcessPortsFromNewKubernetesConfig(tt.processes, tt.processName)
+		found, ports, err := getPortsFromProcessesByProcessName(tt.processes, tt.processName)
 		if tt.expectedErrorMsg != "" {
 			require.Error(s.t, err)
 			require.Contains(s.t, err.Error(), tt.expectedErrorMsg)
@@ -4657,7 +4657,7 @@ func (s *S) TestGetProcessPortsFromNewKubernetesConfig(c *check.C) {
 	}
 }
 
-func (s *S) TestGetProcessPortsFromOldKubernetesConfig(c *check.C) {
+func (s *S) TestGetPortsFromTsuruYamlKubernetesByProcessName(c *check.C) {
 	tests := []struct {
 		name             string
 		kubernetes       *provTypes.TsuruYamlKubernetesConfig
@@ -4786,7 +4786,7 @@ func (s *S) TestGetProcessPortsFromOldKubernetesConfig(c *check.C) {
 
 	for _, tt := range tests {
 		c.Logf("Test: %s", tt.name)
-		found, ports, err := getProcessPortsFromOldKubernetesConfig(tt.kubernetes, tt.processName)
+		found, ports, err := getPortsFromTsuruYamlKubernetesByProcessName(tt.kubernetes, tt.processName)
 		if tt.expectedErrorMsg != "" {
 			require.Error(s.t, err)
 			require.Contains(s.t, err.Error(), tt.expectedErrorMsg)
