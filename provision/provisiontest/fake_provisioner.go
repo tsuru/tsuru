@@ -26,6 +26,7 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -677,30 +678,34 @@ func (p *FakeProvisioner) UpdateApp(ctx context.Context, old, new *appTypes.App,
 func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a *appTypes.App) ([]appTypes.AppInternalAddress, error) {
 	return []appTypes.AppInternalAddress{
 		{
-			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.Name),
-			Port:     80,
-			Protocol: "TCP",
-			Process:  "web",
+			Domain:     fmt.Sprintf("%s-web.fake-cluster.local", a.Name),
+			Port:       80,
+			TargetPort: ptr.To(int32(8080)),
+			Protocol:   "TCP",
+			Process:    "web",
 		},
 		{
-			Domain:   fmt.Sprintf("%s-logs.fake-cluster.local", a.Name),
-			Port:     12201,
-			Protocol: "UDP",
-			Process:  "logs",
+			Domain:     fmt.Sprintf("%s-logs.fake-cluster.local", a.Name),
+			Port:       12201,
+			TargetPort: ptr.To(int32(12201)),
+			Protocol:   "UDP",
+			Process:    "logs",
 		},
 		{
-			Domain:   fmt.Sprintf("%s-logs-v2.fake-cluster.local", a.Name),
-			Port:     12201,
-			Protocol: "UDP",
-			Process:  "logs",
-			Version:  "2",
+			Domain:     fmt.Sprintf("%s-logs-v2.fake-cluster.local", a.Name),
+			Port:       12201,
+			TargetPort: ptr.To(int32(12201)),
+			Protocol:   "UDP",
+			Process:    "logs",
+			Version:    "2",
 		},
 		{
-			Domain:   fmt.Sprintf("%s-web-v2.fake-cluster.local", a.Name),
-			Port:     80,
-			Protocol: "TCP",
-			Process:  "web",
-			Version:  "2",
+			Domain:     fmt.Sprintf("%s-web-v2.fake-cluster.local", a.Name),
+			Port:       80,
+			TargetPort: ptr.To(int32(8080)),
+			Protocol:   "TCP",
+			Process:    "web",
+			Version:    "2",
 		},
 	}, nil
 
