@@ -829,12 +829,9 @@ func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.A
 }
 
 func (p *AutoScaleProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error {
-	// FIXME add tests and check if it makes sense
 	version, _ := strconv.Atoi(versionStr)
-	for key, autoscale := range p.autoscales {
-		for key1 := range autoscale {
-			p.autoscales[key][key1].Version = version
-		}
+	for i := range p.autoscales[a.Name] {
+		p.autoscales[a.Name][i].Version = version
 	}
 	return nil
 }
