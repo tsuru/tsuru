@@ -109,6 +109,54 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	return app.AutoScale(ctx, a, spec)
 }
 
+// title: swap unit auto scale
+// path: /apps/{app}/units/autoscale/swap
+// method: POST
+// consume: application/json
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
+func swapAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleSwap,
+		contextsForApp(a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	versionStr := InputValue(r, "version")
+	if versionStr == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "version is required to swap autoscale",
+		}
+	}
+
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateUnitAutoscaleSwap,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+	})
+	if err != nil {
+		return err
+	}
+
+	defer func() { evt.Done(ctx, err) }()
+	return app.SwapAutoScale(ctx, a, versionStr)
+}
+
 // title: remove unit auto scale
 // path: /apps/{app}/units/autoscale
 // method: POST

@@ -1446,7 +1446,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		dep:        oldDep,
 	}
 	secret, err := ensureAppSecret(ctx, ensureAppSecretOptions)
-
 	if err != nil {
 		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
 		return err
@@ -1465,7 +1464,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		selector:      depArgs.selector,
 		secret:        secret,
 	})
-
 	if err != nil {
 		errs := tsuruErrors.NewMultiError()
 		errs.Add(err)
