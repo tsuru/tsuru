@@ -389,8 +389,6 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	if err != nil {
 		return err
 	}
-	version := depInfo.version
-	isBase := depInfo.isBase
 	if preserveVersions {
 		depGroups, err := deploymentsDataForApp(ctx, client, a)
 		if err != nil {
@@ -399,8 +397,8 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 		if deps, ok := depGroups.versioned[spec.Version]; ok {
 			for _, dep := range deps {
 				if dep.replicas > 0 {
-					version = dep.version
-					isBase = dep.isBase
+					depInfo.version = dep.version
+					depInfo.isBase = dep.isBase
 					break
 				}
 			}
@@ -410,7 +408,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: depInfo.process,
-		Version: version,
+		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix: tsuruLabelPrefix,
 		},
@@ -421,7 +419,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	labels = labels.WithoutIsolated().WithoutRoutable()
 	hpaName := hpaNameForApp(a, depInfo.process)
 	if len(spec.Schedules) > 0 || len(spec.Prometheus) > 0 {
-		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels)
+		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels, preserveVersions)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -496,8 +494,8 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	}
 
 	if existingHPA != nil {
-		if preserveVersions && !isBase {
-			hpa.Spec.ScaleTargetRef.Name = provision.AppProcessName(a, depInfo.process, version, "")
+		if preserveVersions && !depInfo.isBase {
+			hpa.Spec.ScaleTargetRef.Name = provision.AppProcessName(a, depInfo.process, depInfo.version, "")
 		}
 		hpa.ResourceVersion = existingHPA.ResourceVersion
 		_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
@@ -511,7 +509,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	return nil
 }
 
-func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet) error {
+func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet, preserveVersions bool) error {
 	kedaClient, err := KEDAClientForConfig(client.restConfig)
 	if err != nil {
 		return err
@@ -528,7 +526,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 		return errors.WithStack(err)
 	}
 
-	expectedKEDAScaledObject, err := newKEDAScaledObject(spec, a, depInfo, ns, hpaName, labels)
+	expectedKEDAScaledObject, err := newKEDAScaledObject(spec, a, depInfo, ns, hpaName, labels, preserveVersions)
 	if err != nil {
 		return err
 	}
@@ -547,7 +545,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 	return err
 }
 
-func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
+func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet, preserveVersions bool) (*kedav1alpha1.ScaledObject, error) {
 	kedaTriggers := []kedav1alpha1.ScaleTriggers{}
 
 	if spec.AverageCPU != "" {
@@ -606,6 +604,10 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo 
 		}
 	}
 
+	targetRefName := depInfo.dep.Name
+	if preserveVersions && !depInfo.isBase {
+		targetRefName = provision.AppProcessName(a, depInfo.process, depInfo.version, "")
+	}
 	return &kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        hpaName,
@@ -615,7 +617,7 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo 
 		},
 		Spec: kedav1alpha1.ScaledObjectSpec{
 			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
-				Name:       depInfo.dep.Name,
+				Name:       targetRefName,
 				Kind:       "Deployment",
 				APIVersion: appsv1.SchemeGroupVersion.String(),
 			},
