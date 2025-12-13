@@ -2300,6 +2300,49 @@ paths:
       security:
       - Bearer: []
 
+  /1.28/apps/{app}/units/autoscale/swap:
+    parameters:
+    - name: app
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: App name.
+    post:
+      operationId: AutoScaleSwap
+      description: Swap autoscale to another version.
+      parameters:
+      - name: version
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            version:
+              type: string
+          required: ["version"]
+      consumes:
+      - application/json
+      responses:
+        "200":
+          description: AutoScale swapped
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
+
   /1.0/platforms/{platform}:
     parameters:
     - name: platform
