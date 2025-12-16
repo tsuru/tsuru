@@ -879,10 +879,6 @@ paths:
       operationId: AppList
       description: List apps.
       parameters:
-      - name: locked
-        description: Filter applications by lock status.
-        in: query
-        type: boolean
       - name: name
         description: Filter applications by name.
         in: query
@@ -5440,9 +5436,6 @@ definitions:
       plan:
         type: object
         $ref: "#/definitions/Plan"
-      lock:
-        type: object
-        $ref: "#/definitions/AppLock"
       pool:
         type: string
         description: App pool.
@@ -5478,19 +5471,6 @@ definitions:
           $ref: "#/definitions/AutoScaleSpec"
       dashboardURL:
         type: string
-  AppLock:
-    type: object
-    description: Stores information about a lock hold on the app
-    properties:
-      locked:
-        type: boolean
-      reason:
-        type: string
-      owner:
-        type: string
-      acquireDate:
-        type: string
-        format: date-time
   UnitMetrics:
     type: object
     properties:
@@ -5834,9 +5814,6 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/Router"
-      lock:
-        type: object
-        $ref: "#/definitions/Lock"
       tags:
         type: array
         items:
@@ -6033,17 +6010,6 @@ definitions:
       status:
         type: string
       status-detail:
-        type: string
-  Lock:
-    type: object
-    properties:
-      locked:
-        type: boolean
-      reason:
-        type: string
-      owner:
-        type: string
-      acquireDate:
         type: string
   URL:
     type: object

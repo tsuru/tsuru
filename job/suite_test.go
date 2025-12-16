@@ -6,7 +6,6 @@ package job
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -42,7 +41,6 @@ type S struct {
 	defaultPlan *appTypes.Plan
 	provisioner *provisiontest.JobProvisioner
 	Pool        string
-	zeroLock    map[string]interface{}
 	mockService servicemock.MockService
 	builder     *builder.MockBuilder
 }
@@ -124,7 +122,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "queue_job_pkg_tests")
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	var err error
 	storagev2.Reset()
 	s.provisioner = &provisiontest.JobProvisioner{
 		FakeProvisioner: provisiontest.ProvisionerInstance,
@@ -133,10 +130,6 @@ func (s *S) SetUpSuite(c *check.C) {
 		return s.provisioner, nil
 	})
 	provision.DefaultProvisioner = "jobProv"
-	data, err := json.Marshal(appTypes.AppLock{})
-	c.Assert(err, check.IsNil)
-	err = json.Unmarshal(data, &s.zeroLock)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {

@@ -2652,7 +2652,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"pool":        "test",
 		"description": "description",
 		"teamowner":   "myteam",
-		"lock":        s.zeroLock,
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
@@ -2775,7 +2774,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		"pool":        "test",
 		"description": "description",
 		"teamowner":   "myteam",
-		"lock":        s.zeroLock,
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
@@ -2847,7 +2845,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"pool":        "",
 		"description": "",
 		"teamowner":   "",
-		"lock":        s.zeroLock,
 		"plan": map[string]interface{}{
 			"name":     "",
 			"memory":   float64(0),
@@ -2955,7 +2952,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		"pool":        "test",
 		"description": "description",
 		"teamowner":   "myteam",
-		"lock":        s.zeroLock,
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
@@ -3068,7 +3064,6 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 		"pool":        "my-pool",
 		"description": "Awesome description about my-awesome-app",
 		"teamowner":   "team-one",
-		"lock":        s.zeroLock,
 		"plan": map[string]interface{}{
 			"name":     "small",
 			"cpumilli": float64(1000),
@@ -3220,7 +3215,6 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 		"pool":        "my-pool",
 		"description": "Awesome description about my-awesome-app",
 		"teamowner":   "team-one",
-		"lock":        s.zeroLock,
 		"plan": map[string]interface{}{
 			"name":     "small",
 			"cpumilli": float64(1000),
@@ -3711,33 +3705,6 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
 	apps, err := List(context.TODO(), &Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
-}
-
-func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
-	a := appTypes.App{
-		Name:      "testapp",
-		Owner:     "foo",
-		TeamOwner: s.team.Name,
-	}
-	a2 := appTypes.App{
-		Name:  "othertestapp",
-		Owner: "bar",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "something",
-			Owner:       s.user.Email,
-			AcquireDate: time.Now(),
-		},
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = CreateApp(context.TODO(), &a2, s.user)
-	c.Assert(err, check.IsNil)
-	apps, err := List(context.TODO(), &Filter{Locked: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(apps, check.HasLen, 1)
-	c.Assert(apps[0].Name, check.Equals, "othertestapp")
 }
 
 func (s *S) TestListAll(c *check.C) {

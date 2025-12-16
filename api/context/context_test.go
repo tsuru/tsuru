@@ -115,14 +115,6 @@ func (s *S) TestSetDelayedHandler(c *check.C) {
 	c.Assert(v1.Pointer(), check.Equals, v2.Pointer())
 }
 
-func (s *S) TestSetPreventUnlock(c *check.C) {
-	r, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(IsPreventUnlock(r), check.Equals, false)
-	SetPreventUnlock(r)
-	c.Assert(IsPreventUnlock(r), check.Equals, true)
-}
-
 func (s *S) TestGetApp(c *check.C) {
 	r, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)

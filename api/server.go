@@ -275,7 +275,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/apps/{app}/env", AuthorizationRequiredHandler(getAppEnv))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/env", AuthorizationRequiredHandler(setAppEnv))
 	m.Add("1.0", http.MethodDelete, "/apps/{app}/env", AuthorizationRequiredHandler(unsetAppEnv))
-	m.Add("1.0", http.MethodDelete, "/apps/{app}/lock", AuthorizationRequiredHandler(forceDeleteLock))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/units", AuthorizationRequiredHandler(addUnits))
 	m.Add("1.0", http.MethodDelete, "/apps/{app}/units", AuthorizationRequiredHandler(removeUnits))
 	m.Add("1.9", http.MethodGet, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(autoScaleUnitsInfo))

@@ -149,7 +149,6 @@ func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) 
 		Pool:        app.Pool,
 		Deploys:     app.Deploys,
 		TeamOwner:   app.TeamOwner,
-		Lock:        app.Lock,
 		Tags:        app.Tags,
 		Metadata:    app.Metadata,
 	}
@@ -1727,7 +1726,6 @@ type Filter struct {
 	Pool        string
 	Pools       []string
 	Statuses    []string
-	Locked      bool
 	Tags        []string
 	Extra       map[string][]string
 }
@@ -1791,9 +1789,6 @@ func (f *Filter) Query() mongoBSON.M {
 	}
 	if f.Pool != "" {
 		query["pool"] = f.Pool
-	}
-	if f.Locked {
-		query["lock.locked"] = true
 	}
 	if len(f.Pools) > 0 {
 		query["pool"] = mongoBSON.M{"$in": f.Pools}

@@ -209,44 +209,6 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
 }
 
-func (s *S) TestAppListFilteringByLockState(c *check.C) {
-	ctx := context.Background()
-	app1 := appTypes.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := appTypes.App{
-		Name:      "app2",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-		Lock:      appTypes.AppLock{Locked: true},
-		Tags:      []string{"mytag"},
-	}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/apps?locked=true", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	apps := []appTypes.App{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
-	c.Assert(err, check.IsNil)
-	expected := []appTypes.App{app2}
-	c.Assert(apps, check.HasLen, len(expected))
-	for i, a := range apps {
-		c.Assert(a.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.AppUnits(ctx, &a)
-		c.Assert(err, check.IsNil)
-		expectedUnits, err := app.AppUnits(context.TODO(), &expected[i])
-		c.Assert(err, check.IsNil)
-		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(a.Tags, check.DeepEquals, expected[i].Tags)
-	}
-}
-
 func (s *S) TestAppListFilteringByPool(c *check.C) {
 	ctx := context.Background()
 	opts := []pool.AddPoolOptions{
@@ -412,20 +374,13 @@ func (s *S) TestSimplifiedAppList(c *check.C) {
 	}
 	err = app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := appTypes.App{
 		Name:      "app2",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app2"},
 		Pool:      "pool1",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "wanted",
-			Owner:       s.user.Email,
-			AcquireDate: acquireDate,
-		},
-		Tags: []string{"a"},
+		Tags:      []string{"a"},
 	}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -466,7 +421,6 @@ func (s *S) TestExtendedAppList(c *check.C) {
 	}
 	err = app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := appTypes.App{
 		Name:        "app2",
 		Platform:    "zend",
@@ -474,13 +428,7 @@ func (s *S) TestExtendedAppList(c *check.C) {
 		TeamOwner:   s.team.Name,
 		CName:       []string{"cname.app2"},
 		Pool:        "pool1",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "wanted",
-			Owner:       s.user.Email,
-			AcquireDate: acquireDate,
-		},
-		Tags: []string{"a"},
+		Tags:        []string{"a"},
 	}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -520,20 +468,13 @@ func (s *S) TestAppList(c *check.C) {
 	}
 	err = app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := appTypes.App{
 		Name:      "app2",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app2"},
 		Pool:      "pool1",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "wanted",
-			Owner:       s.user.Email,
-			AcquireDate: acquireDate,
-		},
-		Tags: []string{"a"},
+		Tags:      []string{"a"},
 	}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -6322,22 +6263,6 @@ func (s *S) TestStopHandler(c *check.C) {
 			{"name": "process", "value": "web"},
 		},
 	}, eventtest.HasEvent)
-}
-
-func (s *S) TestForceDeleteLock(c *check.C) {
-	a := appTypes.App{Name: "locked"}
-	appsCollection, err := storagev2.AppsCollection()
-	c.Assert(err, check.IsNil)
-
-	_, err = appsCollection.InsertOne(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusGone)
-	c.Assert(recorder.Body.String(), check.Equals, "app unlock is deprecated, this call does nothing\n")
 }
 
 func (s *S) TestRebuildRoutes(c *check.C) {
