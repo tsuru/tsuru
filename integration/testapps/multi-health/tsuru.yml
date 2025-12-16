@@ -4,8 +4,18 @@ processes:
   healthcheck:
     path: /
     scheme: http
+  ports:
+  - name: default
+    port: 8888
+  - name: custom
+    port: 9999
 - name: web-secondary
   command: web-secondary
   healthcheck:
     path: /
     scheme: http
+  ports:
+  - name: default
+    port: 8888
+  - name: secondary
+    port: 7777

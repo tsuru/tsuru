@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -447,6 +448,17 @@ func testApps() ExecFlow {
 			return ready
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+
+		if env.Get("case") == "multi-health" {
+			res := T("app", "info", "-a", appName, "--json").Run(env)
+			c.Assert(res, ResultOk)
+
+			appInfo := new(appTypes.AppInfo)
+			err := json.NewDecoder(&res.Stdout).Decode(appInfo)
+			c.Assert(err, check.IsNil)
+
+			c.Assert(appInfo.Processes, check.Equals, "TODO")
+		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := "{{.case}}-{{.pool}}-iapp"
