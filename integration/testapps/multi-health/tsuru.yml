@@ -5,8 +5,7 @@ processes:
     path: /
     scheme: http
   ports:
-  - name: default
-    port: 8888
+  - port: 80
     protocol: tcp
     target_port: 8888
 - name: web-secondary
@@ -15,7 +14,6 @@ processes:
     path: /
     scheme: http
   ports:
-  - name: default
-    port: 8888
+  - port: 80
     protocol: tcp
     target_port: 8888
