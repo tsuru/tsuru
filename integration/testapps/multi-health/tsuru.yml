@@ -7,8 +7,10 @@ processes:
   ports:
   - name: default
     port: 8888
+    target_port: 8888
   - name: custom
     port: 9999
+    target_port: 9999
 - name: web-secondary
   command: web-secondary
   healthcheck:
@@ -17,5 +19,7 @@ processes:
   ports:
   - name: default
     port: 8888
+    target_port: 8888
   - name: secondary
     port: 7777
+    target_port: 7777
