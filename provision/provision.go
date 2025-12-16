@@ -228,15 +228,6 @@ type HCProvisioner interface {
 	HandlesHC() bool
 }
 
-type RebalanceNodesOptions struct {
-	Event          *event.Event
-	Pool           string
-	MetadataFilter map[string]string
-	AppFilter      []string
-	Dry            bool
-	Force          bool
-}
-
 // UnitFinderProvisioner is a provisioner that allows finding a specific unit
 // by its id. New provisioners should not implement this interface, this was
 // only used during events format migration and is exclusive to docker
@@ -293,12 +284,6 @@ type AutoScaleProvisioner interface {
 	GetVerticalAutoScaleRecommendations(ctx context.Context, a *appTypes.App) ([]provTypes.RecommendedResources, error)
 	SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) error
 	RemoveAutoScale(ctx context.Context, a *appTypes.App, process string) error
-}
-
-type UnitStatusData struct {
-	ID     string
-	Name   string
-	Status provTypes.UnitStatus
 }
 
 type MultiRegistryProvisioner interface {

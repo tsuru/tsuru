@@ -14,11 +14,6 @@ import (
 
 type hookFunc func(c *check.C, env *Environment)
 
-type CmdWithExp struct {
-	C *Command
-	E []Expected
-}
-
 type ExecFlow struct {
 	provides []string
 	requires []string
