@@ -51,7 +51,6 @@ import (
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
-	"k8s.io/utils/ptr"
 )
 
 func (s *S) TestGetAppByName(c *check.C) {
@@ -6277,14 +6276,14 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		Protocol:   "TCP",
 		Process:    "web",
 		Port:       80,
-		TargetPort: ptr.To[int32](8080),
+		TargetPort: 8080,
 	})
 	c.Assert(addresses[1], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:     "test-logs.fake-cluster.local",
 		Protocol:   "UDP",
 		Process:    "logs",
 		Port:       12201,
-		TargetPort: ptr.To[int32](12201),
+		TargetPort: 12201,
 	})
 	c.Assert(addresses[2], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:     "test-logs-v2.fake-cluster.local",
@@ -6292,7 +6291,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		Process:    "logs",
 		Version:    "2",
 		Port:       12201,
-		TargetPort: ptr.To[int32](12201),
+		TargetPort: 12201,
 	})
 	c.Assert(addresses[3], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:     "test-web-v2.fake-cluster.local",
@@ -6300,7 +6299,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		Process:    "web",
 		Version:    "2",
 		Port:       80,
-		TargetPort: ptr.To[int32](8080),
+		TargetPort: 8080,
 	})
 }
 

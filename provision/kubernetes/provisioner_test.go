@@ -56,7 +56,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	fakeBackendConfig "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned/fake"
 	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
-	"k8s.io/utils/ptr"
 )
 
 func (s *S) prepareMultiCluster(_ *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
@@ -1249,9 +1248,9 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	wait()
 
 	require.EqualValues(s.t, []appTypes.AppInternalAddress{
-		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, TargetPort: ptr.To(int32(8080)), Process: "web"},
-		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, TargetPort: ptr.To(int32(8443)), Process: "web"},
-		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, TargetPort: ptr.To(int32(12201)), Process: "jobs"},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, TargetPort: 8080, Process: "web"},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, TargetPort: 8443, Process: "web"},
+		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, TargetPort: 12201, Process: "jobs"},
 	}, addrs)
 }
 

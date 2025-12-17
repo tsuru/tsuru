@@ -17,7 +17,6 @@ import (
 	"time"
 
 	check "gopkg.in/check.v1"
-	"k8s.io/utils/ptr"
 
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -463,7 +462,7 @@ func testApps() ExecFlow {
 					Domain:     "multi-health-ipool-kubernetes-iapp-web.default.svc.cluster.local",
 					Protocol:   "TCP",
 					Port:       80,
-					TargetPort: ptr.To[int32](8888),
+					TargetPort: 8888,
 					Version:    "",
 					Process:    "web",
 				},
@@ -471,7 +470,7 @@ func testApps() ExecFlow {
 					Domain:     "multi-health-ipool-kubernetes-iapp-web-secondary.default.svc.cluster.local",
 					Protocol:   "TCP",
 					Port:       80,
-					TargetPort: ptr.To[int32](8888),
+					TargetPort: 8888,
 					Version:    "",
 					Process:    "web-secondary",
 				},
