@@ -99,7 +99,7 @@ type TsuruYamlKubernetesProcessPortConfig struct {
 	Name       string `json:"name,omitempty"`
 	Protocol   string `json:"protocol,omitempty"`
 	Port       int    `json:"port,omitempty"`
-	TargetPort int    `json:"target_port,omitempty"`
+	TargetPort int    `json:"target_port,omitempty" bson:"target_port,omitempty"`
 }
 
 func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
