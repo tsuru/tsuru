@@ -50,7 +50,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // gcp default auth plugin
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -1061,15 +1060,11 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a *appTyp
 			continue
 		}
 		for _, port := range service.Spec.Ports {
-			var targetPort int32
-			if port.TargetPort.Type == intstr.Int && port.TargetPort.IntVal != 0 {
-				targetPort = port.TargetPort.IntVal
-			}
 			addresses = append(addresses, appTypes.AppInternalAddress{
 				Domain:     fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
 				Protocol:   string(port.Protocol),
 				Port:       port.Port,
-				TargetPort: targetPort,
+				TargetPort: port.TargetPort.IntValue(),
 				Version:    service.ObjectMeta.Labels[tsuruLabelAppVersion],
 				Process:    service.ObjectMeta.Labels[tsuruLabelAppProcess],
 			})

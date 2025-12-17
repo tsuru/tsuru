@@ -142,7 +142,7 @@ type AppInternalAddress struct {
 	Domain     string
 	Protocol   string
 	Port       int32
-	TargetPort int32 `json:"TargetPort,omitempty"`
+	TargetPort int `json:"TargetPort,omitempty"`
 	Version    string
 	Process    string
 }
