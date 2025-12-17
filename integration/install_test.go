@@ -17,6 +17,7 @@ import (
 	"time"
 
 	check "gopkg.in/check.v1"
+	"k8s.io/utils/ptr"
 
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -457,7 +458,40 @@ func testApps() ExecFlow {
 			err := json.NewDecoder(&res.Stdout).Decode(appInfo)
 			c.Assert(err, check.IsNil)
 
-			c.Assert(appInfo.Processes, check.Equals, "TODO")
+			c.Assert(appInfo.InternalAddresses, check.Equals, []appTypes.AppInternalAddress{
+				{
+					Domain:     "todo",
+					Protocol:   "TCP",
+					Port:       80,
+					TargetPort: ptr.To[int32](8888),
+					Version:    "",
+					Process:    "web",
+				},
+				{
+					Domain:     "todo",
+					Protocol:   "TCP",
+					Port:       80,
+					TargetPort: ptr.To[int32](8888),
+					Version:    "",
+					Process:    "web-secondary",
+				},
+				{
+					Domain:     "todo",
+					Protocol:   "TCP",
+					Port:       80,
+					TargetPort: ptr.To[int32](8888),
+					Version:    "",
+					Process:    "web",
+				},
+				{
+					Domain:     "todo",
+					Protocol:   "TCP",
+					Port:       80,
+					TargetPort: ptr.To[int32](8888),
+					Version:    "",
+					Process:    "web-secondary",
+				},
+			})
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
