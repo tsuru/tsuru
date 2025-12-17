@@ -465,7 +465,7 @@ func testApps() ExecFlow {
 
 			for _, internalAddress := range appInfo.InternalAddresses {
 				c.Assert(internalAddress.Protocol, check.Equals, "TCP")
-				c.Assert(internalAddress.Port, check.Equals, 80)
+				c.Assert(internalAddress.Port, check.Equals, int32(80))
 			}
 		}
 	}
