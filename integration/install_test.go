@@ -460,7 +460,7 @@ func testApps() ExecFlow {
 
 			c.Assert(appInfo.InternalAddresses, check.Equals, []appTypes.AppInternalAddress{
 				{
-					Domain:     "todo",
+					Domain:     "multi-health-ipool-kubernetes-iapp-web.default.svc.cluster.local",
 					Protocol:   "TCP",
 					Port:       80,
 					TargetPort: ptr.To[int32](8888),
@@ -468,23 +468,7 @@ func testApps() ExecFlow {
 					Process:    "web",
 				},
 				{
-					Domain:     "todo",
-					Protocol:   "TCP",
-					Port:       80,
-					TargetPort: ptr.To[int32](8888),
-					Version:    "",
-					Process:    "web-secondary",
-				},
-				{
-					Domain:     "todo",
-					Protocol:   "TCP",
-					Port:       80,
-					TargetPort: ptr.To[int32](8888),
-					Version:    "",
-					Process:    "web",
-				},
-				{
-					Domain:     "todo",
+					Domain:     "multi-health-ipool-kubernetes-iapp-web-secondary.default.svc.cluster.local",
 					Protocol:   "TCP",
 					Port:       80,
 					TargetPort: ptr.To[int32](8888),
