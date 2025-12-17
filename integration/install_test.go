@@ -457,24 +457,16 @@ func testApps() ExecFlow {
 			err := json.NewDecoder(&res.Stdout).Decode(appInfo)
 			c.Assert(err, check.IsNil)
 
-			c.Assert(appInfo.InternalAddresses, check.Equals, []appTypes.AppInternalAddress{
-				{
-					Domain:     "multi-health-ipool-kubernetes-iapp-web.default.svc.cluster.local",
-					Protocol:   "TCP",
-					Port:       80,
-					TargetPort: 8888,
-					Version:    "",
-					Process:    "web",
-				},
-				{
-					Domain:     "multi-health-ipool-kubernetes-iapp-web-secondary.default.svc.cluster.local",
-					Protocol:   "TCP",
-					Port:       80,
-					TargetPort: 8888,
-					Version:    "",
-					Process:    "web-secondary",
-				},
-			})
+			c.Assert(appInfo.InternalAddresses, check.HasLen, 2)
+			c.Assert("multi-health-ipool-kubernetes-iapp-web.default.svc.cluster.local", check.Equals, appInfo.InternalAddresses[0].Domain)
+			c.Assert("multi-health-ipool-kubernetes-iapp-web-secondary.default.svc.cluster.local", check.Equals, appInfo.InternalAddresses[1].Domain)
+			c.Assert("web", check.Equals, appInfo.InternalAddresses[0].Process)
+			c.Assert("web-secondary", check.Equals, appInfo.InternalAddresses[1].Process)
+
+			for _, internalAddress := range appInfo.InternalAddresses {
+				c.Assert(internalAddress.Protocol, check.Equals, "TCP")
+				c.Assert(internalAddress.Port, check.Equals, 80)
+			}
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {

@@ -27,7 +27,7 @@ function onerror() {
   echo
   ${KUBECTL} get pods -A -o wide
   echo
-  ${KUBECTL} get services -A -o yaml
+  ${KUBECTL} get services -A -o wide
   [[ -n ${tsuru_api_port_forward_pid} ]] && kill ${tsuru_api_port_forward_pid}
   [[ -n ${nginx_ingress_port_forward_pid} ]] && kill ${nginx_ingress_port_forward_pid}
   [[ -n ${minikube_tunnel_pid} ]] && kill ${minikube_tunnel_pid}
