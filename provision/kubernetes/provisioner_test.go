@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -1201,22 +1202,25 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		if srv.Name == "myapp-web" {
 			srv.Spec.Ports = []apiv1.ServicePort{
 				{
-					Port:     int32(80),
-					NodePort: int32(30002),
-					Protocol: "TCP",
+					Port:       int32(80),
+					TargetPort: intstr.FromInt(8080),
+					NodePort:   int32(30002),
+					Protocol:   "TCP",
 				},
 				{
-					Port:     int32(443),
-					NodePort: int32(30003),
-					Protocol: "TCP",
+					Port:       int32(443),
+					TargetPort: intstr.FromInt(8443),
+					NodePort:   int32(30003),
+					Protocol:   "TCP",
 				},
 			}
 		} else if srv.Name == "myapp-jobs" {
 			srv.Spec.Ports = []apiv1.ServicePort{
 				{
-					Port:     int32(12201),
-					NodePort: int32(30004),
-					Protocol: "UDP",
+					Port:       int32(12201),
+					TargetPort: intstr.FromInt(12201),
+					NodePort:   int32(30004),
+					Protocol:   "UDP",
 				},
 			}
 		}
@@ -1244,9 +1248,9 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	wait()
 
 	require.EqualValues(s.t, []appTypes.AppInternalAddress{
-		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, Process: "web"},
-		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, Process: "web"},
-		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, Process: "jobs"},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, TargetPort: 8080, Process: "web"},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, TargetPort: 8443, Process: "web"},
+		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, TargetPort: 12201, Process: "jobs"},
 	}, addrs)
 }
 

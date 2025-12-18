@@ -136,11 +136,12 @@ type AppInfo struct {
 }
 
 type AppInternalAddress struct {
-	Domain   string
-	Protocol string
-	Port     int32
-	Version  string
-	Process  string
+	Domain     string
+	Protocol   string
+	Port       int32
+	TargetPort int `json:"TargetPort,omitempty"`
+	Version    string
+	Process    string
 }
 
 // AppResume is a minimal representation of the app, created to make appList

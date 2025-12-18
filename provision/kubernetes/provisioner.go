@@ -1061,11 +1061,12 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a *appTyp
 		}
 		for _, port := range service.Spec.Ports {
 			addresses = append(addresses, appTypes.AppInternalAddress{
-				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
-				Protocol: string(port.Protocol),
-				Port:     port.Port,
-				Version:  service.ObjectMeta.Labels[tsuruLabelAppVersion],
-				Process:  service.ObjectMeta.Labels[tsuruLabelAppProcess],
+				Domain:     fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
+				Protocol:   string(port.Protocol),
+				Port:       port.Port,
+				TargetPort: port.TargetPort.IntValue(),
+				Version:    service.ObjectMeta.Labels[tsuruLabelAppVersion],
+				Process:    service.ObjectMeta.Labels[tsuruLabelAppProcess],
 			})
 		}
 	}

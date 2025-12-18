@@ -25,9 +25,9 @@ function onerror() {
   echo "TSURU API LOGS:"
   ${KUBECTL} logs -n ${NAMESPACE} deploy/tsuru-api || true
   echo
-  ${KUBECTL} get pods -A
+  ${KUBECTL} get pods -A -o wide
   echo
-  ${KUBECTL} get services -A
+  ${KUBECTL} get services -A -o wide
   [[ -n ${tsuru_api_port_forward_pid} ]] && kill ${tsuru_api_port_forward_pid}
   [[ -n ${nginx_ingress_port_forward_pid} ]] && kill ${nginx_ingress_port_forward_pid}
   [[ -n ${minikube_tunnel_pid} ]] && kill ${minikube_tunnel_pid}

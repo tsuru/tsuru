@@ -5392,6 +5392,10 @@ definitions:
             Port:
               type: integer
               format: int64
+            TargetPort:
+              type: integer
+              format: int64
+              x-go-custom-type: "*int64"
             Process:
               type: string
             Version:

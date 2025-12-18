@@ -4501,3 +4501,399 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 		}
 	}
 }
+
+func (s *S) TestGetPortsFromProcessesByProcessName(c *check.C) {
+	tests := []struct {
+		name             string
+		processes        []provTypes.TsuruYamlProcess
+		processName      string
+		expectedFound    bool
+		expectedPorts    []provTypes.TsuruYamlKubernetesProcessPortConfig
+		expectedErrorMsg string
+	}{
+		{
+			name: "process with ports configured",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name: "web",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 8080, TargetPort: 8080},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "process with nil ports - should not be found",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name:  "web",
+					Ports: nil,
+				},
+			},
+			processName:   "web",
+			expectedFound: false,
+			expectedPorts: nil,
+		},
+		{
+			name: "process with empty ports array - should not be found",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name:  "web",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{},
+				},
+			},
+			processName:   "web",
+			expectedFound: false,
+			expectedPorts: nil,
+		},
+		{
+			name: "process not in list",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name: "worker",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 8080},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: false,
+			expectedPorts: nil,
+		},
+		{
+			name: "duplicated process name - should error",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name: "web",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 8080},
+					},
+				},
+				{
+					Name: "web",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 9090},
+					},
+				},
+			},
+			processName:      "web",
+			expectedFound:    false,
+			expectedErrorMsg: "duplicated process name: web",
+		},
+		{
+			name: "multiple processes with one matching",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name: "worker",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 9090},
+					},
+				},
+				{
+					Name: "web",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 8080, TargetPort: 8080, Protocol: "TCP"},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "process with UDP ports",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name: "dns",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 53, TargetPort: 53, Protocol: "udp"},
+					},
+				},
+			},
+			processName:   "dns",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "udp-default-1", Protocol: "UDP", Port: 53, TargetPort: 53},
+			},
+		},
+		{
+			name: "process with multiple ports",
+			processes: []provTypes.TsuruYamlProcess{
+				{
+					Name: "web",
+					Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+						{Port: 8080, TargetPort: 8080},
+						{Port: 9090, TargetPort: 9090},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+				{Name: "http-default-2", Protocol: "TCP", Port: 9090, TargetPort: 9090},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		c.Logf("Test: %s", tt.name)
+		found, ports, err := getPortsFromProcessesByProcessName(tt.processes, tt.processName)
+		if tt.expectedErrorMsg != "" {
+			require.Error(s.t, err)
+			require.Contains(s.t, err.Error(), tt.expectedErrorMsg)
+		} else {
+			require.NoError(s.t, err)
+		}
+		require.Equal(s.t, tt.expectedFound, found)
+		require.EqualValues(s.t, tt.expectedPorts, ports)
+	}
+}
+
+func (s *S) TestGetPortsFromTsuruYamlKubernetesByProcessName(c *check.C) {
+	tests := []struct {
+		name             string
+		kubernetes       *provTypes.TsuruYamlKubernetesConfig
+		processName      string
+		expectedFound    bool
+		expectedPorts    []provTypes.TsuruYamlKubernetesProcessPortConfig
+		expectedErrorMsg string
+	}{
+		{
+			name: "process with ports configured",
+			kubernetes: &provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"group1": {
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 8080, TargetPort: 8080},
+							},
+						},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "process with nil ports - should not be found",
+			kubernetes: &provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"group1": {
+						"web": {
+							Ports: nil,
+						},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: false,
+			expectedPorts: nil,
+		},
+		{
+			name: "process with empty ports array - should be found (semantic for no service)",
+			kubernetes: &provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"group1": {
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{},
+						},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{},
+		},
+		{
+			name: "process not in list",
+			kubernetes: &provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"group1": {
+						"worker": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 8080},
+							},
+						},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: false,
+			expectedPorts: nil,
+		},
+		{
+			name: "duplicated process name in different groups - should error",
+			kubernetes: &provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"group1": {
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 8080},
+							},
+						},
+					},
+					"group2": {
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 9090},
+							},
+						},
+					},
+				},
+			},
+			processName:      "web",
+			expectedFound:    false,
+			expectedErrorMsg: "duplicated process name: web",
+		},
+		{
+			name: "multiple processes in different groups with one matching",
+			kubernetes: &provTypes.TsuruYamlKubernetesConfig{
+				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+					"group1": {
+						"worker": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 9090},
+							},
+						},
+					},
+					"group2": {
+						"web": {
+							Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+								{Port: 8080, TargetPort: 8080, Protocol: "TCP"},
+							},
+						},
+					},
+				},
+			},
+			processName:   "web",
+			expectedFound: true,
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		c.Logf("Test: %s", tt.name)
+		found, ports, err := getPortsFromTsuruYamlKubernetesByProcessName(tt.kubernetes, tt.processName)
+		if tt.expectedErrorMsg != "" {
+			require.Error(s.t, err)
+			require.Contains(s.t, err.Error(), tt.expectedErrorMsg)
+		} else {
+			require.NoError(s.t, err)
+		}
+		require.Equal(s.t, tt.expectedFound, found)
+		require.EqualValues(s.t, tt.expectedPorts, ports)
+	}
+}
+
+func (s *S) TestApplyPortDefaults(c *check.C) {
+	tests := []struct {
+		name          string
+		inputPorts    []provTypes.TsuruYamlKubernetesProcessPortConfig
+		expectedPorts []provTypes.TsuruYamlKubernetesProcessPortConfig
+	}{
+		{
+			name: "apply default protocol (TCP)",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Port: 8080, TargetPort: 8080},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "uppercase protocol conversion",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Protocol: "tcp", Port: 8080, TargetPort: 8080},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "UDP protocol with default name",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Protocol: "udp", Port: 53, TargetPort: 53},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "udp-default-1", Protocol: "UDP", Port: 53, TargetPort: 53},
+			},
+		},
+		{
+			name: "preserve existing name",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "custom-port", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "custom-port", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "set Port when only TargetPort is defined",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{TargetPort: 8080},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "set TargetPort when only Port is defined",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Port: 8080},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+			},
+		},
+		{
+			name: "multiple ports with different protocols",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Port: 8080, TargetPort: 8080},
+				{Protocol: "UDP", Port: 53, TargetPort: 53},
+				{Protocol: "tcp", Port: 9090, TargetPort: 9090},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+				{Name: "udp-default-2", Protocol: "UDP", Port: 53, TargetPort: 53},
+				{Name: "http-default-3", Protocol: "TCP", Port: 9090, TargetPort: 9090},
+			},
+		},
+		{
+			name: "port with different Port and TargetPort",
+			inputPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Port: 80, TargetPort: 8080},
+			},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+				{Name: "http-default-1", Protocol: "TCP", Port: 80, TargetPort: 8080},
+			},
+		},
+		{
+			name:          "empty ports array",
+			inputPorts:    []provTypes.TsuruYamlKubernetesProcessPortConfig{},
+			expectedPorts: []provTypes.TsuruYamlKubernetesProcessPortConfig{},
+		},
+	}
+
+	for _, tt := range tests {
+		c.Logf("Test: %s", tt.name)
+		// Make a copy to avoid modifying test data
+		ports := make([]provTypes.TsuruYamlKubernetesProcessPortConfig, len(tt.inputPorts))
+		copy(ports, tt.inputPorts)
+
+		applyPortDefaults(ports)
+		require.EqualValues(s.t, tt.expectedPorts, ports)
+	}
+}
