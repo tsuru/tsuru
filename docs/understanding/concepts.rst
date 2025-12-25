@@ -28,7 +28,7 @@ An application consists of:
 - the program's source code - e.g.: Python, Ruby, Go, PHP, JavaScript, Java, etc.
 - an operating system dependencies list -- in a file called ``requirements.apt``
 - a language-level dependencies list -- e.g.: ``requirements.txt``, ``Gemfile``, etc.
-- instructions on how to run the program -- in a file called ``Procfile``
+- instructions on how to run the program -- in a file called ``Procfile`` or in a file named ``tsuru.yaml``.
 
 An application has a name, a unique address, a platform, associated development
 teams, a repository, and a set of units.
@@ -39,7 +39,7 @@ Units
 A unit is a container. A unit has everything an application needs to run; the
 fetched operational system and language level dependencies, the application's
 source code, the language runtime, and the application's processes defined in
-the ``Procfile``.
+the ``Procfile`` or in ``tsuru.yaml``.
 
 Platforms
 ---------
