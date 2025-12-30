@@ -65,7 +65,7 @@ require (
 
 require (
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/expr-lang/expr v1.17.2 // indirect
+	github.com/expr-lang/expr v1.17.7 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
