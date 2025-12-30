@@ -124,7 +124,7 @@ func nonPersistentVolume(v *volumeTypes.Volume, opts *volumeOptions) (apiv1.Volu
 					Spec: apiv1.PersistentVolumeClaimSpec{
 						StorageClassName: &opts.StorageClass,
 						AccessModes:      accessModes,
-						Resources: apiv1.ResourceRequirements{
+						Resources: apiv1.VolumeResourceRequirements{
 							Requests: apiv1.ResourceList{
 								apiv1.ResourceStorage: opts.Capacity,
 							},
@@ -279,7 +279,7 @@ func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Vol
 			Labels: labelSet.ToLabels(),
 		},
 		Spec: apiv1.PersistentVolumeClaimSpec{
-			Resources: apiv1.ResourceRequirements{
+			Resources: apiv1.VolumeResourceRequirements{
 				Requests: capacity,
 			},
 			AccessModes:      accessModes,

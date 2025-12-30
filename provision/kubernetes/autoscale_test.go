@@ -624,7 +624,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 			},
 			trigger: &kedav1alpha1.ScaleTriggers{
 				Type: "prometheus",
-				AuthenticationRef: &kedav1alpha1.ScaledObjectAuthRef{
+				AuthenticationRef: &kedav1alpha1.AuthenticationRef{
 					Name: "gcp-credentials",
 					Kind: "ClusterTriggerAuthentication",
 				},

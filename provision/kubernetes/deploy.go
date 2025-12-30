@@ -15,6 +15,7 @@ import (
 	"io"
 	"maps"
 	"net"
+	"net/http"
 	"net/url"
 	"reflect"
 	"sort"
@@ -74,11 +75,26 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	if err != nil {
 		return nil, err
 	}
-	upgradeRoundTripper := spdy.NewRoundTripper(tlsConfig)
+
+	proxy := http.ProxyFromEnvironment
+	if config.Proxy != nil {
+		proxy = config.Proxy
+	}
+
+	upgradeRoundTripper, err := spdy.NewRoundTripperWithConfig(spdy.RoundTripperConfig{
+		TLS:        tlsConfig,
+		Proxier:    proxy,
+		PingPeriod: 5 * time.Second,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	upgradeRoundTripper.Dialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 10 * time.Second,
 	}
+
 	wrapper, err := rest.HTTPWrappersForConfig(config, upgradeRoundTripper)
 	if err != nil {
 		return nil, err
