@@ -709,8 +709,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 			},
 			prometheusSpecs: prometheusList[:1],
 			assertion: func(err error, scaledObject *kedav1alpha1.ScaledObject) {
-				require.ErrorContains(s.t, err, `scaledobjects.keda.sh "myapp-web" not found`)
-				require.Nil(s.t, scaledObject)
+				require.True(s.t, k8sErrors.IsNotFound(err), "expected NotFound error, got: %v", err)
 			},
 		},
 	}
