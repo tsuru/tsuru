@@ -106,6 +106,21 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.PodDisruptionBudgets != nil {
+		in, out := &in.PodDisruptionBudgets, &out.PodDisruptionBudgets
+		*out = make(map[string][]string, len(*in))
+		for key, val := range *in {
+			var outVal []string
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = make([]string, len(*in))
+				copy(*out, *in)
+			}
+			(*out)[key] = outVal
+		}
+	}
 	if in.Configs != nil {
 		in, out := &in.Configs, &out.Configs
 		*out = (*in).DeepCopy()

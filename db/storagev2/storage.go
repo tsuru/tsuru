@@ -34,6 +34,7 @@ const (
 var (
 	client          atomic.Pointer[mongo.Client]
 	databaseNamePtr atomic.Pointer[string]
+	customRegistry  = bson.NewRegistry()
 )
 
 func init() {
@@ -110,13 +111,13 @@ func init() {
 		return nil
 	}
 
-	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreEncode)
-	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreEncode)
-	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreDecode)
-	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreDecode)
+	customRegistry.RegisterTypeEncoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreEncode)
+	customRegistry.RegisterTypeEncoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreEncode)
+	customRegistry.RegisterTypeDecoder(reflect.TypeOf(&mapRuntimeObject).Elem(), ignoreDecode)
+	customRegistry.RegisterTypeDecoder(reflect.TypeOf(&runtimeObject).Elem(), ignoreDecode)
 
-	bson.DefaultRegistry.RegisterTypeEncoder(reflect.TypeOf(appTypes.CertIssuers{}), certIssuersEncode)
-	bson.DefaultRegistry.RegisterTypeDecoder(reflect.TypeOf(appTypes.CertIssuers{}), certIssuersDecode)
+	customRegistry.RegisterTypeEncoder(reflect.TypeOf(appTypes.CertIssuers{}), certIssuersEncode)
+	customRegistry.RegisterTypeDecoder(reflect.TypeOf(appTypes.CertIssuers{}), certIssuersDecode)
 }
 
 func Reset() {
@@ -143,6 +144,7 @@ func connect() (*mongo.Client, *string, error) {
 		options.Client().
 			ApplyURI(uri).
 			SetAppName("tsurud").
+			SetRegistry(customRegistry).
 			SetBSONOptions(&options.BSONOptions{
 				NilSliceAsEmpty: true,
 				NilMapAsEmpty:   true,

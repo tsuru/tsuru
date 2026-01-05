@@ -141,7 +141,7 @@ func (s *S) TestCreateVolumesForAppPlugin(_ *check.C) {
 			},
 			VolumeName:       volumeName(v.Name),
 			StorageClassName: &emptyStr,
-			Resources: apiv1.ResourceRequirements{
+			Resources: apiv1.VolumeResourceRequirements{
 				Requests: apiv1.ResourceList{
 					apiv1.ResourceStorage: expectedCap,
 				},
@@ -291,7 +291,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistentEphemeral(_ *check.C) {
 					Spec: apiv1.PersistentVolumeClaimSpec{
 						StorageClassName: &expectedStorageClass,
 						AccessModes:      []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteOnce},
-						Resources: apiv1.ResourceRequirements{
+						Resources: apiv1.VolumeResourceRequirements{
 							Requests: apiv1.ResourceList{
 								apiv1.ResourceStorage: expectedCap,
 							},
@@ -392,7 +392,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(_ *check.C) {
 		Spec: apiv1.PersistentVolumeClaimSpec{
 			AccessModes:      []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteMany},
 			StorageClassName: &expectedClass,
-			Resources: apiv1.ResourceRequirements{
+			Resources: apiv1.VolumeResourceRequirements{
 				Requests: apiv1.ResourceList{
 					apiv1.ResourceStorage: expectedCap,
 				},
