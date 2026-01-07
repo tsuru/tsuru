@@ -228,15 +228,6 @@ type HCProvisioner interface {
 	HandlesHC() bool
 }
 
-// UnitFinderProvisioner is a provisioner that allows finding a specific unit
-// by its id. New provisioners should not implement this interface, this was
-// only used during events format migration and is exclusive to docker
-// provisioner.
-type UnitFinderProvisioner interface {
-	// GetAppFromUnitID returns an app from unit id
-	GetAppFromUnitID(context.Context, string) (*appTypes.App, error)
-}
-
 // AppFilterProvisioner is a provisioner that allows filtering apps by the
 // state of its units.
 type AppFilterProvisioner interface {

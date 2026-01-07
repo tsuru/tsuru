@@ -5,7 +5,6 @@
 package builder
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
@@ -58,15 +57,6 @@ type PlatformBuilder interface {
 // Register registers a new builder in the Builder registry.
 func Register(name string, builder Builder) {
 	builders[name] = builder
-}
-
-func List() map[string]Builder {
-	bs := make(map[string]Builder)
-	for name, b := range builders {
-		bs[name] = b
-	}
-
-	return bs
 }
 
 // GetForProvisioner gets the builder required by the provisioner.
@@ -126,19 +116,6 @@ func PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string
 	}
 
 	return nil, errors.New("No builder available")
-}
-
-func CompressDockerFile(data []byte) io.Reader {
-	var buf bytes.Buffer
-	writer := tar.NewWriter(&buf)
-	writer.WriteHeader(&tar.Header{
-		Name: "Dockerfile",
-		Mode: 0644,
-		Size: int64(len(data)),
-	})
-	writer.Write(data)
-	writer.Close()
-	return &buf
 }
 
 func DownloadArchiveFromURL(ctx context.Context, url string) (io.ReadCloser, int, error) {

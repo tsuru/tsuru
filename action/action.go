@@ -116,7 +116,6 @@ func NewPipeline(actions ...*Action) *Pipeline {
 		newActions[i] = newAction
 	}
 	return &Pipeline{actions: newActions}
-
 }
 
 // Result returns the result of the last action.
@@ -196,7 +195,6 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 }
 
 func (p *Pipeline) rollback(ctx context.Context, index int, params []interface{}) {
-
 	bwCtx := BWContext{Params: params}
 	for i := index; i >= 0; i-- {
 

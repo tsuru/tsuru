@@ -37,16 +37,6 @@ type sharedInformerFactory struct {
 	startedInformers map[reflect.Type]bool
 }
 
-// WithCustomResyncConfig sets a custom resync period for the specified informer types.
-func WithCustomResyncConfig(resyncConfig map[v1.Object]time.Duration) SharedInformerOption {
-	return func(factory *sharedInformerFactory) *sharedInformerFactory {
-		for k, v := range resyncConfig {
-			factory.customResync[reflect.TypeOf(k)] = v
-		}
-		return factory
-	}
-}
-
 // WithTweakListOptions sets a custom filter on all listers of the configured SharedInformerFactory.
 func WithTweakListOptions(tweakListOptions internalinterfaces.TweakListOptionsFunc) SharedInformerOption {
 	return func(factory *sharedInformerFactory) *sharedInformerFactory {
@@ -61,19 +51,6 @@ func WithNamespace(namespace string) SharedInformerOption {
 		factory.namespace = namespace
 		return factory
 	}
-}
-
-// NewSharedInformerFactory constructs a new instance of sharedInformerFactory for all namespaces.
-func NewSharedInformerFactory(client versioned.Interface, defaultResync time.Duration) SharedInformerFactory {
-	return NewSharedInformerFactoryWithOptions(client, defaultResync)
-}
-
-// NewFilteredSharedInformerFactory constructs a new instance of sharedInformerFactory.
-// Listers obtained via this SharedInformerFactory will be subject to the same filters
-// as specified here.
-// Deprecated: Please use NewSharedInformerFactoryWithOptions instead
-func NewFilteredSharedInformerFactory(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) SharedInformerFactory {
-	return NewSharedInformerFactoryWithOptions(client, defaultResync, WithNamespace(namespace), WithTweakListOptions(tweakListOptions))
 }
 
 // NewSharedInformerFactoryWithOptions constructs a new instance of a SharedInformerFactory with additional options.
