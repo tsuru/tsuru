@@ -33,6 +33,13 @@ type appInformer struct {
 	namespace        string
 }
 
+// NewAppInformer constructs a new informer for App type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewAppInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredAppInformer(client, namespace, resyncPeriod, indexers, nil)
+}
+
 // NewFilteredAppInformer constructs a new informer for App type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
