@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -353,12 +352,6 @@ func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) f
 	}
 }
 
-func SortNodes(nodes []*apiv1.Node) {
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Name < nodes[j].Name
-	})
-}
-
 func (s *KubeMock) MockfakeNodes(urls ...string) {
 	if len(urls) > 0 {
 		s.client.GetCluster().Addresses = urls
@@ -394,18 +387,6 @@ func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
 			}
 		}
 		return false, nil, nil
-	}
-}
-
-func SetPodContainerReady(pod *apiv1.Pod) {
-	for _, cont := range pod.Spec.Containers {
-		contStatus := apiv1.ContainerStatus{
-			Name:  cont.Name,
-			State: apiv1.ContainerState{},
-			Ready: true,
-		}
-		contStatus.State.Running = &apiv1.ContainerStateRunning{}
-		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, contStatus)
 	}
 }
 

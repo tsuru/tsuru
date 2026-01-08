@@ -14,8 +14,10 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
-var ErrUnauthorized = &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
-var ErrTooManyTeams = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team to execute this action."}
+var (
+	ErrUnauthorized = &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
+	ErrTooManyTeams = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team to execute this action."}
+)
 
 func Context(t permTypes.ContextType, v string) permTypes.PermissionContext {
 	return permTypes.PermissionContext{CtxType: t, Value: v}
@@ -46,21 +48,6 @@ type Token interface {
 	Permissions(ctx context.Context) ([]permTypes.Permission, error)
 }
 
-func ListContextValues(ctx context.Context, t Token, scheme *permTypes.PermissionScheme, failIfEmpty bool) ([]string, error) {
-	contexts := ContextsForPermission(ctx, t, scheme)
-	if len(contexts) == 0 && failIfEmpty {
-		return nil, ErrUnauthorized
-	}
-	values := make([]string, 0, len(contexts))
-	for _, ctx := range contexts {
-		if ctx.CtxType == permTypes.CtxGlobal {
-			return nil, nil
-		}
-		values = append(values, ctx.Value)
-	}
-	return values, nil
-}
-
 func ContextsFromListForPermission(perms []permTypes.Permission, scheme *permTypes.PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
 	var contexts []permTypes.PermissionContext
 	for _, perm := range perms {
@@ -73,7 +60,6 @@ func ContextsFromListForPermission(perms []permTypes.Permission, scheme *permTyp
 				}
 			} else {
 				contexts = append(contexts, perm.Context)
-
 			}
 		}
 	}

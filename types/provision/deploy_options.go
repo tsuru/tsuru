@@ -17,7 +17,3 @@ const (
 	DeployRebuild      DeployKind = "rebuild"
 	DeployDockerfile   DeployKind = "dockerfile"
 )
-
-type DeployOptions interface {
-	GetKind() (kind DeployKind)
-}

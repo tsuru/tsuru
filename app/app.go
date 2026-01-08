@@ -998,12 +998,6 @@ func Revoke(ctx context.Context, app *appTypes.App, team *authTypes.Team) error 
 	return nil
 }
 
-// GetTeams returns a slice of teams that have access to the app.
-func GetTeams(ctx context.Context, app *appTypes.App) []authTypes.Team {
-	t, _ := servicemanager.Team.FindByNames(ctx, app.Teams)
-	return t
-}
-
 func SetPool(ctx context.Context, app *appTypes.App) error {
 	poolName, err := getPoolForApp(ctx, app, app.Pool)
 	if err != nil {
@@ -2362,14 +2356,6 @@ func GetCertificates(ctx context.Context, app *appTypes.App) (*appTypes.Certific
 	}
 
 	return certificateSet, nil
-}
-
-func RoutableAddresses(ctx context.Context, app *appTypes.App) ([]appTypes.RoutableAddresses, error) {
-	prov, err := getProvisioner(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	return prov.RoutableAddresses(ctx, app)
 }
 
 func withLogWriter(app *appTypes.App, w io.Writer) io.Writer {
