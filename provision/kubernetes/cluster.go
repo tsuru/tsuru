@@ -171,7 +171,7 @@ func getRestBaseConfig() (*rest.Config, error) {
 			NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
 		},
 		Timeout:       kubeConf.APITimeout,
-		WrapTransport: tsuruNet.OpentracingTransport,
+		WrapTransport: tsuruNet.OtelTransport,
 	}, nil
 }
 
@@ -261,7 +261,7 @@ func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error)
 	}
 
 	if cluster.HTTPProxy == "" {
-		restConfig.WrapTransport = tsuruNet.OpentracingTransport
+		restConfig.WrapTransport = tsuruNet.OtelTransport
 	} else {
 		restConfig.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
 			transport, ok := rt.(*http.Transport)

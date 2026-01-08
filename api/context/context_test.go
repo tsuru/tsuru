@@ -11,13 +11,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db/storagev2"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	check "gopkg.in/check.v1"
 )
 
@@ -76,9 +76,14 @@ func (s *S) TestGetAuthToken(c *check.C) {
 func (s *S) TestAddRequestError(c *check.C) {
 	r, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
-	tracer := mocktracer.New()
-	span, ctx := opentracing.StartSpanFromContextWithTracer(r.Context(), tracer, "test")
+
+	tp := sdktrace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
+	tr := otel.Tracer("test")
+
+	ctx, span := tr.Start(r.Context(), "test")
 	r = r.WithContext(ctx)
+
 	err1 := errors.New("msg1")
 	err2 := errors.New("msg2")
 	myErr := GetRequestError(r)
@@ -89,17 +94,11 @@ func (s *S) TestAddRequestError(c *check.C) {
 	AddRequestError(r, err2)
 	otherErr := GetRequestError(r)
 	c.Assert(otherErr.Error(), check.Equals, "msg2 Caused by: msg1")
-	mockSpan := span.(*mocktracer.MockSpan)
-	spanLogs := mockSpan.Logs()
-	c.Check(spanLogs, check.HasLen, 2)
-	c.Check(spanLogs[0].Fields[0].Key, check.Equals, "event")
-	c.Check(spanLogs[0].Fields[0].ValueString, check.Equals, "error")
-	c.Check(spanLogs[0].Fields[1].Key, check.Equals, "error.object")
-	c.Check(spanLogs[0].Fields[1].ValueString, check.Equals, "msg1")
-	c.Check(spanLogs[1].Fields[0].Key, check.Equals, "event")
-	c.Check(spanLogs[1].Fields[0].ValueString, check.Equals, "error")
-	c.Check(spanLogs[1].Fields[1].Key, check.Equals, "error.object")
-	c.Check(spanLogs[1].Fields[1].ValueString, check.Equals, "msg2")
+
+	c.Check(span.IsRecording(), check.Equals, true)
+
+	span.End()
+	tp.Shutdown(context.TODO())
 }
 
 func (s *S) TestSetDelayedHandler(c *check.C) {

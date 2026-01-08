@@ -15,12 +15,16 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
-	"github.com/opentracing/opentracing-go"
-	opentracingExt "github.com/opentracing/opentracing-go/ext"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -84,15 +88,8 @@ func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 		scheme = "https"
 	}
 
-	// finish tracing
-	span := opentracing.SpanFromContext(r.Context())
-	if span != nil {
-		span.SetTag("http.status_code", statusCode)
-		if statusCode >= http.StatusInternalServerError {
-			opentracingExt.Error.Set(span, true)
-		}
-		span.Finish()
-	}
+	// Note: Span finishing is handled in runDelayedHandler in api/middleware.go
+	// to ensure proper status code capture
 
 	// finish metrics
 	path := r.URL.Query().Get(":mux-path-template")
@@ -205,7 +202,7 @@ func PrePopulateMetrics(method, path string) {
 }
 
 func StartSpan(r *http.Request) {
-	tracer := opentracing.GlobalTracer()
+	tracer := otel.Tracer("tsuru/api")
 	pathTemplate := r.URL.Query().Get(":mux-path-template")
 
 	opName := r.Method
@@ -213,28 +210,34 @@ func StartSpan(r *http.Request) {
 		opName = r.Method + " " + pathTemplate
 	}
 
-	tags := []opentracing.StartSpanOption{
-		opentracingExt.SpanKindRPCServer,
-		opentracing.Tag{Key: "component", Value: "api/router"},
-		opentracing.Tag{Key: "request_id", Value: r.Header.Get("X-Request-ID")},
-		opentracing.Tag{Key: "http.method", Value: r.Method},
-		opentracing.Tag{Key: "http.url", Value: sanitizeURL(r.URL).RequestURI()},
-	}
+	// Extract context from incoming request headers using propagator
+	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
-	wireContext, err := tracer.Extract(
-		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(r.Header))
+	// Start a new span
+	ctx, _ = tracer.Start(ctx, opName,
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			semconv.HTTPMethodKey.String(r.Method),
+			semconv.HTTPURLKey.String(sanitizeURL(r.URL).RequestURI()),
+			attribute.String("component", "api/router"),
+			attribute.String("request_id", r.Header.Get("X-Request-ID")),
+		),
+	)
 
-	if err == nil {
-		tags = append(tags, opentracing.ChildOf(wireContext))
-	}
-
-	span := tracer.StartSpan(opName, tags...)
-
-	ctx := opentracing.ContextWithSpan(r.Context(), span)
+	// Store span in request context
 	newR := r.WithContext(ctx)
-
 	*r = *newR
+}
+
+func FinishSpan(r *http.Request, statusCode int) {
+	span := trace.SpanFromContext(r.Context())
+	if span != nil && span.IsRecording() {
+		span.SetAttributes(semconv.HTTPStatusCodeKey.Int(statusCode))
+		if statusCode >= 500 {
+			span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", statusCode))
+		}
+		span.End()
+	}
 }
 
 func sanitizeURL(u *url.URL) *url.URL {
