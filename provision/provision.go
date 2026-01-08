@@ -249,6 +249,12 @@ type VolumeProvisioner interface {
 	DeleteVolume(ctx context.Context, volumeName, pool string) error
 }
 
+// FileTransferProvisioner is a provisioner that allows tranfering files
+// from and to units.
+type FileTransferProvisioner interface {
+	UploadFile(ctx context.Context, app *appTypes.App, unit string, file []byte, filepath string) error
+}
+
 func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a *appTypes.App) (int, error) {
 	rawCPU := strings.TrimSuffix(s.AverageCPU, "%")
 	cpu, err := strconv.Atoi(rawCPU)

@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -12,6 +13,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path"
 	"reflect"
 	"sort"
 	"strconv"
@@ -96,6 +98,7 @@ var (
 	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
 	_ provision.KillUnitProvisioner      = &kubernetesProvisioner{}
 	_ provision.JobProvisioner           = &kubernetesProvisioner{}
+	_ provision.FileTransferProvisioner  = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
@@ -1724,4 +1727,43 @@ func (p *kubernetesProvisioner) RegistryForPool(ctx context.Context, pool string
 		return "", err
 	}
 	return client.Registry(), nil
+}
+
+func (p *kubernetesProvisioner) UploadFile(ctx context.Context, app *appTypes.App, unit string, file []byte, filepath string) error {
+	client, err := clusterForPool(ctx, app.Pool)
+	if err != nil {
+		return err
+	}
+
+	pathDir := path.Dir(filepath)
+
+	untarCmd := []string{"tar", "xvf", "-", "-C", pathDir}
+	namespace := client.Namespace()
+	request := client.CoreV1().RESTClient().Post().Resource("pods").Name(unit).Namespace(namespace).SubResource("exec").VersionedParams(&apiv1.PodExecOptions{
+		Command:   untarCmd,
+		Container: "",
+		Stdin:     true,
+		Stdout:    false,
+		Stderr:    true,
+		TTY:       false,
+	}, metav1.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(client.restConfig, "POST", request.URL())
+	if err != nil {
+		return err
+	}
+
+	var stderr bytes.Buffer
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  bytes.NewReader(file),
+		Stdout: io.Discard,
+		Stderr: &stderr,
+		Tty:    false,
+	})
+
+	if err != nil {
+		return fmt.Errorf("Failed to upload file: %v (stderr: %s)", err, stderr.String())
+	}
+
+	return nil
 }
