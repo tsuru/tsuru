@@ -279,6 +279,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodDelete, "/apps/{app}/units", AuthorizationRequiredHandler(removeUnits))
 	m.Add("1.9", http.MethodGet, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(autoScaleUnitsInfo))
 	m.Add("1.9", http.MethodPost, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(addAutoScaleUnits))
+	m.Add("1.29", http.MethodPost, "/apps/{app}/units/autoscale/swap", AuthorizationRequiredHandler(swapAutoScaleUnits))
 	m.Add("1.9", http.MethodDelete, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(removeAutoScaleUnits))
 	m.Add("1.12", http.MethodDelete, "/apps/{app}/units/{unit}", AuthorizationRequiredHandler(killUnit))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/teams/{team}", AuthorizationRequiredHandler(grantAppAccess))

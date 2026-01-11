@@ -275,6 +275,7 @@ type AutoScaleProvisioner interface {
 	GetVerticalAutoScaleRecommendations(ctx context.Context, a *appTypes.App) ([]provTypes.RecommendedResources, error)
 	SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) error
 	RemoveAutoScale(ctx context.Context, a *appTypes.App, process string) error
+	SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error
 }
 
 type MultiRegistryProvisioner interface {

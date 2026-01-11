@@ -574,3 +574,57 @@ func (s *S) TestUpdateApp(c *check.C) {
 	c.Assert(p.Provisioned(newApp), check.Equals, true)
 	c.Assert(p.apps["myapp"].app, check.DeepEquals, newApp)
 }
+
+func (s *S) TestSwapAutoScale(c *check.C) {
+	app := NewFakeApp("myapp", "python", 1)
+	p := &AutoScaleProvisioner{}
+
+	// Set up initial autoscale specs with version 1
+	err := p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
+		Process:  "web",
+		MinUnits: 2,
+		MaxUnits: 10,
+		Version:  1,
+	})
+	c.Assert(err, check.IsNil)
+
+	err = p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
+		Process:  "worker",
+		MinUnits: 1,
+		MaxUnits: 5,
+		Version:  1,
+	})
+	c.Assert(err, check.IsNil)
+
+	// Verify initial state
+	c.Assert(p.autoscales[app.Name], check.HasLen, 2)
+	c.Assert(p.autoscales[app.Name][0].Version, check.Equals, 1)
+	c.Assert(p.autoscales[app.Name][1].Version, check.Equals, 1)
+
+	// Swap to version 2
+	err = p.SwapAutoScale(context.TODO(), app, "2")
+	c.Assert(err, check.IsNil)
+
+	// Verify all versions were updated
+	c.Assert(p.autoscales[app.Name], check.HasLen, 2)
+	c.Assert(p.autoscales[app.Name][0].Version, check.Equals, 2)
+	c.Assert(p.autoscales[app.Name][1].Version, check.Equals, 2)
+}
+
+func (s *S) TestSwapAutoScaleNonNumericVersion(c *check.C) {
+	app := NewFakeApp("myapp", "python", 1)
+	p := &AutoScaleProvisioner{}
+
+	err := p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
+		Process:  "web",
+		MinUnits: 2,
+		MaxUnits: 10,
+		Version:  1,
+	})
+	c.Assert(err, check.IsNil)
+
+	// SwapAutoScale with non-numeric version should still work (sets version to 0)
+	err = p.SwapAutoScale(context.TODO(), app, "invalid")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.autoscales[app.Name][0].Version, check.Equals, 0)
+}
