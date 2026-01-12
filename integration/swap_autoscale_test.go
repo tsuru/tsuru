@@ -7,6 +7,7 @@ package integration
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"strconv"
@@ -81,14 +82,31 @@ func swapAutoScaleTest() ExecFlow {
 			"--sdsw", strconv.Itoa(int(*autoscaleSpec.Behavior.ScaleDown.StabilizationWindow))).Run(env)
 		c.Assert(res, ResultOk)
 
+		// backoff to wait until the autoscale has been created
+		backoff := func(appInfo appType.AppInfo) {
+			var power, baseTime = 1.0, 0.0
+			for {
+				if len(appInfo.Autoscale) == 0 {
+					time.Sleep(time.Duration(baseTime*math.Exp2(power)) * time.Second)
+					continue
+				}
+
+				if power < 4 {
+					power = power + 1
+					continue
+				}
+
+				break
+			}
+		}
+
 		// Step 4: Check Autoscale
 		var appInfo appType.AppInfo
 		res = T("app", "info", "-a", appName, "--json").Run(env)
-		c.Assert(res, ResultOk)
-		// wait a few seconds so KEDA can update de HPA
-		time.Sleep(10 * time.Second)
-
 		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
+		c.Assert(res, ResultOk)
+
+		backoff(appInfo)
 		c.Assert(err, check.IsNil)
 		c.Assert(len(appInfo.Autoscale), check.Equals, 1)
 		c.Assert(appInfo.Autoscale[0].Process, check.Equals, autoscaleSpec.Process)
@@ -100,8 +118,6 @@ func swapAutoScaleTest() ExecFlow {
 		autoscaleSpec.Version = 2
 		res = T("unit", "autoscale", "swap", "-a", appName, "--version", "2").Run(env)
 		c.Assert(res, ResultOk)
-		// wait a few seconds so KEDA can update de HPA
-		time.Sleep(10 * time.Second)
 
 		// Step 6: Check Autoscale
 		res = T("app", "info", "-a", appName, "--json").Run(env)
@@ -109,6 +125,8 @@ func swapAutoScaleTest() ExecFlow {
 
 		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
 		c.Assert(err, check.IsNil)
+
+		backoff(appInfo)
 		c.Assert(len(appInfo.Autoscale), check.Equals, 1)
 		c.Assert(appInfo.Autoscale[0].Process, check.Equals, autoscaleSpec.Process)
 		c.Assert(appInfo.Autoscale[0].MinUnits, check.Equals, autoscaleSpec.MinUnits)
