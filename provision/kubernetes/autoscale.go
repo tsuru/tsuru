@@ -158,17 +158,18 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.Ap
 
 	for _, hpa := range hpaList.Items {
 		scaledObjectName := kedaScaledObjectName(hpa)
-		if scaledObjectName != "" {
-			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			specs = append(specs, scaledObjectToSpec(*observedKEDAScaledObject))
-		} else {
+		if scaledObjectName == "" {
 			specs = append(specs, hpaToSpec(hpa))
 		}
 	}
 
+	scaledObjects, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String()})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for _, scaledObject := range scaledObjects.Items {
+		specs = append(specs, scaledObjectToSpec(scaledObject))
+	}
 	return specs, nil
 }
 
