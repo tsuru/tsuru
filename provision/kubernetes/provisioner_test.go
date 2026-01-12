@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	fakekedaclientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -75,6 +76,7 @@ func (s *S) prepareMultiCluster(_ *check.C) (*kTesting.ClientWrapper, *kTesting.
 		MetricsClientset:       fakemetrics.NewSimpleClientset(),
 		VPAClientset:           fakevpa.NewSimpleClientset(),
 		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		KEDAClientForConfig:    fakekedaclientset.NewSimpleClientset(),
 		ClusterInterface:       clusterClient1,
 	}
 	clusterClient1.Interface = client1
@@ -95,6 +97,7 @@ func (s *S) prepareMultiCluster(_ *check.C) (*kTesting.ClientWrapper, *kTesting.
 		MetricsClientset:       fakemetrics.NewSimpleClientset(),
 		VPAClientset:           fakevpa.NewSimpleClientset(),
 		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		KEDAClientForConfig:    fakekedaclientset.NewSimpleClientset(),
 		ClusterInterface:       clusterClient2,
 	}
 	clusterClient2.Interface = client2
@@ -115,6 +118,7 @@ func (s *S) prepareMultiCluster(_ *check.C) (*kTesting.ClientWrapper, *kTesting.
 		MetricsClientset:       fakemetrics.NewSimpleClientset(),
 		VPAClientset:           fakevpa.NewSimpleClientset(),
 		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		KEDAClientForConfig:    fakekedaclientset.NewSimpleClientset(),
 		ClusterInterface:       clusterClient2,
 	}
 	clusterClient3.Interface = client3
