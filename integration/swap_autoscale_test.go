@@ -113,7 +113,11 @@ func swapAutoScaleTest() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := slugifyName(fmt.Sprintf("mv-swap-autoscale-%s", env.Get("pool")))
-		res := T("app", "remove", "-y", "-a", appName).Run(env)
+		// app remove does not clear the autoscale resources, so we have to unset
+		res := T("unit", "autoscale", "unset", "-a", appName).Run(env)
+		c.Check(res, ResultOk)
+
+		res = T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
 
