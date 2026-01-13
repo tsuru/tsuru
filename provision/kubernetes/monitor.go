@@ -252,22 +252,6 @@ func (c *clusterController) getServiceInformer() (v1informers.ServiceInformer, e
 	return c.serviceInformer, err
 }
 
-func (c *clusterController) getHPAInformer() (autoscalingv2informers.HorizontalPodAutoscalerInformer, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.hpaInformer == nil {
-		err := c.withFilteredInformerFactory(func(factory informers.SharedInformerFactory) {
-			c.hpaInformer = factory.Autoscaling().V2().HorizontalPodAutoscalers()
-			c.hpaInformer.Informer()
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	err := c.waitForSync(c.hpaInformer.Informer())
-	return c.hpaInformer, err
-}
-
 func (c *clusterController) getVPAInformer() (vpaV1Informers.VerticalPodAutoscalerInformer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -132,15 +132,6 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.Ap
 		return nil, err
 	}
 
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	hpaInformer, err := controller.getHPAInformer()
-	if err != nil {
-		return nil, err
-	}
-
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -158,13 +149,15 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.Ap
 
 	var specs []provTypes.AutoScaleSpec
 
-	hpas, err := hpaInformer.Lister().HorizontalPodAutoscalers(ns).List(labels.SelectorFromSet(labels.Set(ls.ToHPASelector())))
+	hpaList, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
+	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	for _, hpa := range hpas {
-		scaledObjectName := kedaScaledObjectName(*hpa)
+	for _, hpa := range hpaList.Items {
+		scaledObjectName := kedaScaledObjectName(hpa)
 		if scaledObjectName != "" {
 			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
 			if err != nil {
@@ -172,9 +165,10 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.Ap
 			}
 			specs = append(specs, scaledObjectToSpec(*observedKEDAScaledObject))
 		} else {
-			specs = append(specs, hpaToSpec(*hpa))
+			specs = append(specs, hpaToSpec(hpa))
 		}
 	}
+
 	return specs, nil
 }
 
@@ -227,7 +221,7 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provTypes.AutoSc
 		case "cpu":
 			cpuValue := metric.Metadata["value"]
 			if metric.MetricType == autoscalingv2.UtilizationMetricType {
-				//percentage based, so multiple by 10
+				// percentage based, so multiple by 10
 				spec.AverageCPU = fmt.Sprintf("%s0m", cpuValue)
 			} else if metric.MetricType == autoscalingv2.AverageValueMetricType {
 				spec.AverageCPU = fmt.Sprintf("%sm", cpuValue)
@@ -475,7 +469,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 		return err
 	}
 
-	//remove HPA managed by tsuru so KEDA can takeover AutoScaling
+	// remove HPA managed by tsuru so KEDA can takeover AutoScaling
 	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
@@ -553,7 +547,7 @@ func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo 
 
 	var scaledObjectAnnotation map[string]string
 	if depInfo.replicas == 0 {
-		//this is to disable the scale object when the deployment is scaled to 0 (app stop)
+		// this is to disable the scale object when the deployment is scaled to 0 (app stop)
 		scaledObjectAnnotation = map[string]string{
 			AnnotationKEDAPausedReplicas: "0",
 		}
@@ -676,7 +670,6 @@ func getPoliciesFromBehavior(behaviorSpec *provTypes.ScaleDownPolicy) (policies 
 }
 
 func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) (*deploymentInfo, error) {
-
 	depGroups, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return nil, err
