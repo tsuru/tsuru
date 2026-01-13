@@ -80,6 +80,10 @@ func swapAutoScaleTest() ExecFlow {
 			"--sdsw", strconv.Itoa(int(*autoscaleSpec.Behavior.ScaleDown.StabilizationWindow))).Run(env)
 		c.Assert(res, ResultOk)
 
+		// debug
+		res = K("get", "hpa", "-A", "-o", "yaml").Run(env)
+		c.Assert(res, ResultOk)
+
 		// Step 4: Check Autoscale
 		var appInfo appType.AppInfo
 		res = T("app", "info", "-a", appName, "--json").Run(env)
@@ -98,6 +102,10 @@ func swapAutoScaleTest() ExecFlow {
 		res = T("unit", "autoscale", "swap", "-a", appName, "--version", "2").Run(env)
 		c.Assert(res, ResultOk)
 
+		// debug
+		res = K("get", "hpa", "-A", "-o", "yaml").Run(env)
+		c.Assert(res, ResultOk)
+
 		// Step 6: Check Autoscale
 		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
@@ -113,11 +121,7 @@ func swapAutoScaleTest() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := slugifyName(fmt.Sprintf("mv-swap-autoscale-%s", env.Get("pool")))
-		// app remove does not clear the autoscale resources, so we have to unset
-		res := T("unit", "autoscale", "unset", "-a", appName).Run(env)
-		c.Check(res, ResultOk)
-
-		res = T("app", "remove", "-y", "-a", appName).Run(env)
+		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
 
