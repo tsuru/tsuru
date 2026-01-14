@@ -79,6 +79,7 @@ var (
 	PermAppUpdateUnitAdd                 = PermissionRegistry.get("app.update.unit.add")                 // [global app team pool]
 	PermAppUpdateUnitAutoscale           = PermissionRegistry.get("app.update.unit.autoscale")           // [global app team pool]
 	PermAppUpdateUnitAutoscaleAdd        = PermissionRegistry.get("app.update.unit.autoscale.add")       // [global app team pool]
+	PermAppUpdateUnitAutoscaleSwap       = PermissionRegistry.get("app.update.unit.autoscale.swap")      // [global app team pool]
 	PermAppUpdateUnitAutoscaleRemove     = PermissionRegistry.get("app.update.unit.autoscale.remove")    // [global app team pool]
 	PermAppUpdateUnitKill                = PermissionRegistry.get("app.update.unit.kill")                // [global app team pool]
 	PermAppUpdateUnitRemove              = PermissionRegistry.get("app.update.unit.remove")              // [global app team pool]

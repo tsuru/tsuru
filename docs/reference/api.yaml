@@ -2185,6 +2185,45 @@ paths:
       security:
       - Bearer: []
 
+  /1.29/apps/{app}/units/autoscale/swap:
+    parameters:
+    - name: app
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: App name.
+    post:
+      operationId: AutoScaleSwap
+      description: Swap autoscale to another version.
+      parameters:
+      - name: version
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/SwapAutoScaleSpec"
+      consumes:
+      - application/json
+      responses:
+        "200":
+          description: AutoScale swapped
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
+
   /1.0/platforms/{platform}:
     parameters:
     - name: platform
@@ -4718,6 +4757,13 @@ definitions:
                 type: integer
                 description: Minimum number of units to scale down
                 x-go-custom-type: "*int32"
+  SwapAutoScaleSpec:
+    description: Swap Units Auto Scale spec
+    type: object
+    properties:
+      version:
+        type: string
+    required: ["version"]
   AutoScaleSchedule:
     description: Auto Scale schedules struct
     type: object
@@ -5767,18 +5813,21 @@ definitions:
         description: concurrency policy.
       container:
         type: object
-        properties:
-          image:
-            type: string
-          command:
-            type: array
-            items:
-              type: string
-          envs:
-            type: array
-            items:
-              type: object
-              $ref: "#/definitions/EnvVar"
+        $ref: "#/definitions/JobSpecContainer"
+  JobSpecContainer:
+    type: object
+    properties:
+      image:
+        type: string
+      command:
+        type: array
+        items:
+          type: string
+      envs:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/EnvVar"
   AppCreateResponse:
     description: Newly created app information.
     type: object

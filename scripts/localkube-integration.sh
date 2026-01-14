@@ -18,7 +18,7 @@ readonly MINIKUBE=${MINIKUBE:-minikube}
 readonly CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 readonly NAMESPACE=${NAMESPACE:-tsuru-system}
 
-readonly CHART_VERSION_TSURU_STACK=${CHART_VERSION_TSURU_STACK:-0.8.7}
+readonly CHART_VERSION_TSURU_STACK=${CHART_VERSION_TSURU_STACK:-0.8.9}
 
 function onerror() {
   set -e
@@ -75,6 +75,14 @@ install_tsuru_stack() {
     tsuru tsuru/tsuru-stack
 }
 
+install_kedacore() {
+  trap onerror ERR
+
+  ${HELM} repo add --force-update kedacore https://kedacore.github.io/charts
+
+  ${HELM} install keda kedacore/keda --namespace tsuru-system --version 2.11.1
+}
+
 build_tsuru_api_container_image() {
   ${DOCKER} build -t localhost/tsuru/tsuru-api:integration -f Dockerfile .
 
@@ -119,6 +127,7 @@ main() {
     minikube_tunnel_pid=${!}
   fi
   install_tsuru_stack
+  install_kedacore
 
   sleep 30
 

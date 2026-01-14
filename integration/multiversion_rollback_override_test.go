@@ -47,7 +47,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		checkAppHealth(c, appName, "1", hash1, env)
 
 		// Step 3: Add version 2 to router to create true multiversion deployment
-		res, ok := T("app", "router", "version", "add", "2", "-a", appName).Retry(time.Minute, env)
+		res, ok := T("app", "router", "version", "add", "2", "-a", appName).Retry(time.Minute, env, RetryOptions{})
 		c.Assert(res, ResultOk)
 		c.Assert(ok, check.Equals, true)
 
@@ -66,7 +66,7 @@ func multiversionRollbackOverrideTest() ExecFlow {
 		checkAppHealth(c, appName, "2", hash2, env)
 
 		// Step 5: Add version 3 to router to create true multiversion deployment
-		res, ok = T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env)
+		res, ok = T("app", "router", "version", "add", "3", "-a", appName).Retry(time.Minute, env, RetryOptions{})
 		c.Assert(res, ResultOk)
 		c.Assert(ok, check.Equals, true)
 

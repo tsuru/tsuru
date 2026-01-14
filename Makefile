@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-SHELL       = /bin/bash -o pipefail
-BUILD_DIR   = build
-TSR_BIN     = $(BUILD_DIR)/tsurud
-TSR_SRC     = ./cmd/tsurud
-GIT_TAG_VER := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "$${TSURU_BUILD_VERSION:-dev}")
+SHELL         = /bin/bash -o pipefail
+BUILD_DIR     = build
+TSR_BIN       = $(BUILD_DIR)/tsurud
+PLATFORMS_DIR = /tmp/platforms
+TSR_SRC       = ./cmd/tsurud
+GIT_TAG_VER   := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "$${TSURU_BUILD_VERSION:-dev}")
 
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
@@ -133,7 +134,15 @@ test-ci-integration:
 	TSURU_INTEGRATION_provisioners="minikube" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
-local.test-ci-integration:
+clone_platforms:
+	@if [ -d "$(PLATFORMS_DIR)" ]; then \
+		echo "Directory $(PLATFORMS_DIR) exists."; \
+	else \
+		echo "Cloning platforms..."; \
+		git clone https://github.com/tsuru/platforms $(PLATFORMS_DIR); \
+	fi
+
+local.test-ci-integration: clone_platforms
 	if [ -z "$$INTEGRATION_KUBECONFIG" ]; then \
 		echo "INTEGRATION_KUBECONFIG is not set"; \
 		exit 1; \

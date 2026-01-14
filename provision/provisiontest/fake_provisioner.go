@@ -808,6 +808,14 @@ func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.A
 	return nil
 }
 
+func (p *AutoScaleProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error {
+	version, _ := strconv.Atoi(versionStr)
+	for i := range p.autoscales[a.Name] {
+		p.autoscales[a.Name][i].Version = version
+	}
+	return nil
+}
+
 func (p *AutoScaleProvisioner) RemoveAutoScale(ctx context.Context, app *appTypes.App, process string) error {
 	if p.autoscales == nil {
 		return nil
