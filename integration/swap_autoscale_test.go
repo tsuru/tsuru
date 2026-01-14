@@ -97,7 +97,7 @@ func swapAutoScaleTest() ExecFlow {
 		}
 
 		//debug
-		res, ok := K("get", "hpa", "-l", "app="+appName+"-web", "-o", "jsonpath='{.items[?(@.metadata.labels)].metadata.labels}'").Retry(time.Minute, env, RetryOptions{CheckResult: retryOpt("1").CheckResult})
+		res, ok := K("get", "hpa", "-l", "app="+appName+"-web", "-o", "jsonpath='{.items[?(@.metadata.labels)].metadata.labels}'").Retry(time.Minute, env, retryOpt("1"))
 		c.Assert(res, ResultOk)
 		c.Assert(ok, check.Equals, true)
 
@@ -120,7 +120,7 @@ func swapAutoScaleTest() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		//debug
-		res, ok = K("get", "hpa", "-l", "app="+appName+"-web", "-o", "jsonpath='{.items[?(@.metadata.labels)].metadata.labels}'").Retry(time.Minute, env, RetryOptions{CheckResult: retryOpt("2").CheckResult})
+		res, ok = K("get", "hpa", "-l", "app="+appName+"-web", "-o", "jsonpath='{.items[?(@.metadata.labels)].metadata.labels}'").Retry(time.Minute, env, retryOpt("2"))
 		c.Assert(res, ResultOk)
 		c.Assert(ok, check.Equals, true)
 
