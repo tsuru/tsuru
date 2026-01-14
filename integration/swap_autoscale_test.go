@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	appType "github.com/tsuru/tsuru/types/app"
 	provType "github.com/tsuru/tsuru/types/provision"
@@ -80,17 +81,33 @@ func swapAutoScaleTest() ExecFlow {
 			"--sdsw", strconv.Itoa(int(*autoscaleSpec.Behavior.ScaleDown.StabilizationWindow))).Run(env)
 		c.Assert(res, ResultOk)
 
-		// debug
-		res = K("get", "hpa", "-A", "-o", "yaml").Run(env)
+		retryOpt := func(version string) RetryOptions {
+			return RetryOptions{CheckResult: func(r *Result) bool {
+				data := make(map[string]string)
+				err = json.Unmarshal([]byte(r.Stdout.String()), &data)
+				if err != nil {
+					fmt.Printf("DEBUG: Failed Unmarshal JSON: %s\n", err)
+				}
+				if _, ok := data["scaledobject.keda.sh/name"]; !ok {
+					return false
+				}
+				v, ok := data["tsuru.io/app-version"]
+				return ok && version == v
+			}}
+		}
+
+		//debug
+		res, ok := K("get", "hpa", "-l", "app="+appName+"-web", "-o", "jsonpath='{.items[?(@.metadata.labels)].metadata.labels}'").Retry(time.Minute, env, RetryOptions{CheckResult: retryOpt("1").CheckResult})
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 
 		// Step 4: Check Autoscale
 		var appInfo appType.AppInfo
 		res = T("app", "info", "-a", appName, "--json").Run(env)
-		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
 		c.Assert(res, ResultOk)
-
+		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
 		c.Assert(err, check.IsNil)
+
 		c.Assert(len(appInfo.Autoscale), check.Equals, 1)
 		c.Assert(appInfo.Autoscale[0].Process, check.Equals, autoscaleSpec.Process)
 		c.Assert(appInfo.Autoscale[0].MinUnits, check.Equals, autoscaleSpec.MinUnits)
@@ -102,14 +119,14 @@ func swapAutoScaleTest() ExecFlow {
 		res = T("unit", "autoscale", "swap", "-a", appName, "--version", "2").Run(env)
 		c.Assert(res, ResultOk)
 
-		// debug
-		res = K("get", "hpa", "-A", "-o", "yaml").Run(env)
+		//debug
+		res, ok = K("get", "hpa", "-l", "app="+appName+"-web", "-o", "jsonpath='{.items[?(@.metadata.labels)].metadata.labels}'").Retry(time.Minute, env, RetryOptions{CheckResult: retryOpt("2").CheckResult})
 		c.Assert(res, ResultOk)
+		c.Assert(ok, check.Equals, true)
 
 		// Step 6: Check Autoscale
 		res = T("app", "info", "-a", appName, "--json").Run(env)
 		c.Assert(res, ResultOk)
-
 		err = json.Unmarshal([]byte(res.Stdout.String()), &appInfo)
 		c.Assert(err, check.IsNil)
 
