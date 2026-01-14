@@ -406,17 +406,24 @@ func (c *Command) Run(e *Environment) *Result {
 	return res
 }
 
-func (c *Command) Retry(timeout time.Duration, env *Environment) (*Result, bool) {
+type RetryOptions struct {
+	Check func() bool
+}
+
+func (c *Command) Retry(timeout time.Duration, env *Environment, options RetryOptions) (*Result, bool) {
 	res := new(Result)
-	ok := retry(timeout, func() bool {
-		res = c.Run(env)
-		ok, reason := checkOk(res, nil)
-		if !ok {
-			fmt.Printf("DEBUG: Failed to run command: %s\n", reason)
-			return false
+	if options.Check == nil {
+		options.Check = func() bool {
+			res = c.Run(env)
+			ok, reason := checkOk(res, nil)
+			if !ok {
+				fmt.Printf("DEBUG: Failed to run command: %s\n", reason)
+				return false
+			}
+			return true
 		}
-		return true
-	})
+	}
+	ok := retry(timeout, options.Check)
 	return res, ok
 }
 
