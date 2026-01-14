@@ -21,7 +21,6 @@ import (
 	vpaV1Informers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/autoscaling.k8s.io/v1"
 	vpaInternalInterfaces "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/internalinterfaces"
 	"k8s.io/client-go/informers"
-	autoscalingv2informers "k8s.io/client-go/informers/autoscaling/v2"
 	jobsInformer "k8s.io/client-go/informers/batch/v1"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
@@ -47,26 +46,24 @@ type podListener interface {
 }
 
 type clusterController struct {
-	mu                      sync.Mutex
-	cluster                 *ClusterClient
-	informerFactory         informers.SharedInformerFactory
-	filteredInformerFactory informers.SharedInformerFactory
-	podInformerFactory      informers.SharedInformerFactory
-	jobInformerFactory      informers.SharedInformerFactory
-	vpaInformerFactory      vpaInformers.SharedInformerFactory
-	podInformer             v1informers.PodInformer
-	serviceInformer         v1informers.ServiceInformer
-	hpaInformer             autoscalingv2informers.HorizontalPodAutoscalerInformer
-	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
-	jobsInformer            jobsInformer.JobInformer
-	eventsInformer          v1informers.EventInformer
-	stopCh                  chan struct{}
-	cancel                  context.CancelFunc
-	startedAt               time.Time
-	podListeners            map[string]podListener
-	podListenersMu          sync.RWMutex
-	wg                      sync.WaitGroup
-	leader                  int32
+	mu                 sync.Mutex
+	cluster            *ClusterClient
+	informerFactory    informers.SharedInformerFactory
+	podInformerFactory informers.SharedInformerFactory
+	jobInformerFactory informers.SharedInformerFactory
+	vpaInformerFactory vpaInformers.SharedInformerFactory
+	podInformer        v1informers.PodInformer
+	serviceInformer    v1informers.ServiceInformer
+	vpaInformer        vpaV1Informers.VerticalPodAutoscalerInformer
+	jobsInformer       jobsInformer.JobInformer
+	eventsInformer     v1informers.EventInformer
+	stopCh             chan struct{}
+	cancel             context.CancelFunc
+	startedAt          time.Time
+	podListeners       map[string]podListener
+	podListenersMu     sync.RWMutex
+	wg                 sync.WaitGroup
+	leader             int32
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
@@ -148,7 +145,7 @@ func (c *clusterController) startJobInformer() error {
 		return err
 	}
 	eventsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			// if not leader, do nothing
 			if !c.isLeader() {
 				return
@@ -189,7 +186,7 @@ func (c *clusterController) start() (v1informers.PodInformer, error) {
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			pod, ok := obj.(*apiv1.Pod)
 			if !ok {
 				return
@@ -197,7 +194,7 @@ func (c *clusterController) start() (v1informers.PodInformer, error) {
 
 			c.notifyPodChanges(pod)
 		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj any) {
 			newPod, ok := newObj.(*apiv1.Pod)
 			if !ok {
 				return
@@ -250,22 +247,6 @@ func (c *clusterController) getServiceInformer() (v1informers.ServiceInformer, e
 	}
 	err := c.waitForSync(c.serviceInformer.Informer())
 	return c.serviceInformer, err
-}
-
-func (c *clusterController) getHPAInformer() (autoscalingv2informers.HorizontalPodAutoscalerInformer, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.hpaInformer == nil {
-		err := c.withFilteredInformerFactory(func(factory informers.SharedInformerFactory) {
-			c.hpaInformer = factory.Autoscaling().V2().HorizontalPodAutoscalers()
-			c.hpaInformer.Informer()
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	err := c.waitForSync(c.hpaInformer.Informer())
-	return c.hpaInformer, err
 }
 
 func (c *clusterController) getVPAInformer() (vpaV1Informers.VerticalPodAutoscalerInformer, error) {
@@ -351,16 +332,6 @@ func (c *clusterController) withInformerFactory(fn func(factory informers.Shared
 	return nil
 }
 
-func (c *clusterController) withFilteredInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
-	factory, err := c.getFilteredFactory()
-	if err != nil {
-		return err
-	}
-	fn(factory)
-	factory.Start(c.stopCh)
-	return nil
-}
-
 func (c *clusterController) withPodFilteredInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
 	factory, err := c.getPodFilteredFactory()
 	if err != nil {
@@ -397,15 +368,6 @@ func (c *clusterController) getFactory() (informers.SharedInformerFactory, error
 	var err error
 	c.informerFactory, err = InformerFactory(c.cluster, nil)
 	return c.informerFactory, err
-}
-
-func (c *clusterController) getFilteredFactory() (informers.SharedInformerFactory, error) {
-	if c.filteredInformerFactory != nil {
-		return c.filteredInformerFactory, nil
-	}
-	var err error
-	c.filteredInformerFactory, err = filteredInformerFactory(c.cluster)
-	return c.filteredInformerFactory, err
 }
 
 func (c *clusterController) getPodFilteredFactory() (informers.SharedInformerFactory, error) {
@@ -527,10 +489,6 @@ func tsuruJobTweakFunc() internalinterfaces.TweakListOptionsFunc {
 		ls := provision.TsuruJobLabelSet(tsuruLabelPrefix)
 		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
 	}
-}
-
-func filteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
-	return InformerFactory(client, tsuruServiceTweakFunc())
 }
 
 func podFilteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
