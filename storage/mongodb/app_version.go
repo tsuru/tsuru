@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	uuid "github.com/nu7hatch/gouuid"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -22,7 +22,7 @@ type appVersionStorage struct{}
 
 func (s *appVersionStorage) UpdateVersion(ctx context.Context, appName string, vi *appTypes.AppVersionInfo, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		errors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -39,7 +39,7 @@ func (s *appVersionStorage) UpdateVersion(ctx context.Context, appName string, v
 func (s *appVersionStorage) UpdateVersionSuccess(ctx context.Context, appName string, vi *appTypes.AppVersionInfo, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
 	vi.UpdatedAt = now
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		errors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -64,7 +64,6 @@ func (s *appVersionStorage) baseUpdate(ctx context.Context, appName string, upda
 }
 
 func (s *appVersionStorage) baseUpdateWhere(ctx context.Context, where, updateQuery mongoBSON.M) error {
-
 	collection, err := storagev2.AppVersionsCollection()
 	if err != nil {
 		return err
@@ -100,7 +99,7 @@ func (s *appVersionStorage) NewAppVersion(ctx context.Context, args appTypes.New
 	currentCount := appVersions.Count + 1
 
 	now := time.Now().UTC()
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -147,7 +146,7 @@ func (s *appVersionStorage) DeleteVersions(ctx context.Context, appName string, 
 		where["updatedhash"] = opts[0].PreviousUpdatedHash
 	}
 
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -221,7 +220,7 @@ func (s *appVersionStorage) AppVersions(ctx context.Context, app *appTypes.App) 
 }
 
 func (s *appVersionStorage) DeleteVersionIDs(ctx context.Context, appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -242,7 +241,7 @@ func (s *appVersionStorage) DeleteVersionIDs(ctx context.Context, appName string
 }
 
 func (s *appVersionStorage) MarkToRemoval(ctx context.Context, appName string, opts ...*appTypes.AppVersionWriteOptions) error {
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -258,7 +257,7 @@ func (s *appVersionStorage) MarkToRemoval(ctx context.Context, appName string, o
 
 func (s *appVersionStorage) MarkVersionsToRemoval(ctx context.Context, appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}

@@ -8,7 +8,7 @@ import (
 	"context"
 	"errors"
 
-	uuid "github.com/nu7hatch/gouuid"
+	"github.com/google/uuid"
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/bind"
@@ -71,7 +71,7 @@ func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, erro
 	if app.UUID != "" {
 		return app.UUID, nil
 	}
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return "", pkgErrors.WithMessage(err, "failed to generate uuid v4")
 	}
@@ -92,8 +92,8 @@ func (m *MockAppService) AddInstance(ctx context.Context, app *App, addArgs bind
 	}
 
 	return errors.New("MockAppService.AddInstance is not implemented")
-
 }
+
 func (m *MockAppService) RemoveInstance(ctx context.Context, app *App, removeArgs bind.RemoveInstanceArgs) error {
 	if m.OnRemoveInstance != nil {
 		return m.OnRemoveInstance(app, removeArgs)
