@@ -18,7 +18,7 @@ import (
 
 	"github.com/cezarsa/form"
 	"github.com/codegangsta/negroni"
-	uuid "github.com/nu7hatch/gouuid"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -158,7 +158,7 @@ func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next h
 	}
 	requestID := r.Header.Get(requestIDHeader)
 	if requestID == "" {
-		unparsedID, err := uuid.NewV4()
+		unparsedID, err := uuid.NewRandom()
 		if err != nil {
 			log.Errorf("unable to generate request id: %s", err)
 			next(w, r)

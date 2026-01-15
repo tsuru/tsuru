@@ -1,8 +1,6 @@
 module github.com/tsuru/tsuru
 
-go 1.24
-
-toolchain go1.24.1
+go 1.24.2
 
 require (
 	github.com/adhocore/gronx v1.6.6
@@ -16,15 +14,14 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
 	github.com/imdario/mergo v0.3.16
 	github.com/kedacore/keda/v2 v2.17.3
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/common v0.63.0
@@ -113,7 +110,6 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/howeyc/fsnotify v0.9.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

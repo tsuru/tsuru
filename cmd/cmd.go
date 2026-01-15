@@ -17,7 +17,6 @@ import (
 	"sync"
 	"syscall"
 
-	goVersion "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/gnuflag"
@@ -693,26 +692,6 @@ func filesystem() fs.Fs {
 		fsystem = fs.OsFs{}
 	}
 	return fsystem
-}
-
-// validateVersion checks whether current version is greater or equal to
-// supported version.
-func validateVersion(supported, current string) bool {
-	if current == "dev" {
-		return true
-	}
-	if supported == "" {
-		return true
-	}
-	vSupported, err := goVersion.NewVersion(supported)
-	if err != nil {
-		return false
-	}
-	vCurrent, err := goVersion.NewVersion(current)
-	if err != nil {
-		return false
-	}
-	return vCurrent.Compare(vSupported) >= 0
 }
 
 func (m *Manager) SetExiter(e exiter) {

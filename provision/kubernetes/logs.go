@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	uuid "github.com/nu7hatch/gouuid"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -28,9 +28,7 @@ const (
 	logWatchBufferSize   = 1000
 )
 
-var (
-	watchTimeout = time.Hour
-)
+var watchTimeout = time.Hour
 
 func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	clusterClient, err := clusterForPool(ctx, obj.Pool)
@@ -87,7 +85,7 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, obj *logTypes.Log
 	if len(args.Units) > 0 {
 		pods = filterPods(pods, args.Units)
 	}
-	uuidV4, err := uuid.NewV4()
+	uuidV4, err := uuid.NewRandom()
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate uuid v4")
 	}
