@@ -92,7 +92,6 @@ type AppService interface {
 	GetHealthcheckData(ctx context.Context, app *App) (router.HealthcheckData, error)
 	GetAddresses(ctx context.Context, app *App) ([]string, error)
 	GetInternalBindableAddresses(ctx context.Context, app *App) ([]string, error)
-	EnsureUUID(ctx context.Context, app *App) (string, error)
 	GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error)
 
 	AddInstance(ctx context.Context, app *App, addArgs bind.AddInstanceArgs) error

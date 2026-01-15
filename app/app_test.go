@@ -1342,6 +1342,7 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	c.Assert(newApp.Env, check.DeepEquals, map[string]bindTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
+
 func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	ctx := context.Background()
 	a := appTypes.App{
@@ -3145,7 +3146,6 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			},
 		},
 	})
-
 }
 
 func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
@@ -6210,25 +6210,6 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 
 	err = Update(context.TODO(), &app, UpdateAppArgs{UpdateData: &appTypes.App{Pool: optsPool2.Name}, Writer: nil})
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestEnsureUUID(c *check.C) {
-	collection, err := storagev2.AppsCollection()
-	c.Assert(err, check.IsNil)
-
-	app := appTypes.App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
-	err = CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.UUID, check.DeepEquals, "")
-	uuid, err := EnsureUUID(context.TODO(), &app)
-	c.Assert(err, check.IsNil)
-	c.Assert(uuid, check.Not(check.DeepEquals), "")
-	c.Assert(uuid, check.DeepEquals, app.UUID)
-	var storedApp appTypes.App
-	err = collection.FindOne(context.TODO(), mongoBSON.M{"name": app.Name}).Decode(&storedApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(storedApp.UUID, check.Not(check.DeepEquals), "")
-	c.Assert(storedApp.UUID, check.DeepEquals, uuid)
 }
 
 func (s *S) TestInternalAddresses(c *check.C) {

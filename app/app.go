@@ -21,7 +21,6 @@ import (
 	"sync"
 	"text/template"
 
-	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -1386,26 +1385,6 @@ func Stop(ctx context.Context, app *appTypes.App, w io.Writer, process, versionS
 		return err
 	}
 	return nil
-}
-
-func EnsureUUID(ctx context.Context, app *appTypes.App) (string, error) {
-	if app.UUID != "" {
-		return app.UUID, nil
-	}
-	uuidV4, err := uuid.NewV4()
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to generate uuid v4")
-	}
-	collection, err := storagev2.AppsCollection()
-	if err != nil {
-		return "", err
-	}
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"uuid": uuidV4.String()}})
-	if err != nil {
-		return "", err
-	}
-	app.UUID = uuidV4.String()
-	return app.UUID, nil
 }
 
 func GetAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {

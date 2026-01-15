@@ -8,8 +8,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
-	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/router"
@@ -65,18 +63,6 @@ func (m *MockAppService) GetInternalBindableAddresses(ctx context.Context, app *
 		return m.OnGetInternalBindableAddresses(app)
 	}
 	return nil, errors.New("MockAppService.GetInternalBindableAddresses is not implemented")
-}
-
-func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, error) {
-	if app.UUID != "" {
-		return app.UUID, nil
-	}
-	uuidV4, err := uuid.NewRandom()
-	if err != nil {
-		return "", pkgErrors.WithMessage(err, "failed to generate uuid v4")
-	}
-	app.UUID = uuidV4.String()
-	return app.UUID, nil
 }
 
 func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
