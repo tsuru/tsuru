@@ -68,14 +68,6 @@ api-doc: _install_api_doc
 check-api-doc: _install_api_doc
 	@exit $$(tsuru-api-docs | grep missing | wc -l)
 
-doc-deps:
-	@pip install -r requirements.txt
-
-doc: doc-deps
-	@cd docs && make html SPHINXOPTS="-N -W"
-
-docs: doc
-
 release:
 	@if [ ! $(version) ]; then \
 		echo "version parameter is required... use: make release version=<value>"; \
@@ -92,8 +84,6 @@ release:
 
 	@echo "Releasing tsuru $(version) version."
 	@echo "Replacing version string."
-	@$(SED) -i "s/release = '.*'/release = '$(version)'/g" docs/conf.py
-	@$(SED) -i "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
 	@$(SED) -i 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
 	@$(SED) -i 's/version: ".*"/version: "$(MINOR)"/' docs/reference/api.yaml
 
