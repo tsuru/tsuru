@@ -3950,6 +3950,92 @@ paths:
       security:
       - Bearer: []
 
+  /1.1/events:
+    get:
+      operationId: EventList
+      produces:
+      - application/json
+      parameters:
+      - name: target.type
+        in: query
+        type: string
+        description: Filter by target type
+      - name: target.value
+        in: query
+        type: string
+        description: Filter by target value
+      - name: kindType
+        in: query
+        type: string
+        description: Filter by kind type
+      - name: kindNames
+        in: query
+        type: array
+        items:
+          type: string
+        collectionFormat: multi
+        description: Filter by kind names
+      - name: ownerType
+        in: query
+        type: string
+        description: Filter by owner type
+      - name: ownerName
+        in: query
+        type: string
+        description: Filter by owner name
+      - name: since
+        in: query
+        type: string
+        format: date-time
+        description: Filter events since this date
+      - name: until
+        in: query
+        type: string
+        format: date-time
+        description: Filter events until this date
+      - name: running
+        in: query
+        type: boolean
+        description: Filter by running status
+      - name: errorOnly
+        in: query
+        type: boolean
+        description: Filter only events with errors
+      - name: limit
+        in: query
+        type: integer
+        description: Limit number of results
+      - name: skip
+        in: query
+        type: integer
+        description: Skip number of results
+      - name: sort
+        in: query
+        type: string
+        description: Sort order
+
+      responses:
+        "200":
+          description: Event list.
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/Event"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team token not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+
+      tags:
+      - event
+      security:
+      - Bearer: []
+
   /1.1/events/{eventid}:
     get:
       operationId: EventInfo
