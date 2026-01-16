@@ -14,8 +14,8 @@ With tsuru, you don’t need to think about servers at all. As an application de
 Links:
 
 - Landing page: https://tsuru.io
-- Full Documentation: https://docs.tsuru.io/main/
-- How to Contribute: https://docs.tsuru.io/stable/contributing/
+- Full Documentation: https://docs.tsuru.io/
+- How to Contribute: https://docs.tsuru.io/contributing/docker-compose/
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
 - Talk to us on Gitter: https://gitter.im/tsuru/tsuru
 
@@ -70,7 +70,7 @@ Before starting, make sure you have the following tools installed:
 * [go](https://go.dev/dl/)
 * [yq](https://github.com/mikefarah/yq#install)
 
-You'll also need the [Tsuru Client](https://docs.tsuru.io/stable/using/install-client.html) to interact with the Tsuru API.
+You'll also need the [Tsuru Client](https://docs.tsuru.io/user_guides/install_client/) to interact with the Tsuru API.
 If you haven't installed it yet, please do so.
 
 **For macOS users**: We recommend using the **_qemu_** driver with **_socket_vmnet_** for Minikube clusters.
