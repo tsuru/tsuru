@@ -16,7 +16,10 @@ func main() {
 	})
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "5000"
+		port = os.Getenv("PORT_web")
+	}
+	if port == "" {
+		port = "8888"
 	}
 
 	http.ListenAndServe(fmt.Sprintf(":%s", port), nil)

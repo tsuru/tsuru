@@ -7,18 +7,13 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sort"
-	"sync/atomic"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
 	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
@@ -47,94 +42,6 @@ func (s *S) TestGetService(c *check.C) {
 func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 	_, err := Get(context.TODO(), "anything")
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestGetServiceBrokered(c *check.C) {
-	var calls int32
-	s.mockService.ServiceBroker.OnFind = func(brokerName string) (serviceTypes.Broker, error) {
-		atomic.AddInt32(&calls, 1)
-		c.Assert(brokerName, check.Equals, "aws")
-		return serviceTypes.Broker{Name: brokerName}, nil
-	}
-	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-		atomic.AddInt32(&calls, 1)
-		c.Assert(brokerName, check.Equals, "aws")
-		return nil, nil
-	}
-	s.mockService.ServiceBrokerCatalogCache.OnSave = func(brokerName string, catalog serviceTypes.BrokerCatalog) error {
-		atomic.AddInt32(&calls, 1)
-		c.Assert(brokerName, check.Equals, "aws")
-		c.Assert(catalog.Services, check.HasLen, 2)
-		c.Assert(catalog.Services[0].Name, check.Equals, "otherservice")
-		c.Assert(catalog.Services[1].Name, check.Equals, "service")
-		c.Assert(catalog.Services[1].Description, check.Equals, "This service is awesome!")
-		return nil
-	}
-	config := osbfake.FakeClientConfiguration{
-		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
-			Services: []osb.Service{
-				{Name: "otherservice"},
-				{Name: "service", Description: "This service is awesome!"},
-			},
-		}},
-	}
-	ClientFactory = osbfake.NewFakeClientFunc(config)
-	serv, err := Get(context.TODO(), "aws::service")
-	c.Assert(err, check.IsNil)
-	c.Assert(serv, check.DeepEquals, Service{
-		Name: "aws::service",
-		Doc:  "This service is awesome!",
-	})
-	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(3))
-}
-
-func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
-	s.mockService.ServiceBroker.OnFind = func(brokerName string) (serviceTypes.Broker, error) {
-		c.Assert(brokerName, check.Equals, "aws")
-		return serviceTypes.Broker{Name: brokerName}, nil
-	}
-	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-		c.Assert(brokerName, check.Equals, "aws")
-		return &serviceTypes.BrokerCatalog{
-			Services: []serviceTypes.BrokerService{
-				{
-					ID:          "123",
-					Name:        "service",
-					Description: "cached service",
-				},
-			},
-		}, nil
-	}
-	serv, err := Get(context.TODO(), "aws::service")
-	c.Assert(err, check.IsNil)
-	c.Assert(serv, check.DeepEquals, Service{
-		Name: "aws::service",
-		Doc:  "cached service",
-	})
-}
-
-func (s *S) TestGetServiceBrokeredServiceBrokerNotFound(c *check.C) {
-	s.mockService.ServiceBroker.OnFind = func(brokerName string) (serviceTypes.Broker, error) {
-		c.Assert(brokerName, check.Equals, "broker")
-		return serviceTypes.Broker{}, serviceTypes.ErrServiceBrokerNotFound
-	}
-	serv, err := Get(context.TODO(), "broker::service")
-	c.Assert(err, check.DeepEquals, serviceTypes.ErrServiceBrokerNotFound)
-	c.Assert(serv, check.DeepEquals, Service{})
-}
-
-func (s *S) TestGetServiceBrokeredServiceNotFound(c *check.C) {
-	config := osbfake.FakeClientConfiguration{
-		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{}},
-	}
-	ClientFactory = osbfake.NewFakeClientFunc(config)
-	sb, err := BrokerService()
-	c.Assert(err, check.IsNil)
-	err = sb.Create(context.TODO(), serviceTypes.Broker{Name: "aws"})
-	c.Assert(err, check.IsNil)
-	serv, err := Get(context.TODO(), "aws::service")
-	c.Assert(err, check.DeepEquals, ErrServiceNotFound)
-	c.Assert(serv, check.DeepEquals, Service{})
 }
 
 func (s *S) TestCreateService(c *check.C) {
@@ -410,104 +317,6 @@ func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
 	service := Service{Name: "something", Password: "abcde", Endpoint: map[string]string{"production": "url"}}
 	err := Update(context.TODO(), service)
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestGetServicesNoCache(c *check.C) {
-	var calls int32
-	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-		atomic.AddInt32(&calls, 1)
-		c.Assert(brokerName, check.Equals, "aws")
-		return nil, fmt.Errorf("not found")
-	}
-	s.mockService.ServiceBrokerCatalogCache.OnSave = func(brokerName string, catalog serviceTypes.BrokerCatalog) error {
-		atomic.AddInt32(&calls, 1)
-		c.Assert(brokerName, check.Equals, "aws")
-		c.Assert(catalog.Services, check.HasLen, 2)
-		return nil
-	}
-	s.createService(c)
-	sb, err := BrokerService()
-	c.Assert(err, check.IsNil)
-	err = sb.Create(context.TODO(), serviceTypes.Broker{Name: "aws"})
-	c.Assert(err, check.IsNil)
-	config := osbfake.FakeClientConfiguration{
-		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
-			Services: []osb.Service{
-				{Name: "otherservice"},
-				{Name: "service", Description: "This service is awesome!"},
-			},
-		}},
-	}
-	ClientFactory = osbfake.NewFakeClientFunc(config)
-	services, err := GetServices(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(services, check.DeepEquals, []Service{
-		{
-			Name:     "my-service",
-			Password: "my-password",
-			Endpoint: map[string]string{
-				"production": "http://localhost:8080",
-			},
-			OwnerTeams: []string{"admin"},
-			Teams:      []string{},
-		},
-		{
-			Name:       "aws::otherservice",
-			Teams:      []string(nil),
-			OwnerTeams: []string(nil),
-		},
-		{
-			Name:       "aws::service",
-			Doc:        "This service is awesome!",
-			Teams:      []string(nil),
-			OwnerTeams: []string(nil),
-		},
-	})
-	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
-}
-
-func (s *S) TestGetServicesFromCache(c *check.C) {
-	var calls int32
-	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-		atomic.AddInt32(&calls, 1)
-		c.Assert(brokerName, check.Equals, "aws")
-		return &serviceTypes.BrokerCatalog{
-			Services: []serviceTypes.BrokerService{
-				{Name: "otherservice"},
-				{Name: "service", Description: "service loaded from cache"},
-			},
-		}, nil
-	}
-	s.createService(c)
-	sb, err := BrokerService()
-	c.Assert(err, check.IsNil)
-	err = sb.Create(context.TODO(), serviceTypes.Broker{Name: "aws"})
-	c.Assert(err, check.IsNil)
-	services, err := GetServices(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(services, check.DeepEquals, []Service{
-		{
-			Name:     "my-service",
-			Password: "my-password",
-			Endpoint: map[string]string{
-				"production": "http://localhost:8080",
-			},
-			OwnerTeams: []string{"admin"},
-			Teams:      []string{},
-		},
-		{
-			Name:       "aws::otherservice",
-			Teams:      []string(nil),
-			OwnerTeams: []string(nil),
-		},
-		{
-			Name:       "aws::service",
-			Doc:        "service loaded from cache",
-			Teams:      []string(nil),
-			OwnerTeams: []string(nil),
-		},
-	})
-	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(1))
 }
 
 func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {

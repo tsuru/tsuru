@@ -97,12 +97,6 @@ func NewFakeAppWithPool(name, platform, pool string, units int) *appTypes.App {
 	return &app
 }
 
-type Cmd struct {
-	Cmd  string
-	Args []string
-	App  *appTypes.App
-}
-
 type failure struct {
 	method string
 	err    error
@@ -659,6 +653,7 @@ func (p *FakeProvisioner) DeleteVolume(ctx context.Context, volName, pool string
 func (p *FakeProvisioner) ValidateVolume(ctx context.Context, vol *volumeTypes.Volume) error {
 	return nil
 }
+
 func (p *FakeProvisioner) IsVolumeProvisioned(ctx context.Context, name, pool string) (bool, error) {
 	return false, nil
 }
@@ -677,33 +672,36 @@ func (p *FakeProvisioner) UpdateApp(ctx context.Context, old, new *appTypes.App,
 func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a *appTypes.App) ([]appTypes.AppInternalAddress, error) {
 	return []appTypes.AppInternalAddress{
 		{
-			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.Name),
-			Port:     80,
-			Protocol: "TCP",
-			Process:  "web",
+			Domain:     fmt.Sprintf("%s-web.fake-cluster.local", a.Name),
+			Port:       80,
+			TargetPort: 8080,
+			Protocol:   "TCP",
+			Process:    "web",
 		},
 		{
-			Domain:   fmt.Sprintf("%s-logs.fake-cluster.local", a.Name),
-			Port:     12201,
-			Protocol: "UDP",
-			Process:  "logs",
+			Domain:     fmt.Sprintf("%s-logs.fake-cluster.local", a.Name),
+			Port:       12201,
+			TargetPort: 12201,
+			Protocol:   "UDP",
+			Process:    "logs",
 		},
 		{
-			Domain:   fmt.Sprintf("%s-logs-v2.fake-cluster.local", a.Name),
-			Port:     12201,
-			Protocol: "UDP",
-			Process:  "logs",
-			Version:  "2",
+			Domain:     fmt.Sprintf("%s-logs-v2.fake-cluster.local", a.Name),
+			Port:       12201,
+			TargetPort: 12201,
+			Protocol:   "UDP",
+			Process:    "logs",
+			Version:    "2",
 		},
 		{
-			Domain:   fmt.Sprintf("%s-web-v2.fake-cluster.local", a.Name),
-			Port:     80,
-			Protocol: "TCP",
-			Process:  "web",
-			Version:  "2",
+			Domain:     fmt.Sprintf("%s-web-v2.fake-cluster.local", a.Name),
+			Port:       80,
+			TargetPort: 8080,
+			Protocol:   "TCP",
+			Process:    "web",
+			Version:    "2",
 		},
 	}, nil
-
 }
 
 func (p *FakeProvisioner) ListLogs(ctx context.Context, obj *logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
@@ -750,24 +748,6 @@ func (p *PipelineFakeProvisioner) DeployPipeline() *action.Pipeline {
 		Forward: func(ctx action.FWContext) (action.Result, error) {
 			p.executedPipeline = true
 			return nil, nil
-		},
-		Backward: func(ctx action.BWContext) {
-		},
-	}
-	actions := []*action.Action{&act}
-	pipeline := action.NewPipeline(actions...)
-	return pipeline
-}
-
-type PipelineErrorFakeProvisioner struct {
-	*FakeProvisioner
-}
-
-func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
-	act := action.Action{
-		Name: "error-pipeline",
-		Forward: func(ctx action.FWContext) (action.Result, error) {
-			return nil, errors.New("deploy error")
 		},
 		Backward: func(ctx action.BWContext) {
 		},
@@ -825,6 +805,14 @@ func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.A
 		p.autoscales = make(map[string][]provTypes.AutoScaleSpec)
 	}
 	p.autoscales[app.Name] = append(p.autoscales[app.Name], spec)
+	return nil
+}
+
+func (p *AutoScaleProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error {
+	version, _ := strconv.Atoi(versionStr)
+	for i := range p.autoscales[a.Name] {
+		p.autoscales[a.Name][i].Version = version
+	}
 	return nil
 }
 

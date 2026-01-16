@@ -403,6 +403,11 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		}
 	}
 
+	err = evt.SetCancelable(ctx, false)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to set event as non-cancelable")
+	}
+
 	return deployer.Deploy(ctx, provision.DeployArgs{
 		App:              opts.App,
 		Version:          version,
@@ -437,7 +442,6 @@ func builderDeploy(ctx context.Context, opts *DeployOptions, evt *event.Event) (
 	}
 
 	return version, nil
-
 }
 
 func ValidateOrigin(origin string) bool {

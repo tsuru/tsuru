@@ -8,8 +8,6 @@ import (
 	"context"
 	"errors"
 
-	uuid "github.com/nu7hatch/gouuid"
-	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/router"
@@ -67,18 +65,6 @@ func (m *MockAppService) GetInternalBindableAddresses(ctx context.Context, app *
 	return nil, errors.New("MockAppService.GetInternalBindableAddresses is not implemented")
 }
 
-func (m *MockAppService) EnsureUUID(ctx context.Context, app *App) (string, error) {
-	if app.UUID != "" {
-		return app.UUID, nil
-	}
-	uuidV4, err := uuid.NewV4()
-	if err != nil {
-		return "", pkgErrors.WithMessage(err, "failed to generate uuid v4")
-	}
-	app.UUID = uuidV4.String()
-	return app.UUID, nil
-}
-
 func (m *MockAppService) GetRegistry(ctx context.Context, app *App) (image.ImageRegistry, error) {
 	if m.OnRegistry == nil {
 		return "", nil
@@ -92,8 +78,8 @@ func (m *MockAppService) AddInstance(ctx context.Context, app *App, addArgs bind
 	}
 
 	return errors.New("MockAppService.AddInstance is not implemented")
-
 }
+
 func (m *MockAppService) RemoveInstance(ctx context.Context, app *App, removeArgs bind.RemoveInstanceArgs) error {
 	if m.OnRemoveInstance != nil {
 		return m.OnRemoveInstance(app, removeArgs)

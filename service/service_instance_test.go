@@ -7,6 +7,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -35,6 +36,7 @@ import (
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	check "gopkg.in/check.v1"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type InstanceSuite struct {
@@ -1096,6 +1098,76 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 			Addresses:   []string{"https://my-kubernetes.example.com"},
 			Provisioner: "kubernetes",
 			Pools:       []string{"my-pool"},
+		}, nil
+	}
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{"multicluster-service"}, nil
+	}
+	srv := Service{
+		Name:           "multicluster-service",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Username:       "user",
+		Password:       "password",
+		IsMultiCluster: true,
+	}
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "instance",
+		TeamOwner: s.team.Name,
+		Pool:      "my-pool",
+	}
+	err = CreateServiceInstance(context.TODO(), instance, &srv, createEvt(c), "")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.Equals, int32(1))
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWithKubeConfig(c *check.C) {
+	var requests int32
+
+	kubeConfig := &provTypes.KubeConfig{
+		Cluster: clientcmdapi.Cluster{
+			Server: "https://mycluster-from-kubeconfig.com",
+		},
+		AuthInfo: clientcmdapi.AuthInfo{
+			Token: "my-token-from-kubeconfig",
+		},
+	}
+
+	kubeConfigJSON, err := json.Marshal(kubeConfig)
+	c.Assert(err, check.IsNil)
+	kubeConfigBase64 := base64.StdEncoding.EncodeToString(kubeConfigJSON)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header["X-Tsuru-Pool-Name"], check.DeepEquals, []string{"my-pool"})
+		c.Assert(r.Header["X-Tsuru-Pool-Provisioner"], check.DeepEquals, []string{"kubernetes"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Name"], check.DeepEquals, []string{"cluster-name"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Provisioner"], check.DeepEquals, []string{"kubernetes"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Addresses"], check.DeepEquals, []string{"https://my-kubernetes.example.com"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Kube-Config"], check.DeepEquals, []string{kubeConfigBase64})
+
+		atomic.AddInt32(&requests, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{
+			Name:        "my-pool",
+			Provisioner: "kubernetes",
+		}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, name string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name:        "cluster-name",
+			Addresses:   []string{"https://my-kubernetes.example.com"},
+			Provisioner: "kubernetes",
+			Pools:       []string{"my-pool"},
+			CustomData: map[string]string{
+				"propagate-kubeconfig": "true",
+			},
+			KubeConfig: kubeConfig,
 		}, nil
 	}
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {

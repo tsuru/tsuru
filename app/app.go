@@ -21,7 +21,6 @@ import (
 	"sync"
 	"text/template"
 
-	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -149,7 +148,6 @@ func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) 
 		Pool:        app.Pool,
 		Deploys:     app.Deploys,
 		TeamOwner:   app.TeamOwner,
-		Lock:        app.Lock,
 		Tags:        app.Tags,
 		Metadata:    app.Metadata,
 	}
@@ -933,11 +931,6 @@ func KillUnit(ctx context.Context, app *appTypes.App, unitName string, force boo
 	return unitProv.KillUnit(ctx, app, unitName, force)
 }
 
-type UpdateUnitsResult struct {
-	ID    string
-	Found bool
-}
-
 // available returns true if at least one of N units is started or unreachable.
 func available(ctx context.Context, app *appTypes.App) bool {
 	units, err := AppUnits(ctx, app)
@@ -1002,12 +995,6 @@ func Revoke(ctx context.Context, app *appTypes.App, team *authTypes.Team) error 
 		return err
 	}
 	return nil
-}
-
-// GetTeams returns a slice of teams that have access to the app.
-func GetTeams(ctx context.Context, app *appTypes.App) []authTypes.Team {
-	t, _ := servicemanager.Team.FindByNames(ctx, app.Teams)
-	return t
 }
 
 func SetPool(ctx context.Context, app *appTypes.App) error {
@@ -1400,26 +1387,6 @@ func Stop(ctx context.Context, app *appTypes.App, w io.Writer, process, versionS
 	return nil
 }
 
-func EnsureUUID(ctx context.Context, app *appTypes.App) (string, error) {
-	if app.UUID != "" {
-		return app.UUID, nil
-	}
-	uuidV4, err := uuid.NewV4()
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to generate uuid v4")
-	}
-	collection, err := storagev2.AppsCollection()
-	if err != nil {
-		return "", err
-	}
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{"$set": mongoBSON.M{"uuid": uuidV4.String()}})
-	if err != nil {
-		return "", err
-	}
-	app.UUID = uuidV4.String()
-	return app.UUID, nil
-}
-
 func GetAddresses(ctx context.Context, app *appTypes.App) ([]string, error) {
 	routers, err := GetRoutersWithAddr(ctx, app)
 	if err != nil {
@@ -1732,7 +1699,6 @@ type Filter struct {
 	Pool        string
 	Pools       []string
 	Statuses    []string
-	Locked      bool
 	Tags        []string
 	Extra       map[string][]string
 }
@@ -1796,9 +1762,6 @@ func (f *Filter) Query() mongoBSON.M {
 	}
 	if f.Pool != "" {
 		query["pool"] = f.Pool
-	}
-	if f.Locked {
-		query["lock.locked"] = true
 	}
 	if len(f.Pools) > 0 {
 		query["pool"] = mongoBSON.M{"$in": f.Pools}
@@ -2374,14 +2337,6 @@ func GetCertificates(ctx context.Context, app *appTypes.App) (*appTypes.Certific
 	return certificateSet, nil
 }
 
-func RoutableAddresses(ctx context.Context, app *appTypes.App) ([]appTypes.RoutableAddresses, error) {
-	prov, err := getProvisioner(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	return prov.RoutableAddresses(ctx, app)
-}
-
 func withLogWriter(app *appTypes.App, w io.Writer) io.Writer {
 	logWriter := &LogWriter{AppName: app.Name}
 	if w != nil {
@@ -2614,6 +2569,19 @@ func RemoveAutoScale(ctx context.Context, app *appTypes.App, process string) err
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
 	return autoscaleProv.RemoveAutoScale(ctx, app, process)
+}
+
+func SwapAutoScale(ctx context.Context, app *appTypes.App, versionStr string) error {
+	prov, err := getProvisioner(ctx, app)
+	if err != nil {
+		return err
+	}
+	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+	if !ok {
+		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
+	}
+
+	return autoscaleProv.SwapAutoScale(ctx, app, versionStr)
 }
 
 func envInSet(envName string, envs []bindTypes.EnvVar) bool {

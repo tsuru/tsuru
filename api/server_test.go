@@ -136,8 +136,6 @@ func (s *S) TestCreateServersHTTPOnly(c *check.C) {
 	port, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Set("listen", "0.0.0.0:"+port)
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queuedb")
 	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 
@@ -155,8 +153,6 @@ func (s *S) TestCreateServersHTTPSOnly(c *check.C) {
 	port, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Set("listen", "0.0.0.0:"+port)
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queuedb")
 	config.Set("use-tls", true)
 	config.Set("tls:cert-file", "./testdata/cert.pem")
 	config.Set("tls:key-file", "./testdata/key.pem")
@@ -178,8 +174,6 @@ func (s *S) TestCreateServersHTTPSOnlyWithTlsListenConfig(c *check.C) {
 	port, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Unset("listen")
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queuedb")
 	config.Set("use-tls", true)
 	config.Set("tls:listen", "0.0.0.0:"+port)
 	config.Set("tls:cert-file", "./testdata/cert.pem")
@@ -204,8 +198,6 @@ func (s *S) TestCreateServersHTTPAndHTTPS(c *check.C) {
 	httpsPort, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Set("listen", "0.0.0.0:"+httpPort)
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queuedb")
 	config.Set("use-tls", true)
 	config.Set("tls:listen", "0.0.0.0:"+httpsPort)
 	config.Set("tls:cert-file", "./testdata/cert.pem")
@@ -397,7 +389,6 @@ type encodedCertificate struct {
 func generateTLSCertificate() (cert *tls.Certificate, raw *encodedCertificate, err error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := cryptoRand.Int(cryptoRand.Reader, serialNumberLimit)
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -415,13 +406,11 @@ func generateTLSCertificate() (cert *tls.Certificate, raw *encodedCertificate, e
 	}
 
 	privateKey, err := rsa.GenerateKey(cryptoRand.Reader, 1024)
-
 	if err != nil {
 		return nil, nil, err
 	}
 
 	derBytes, err := x509.CreateCertificate(cryptoRand.Reader, &template, &template, privateKey.Public(), privateKey)
-
 	if err != nil {
 		return nil, nil, err
 	}

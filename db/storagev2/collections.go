@@ -92,10 +92,6 @@ func DynamicRoutersCollection() (*mongo.Collection, error) {
 	return Collection("dynamic_routers")
 }
 
-func ServiceBrokerCollection() (*mongo.Collection, error) {
-	return Collection("service_broker")
-}
-
 func ProvisionerClustersCollection() (*mongo.Collection, error) {
 	return Collection("provisioner_clusters")
 }

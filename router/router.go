@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -295,10 +294,4 @@ func legacyConfigToPlanRouter(name string) router.PlanRouter {
 		ReadinessGates: readinessGates,
 		Default:        defaultFlag,
 	}
-}
-
-// validCName returns true if the cname is not a subdomain of
-// the router current domain, false otherwise.
-func ValidCName(cname, domain string) bool {
-	return !strings.HasSuffix(cname, domain)
 }

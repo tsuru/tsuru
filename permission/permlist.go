@@ -23,6 +23,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.unit.remove",
 	"app.update.unit.kill",
 	"app.update.unit.autoscale.add",
+	"app.update.unit.autoscale.swap",
 	"app.update.unit.autoscale.remove",
 	"app.update.env.set",
 	"app.update.env.unset",
@@ -122,11 +123,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service.update.grant-access",
 	"service.update.doc",
 	"service.delete",
-	"service-broker.read",
-	"service-broker.read.events",
-	"service-broker.create",
-	"service-broker.delete",
-	"service-broker.update",
 ).addWithCtx(
 	"service-instance", []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxTeam},
 ).addWithCtx(

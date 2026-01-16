@@ -341,8 +341,12 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 
 	actions := []*action.Action{
 		&jobUpdateDB,
-		&updateJobProv,
 	}
+
+	if shouldUpdateJobProvision(newJob) {
+		actions = append(actions, &updateJobProv)
+	}
+
 	return action.NewPipeline(actions...).Execute(ctx, newJob, user)
 }
 

@@ -39,12 +39,6 @@ func (a *appService) GetInternalBindableAddresses(ctx context.Context, app *appT
 	return GetInternalBindableAddresses(ctx, app)
 }
 
-// GetUUID returns the app v4 UUID. An UUID will be generated
-// if it does not exist.
-func (a *appService) EnsureUUID(ctx context.Context, app *appTypes.App) (string, error) {
-	return EnsureUUID(ctx, app)
-}
-
 func (a *appService) List(ctx context.Context, filter *appTypes.Filter) ([]*appTypes.App, error) {
 	var f *Filter
 	if filter != nil {

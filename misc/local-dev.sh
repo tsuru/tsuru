@@ -188,7 +188,10 @@ exec_setup_tsuru_cluster() {
         --custom "registry-insecure=true" \
         --custom "build-service-address=dns:///${tsuru_host_ip}:8000" \
         --custom "build-service-tls=false" \
+        --custom "disable-default-node-selector=true" \
         --default
+
+    tsuru --target=local-dev pool add my-cluster --default
 }
 
 exec_render_templates() {

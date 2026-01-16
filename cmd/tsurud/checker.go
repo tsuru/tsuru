@@ -34,34 +34,12 @@ func checkProvisioner() error {
 	return nil
 }
 
-func checkBeanstalkd() error {
-	if value, _ := config.Get("queue"); value == "beanstalkd" {
-		return errors.New("beanstalkd is no longer supported, please use redis instead")
-	}
-	if _, err := config.Get("queue-server"); err == nil {
-		return errors.New(`beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
-	}
-	return nil
-}
-
-func checkQueue() error {
-	queueConfig, _ := config.GetString("queue:mongo-url")
-	if queueConfig == "" {
-		return config.NewWarning(`Config entry "queue:mongo-url" is not set, default "localhost" will be used. Running "tsuru docker-node-{add,remove}" commands might not work.`)
-	}
-	return nil
-}
-
 // Check Docker configs
 func checkDocker() error {
 	if _, err := config.Get("docker"); err != nil {
 		return errors.New("Config error: you should configure docker.")
 	}
 	err := checkDockerBasicConfig()
-	if err != nil {
-		return err
-	}
-	err = checkScheduler()
 	if err != nil {
 		return err
 	}
@@ -84,23 +62,6 @@ func checkCluster() error {
 	for _, value := range mustHave {
 		if _, err := config.Get(value); err != nil {
 			return errors.Errorf("Config error: you should configure %q", value)
-		}
-	}
-	return nil
-}
-
-// Check Schedulers
-// It verifies your scheduler configuration and validates related confs.
-func checkScheduler() error {
-	if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
-		return errors.Errorf(`Using docker:servers is deprecated, please remove it your config and use "tsuru docker-node-add" do add docker nodes.`)
-	}
-	isSegregate, err := config.GetBool("docker:segregate")
-	if err == nil {
-		if isSegregate {
-			return config.NewWarning(`Setting "docker:segregate" is not necessary anymore, this is the default behavior from now on.`)
-		} else {
-			return errors.Errorf(`You must remove "docker:segregate" from your config.`)
 		}
 	}
 	return nil

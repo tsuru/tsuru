@@ -6,7 +6,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -45,7 +44,6 @@ type S struct {
 	provisioner *provisiontest.FakeProvisioner
 	builder     *builder.MockBuilder
 	Pool        string
-	zeroLock    map[string]interface{}
 	mockService servicemock.MockService
 }
 
@@ -108,10 +106,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
-	data, err := json.Marshal(appTypes.AppLock{})
-	c.Assert(err, check.IsNil)
-	err = json.Unmarshal(data, &s.zeroLock)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

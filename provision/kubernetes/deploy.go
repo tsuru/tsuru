@@ -15,6 +15,7 @@ import (
 	"io"
 	"maps"
 	"net"
+	"net/http"
 	"net/url"
 	"reflect"
 	"sort"
@@ -74,11 +75,26 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	if err != nil {
 		return nil, err
 	}
-	upgradeRoundTripper := spdy.NewRoundTripper(tlsConfig)
+
+	proxy := http.ProxyFromEnvironment
+	if config.Proxy != nil {
+		proxy = config.Proxy
+	}
+
+	upgradeRoundTripper, err := spdy.NewRoundTripperWithConfig(spdy.RoundTripperConfig{
+		TLS:        tlsConfig,
+		Proxier:    proxy,
+		PingPeriod: 5 * time.Second,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	upgradeRoundTripper.Dialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 10 * time.Second,
 	}
+
 	wrapper, err := rest.HTTPWrappersForConfig(config, upgradeRoundTripper)
 	if err != nil {
 		return nil, err
@@ -1958,47 +1974,29 @@ func extractPortNumberAndProtocol(port string) (int, string, error) {
 }
 
 func getProcessPortsForVersion(version appTypes.AppVersion, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
-	portConfigFound := false
 	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
 	tsuruYamlData, err := version.TsuruYamlData()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if tsuruYamlData.Kubernetes != nil {
-		for _, group := range tsuruYamlData.Kubernetes.Groups {
-			for podName, podConfig := range group {
-				if podName == process {
-					if portConfigFound {
-						return nil, fmt.Errorf("duplicated process name: %s", podName)
-					}
-					portConfigFound = true
-					ports = podConfig.Ports
-					for i := range ports {
-						if len(ports[i].Protocol) == 0 {
-							ports[i].Protocol = string(apiv1.ProtocolTCP)
-						} else {
-							ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
-						}
-						if len(ports[i].Name) == 0 {
-							prefix := defaultHttpPortName
-							if ports[i].Protocol == string(apiv1.ProtocolUDP) {
-								prefix = defaultUdpPortName
-							}
-							ports[i].Name = fmt.Sprintf("%s-%d", prefix, i+1)
-						}
-						if ports[i].TargetPort > 0 && ports[i].Port == 0 {
-							ports[i].Port = ports[i].TargetPort
-						} else if ports[i].Port > 0 && ports[i].TargetPort == 0 {
-							ports[i].TargetPort = ports[i].Port
-						}
-					}
-					break
-				}
-			}
-		}
+
+	found, ports, err := getPortsFromProcessesByProcessName(tsuruYamlData.Processes, process)
+	if err != nil {
+		return nil, err
 	}
-	if portConfigFound {
+	if found {
 		return ports, nil
+	}
+
+	if tsuruYamlData.Kubernetes != nil {
+		var found bool
+		found, ports, err = getPortsFromTsuruYamlKubernetesByProcessName(tsuruYamlData.Kubernetes, process)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			return ports, nil
+		}
 	}
 
 	defaultPort := defaultKubernetesPodPortConfig()
@@ -2026,6 +2024,79 @@ func getProcessPortsForVersion(version appTypes.AppVersion, process string) ([]p
 		ports = append(ports, defaultPort)
 	}
 	return ports, nil
+}
+
+func getPortsFromProcessesByProcessName(processes []provTypes.TsuruYamlProcess, processName string) (bool, []provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
+	portConfigFound := false
+
+	for _, process := range processes {
+		if process.Name != processName {
+			continue
+		}
+		if portConfigFound {
+			return false, nil, fmt.Errorf("duplicated process name: %s", processName)
+		}
+		// Only treat as port config found if Ports field has actual port configurations
+		// Skip if nil or empty - let it fall through to default port logic
+		if len(process.Ports) == 0 {
+			continue
+		}
+		portConfigFound = true
+		applyPortDefaults(process.Ports)
+		ports = process.Ports
+	}
+
+	return portConfigFound, ports, nil
+}
+
+func getPortsFromTsuruYamlKubernetesByProcessName(kubernetes *provTypes.TsuruYamlKubernetesConfig, process string) (bool, []provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
+	portConfigFound := false
+
+	for _, group := range kubernetes.Groups {
+		for podName, podConfig := range group {
+			if podName != process {
+				continue
+			}
+			if portConfigFound {
+				return false, nil, fmt.Errorf("duplicated process name: %s", podName)
+			}
+			// For old format: skip only if nil, preserve empty array for "no service" semantic
+			if podConfig.Ports == nil {
+				continue
+			}
+			portConfigFound = true
+			applyPortDefaults(podConfig.Ports)
+			ports = podConfig.Ports
+
+			break
+		}
+	}
+
+	return portConfigFound, ports, nil
+}
+
+func applyPortDefaults(ports []provTypes.TsuruYamlKubernetesProcessPortConfig) {
+	for i := range ports {
+		if len(ports[i].Protocol) == 0 {
+			ports[i].Protocol = string(apiv1.ProtocolTCP)
+		} else {
+			ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+		}
+		if len(ports[i].Name) == 0 {
+			prefix := defaultHttpPortName
+			if ports[i].Protocol == string(apiv1.ProtocolUDP) {
+				prefix = defaultUdpPortName
+			}
+			ports[i].Name = fmt.Sprintf("%s-%d", prefix, i+1)
+		}
+		if ports[i].TargetPort > 0 && ports[i].Port == 0 {
+			ports[i].Port = ports[i].TargetPort
+		} else if ports[i].Port > 0 && ports[i].TargetPort == 0 {
+			ports[i].TargetPort = ports[i].Port
+		}
+	}
 }
 
 func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortConfig {

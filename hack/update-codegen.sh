@@ -12,9 +12,10 @@ go mod download
 
 export GOPATH="$HOME/go"
 
-bash ~/go/pkg/mod/k8s.io/code-generator@${CODE_GENERATOR_VERSION}/generate-groups.sh all \
-  github.com/tsuru/tsuru/provision/kubernetes/pkg/client github.com/tsuru/tsuru/provision/kubernetes/pkg/apis \
-  tsuru:v1 \
-  --go-header-file ${SCRIPT_ROOT}/hack/boilerplate.go.txt
+source ~/go/pkg/mod/k8s.io/code-generator@${CODE_GENERATOR_VERSION}/kube_codegen.sh
+
+kube::codegen::gen_helpers \
+--boilerplate ${SCRIPT_ROOT}/hack/boilerplate.go.txt \
+${SCRIPT_ROOT}/provision/kubernetes/pkg/apis
 
 goimports -w ${SCRIPT_ROOT}/provision/kubernetes/pkg

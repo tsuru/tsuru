@@ -45,8 +45,8 @@ type prefixWriter struct {
 
 func (w *prefixWriter) Write(data []byte) (int, error) {
 	newData := bytes.TrimSpace(data)
-	newData = bytes.Replace(newData, []byte("\r"), []byte("\n"), -1)
-	newData = bytes.Replace(newData, []byte("\n"), []byte("\n"+w.prefix), -1)
+	newData = bytes.ReplaceAll(newData, []byte("\r"), []byte("\n"))
+	newData = bytes.ReplaceAll(newData, []byte("\n"), []byte("\n"+w.prefix))
 	newData = append([]byte(w.prefix), append(newData, '\n')...)
 	_, err := w.Writer.Write(newData)
 	return len(data), err
@@ -404,4 +404,44 @@ func (c *Command) Run(e *Environment) *Result {
 		res.SetError(err)
 	}
 	return res
+}
+
+type RetryOptions struct {
+	CheckResult func(r *Result) bool
+}
+
+func (c *Command) Retry(timeout time.Duration, env *Environment, options RetryOptions) (*Result, bool) {
+	res := new(Result)
+	fn := func() bool {
+		res = c.Run(env)
+		ok, reason := checkOk(res, nil)
+		if !ok {
+			fmt.Printf("DEBUG: Failed to run command: %s\n", reason)
+			return false
+		}
+		if options.CheckResult != nil {
+			return options.CheckResult(res)
+		}
+		return true
+	}
+	ok := retry(timeout, fn)
+	return res, ok
+}
+
+func retry(timeout time.Duration, fn func() bool) bool {
+	return retryWait(timeout, 5*time.Second, fn)
+}
+
+func retryWait(timeout, wait time.Duration, fn func() bool) bool {
+	timeoutTimer := time.After(timeout)
+	for {
+		if fn() {
+			return true
+		}
+		select {
+		case <-time.After(wait):
+		case <-timeoutTimer:
+			return false
+		}
+	}
 }

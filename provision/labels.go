@@ -602,24 +602,6 @@ func VolumeLabels(opts VolumeLabelsOpts) *LabelSet {
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
 
-type ImageBuildLabelsOpts struct {
-	Name         string
-	CustomLabels map[string]string
-	Prefix       string
-	IsBuild      bool
-}
-
-func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
-	labels := map[string]string{
-		labelIsTsuru: strconv.FormatBool(true),
-		LabelIsBuild: strconv.FormatBool(opts.IsBuild),
-	}
-	for k, v := range opts.CustomLabels {
-		labels[k] = v
-	}
-	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
-}
-
 type PDBLabelsOpts struct {
 	App     *appTypes.App
 	Prefix  string

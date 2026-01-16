@@ -145,10 +145,8 @@ var (
 	TargetTypePool            = TargetType("pool")
 	TargetTypeService         = TargetType("service")
 	TargetTypeServiceInstance = TargetType("service-instance")
-	TargetTypeServiceBroker   = TargetType("service-broker")
 	TargetTypeTeam            = TargetType("team")
 	TargetTypeUser            = TargetType("user")
-	TargetTypeIaas            = TargetType("iaas")
 	TargetTypeRole            = TargetType("role")
 	TargetTypePlatform        = TargetType("platform")
 	TargetTypePlan            = TargetType("plan")
@@ -184,8 +182,6 @@ func GetTargetType(t string) (TargetType, error) {
 		return TargetTypeTeam, nil
 	case "user":
 		return TargetTypeUser, nil
-	case "iaas":
-		return TargetTypeIaas, nil
 	case "role":
 		return TargetTypeRole, nil
 	case "platform":

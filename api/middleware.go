@@ -17,13 +17,14 @@ import (
 	"time"
 
 	"github.com/cezarsa/form"
-	uuid "github.com/nu7hatch/gouuid"
-	"github.com/opentracing/opentracing-go"
+	"github.com/codegangsta/negroni"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
+	"github.com/tsuru/tsuru/api/observability"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/peer"
@@ -34,6 +35,8 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -72,10 +75,10 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 
 	tokenValidateTotal.WithLabelValues(t.Engine()).Inc()
 
-	span := opentracing.SpanFromContext(r.Context())
+	span := trace.SpanFromContext(r.Context())
 
-	if span != nil {
-		span.SetTag("user.name", t.GetUserName())
+	if span != nil && span.IsRecording() {
+		span.SetAttributes(attribute.String("user.name", t.GetUserName()))
 	}
 	if q := r.URL.Query().Get(":app"); q != "" {
 		_, err = getAppFromContext(q, r)
@@ -155,7 +158,7 @@ func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next h
 	}
 	requestID := r.Header.Get(requestIDHeader)
 	if requestID == "" {
-		unparsedID, err := uuid.NewV4()
+		unparsedID, err := uuid.NewRandom()
 		if err != nil {
 			log.Errorf("unable to generate request id: %s", err)
 			next(w, r)
@@ -229,6 +232,13 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
 	h := context.GetDelayedHandler(r)
 	if h != nil {
+		defer func() {
+			if rw, ok := w.(negroni.ResponseWriter); ok {
+				observability.FinishSpan(r, rw.Status())
+			} else {
+				observability.FinishSpan(r, http.StatusOK)
+			}
+		}()
 		h.ServeHTTP(w, r)
 	}
 }

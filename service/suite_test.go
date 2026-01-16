@@ -6,7 +6,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -21,7 +20,6 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/bind"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
 
@@ -80,9 +78,6 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.mockService.Team.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
 		return []authTypes.Team{*s.team}, nil
-	}
-	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(_ string) (*serviceTypes.BrokerCatalog, error) {
-		return nil, fmt.Errorf("not found")
 	}
 	servicemanager.LogService = &appTypes.MockAppLogService{}
 	servicemanager.AppVersion, err = version.AppVersionService()

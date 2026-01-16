@@ -4,7 +4,7 @@ info:
   description: Open source, extensible and Docker-based Platform as a Service (PaaS)
   # Warning:
   # DO NOT UPDATE THIS FIELD MANUALLY. RUN "make release version=X.Z.Y" INSTEAD.
-  version: "1.27"
+  version: "1.29"
 schemes:
 - http
 - https
@@ -797,117 +797,6 @@ paths:
       security:
       - Bearer: []
 
-  /1.7/brokers:
-    get:
-      operationId: ServiceBrokerList
-      description: List service brokers
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List service brokers
-          schema:
-            $ref: "#/definitions/ServiceBrokerList"
-        "204":
-          description: No content
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-      tags:
-      - service
-      security:
-      - Bearer: []
-    post:
-      operationId: ServiceBrokerCreate
-      description: Create service broker
-      consumes:
-      - application/json
-      parameters:
-      - name: broker
-        required: true
-        in: body
-        schema:
-          $ref: "#/definitions/ServiceBroker"
-      responses:
-        "200":
-          description: Service Broker created.
-        "400":
-          description: Invalid data
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "401":
-          description: Unauthorized.
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "409":
-          description: Service Broker already exists.
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-      tags:
-      - service
-      security:
-      - Bearer: []
-  /1.7/brokers/{name}:
-    parameters:
-    - name: name
-      in: path
-      required: true
-      type: string
-      minLength: 1
-      description: Service Broker name.
-    delete:
-      operationId: ServiceBrokerDelete
-      responses:
-        "200":
-          description: Service Broker deleted.
-        "400":
-          description: Invalid data
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "401":
-          description: Unauthorized.
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "404":
-          description: Service Broker not found.
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-      tags:
-      - service
-      security:
-      - Bearer: []
-    put:
-      operationId: ServiceBrokerUpdate
-      description: Update service broker
-      consumes:
-      - application/json
-      parameters:
-      - name: broker
-        required: true
-        in: body
-        schema:
-          $ref: "#/definitions/ServiceBroker"
-      responses:
-        "200":
-          description: Service Broker updated.
-        "400":
-          description: Invalid data
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "401":
-          description: Unauthorized.
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "404":
-          description: Service Broker not found.
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-      tags:
-      - service
-      security:
-      - Bearer: []
-
   /1.0/plans:
     get:
       operationId: PlanList
@@ -990,10 +879,6 @@ paths:
       operationId: AppList
       description: List apps.
       parameters:
-      - name: locked
-        description: Filter applications by lock status.
-        in: query
-        type: boolean
       - name: name
         description: Filter applications by name.
         in: query
@@ -2287,6 +2172,45 @@ paths:
       responses:
         "200":
           description: AutoScale removed
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
+
+  /1.29/apps/{app}/units/autoscale/swap:
+    parameters:
+    - name: app
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: App name.
+    post:
+      operationId: AutoScaleSwap
+      description: Swap autoscale to another version.
+      parameters:
+      - name: version
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/SwapAutoScaleSpec"
+      consumes:
+      - application/json
+      responses:
+        "200":
+          description: AutoScale swapped
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
         "401":
           description: Unauthorized
           schema:
@@ -4026,6 +3950,92 @@ paths:
       security:
       - Bearer: []
 
+  /1.1/events:
+    get:
+      operationId: EventList
+      produces:
+      - application/json
+      parameters:
+      - name: target.type
+        in: query
+        type: string
+        description: Filter by target type
+      - name: target.value
+        in: query
+        type: string
+        description: Filter by target value
+      - name: kindType
+        in: query
+        type: string
+        description: Filter by kind type
+      - name: kindNames
+        in: query
+        type: array
+        items:
+          type: string
+        collectionFormat: multi
+        description: Filter by kind names
+      - name: ownerType
+        in: query
+        type: string
+        description: Filter by owner type
+      - name: ownerName
+        in: query
+        type: string
+        description: Filter by owner name
+      - name: since
+        in: query
+        type: string
+        format: date-time
+        description: Filter events since this date
+      - name: until
+        in: query
+        type: string
+        format: date-time
+        description: Filter events until this date
+      - name: running
+        in: query
+        type: boolean
+        description: Filter by running status
+      - name: errorOnly
+        in: query
+        type: boolean
+        description: Filter only events with errors
+      - name: limit
+        in: query
+        type: integer
+        description: Limit number of results
+      - name: skip
+        in: query
+        type: integer
+        description: Skip number of results
+      - name: sort
+        in: query
+        type: string
+        description: Sort order
+
+      responses:
+        "200":
+          description: Event list.
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/Event"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team token not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+
+      tags:
+      - event
+      security:
+      - Bearer: []
+
   /1.1/events/{eventid}:
     get:
       operationId: EventInfo
@@ -4833,6 +4843,13 @@ definitions:
                 type: integer
                 description: Minimum number of units to scale down
                 x-go-custom-type: "*int32"
+  SwapAutoScaleSpec:
+    description: Swap Units Auto Scale spec
+    type: object
+    properties:
+      version:
+        type: string
+    required: ["version"]
   AutoScaleSchedule:
     description: Auto Scale schedules struct
     type: object
@@ -5507,6 +5524,10 @@ definitions:
             Port:
               type: integer
               format: int64
+            TargetPort:
+              type: integer
+              format: int64
+              x-go-custom-type: "*int64"
             Process:
               type: string
             Version:
@@ -5551,9 +5572,6 @@ definitions:
       plan:
         type: object
         $ref: "#/definitions/Plan"
-      lock:
-        type: object
-        $ref: "#/definitions/AppLock"
       pool:
         type: string
         description: App pool.
@@ -5589,19 +5607,6 @@ definitions:
           $ref: "#/definitions/AutoScaleSpec"
       dashboardURL:
         type: string
-  AppLock:
-    type: object
-    description: Stores information about a lock hold on the app
-    properties:
-      locked:
-        type: boolean
-      reason:
-        type: string
-      owner:
-        type: string
-      acquireDate:
-        type: string
-        format: date-time
   UnitMetrics:
     type: object
     properties:
@@ -5894,18 +5899,21 @@ definitions:
         description: concurrency policy.
       container:
         type: object
-        properties:
-          image:
-            type: string
-          command:
-            type: array
-            items:
-              type: string
-          envs:
-            type: array
-            items:
-              type: object
-              $ref: "#/definitions/EnvVar"
+        $ref: "#/definitions/JobSpecContainer"
+  JobSpecContainer:
+    type: object
+    properties:
+      image:
+        type: string
+      command:
+        type: array
+        items:
+          type: string
+      envs:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/EnvVar"
   AppCreateResponse:
     description: Newly created app information.
     type: object
@@ -5945,9 +5953,6 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/Router"
-      lock:
-        type: object
-        $ref: "#/definitions/Lock"
       tags:
         type: array
         items:
@@ -6144,17 +6149,6 @@ definitions:
       status:
         type: string
       status-detail:
-        type: string
-  Lock:
-    type: object
-    properties:
-      locked:
-        type: boolean
-      reason:
-        type: string
-      owner:
-        type: string
-      acquireDate:
         type: string
   URL:
     type: object
@@ -6386,46 +6380,6 @@ definitions:
         type: boolean
       success_only:
         type: boolean
-  ServiceBrokerList:
-    type: object
-    properties:
-      brokers:
-        type: array
-        items:
-          type: object
-          $ref: "#/definitions/ServiceBroker"
-  ServiceBroker:
-    type: object
-    properties:
-      Name:
-        type: string
-      URL:
-        type: string
-      Config:
-        properties:
-          Insecure:
-            type: boolean
-          Context:
-            type: object
-            additionalProperties:
-              type: string
-          AuthConfig:
-            type: object
-            properties:
-              BasicAuthConfig:
-                type: object
-                properties:
-                  username:
-                    type: string
-                  password:
-                    type: string
-              BearerConfig:
-                type: object
-                properties:
-                  token:
-                    type: string
-          CacheExpirationSeconds:
-            type: integer
   Cluster:
     type: object
     properties:

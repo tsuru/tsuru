@@ -195,7 +195,6 @@ func minifyApp(app *appTypes.App, unitData app.AppUnitsResponse, extended bool) 
 		Units:     unitData.Units,
 		CName:     app.CName,
 		Routers:   app.Routers,
-		Lock:      app.Lock,
 		Tags:      app.Tags,
 		Error:     errorStr,
 	}
@@ -257,10 +256,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if pool := r.URL.Query().Get("pool"); pool != "" {
 		filter.Pool = pool
-	}
-	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
-	if locked {
-		filter.Locked = true
 	}
 	if status, ok := r.URL.Query()["status"]; ok {
 		filter.Statuses = status
@@ -1751,7 +1746,6 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-//	409: App locked
 //	412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return &errors.HTTP{
@@ -1856,17 +1850,6 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	return app.Stop(ctx, a, evt, process, version)
-}
-
-// title: app unlock
-// path: /apps/{app}/lock
-// method: DELETE
-// produce: application/json
-// responses:
-//
-//	410: Not available anymore
-func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
 
 // title: rebuild routes

@@ -195,10 +195,6 @@ paths:
           description: App not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '409':
-          description: App locked
-          schema:
-            $ref: '#/definitions/ErrorMessage'
         '412':
           description: Number of units or platform don't match
           schema:
@@ -390,29 +386,6 @@ paths:
       produces:
       - application/json
       consumes:
-      - application/json
-      responses:
-        '200':
-          description: Ok
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: App not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /apps/{app}/lock:
-    delete:
-      description: app unlock
-      parameters:
-      - name: app
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: App name.
-      produces:
       - application/json
       responses:
         '200':
@@ -1175,90 +1148,6 @@ paths:
           description: OK
         '500':
           description: Internal server error
-  /iaas/machines:
-    get:
-      description: machine list
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /iaas/machines/{machine}:
-    delete:
-      description: machine destroy
-      parameters:
-      - name: machine
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: Machine ID.
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /iaas/templates:
-    post:
-      description: template create
-      consumes:
-      - application/json
-      responses:
-        '201':
-          description: Template created
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
-          description: Existent template
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /iaas/templates/{template}:
-    put:
-      description: template update
-      parameters:
-      - name: template
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: Template name.
-      consumes:
-      - application/json
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
   /:
     get:
       description: index

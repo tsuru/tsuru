@@ -24,7 +24,6 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/felixge/fgprof"
 	"github.com/fsnotify/fsnotify"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tsuru/config"
@@ -52,12 +51,12 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
-	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/tag"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/net/websocket"
 )
 
@@ -153,14 +152,6 @@ func setupServices() error {
 	servicemanager.Cluster, err = cluster.ClusterService()
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize cluster service")
-	}
-	servicemanager.ServiceBroker, err = service.BrokerService()
-	if err != nil {
-		return errors.Wrapf(err, "could not initialize broker service")
-	}
-	servicemanager.ServiceBrokerCatalogCache, err = service.CatalogCacheService()
-	if err != nil {
-		return errors.Wrapf(err, "could not initialize catalog cache service")
 	}
 	servicemanager.LogService, err = applog.AppLogService()
 	if err != nil {
@@ -284,11 +275,11 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/apps/{app}/env", AuthorizationRequiredHandler(getAppEnv))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/env", AuthorizationRequiredHandler(setAppEnv))
 	m.Add("1.0", http.MethodDelete, "/apps/{app}/env", AuthorizationRequiredHandler(unsetAppEnv))
-	m.Add("1.0", http.MethodDelete, "/apps/{app}/lock", AuthorizationRequiredHandler(forceDeleteLock))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/units", AuthorizationRequiredHandler(addUnits))
 	m.Add("1.0", http.MethodDelete, "/apps/{app}/units", AuthorizationRequiredHandler(removeUnits))
 	m.Add("1.9", http.MethodGet, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(autoScaleUnitsInfo))
 	m.Add("1.9", http.MethodPost, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(addAutoScaleUnits))
+	m.Add("1.29", http.MethodPost, "/apps/{app}/units/autoscale/swap", AuthorizationRequiredHandler(swapAutoScaleUnits))
 	m.Add("1.9", http.MethodDelete, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(removeAutoScaleUnits))
 	m.Add("1.12", http.MethodDelete, "/apps/{app}/units/{unit}", AuthorizationRequiredHandler(killUnit))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/teams/{team}", AuthorizationRequiredHandler(grantAppAccess))
@@ -458,11 +449,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.6", http.MethodDelete, "/tokens/{token_id}", AuthorizationRequiredHandler(tokenDelete))
 	m.Add("1.6", http.MethodPut, "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
 
-	m.Add("1.7", http.MethodGet, "/brokers", AuthorizationRequiredHandler(serviceBrokerList))
-	m.Add("1.7", http.MethodPost, "/brokers", AuthorizationRequiredHandler(serviceBrokerAdd))
-	m.Add("1.7", http.MethodPut, "/brokers/{broker}", AuthorizationRequiredHandler(serviceBrokerUpdate))
-	m.Add("1.7", http.MethodDelete, "/brokers/{broker}", AuthorizationRequiredHandler(serviceBrokerDelete))
-
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.4", http.MethodPost, "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
 
@@ -545,9 +531,9 @@ func appFinder(appName string) (*appTypes.App, error) {
 }
 
 func startServer(handler http.Handler) error {
-	span, ctx := opentracing.StartSpanFromContext(
-		context.Background(), "StartServer")
-	defer span.Finish()
+	tracer := otel.Tracer("tsuru/api")
+	ctx, span := tracer.Start(context.Background(), "StartServer")
+	defer span.End()
 
 	srvConf, err := createServers(handler)
 	if err != nil {
