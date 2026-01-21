@@ -44,6 +44,7 @@ var (
 		jobList(),
 		exampleApps(),
 		unitAddRemove(),
+		autoscaleDeploy(),
 		testCases(),
 		testApps(),
 		updateAppPools(),
@@ -264,27 +265,66 @@ func unitAddRemove() ExecFlow {
 		res := T("unit", "add", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 
-		countReadyUnits := func() int {
-			appInfo, _ := checkAppReady(c, appName, env)
-			count := 0
-			for _, unit := range appInfo.Units {
-				if unit.Ready != nil && *unit.Ready {
-					count++
-				}
-			}
-			return count
-		}
-
 		ok := retry(5*time.Minute, func() bool {
-			return countReadyUnits() == 3
+			_, ok := checkReadyUnits(c, appName, env, 3)
+			return ok
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
 		res = T("unit", "remove", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 		ok = retry(5*time.Minute, func() bool {
-			return countReadyUnits() == 1
+			_, ok := checkReadyUnits(c, appName, env, 1)
+			return ok
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not removed after 5 minutes: %v", res))
+	}
+	return flow
+}
+
+func autoscaleDeploy() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"appnames"},
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		appName := env.Get("appnames")
+		res := T("autoscale", "set", "-a", appName, "--cpu", "30", "--min", "3", "--max", "10").Run(env)
+		c.Assert(res, ResultOk)
+
+		ok := retry(5*time.Minute, func() bool {
+			_, ok := checkReadyUnits(c, appName, env, 3)
+			return ok
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
+
+		res = T("app", "info", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
+		parts := platRE.FindStringSubmatch(res.Stdout.String())
+		c.Assert(parts, check.HasLen, 2)
+		lang := strings.ReplaceAll(parts[1], "-iplat", "")
+		res = T("app", "deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir") + "/" + lang).Run(env)
+		c.Assert(res, ResultOk)
+		appInfo := new(appTypes.AppInfo)
+		ok = retry(5*time.Minute, func() (ready bool) {
+			appInfo, ready = checkAppExternallyAddressable(c, appName, env)
+			return ready
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+		externalAddress := appInfo.Routers[0].Addresses[0]
+		cmd := NewCommand("curl", "-sSf", "http://"+externalAddress)
+		ok = retry(15*time.Minute, func() bool {
+			res = cmd.Run(env)
+			return res.ExitCode == 0
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
+
+		res = T("autoscale", "unset", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		ok = retry(5*time.Minute, func() bool {
+			_, ok := checkReadyUnits(c, appName, env, 1)
+			return ok
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
 	}
 	return flow
 }
