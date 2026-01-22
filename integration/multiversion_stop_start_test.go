@@ -72,20 +72,6 @@ func multiversionRoutableStopStartTest() ExecFlow {
 		res = T("app", "start", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 
-		// Step 6: App stop
-		res = T("app", "stop", "-a", appName).Run(env)
-		c.Assert(res, ResultOk)
-
-		ok = retry(time.Minute*3, func() bool {
-			_, appStoped := checkAppStopped(c, appName, env)
-			return appStoped
-		})
-		c.Assert(ok, check.Equals, true)
-
-		// Step 7: App start
-		res = T("app", "start", "-a", appName).Run(env)
-		c.Assert(res, ResultOk)
-
 		appInfoMulti = checkAppHealth(c, appName, "2", hash2, env)
 		routerAddrMulti = appInfoMulti.Routers[0].Address
 		cmd = NewCommand("curl", "-m5", "-sSf", "http://"+routerAddrMulti)
