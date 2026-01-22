@@ -55,6 +55,7 @@ var (
 		appVersions(),
 		multiversionRollbackTest(),
 		multiversionRollbackOverrideTest(),
+		multiversionStopStartTest(),
 		swapAutoScaleTest(),
 	}
 )
