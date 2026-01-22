@@ -6548,6 +6548,125 @@ definitions:
           type: string
       Blacklist:
         type: boolean
+  EventTarget:
+    description: Event target
+    type: object
+    properties:
+      Type:
+        type: string
+      Value:
+        type: string
+  EventExtraTarget:
+    description: Event extra target
+    type: object
+    properties:
+      Target:
+        $ref: "#/definitions/EventTarget"
+      Lock:
+        type: boolean
+  EventKind:
+    description: Event kind
+    type: object
+    properties:
+      Type:
+        type: string
+      Name:
+        type: string
+  EventOwner:
+    description: Event owner
+    type: object
+    properties:
+      Type:
+        type: string
+      Name:
+        type: string
+  EventLogEntry:
+    description: Event structured log entry
+    type: object
+    properties:
+      Date:
+        type: string
+        format: date-time
+      Message:
+        type: string
+  EventPermissionContext:
+    description: Permission context
+    type: object
+    properties:
+      CtxType:
+        type: string
+      Value:
+        type: string
+  EventAllowedPermission:
+    description: Allowed permission
+    type: object
+    properties:
+      Scheme:
+        type: string
+      Contexts:
+        type: array
+        items:
+          $ref: "#/definitions/EventPermissionContext"
+  EventCancelInfo:
+    description: Event cancellation information
+    type: object
+    properties:
+      Owner:
+        type: string
+      StartTime:
+        type: string
+        format: date-time
+      AckTime:
+        type: string
+        format: date-time
+      Reason:
+        type: string
+      Asked:
+        type: boolean
+      Canceled:
+        type: boolean
+  EventTrackedInstance:
+    description: Tracked instance information
+    type: object
+    properties:
+      Name:
+        type: string
+      Port:
+        type: string
+      TLSPort:
+        type: string
+      Addresses:
+        type: array
+        items:
+          type: string
+      LastUpdate:
+        type: string
+        format: date-time
+  EventCustomDataRaw:
+    description: Raw custom data (BSON encoded)
+    type: object
+    properties:
+      Kind:
+        type: number
+      Data:
+        type: string
+        format: byte
+  EventCustomData:
+    description: Parsed custom data
+    type: object
+    properties:
+      Start:
+        type: array
+        items:
+          type: object
+      End:
+        type: array
+        items:
+          type: object
+      Other:
+        type: array
+        items:
+          type: object
   Event:
     description: Tsuru event
     type: object
@@ -6555,12 +6674,7 @@ definitions:
       UniqueID:
         type: string
       Lock:
-        type: object
-        properties:
-          Type:
-            type: string
-          Value:
-            type: string
+        $ref: "#/definitions/EventTarget"
       StartTime:
         type: string
         format: date-time
@@ -6571,40 +6685,15 @@ definitions:
         type: string
         format: date-time
       Target:
-        type: object
-        properties:
-          Type:
-            type: string
-          Value:
-            type: string
+        $ref: "#/definitions/EventTarget"
       ExtraTargets:
         type: array
         items:
-          type: object
-          properties:
-            Target:
-              type: object
-              properties:
-                Type:
-                  type: string
-                Value:
-                  type: string
-            Lock:
-              type: boolean
+          $ref: "#/definitions/EventExtraTarget"
       Kind:
-        type: object
-        properties:
-          Type:
-            type: string
-          Name:
-            type: string
+        $ref: "#/definitions/EventKind"
       Owner:
-        type: object
-        properties:
-          Type:
-            type: string
-          Name:
-            type: string
+        $ref: "#/definitions/EventOwner"
       SourceIP:
         type: string
       LockUpdateTime:
@@ -6617,114 +6706,24 @@ definitions:
       StructuredLog:
         type: array
         items:
-          type: object
-          properties:
-            Date:
-              type: string
-              format: date-time
-            Message:
-              type: string
+          $ref: "#/definitions/EventLogEntry"
       CancelInfo:
-        type: object
-        properties:
-          Owner:
-            type: string
-          StartTime:
-            type: string
-            format: date-time
-          AckTime:
-            type: string
-            format: date-time
-          Reason:
-            type: string
-          Asked:
-            type: boolean
-          Canceled:
-            type: boolean
+        $ref: "#/definitions/EventCancelInfo"
       Cancelable:
         type: boolean
       Running:
         type: boolean
       Allowed:
-        type: object
-        properties:
-          Scheme:
-            type: string
-          Contexts:
-            type: array
-            items:
-              type: object
-              properties:
-                CtxType:
-                  type: string
-                Value:
-                  type: string
+        $ref: "#/definitions/EventAllowedPermission"
       AllowedCancel:
-        type: object
-        properties:
-          Scheme:
-            type: string
-          Contexts:
-            type: array
-            items:
-              type: object
-              properties:
-                CtxType:
-                  type: string
-                Value:
-                  type: string
+        $ref: "#/definitions/EventAllowedPermission"
       Instance:
-        type: object
-        properties:
-          Name:
-            type: string
-          Port:
-            type: string
-          TLSPort:
-            type: string
-          Addresses:
-            type: array
-            items:
-              type: string
-          LastUpdate:
-            type: string
-            format: date-time
+        $ref: "#/definitions/EventTrackedInstance"
       StartCustomData:
-        type: object
-        properties:
-          Kind:
-            type: number
-          Data:
-            type: string
-            format: byte
+        $ref: "#/definitions/EventCustomDataRaw"
       EndCustomData:
-        type: object
-        properties:
-          Kind:
-            type: number
-          Data:
-            type: string
-            format: byte
+        $ref: "#/definitions/EventCustomDataRaw"
       OtherCustomData:
-        type: object
-        properties:
-          Kind:
-            type: number
-          Data:
-            type: string
-            format: byte
+        $ref: "#/definitions/EventCustomDataRaw"
       CustomData:
-        type: object
-        properties:
-          Start:
-            type: array
-            items:
-              type: object
-          End:
-            type: array
-            items:
-              type: object
-          Other:
-            type: array
-            items:
-              type: object
+        $ref: "#/definitions/EventCustomData"
