@@ -339,6 +339,15 @@ func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.A
 	if err != nil {
 		return err
 	}
+
+	depGroups, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return err
+	}
+	if _, ok := depGroups.versioned[version]; !ok {
+		return errors.New("could not swap the autoscale, make sure the version provided is currently deployed")
+	}
+
 	scaleSpecs, err := p.GetAutoScale(ctx, a)
 	if err != nil {
 		return err
@@ -397,8 +406,6 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 					break
 				}
 			}
-		} else {
-			return errors.New("could not swap the autoscale, make sure the version provided is currently deployed")
 		}
 	}
 

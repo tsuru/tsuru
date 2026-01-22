@@ -116,6 +116,20 @@ func checkAppReady(c *check.C, appName string, env *Environment) (*appTypes.AppI
 	return appInfo, true
 }
 
+func checkReadyUnits(c *check.C, appName string, env *Environment, amount int) (*appTypes.AppInfo, bool) {
+	appInfo, ok := checkAppReady(c, appName, env)
+	if !ok {
+		return nil, false
+	}
+	count := 0
+	for _, unit := range appInfo.Units {
+		if unit.Ready != nil && *unit.Ready {
+			count++
+		}
+	}
+	return appInfo, count == amount
+}
+
 func checkAppExternallyAddressable(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
 	appInfo, ok := checkAppReady(c, appName, env)
 	if !ok {
