@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,6 +45,7 @@ var (
 	ErrMultiClusterPoolDoesNotMatch             = errors.New("pools between app and multi-cluster service instance does not match")
 	ErrRegularServiceInstanceCannotBelongToPool = errors.New("regular (non-multi-cluster) service instance cannot belong to a pool")
 	ErrRevokeInstanceTeamOwnerAccess            = errors.New("cannot revoke the instance's team owner access")
+	ErrInvalidProxyPath                         = errors.New("invalid proxy path")
 	instanceNameRegexp                          = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
@@ -567,7 +569,7 @@ func RenameServiceInstanceTeam(ctx context.Context, oldName, newName string) err
 
 // ProxyInstance is a proxy between tsuru and the service instance.
 // This method allow customized service instance methods.
-func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func ProxyInstance(ctx context.Context, instance *ServiceInstance, requestPath string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	service, err := Get(ctx, instance.ServiceName)
 	if err != nil {
 		return err
@@ -576,19 +578,37 @@ func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, 
 	if err != nil {
 		return err
 	}
-	prefix := fmt.Sprintf("/resources/%s/", instance.GetIdentifier())
-	path = strings.Trim(strings.TrimPrefix(path+"/", prefix), "/")
+	prefix := fmt.Sprintf("/resources/%s", instance.GetIdentifier())
+	cleanPath := path.Clean("/" + requestPath)
+	// Allow empty path or "/" to map to the instance resource
+	if cleanPath == "/" || cleanPath == "" {
+		cleanPath = prefix
+	}
+	var relativePath string
+	if cleanPath == prefix || strings.HasPrefix(cleanPath, prefix+"/") {
+		// Path is within the expected prefix, extract relative part
+		relativePath = strings.Trim(strings.TrimPrefix(cleanPath, prefix), "/")
+	} else {
+		// Path doesn't start with prefix - check for path traversal attempts
+		// that try to escape via ".." after the prefix
+		if strings.HasPrefix(requestPath, prefix) && cleanPath != requestPath {
+			// Original path had prefix but clean path doesn't - likely ".." traversal
+			return ErrInvalidProxyPath
+		}
+		// Otherwise, treat the entire clean path as relative (legacy behavior)
+		relativePath = strings.Trim(cleanPath, "/")
+	}
 	for _, reserved := range reservedProxyPaths {
-		if path == reserved && r.Method != "GET" {
+		if relativePath == reserved && r.Method != "GET" {
 			return &tsuruErrors.ValidationError{
-				Message: fmt.Sprintf("proxy request %s %q is forbidden", r.Method, path),
+				Message: fmt.Sprintf("proxy request %s %q is forbidden", r.Method, relativePath),
 			}
 		}
 	}
 
 	return endpoint.Proxy(ctx, &ProxyOpts{
 		Instance:  instance,
-		Path:      fmt.Sprintf("%s%s", prefix, path),
+		Path:      fmt.Sprintf("%s/%s", prefix, relativePath),
 		Event:     evt,
 		RequestID: requestID,
 		Writer:    w,

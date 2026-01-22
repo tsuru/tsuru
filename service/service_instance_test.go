@@ -1905,6 +1905,8 @@ func (s *S) TestProxyInstance(c *check.C) {
 		{method: "GET", path: "/resources/noflow/bind-app", expectedPath: "/resources/noflow/bind-app"},
 		{method: "POST", path: "/resources/noflow/otherpath", expectedPath: "/resources/noflow/otherpath"},
 		{method: "POST", path: "/resources/otherinstance/otherpath", expectedPath: "/resources/noflow/resources/otherinstance/otherpath"},
+		// Path traversal attempts - should be blocked
+		{method: "GET", path: "/resources/noflow/../otherinstance/secret", err: "invalid proxy path"},
 	}
 	evt := createEvt(c)
 	for _, tt := range tests {
