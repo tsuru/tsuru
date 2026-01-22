@@ -6554,10 +6554,20 @@ definitions:
     properties:
       UniqueID:
         type: string
+      Lock:
+        type: object
+        properties:
+          Type:
+            type: string
+          Value:
+            type: string
       StartTime:
         type: string
         format: date-time
       EndTime:
+        type: string
+        format: date-time
+      ExpireAt:
         type: string
         format: date-time
       Target:
@@ -6567,6 +6577,118 @@ definitions:
             type: string
           Value:
             type: string
+      ExtraTargets:
+        type: array
+        items:
+          type: object
+          properties:
+            Target:
+              type: object
+              properties:
+                Type:
+                  type: string
+                Value:
+                  type: string
+            Lock:
+              type: boolean
+      Kind:
+        type: object
+        properties:
+          Type:
+            type: string
+          Name:
+            type: string
+      Owner:
+        type: object
+        properties:
+          Type:
+            type: string
+          Name:
+            type: string
+      SourceIP:
+        type: string
+      LockUpdateTime:
+        type: string
+        format: date-time
+      Error:
+        type: string
+      Log:
+        type: string
+      StructuredLog:
+        type: array
+        items:
+          type: object
+          properties:
+            Date:
+              type: string
+              format: date-time
+            Message:
+              type: string
+      CancelInfo:
+        type: object
+        properties:
+          Owner:
+            type: string
+          StartTime:
+            type: string
+            format: date-time
+          AckTime:
+            type: string
+            format: date-time
+          Reason:
+            type: string
+          Asked:
+            type: boolean
+          Canceled:
+            type: boolean
+      Cancelable:
+        type: boolean
+      Running:
+        type: boolean
+      Allowed:
+        type: object
+        properties:
+          Scheme:
+            type: string
+          Contexts:
+            type: array
+            items:
+              type: object
+              properties:
+                CtxType:
+                  type: string
+                Value:
+                  type: string
+      AllowedCancel:
+        type: object
+        properties:
+          Scheme:
+            type: string
+          Contexts:
+            type: array
+            items:
+              type: object
+              properties:
+                CtxType:
+                  type: string
+                Value:
+                  type: string
+      Instance:
+        type: object
+        properties:
+          Name:
+            type: string
+          Port:
+            type: string
+          TLSPort:
+            type: string
+          Addresses:
+            type: array
+            items:
+              type: string
+          LastUpdate:
+            type: string
+            format: date-time
       StartCustomData:
         type: object
         properties:
@@ -6574,6 +6696,7 @@ definitions:
             type: number
           Data:
             type: string
+            format: byte
       EndCustomData:
         type: object
         properties:
@@ -6581,6 +6704,7 @@ definitions:
             type: number
           Data:
             type: string
+            format: byte
       OtherCustomData:
         type: object
         properties:
@@ -6588,9 +6712,19 @@ definitions:
             type: number
           Data:
             type: string
-      Error:
-        type: string
-      Log:
-        type: string
-      Running:
-        type: boolean
+            format: byte
+      CustomData:
+        type: object
+        properties:
+          Start:
+            type: array
+            items:
+              type: object
+          End:
+            type: array
+            items:
+              type: object
+          Other:
+            type: array
+            items:
+              type: object
