@@ -44,7 +44,7 @@ var (
 		jobList(),
 		exampleApps(),
 		unitAddRemove(),
-		autoscaleDeploy(),
+		deployWithAutoscale(),
 		testCases(),
 		testApps(),
 		updateAppPools(),
@@ -281,29 +281,36 @@ func unitAddRemove() ExecFlow {
 	return flow
 }
 
-func autoscaleDeploy() ExecFlow {
+func deployWithAutoscale() ExecFlow {
 	flow := ExecFlow{
-		requires: []string{"appnames"},
+		matrix: map[string]string{
+			"pool": "poolnames",
+		},
+		requires: []string{"team", "poolnames"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		appName := env.Get("appnames")
-		res := T("autoscale", "set", "-a", appName, "--cpu", "30", "--min", "3", "--max", "10").Run(env)
+		cwd, err := os.Getwd()
+		c.Assert(err, check.IsNil)
+
+		appDir := path.Join(cwd, "fixtures", "multiversion-python-app")
+		appName := slugifyName(fmt.Sprintf("deploy-with-autoscale-%s", env.Get("pool")))
+
+		res := T("app", "create", appName, "python-iplat", "-o", "{{.pool}}", "-t", "{{.team}}").Run(env)
 		c.Assert(res, ResultOk)
 
+		imageToHash := make(map[string]string)
+		deployAndMapHash(c, appDir, appName, []string{}, imageToHash, env)
+
+		res = T("autoscale", "set", "-a", appName, "--cpu", "30", "--min", "3", "--max", "10").Run(env)
+		c.Assert(res, ResultOk)
 		ok := retry(5*time.Minute, func() bool {
 			_, ok := checkReadyUnits(c, appName, env, 3)
 			return ok
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
 
-		res = T("app", "info", "-a", appName).Run(env)
-		c.Assert(res, ResultOk)
-		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
-		parts := platRE.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		lang := strings.ReplaceAll(parts[1], "-iplat", "")
-		res = T("app", "deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir") + "/" + lang).Run(env)
-		c.Assert(res, ResultOk)
+		deployAndMapHash(c, appDir, appName, []string{}, imageToHash, env)
+
 		appInfo := new(appTypes.AppInfo)
 		ok = retry(5*time.Minute, func() (ready bool) {
 			appInfo, ready = checkAppExternallyAddressable(c, appName, env)
@@ -320,11 +327,6 @@ func autoscaleDeploy() ExecFlow {
 
 		res = T("autoscale", "unset", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		ok = retry(5*time.Minute, func() bool {
-			_, ok := checkReadyUnits(c, appName, env, 1)
-			return ok
-		})
-		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
 	}
 	return flow
 }
