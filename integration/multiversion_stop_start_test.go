@@ -14,7 +14,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func multiversionStopStartTest() ExecFlow {
+func multiversionRoutableStopStartTest() ExecFlow {
 	flow := ExecFlow{
 		matrix: map[string]string{
 			"pool": "poolnames",
