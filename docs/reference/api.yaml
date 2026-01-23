@@ -6642,7 +6642,7 @@ definitions:
       LastUpdate:
         type: string
         format: date-time
-  EventCustomDataRaw:
+  EventStartCustomData:
     description: Raw custom data (BSON encoded)
     type: object
     properties:
@@ -6720,10 +6720,10 @@ definitions:
       Instance:
         $ref: "#/definitions/EventTrackedInstance"
       StartCustomData:
-        $ref: "#/definitions/EventCustomDataRaw"
+        $ref: "#/definitions/EventStartCustomData"
       EndCustomData:
-        $ref: "#/definitions/EventCustomDataRaw"
+        $ref: "#/definitions/EventStartCustomData"
       OtherCustomData:
-        $ref: "#/definitions/EventCustomDataRaw"
+        $ref: "#/definitions/EventStartCustomData"
       CustomData:
         $ref: "#/definitions/EventCustomData"
