@@ -853,6 +853,39 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 	}
 }
 
+func (s *S) TestProvisionerTriggerCronDuplicate(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	cj := jobTypes.Job{
+		Name:      "myjob",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "hello world"},
+			},
+		},
+	}
+
+	// Create the cronjob first
+	err := s.p.EnsureJob(context.TODO(), &cj)
+	waitCron()
+	require.NoError(s.t, err)
+
+	// Trigger it once - should succeed
+	err = s.p.TriggerCron(context.TODO(), &cj, "test-default")
+	require.NoError(s.t, err)
+	waitCron()
+
+	// Trigger it again in the same minute - should get a better error message
+	err = s.p.TriggerCron(context.TODO(), &cj, "test-default")
+	require.Error(s.t, err)
+	c.Assert(err.Error(), check.Matches, `.*manual job .* already exists.*once per minute.*`)
+}
+
 func (s *S) TestBackwardCompatibilityOldNaming(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()

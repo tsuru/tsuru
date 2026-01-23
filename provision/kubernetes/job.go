@@ -454,13 +454,16 @@ func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, job *jobTypes.J
 			APIVersion: "batch/v1",
 		},
 	}
-	cronChild.Name = getManualJobName(cron.Name)
+	cronChild.Name = getManualJobName(job.Name)
 	if cronChild.Annotations == nil {
 		cronChild.Annotations = map[string]string{"cronjob.kubernetes.io/instantiate": "manual"}
 	} else {
 		cronChild.Annotations["cronjob.kubernetes.io/instantiate"] = "manual"
 	}
 	_, err = client.BatchV1().Jobs(cron.Namespace).Create(ctx, &cronChild, metav1.CreateOptions{})
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		return errors.Errorf("manual job %q already exists (cronjobs can only be triggered once per minute)", cronChild.Name)
+	}
 	return err
 }
 
