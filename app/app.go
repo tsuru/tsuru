@@ -345,7 +345,9 @@ func CreateApp(ctx context.Context, app *appTypes.App, user *auth.User) error {
 		&insertApp,
 		&exportEnvironmentsAction,
 		&provisionApp,
+		&bootstrapDeployApp,
 	}
+
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(ctx, app, user)
 	if err != nil {
