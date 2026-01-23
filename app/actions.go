@@ -25,6 +25,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -230,6 +231,41 @@ var provisionApp = action.Action{
 		if err == nil {
 			prov.Destroy(ctx.Context, app)
 		}
+	},
+	MinParams: 1,
+}
+
+var bootstrapDeployApp = action.Action{
+	Name: "first-deploy-app",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app *appTypes.App
+		switch ctx.Params[0].(type) {
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
+		default:
+			return nil, errors.New("First parameter must be *App.")
+		}
+
+		bootstrapDeployImage, _ := config.GetString("apps:bootstrap:image")
+
+		if bootstrapDeployImage == "" {
+			return app, nil
+		}
+
+		_, err := Deploy(ctx.Context, DeployOptions{
+			App:   app,
+			Image: bootstrapDeployImage,
+			Kind:  provisionTypes.DeployImage,
+			// TODO: implement flag to disable push to repository to let app creation faster
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return app, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		// no rollback needed
 	},
 	MinParams: 1,
 }
