@@ -740,7 +740,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				require.NoError(s.t, err)
 				expected := &batchv1.Job{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("%s-manual-job-%d", cronParent.Name, t.Unix()/60),
+						Name:      fmt.Sprintf("%s-manual-job-%d", "myjob", t.Unix()/60),
 						Namespace: "default",
 						Labels: map[string]string{
 							"app.kubernetes.io/component":  "job",
