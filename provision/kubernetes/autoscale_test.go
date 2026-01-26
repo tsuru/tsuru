@@ -1916,4 +1916,3 @@ func findHPAByProcess(hpas []autoscalingv2.HorizontalPodAutoscaler, processName 
 	}
 	return nil
 }
-
