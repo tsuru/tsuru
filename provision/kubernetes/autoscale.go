@@ -400,6 +400,10 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 		}
 		if deps, ok := depGroups.versioned[spec.Version]; ok {
 			for _, dep := range deps {
+				// Only consider deployments for the same process
+				if spec.Process != "" && dep.process != spec.Process {
+					continue
+				}
 				if dep.replicas > 0 {
 					depInfo.version = dep.version
 					depInfo.isBase = dep.isBase
