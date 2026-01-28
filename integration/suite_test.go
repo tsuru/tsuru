@@ -143,3 +143,14 @@ func checkAppExternallyAddressable(c *check.C, appName string, env *Environment)
 	}
 	return appInfo, true
 }
+
+func checkAppStopped(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+	res := T("app", "info", "-a", appName, "--json").Run(env)
+	c.Assert(res, ResultOk)
+
+	appInfo := new(appTypes.AppInfo)
+	err := json.NewDecoder(&res.Stdout).Decode(appInfo)
+	c.Assert(err, check.IsNil)
+
+	return appInfo, len(appInfo.Units) == 0
+}

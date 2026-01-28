@@ -359,8 +359,8 @@ func checkAppHealth(c *check.C, appName, expectedVersion, expectedHash string, e
 		// Check that all pods are running and not being deleted
 		res := K("get", "pods", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", `"jsonpath={range .items[*]}{.status.phase},{.metadata.deletionTimestamp}{'\\n'}{end}"`).Run(env)
 		c.Assert(res, ResultOk)
-		podStatuses := strings.Split(strings.TrimSpace(res.Stdout.String()), "\n")
-		for _, status := range podStatuses {
+		podStatuses := strings.SplitSeq(strings.TrimSpace(res.Stdout.String()), "\n")
+		for status := range podStatuses {
 			if status == "" {
 				continue
 			}
@@ -376,8 +376,8 @@ func checkAppHealth(c *check.C, appName, expectedVersion, expectedHash string, e
 		}
 		return true
 	})
-
 	c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 3 minutes: %v", appInfo))
+
 	routerAddr := appInfo.Routers[0].Address
 	cmd := NewCommand("curl", "-m5", "-sSf", "http://"+routerAddr)
 	ok = retryWait(2*time.Minute, 2*time.Second, func() bool {

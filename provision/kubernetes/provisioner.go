@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -536,21 +537,45 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 
 	var versions []appTypes.AppVersion
 	if version == nil {
-		versions, err = versionsForAppProcess(ctx, client, a, process, true)
+		versions, err = versionsForAppProcess(ctx, client, a, process, false)
 		if err != nil {
 			return err
+		}
+		if state.Restart {
+			versionsMap := make(map[int]appTypes.AppVersion)
+			for _, v := range versions {
+				versionsMap[v.VersionInfo().Version] = v
+			}
+
+			units, err := GetProvisioner().Units(ctx, a)
+			if err != nil {
+				return err
+			}
+
+			versions = []appTypes.AppVersion{}
+			for _, u := range units {
+				if val, ok := versionsMap[u.Version]; ok {
+					versions = append(versions, val)
+				}
+			}
 		}
 	} else {
 		versions = append(versions, version)
 	}
 
 	if len(versions) == 0 {
-		version, err = servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
+		versionsSlice, err := app.DeployedVersions(ctx, a)
 		if err != nil {
 			return err
 		}
+		for _, v := range versionsSlice {
+			appVersion, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, a, strconv.Itoa(v))
+			if err != nil {
+				return err
+			}
 
-		versions = append(versions, version)
+			versions = append(versions, appVersion)
+		}
 	}
 
 	var multiErr tsuruErrors.MultiError
