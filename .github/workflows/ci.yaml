@@ -34,12 +34,18 @@ jobs:
     - run: make race
   integration:
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: true
       matrix:
         k8s_version:
         - "1.32"
         - "1.33"
+        experimental:
+        - false
+        include:
+        - k8s_version: "1.34"
+          experimental: true
     steps:
     - uses: actions/checkout@v4
     - name: Running up Kubernetes (using Minikube)
