@@ -34,6 +34,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// mockDeployFunc can be set in tests to mock the Deploy function.
+var mockDeployFunc func(ctx context.Context, opts DeployOptions) (string, error)
+
 var (
 	ErrAppAlreadyExists                      = errors.New("there is already an app with this name")
 	ErrCNameDoesNotExist                     = errors.New("cname does not exist in app")
@@ -239,7 +242,7 @@ var provisionApp = action.Action{
 }
 
 var bootstrapDeployApp = action.Action{
-	Name: "first-deploy-app",
+	Name: "bootstrap-deploy-app",
 	Forward: func(ctx action.FWContext) (result action.Result, err error) {
 		var app *appTypes.App
 		switch ctx.Params[0].(type) {
@@ -277,7 +280,12 @@ var bootstrapDeployApp = action.Action{
 
 		opts.GetKind()
 
-		_, err = Deploy(ctx.Context, *opts)
+		deployFn := Deploy
+		if mockDeployFunc != nil {
+			deployFn = mockDeployFunc
+		}
+
+		_, err = deployFn(ctx.Context, *opts)
 		if err != nil {
 			return nil, err
 		}
