@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	"github.com/tsuru/tsuru/streamfmt"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -356,7 +357,7 @@ func (*jobService) AddServiceEnv(ctx context.Context, job *jobTypes.Job, addArgs
 	}
 
 	if addArgs.Writer != nil {
-		fmt.Fprintf(addArgs.Writer, "---- Setting %d new environment variables ----\n", len(addArgs.Envs)+1)
+		streamfmt.FprintlnSectionf(addArgs.Writer, "Setting %d new environment variables", len(addArgs.Envs)+1)
 	}
 	job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs, addArgs.Envs...)
 
@@ -389,7 +390,7 @@ func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, remo
 		return nil
 	}
 	if removeArgs.Writer != nil {
-		fmt.Fprintf(removeArgs.Writer, "---- Unsetting %d environment variables ----\n", toUnset)
+		streamfmt.FprintlnSectionf(removeArgs.Writer, "Unsetting %d environment variables", toUnset)
 	}
 
 	collection, err := storagev2.JobsCollection()
@@ -523,7 +524,7 @@ func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bindTypes.SetEnvArg
 	}
 
 	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
-		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
+		streamfmt.FprintlnSectionf(setEnvs.Writer, "Setting %d new environment variables", len(setEnvs.Envs))
 	}
 
 	mapEnvs := map[string]bindTypes.EnvVar{}
@@ -537,7 +538,7 @@ func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bindTypes.SetEnvArg
 			// only prune variables managed by requested
 			if index == -1 && env.ManagedBy == setEnvs.ManagedBy {
 				if setEnvs.Writer != nil {
-					fmt.Fprintf(setEnvs.Writer, "---- Pruning %s from environment variables ----\n", env.Name)
+					streamfmt.FprintlnSectionf(setEnvs.Writer, "Pruning %s from environment variables", env.Name)
 					delete(mapEnvs, env.Name)
 				}
 			}
@@ -578,7 +579,7 @@ func UnsetEnvs(ctx context.Context, job *jobTypes.Job, unsetEnvs bindTypes.Unset
 		return nil
 	}
 	if unsetEnvs.Writer != nil {
-		fmt.Fprintf(unsetEnvs.Writer, "---- Unsetting %d environment variables ----\n", len(unsetEnvs.VariableNames))
+		streamfmt.FprintlnSectionf(unsetEnvs.Writer, "Unsetting %d environment variables", len(unsetEnvs.VariableNames))
 	}
 
 	mapEnvs := map[string]bindTypes.EnvVar{}

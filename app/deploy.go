@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	"github.com/tsuru/tsuru/streamfmt"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
@@ -299,9 +300,9 @@ func (e *errorWithLog) formatLogLines() string {
 func (e *errorWithLog) Error() string {
 	var logPart string
 	if len(e.logs) > 0 {
-		logPart = fmt.Sprintf("\n---- Last %d log messages: ----\n%s", len(e.logs), e.formatLogLines())
+		logPart = "\n" + streamfmt.Sectionf("Last %d log messages:", len(e.logs)) + "\n" + e.formatLogLines()
 	}
-	return fmt.Sprintf("\n---- ERROR during %s: ----\n%v\n%s", e.action, e.err, logPart)
+	return "\n" + streamfmt.Sectionf("ERROR during %s:", e.action) + "\n" + fmt.Sprintf("%v", e.err) + "\n" + logPart
 }
 
 func validateVersions(ctx context.Context, opts DeployOptions) error {

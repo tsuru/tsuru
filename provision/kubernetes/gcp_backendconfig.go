@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/streamfmt"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -174,16 +175,17 @@ func ensureBackendConfig(ctx context.Context, args backendConfigArgs) (bool, err
 	}
 
 	newDesc := gcpHCToString(backendConfig.Spec.HealthCheck)
-	fmt.Fprint(args.writer, "\n---- GCP Load Balancer health check ----\n")
+	fmt.Fprint(args.writer, "\n")
+	fmt.Fprintln(args.writer, streamfmt.Section("GCP Load Balancer health check"))
 	if existingBackendConfig != nil {
 		existingDesc := gcpHCToString(existingBackendConfig.Spec.HealthCheck)
-		fmt.Fprint(args.writer, " ---> Updating LB health check\n")
-		fmt.Fprintf(args.writer, " ---> Existing HC: %s\n", existingDesc)
-		fmt.Fprintf(args.writer, " --->      New HC: %s\n", newDesc)
+		fmt.Fprintln(args.writer, streamfmt.Action("Updating LB health check"))
+		streamfmt.FprintlnActionf(args.writer, "Existing HC: %s", existingDesc)
+		streamfmt.FprintlnActionf(args.writer, "     New HC: %s", newDesc)
 		backendConfig.ResourceVersion = existingBackendConfig.ResourceVersion
 		_, err = cli.CloudV1().BackendConfigs(ns).Update(ctx, backendConfig, metav1.UpdateOptions{})
 	} else {
-		fmt.Fprintf(args.writer, " ---> Creating LB health check with %s\n", newDesc)
+		streamfmt.FprintlnActionf(args.writer, "Creating LB health check with %s", newDesc)
 		_, err = cli.CloudV1().BackendConfigs(ns).Create(ctx, backendConfig, metav1.CreateOptions{})
 	}
 	if err != nil {

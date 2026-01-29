@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/streamfmt"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -63,7 +64,8 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 	if o.Writer == nil {
 		o.Writer = io.Discard
 	}
-	fmt.Fprintf(o.Writer, "\n---- Updating router [%s] ----\n", appRouter.Name)
+	fmt.Fprint(o.Writer, "\n")
+	streamfmt.FprintlnSectionf(o.Writer, "Updating router [%s]", appRouter.Name)
 	r, err := router.Get(ctx, appRouter.Name)
 	if err != nil {
 		return err

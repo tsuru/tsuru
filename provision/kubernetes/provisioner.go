@@ -36,6 +36,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	"github.com/tsuru/tsuru/streamfmt"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -664,14 +665,14 @@ func changeUnits(ctx context.Context, a *appTypes.App, units int, processName st
 	}
 	newReplicas := int(*dep.Spec.Replicas) + units
 	if newReplicas <= 0 {
-		fmt.Fprintf(w, "---- Calling app stop internally as the number of units is zero ----\n")
+		streamfmt.FprintlnSectionf(w, "Calling app stop internally as the number of units is zero")
 		return GetProvisioner().Stop(ctx, a, processName, version, w)
 	}
 	patchType, patch, err := replicasPatch(newReplicas)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, newReplicas)
+	streamfmt.FprintlnSectionf(w, "Patching from %d to %d units", *dep.Spec.Replicas, newReplicas)
 	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, processName)
 }
 

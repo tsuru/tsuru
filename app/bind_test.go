@@ -55,7 +55,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	evt.SetLogWriter(buf)
 	err = Delete(context.TODO(), app, evt, "")
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\.`+"\n$")
+	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\. ----`+"\n$")
 	n, err := serviceInstancesCollection.CountDocuments(context.TODO(), mongoBSON.M{"apps": mongoBSON.M{"$in": []string{a.Name}}})
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, int64(0))
