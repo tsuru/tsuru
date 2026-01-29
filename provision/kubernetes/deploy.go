@@ -591,12 +591,12 @@ func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (*apiv1.
 
 		if err == nil {
 			fmt.Fprint(opts.writer, "\n")
-			streamfmt.FprintlnSectionf(opts.writer, "Created secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
+			streamfmt.FprintlnActionf(opts.writer, "Created secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
 		}
 	} else {
 		if secretUnchanged(&secret, oldSecret) {
 			fmt.Fprint(opts.writer, "\n")
-			streamfmt.FprintlnSectionf(opts.writer, "No changes on secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
+			streamfmt.FprintlnActionf(opts.writer, "No changes on secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
 			return oldSecret, nil
 		}
 
@@ -604,7 +604,7 @@ func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (*apiv1.
 		newSecret, err = opts.client.CoreV1().Secrets(ns).Update(ctx, &secret, metav1.UpdateOptions{})
 		if err == nil {
 			fmt.Fprint(opts.writer, "\n")
-			streamfmt.FprintlnSectionf(opts.writer, "Updated secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
+			streamfmt.FprintlnActionf(opts.writer, "Updated secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
 		}
 	}
 	return newSecret, errors.WithStack(err)
@@ -1508,7 +1508,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 		if err == nil {
 			fmt.Fprint(m.writer, "\n")
-			streamfmt.FprintlnSectionf(m.writer, "Updated secret %q ownerReferences", ensureAppSecretOptions.secretName)
+			streamfmt.FprintlnActionf(m.writer, "Updated secret %q ownerReferences", ensureAppSecretOptions.secretName)
 		}
 
 		if err != nil {

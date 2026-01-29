@@ -79,6 +79,8 @@ func (b *kubernetesBuilder) Build(ctx context.Context, app *apptypes.App, evt *e
 		opts.ArchiveSize = int64(size)
 	}
 
+	streamfmt.FprintlnSectionf(opts.Output, "Starting container image build for app %q", app.Name)
+
 	return b.buildContainerImage(ctx, app, evt, opts)
 }
 
@@ -142,6 +144,7 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 		Containerfile:     opts.Dockerfile,
 	}
 
+	streamfmt.FprintlnSectionf(w, "Starting container image build for job %q", job.Name)
 	_, err = callBuildService(ctx, bs, req, w)
 	if err != nil {
 		return "", err

@@ -63,13 +63,22 @@ func FprintErrorf(w io.Writer, format string, a ...interface{}) {
 // io.Writer versions with newline
 
 func FprintlnSectionf(w io.Writer, format string, a ...interface{}) {
+	if w == nil {
+		return
+	}
 	fmt.Fprintln(w, Sectionf(format, a...))
 }
 
 func FprintlnActionf(w io.Writer, format string, a ...interface{}) {
+	if w == nil {
+		return
+	}
 	fmt.Fprintln(w, Actionf(format, a...))
 }
 
 func FprintlnErrorf(w io.Writer, format string, a ...interface{}) {
+	if w == nil {
+		return
+	}
 	fmt.Fprintln(w, Errorf(format, a...))
 }
