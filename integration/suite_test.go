@@ -99,13 +99,18 @@ func slugifyName(name string) string {
 	return strings.ToLower(dnsValidRegex.ReplaceAllString(name, "-"))
 }
 
-func checkAppReady(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+func getAppInfo(c *check.C, appName string, env *Environment) *appTypes.AppInfo {
 	res := T("app", "info", "-a", appName, "--json").Run(env)
 	c.Assert(res, ResultOk)
 
 	appInfo := new(appTypes.AppInfo)
 	err := json.NewDecoder(&res.Stdout).Decode(appInfo)
 	c.Assert(err, check.IsNil)
+	return appInfo
+}
+
+func checkAppReady(c *check.C, appName string, env *Environment) (*appTypes.AppInfo, bool) {
+	appInfo := getAppInfo(c, appName, env)
 
 	for _, unit := range appInfo.Units {
 		if unit.Ready == nil || !(*unit.Ready) {

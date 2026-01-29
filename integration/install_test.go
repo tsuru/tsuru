@@ -191,15 +191,10 @@ func exampleApps() ExecFlow {
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("plat"), env.Get("pool"))
 		res := T("app", "create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app", "info", "-a", appName).Run(env)
-		c.Assert(res, ResultOk)
-		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
-		parts := platRE.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		lang := strings.ReplaceAll(parts[1], "-iplat", "")
+		appInfo := getAppInfo(c, appName, env)
+		lang := strings.ReplaceAll(appInfo.Platform, "-iplat", "")
 		res = T("app", "deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir") + "/" + lang).Run(env)
 		c.Assert(res, ResultOk)
-		appInfo := new(appTypes.AppInfo)
 		ok := retry(5*time.Minute, func() (ready bool) {
 			appInfo, ready = checkAppExternallyAddressable(c, appName, env)
 			return ready
