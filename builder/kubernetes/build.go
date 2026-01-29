@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	provisionk8s "github.com/tsuru/tsuru/provision/kubernetes"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/streamfmt"
 	apptypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -77,6 +78,8 @@ func (b *kubernetesBuilder) Build(ctx context.Context, app *apptypes.App, evt *e
 		opts.ArchiveFile = f
 		opts.ArchiveSize = int64(size)
 	}
+
+	streamfmt.FprintlnSectionf(opts.Output, "Starting container image build for app %q", app.Name)
 
 	return b.buildContainerImage(ctx, app, evt, opts)
 }
@@ -141,6 +144,7 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 		Containerfile:     opts.Dockerfile,
 	}
 
+	streamfmt.FprintlnSectionf(w, "Starting container image build for job %q", job.Name)
 	_, err = callBuildService(ctx, bs, req, w)
 	if err != nil {
 		return "", err
@@ -196,7 +200,7 @@ func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts apptypes.Pla
 
 		registries[registry] = struct{}{}
 
-		fmt.Fprintf(w, "---- Building platform %s on cluster %s ----\n", opts.Name, c.Name)
+		streamfmt.FprintlnSectionf(w, "Building platform %s on cluster %s", opts.Name, c.Name)
 
 		imgs, err := b.buildPlatformImage(ctx, bc, registry, cc.InsecureRegistry(), opts)
 		if err != nil {
@@ -242,10 +246,10 @@ func (b *kubernetesBuilder) buildPlatformImage(ctx context.Context, bc buildpb.B
 	}
 
 	for _, img := range images {
-		fmt.Fprintf(w, " ---> Destination image: %s\n", img)
+		streamfmt.FprintlnActionf(w, "Destination image: %s", img)
 	}
 
-	fmt.Fprintln(w, "---- Starting build ----")
+	fmt.Fprintln(w, streamfmt.Section("Starting build"))
 
 	req := &buildpb.BuildRequest{
 		Kind:              buildpb.BuildKind_BUILD_KIND_PLATFORM_WITH_CONTAINER_FILE,
@@ -358,7 +362,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		var customData map[string]any
 		var tsuruYamlData provisiontypes.TsuruYamlData
 		if len(tc.TsuruYaml) > 0 {
-			fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
+			fmt.Fprintln(w, streamfmt.Action("Tsuru config file (tsuru.yaml) found"))
 			fmt.Fprintln(w, tc.TsuruYaml)
 			tsuruYamlData, err = parseTsuruYaml(tc.TsuruYaml)
 			if err != nil {
@@ -372,15 +376,15 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 
 		// Check if it uses new `processes` on YML
 		if len(tsuruYamlData.Processes) > 0 {
-			fmt.Fprintln(w, " ---> Using 'processes' configuration from tsuru.yaml")
+			fmt.Fprintln(w, streamfmt.Action("Using 'processes' configuration from tsuru.yaml"))
 			// If it uses, try to get processes and commands from YML
 			tsuruYamlProcesses := version.GetProcessesFromYamlProcess(tsuruYamlData.Processes)
 			if tsuruYamlData.Healthcheck != nil {
-				fmt.Fprintln(w, " ---> WARNING: Global healthcheck configuration will be IGNORED when YML contains 'processes' configuration")
+				fmt.Fprintln(w, streamfmt.Action("WARNING: Global healthcheck configuration will be IGNORED when YML contains 'processes' configuration"))
 			}
 			mergeProcesses(processes, tsuruYamlProcesses, "tsuru.yaml")
 			if len(tc.Procfile) > 0 {
-				fmt.Fprintln(w, " ---> WARNING: Individual Procfile processes will be IGNORED when YML defines the same process configuration (name and command)")
+				fmt.Fprintln(w, streamfmt.Action("WARNING: Individual Procfile processes will be IGNORED when YML defines the same process configuration (name and command)"))
 			}
 		}
 
@@ -397,7 +401,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
 			}
 
-			fmt.Fprintln(w, " ---> neither the Procfile nor the processes commands in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead.")
+			fmt.Fprintln(w, streamfmt.Action("neither the Procfile nor the processes commands in tsuru.yaml were found; using ENTRYPOINT and CMD defined in the image instead."))
 			cmds := append(ic.Entrypoint, ic.Cmd...)
 			if len(cmds) == 0 {
 				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
@@ -409,7 +413,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app *apptyp
 		}
 
 		for k, v := range processes {
-			fmt.Fprintf(w, " ---> Process %q found with commands: %q (defined in: %q)\n", k, v.commands, v.definedOn)
+			streamfmt.FprintlnActionf(w, "Process %q found with commands: %q (defined in: %q)", k, v.commands, v.definedOn)
 			finalProcesses[k] = v.commands
 		}
 
@@ -451,14 +455,14 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	data := make(map[string]any)
 
 	if err := yaml.Unmarshal([]byte(tsuruYaml), &data); err != nil {
-		fmt.Fprintf(w, " ---> ERROR: Failed to parse tsuru.yaml: %v\n", err)
+		streamfmt.FprintlnActionf(w, "ERROR: Failed to parse tsuru.yaml: %v", err)
 		return
 	}
 
 	checkHealthcheck := func(healthcheckData map[string]any) {
 		for key := range healthcheckData {
 			if _, contains := allowedHealthcheckValues[key]; !contains {
-				fmt.Fprintf(w, " ---> WARNING: invalid or deprecated healthcheck field %q found in tsuru.yaml\n", key)
+				streamfmt.FprintlnActionf(w, "WARNING: invalid or deprecated healthcheck field %q found in tsuru.yaml", key)
 			}
 		}
 	}
@@ -466,7 +470,7 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	if _, ok := data["healthcheck"]; ok {
 		healthcheckData, ok := data["healthcheck"].(map[string]any)
 		if !ok {
-			fmt.Fprintln(w, " ---> WARNING: invalid healthcheck configuration on tsuru.yaml")
+			fmt.Fprintln(w, streamfmt.Action("WARNING: invalid healthcheck configuration on tsuru.yaml"))
 			return
 		}
 
@@ -476,7 +480,7 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	checkStartupcheck := func(startupcheckData map[string]any) {
 		for key := range startupcheckData {
 			if _, contains := allowedStartupcheckValues[key]; !contains {
-				fmt.Fprintf(w, " ---> WARNING: invalid or deprecated startupcheck field %q found in tsuru.yaml\n", key)
+				streamfmt.FprintlnActionf(w, "WARNING: invalid or deprecated startupcheck field %q found in tsuru.yaml", key)
 			}
 		}
 	}
@@ -484,7 +488,7 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	if _, ok := data["startupcheck"]; ok {
 		startupcheckData, ok := data["startupcheck"].(map[string]any)
 		if !ok {
-			fmt.Fprintln(w, " ---> WARNING: invalid startupcheck configuration on tsuru.yaml")
+			fmt.Fprintln(w, streamfmt.Action("WARNING: invalid startupcheck configuration on tsuru.yaml"))
 			return
 		}
 		checkStartupcheck(startupcheckData)
@@ -493,20 +497,20 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 	if _, ok := data["processes"]; ok {
 		processes, ok := data["processes"].([]any)
 		if !ok {
-			fmt.Fprintln(w, " ---> WARNING: invalid processes configuration on tsuru.yaml")
+			fmt.Fprintln(w, streamfmt.Action("WARNING: invalid processes configuration on tsuru.yaml"))
 			return
 		}
 
 		for _, process := range processes {
 			process, ok := process.(map[string]any)
 			if !ok {
-				fmt.Fprintln(w, " ---> WARNING: invalid process configuration on tsuru.yaml")
+				fmt.Fprintln(w, streamfmt.Action("WARNING: invalid process configuration on tsuru.yaml"))
 				return
 			}
 			if _, ok := process["healthcheck"]; ok {
 				healthcheckData, ok := process["healthcheck"].(map[string]any)
 				if !ok {
-					fmt.Fprintln(w, " ---> WARNING: invalid healthcheck configuration on tsuru.yaml")
+					fmt.Fprintln(w, streamfmt.Action("WARNING: invalid healthcheck configuration on tsuru.yaml"))
 					return
 				}
 
@@ -516,7 +520,7 @@ func findDeprecatedHealthcheckData(w io.Writer, tsuruYaml string) {
 			if _, ok := process["startupcheck"]; ok {
 				startupcheckData, ok := process["startupcheck"].(map[string]any)
 				if !ok {
-					fmt.Fprintln(w, " ---> WARNING: invalid startupcheck configuration on tsuru.yaml")
+					fmt.Fprintln(w, streamfmt.Action("WARNING: invalid startupcheck configuration on tsuru.yaml"))
 					return
 				}
 				checkStartupcheck(startupcheckData)

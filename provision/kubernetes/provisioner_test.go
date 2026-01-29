@@ -1864,7 +1864,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	require.NoError(s.t, err)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
 	require.NoError(s.t, err)
-	require.Contains(s.t, buf.String(), "Done updating units")
+	require.Contains(s.t, buf.String(), "All units ready")
 	require.True(s.t, recreatedPods)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	require.NoError(s.t, err)

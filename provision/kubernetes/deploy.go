@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	"github.com/tsuru/tsuru/streamfmt"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	routerTypes "github.com/tsuru/tsuru/types/router"
@@ -295,7 +296,7 @@ func logPodEvents(ctx context.Context, client *ClusterClient, initialResourceVer
 			if !isOpen {
 				return
 			}
-			fmt.Fprintf(output, " ---> %s\n", formatEvtMessage(msg, true))
+			streamfmt.FprintlnActionf(output, "%s", formatEvtMessage(msg, true))
 		}
 	}()
 	return func() {
@@ -589,18 +590,21 @@ func ensureAppSecret(ctx context.Context, opts *ensureAppSecretOptions) (*apiv1.
 		newSecret, err = opts.client.CoreV1().Secrets(ns).Create(ctx, &secret, metav1.CreateOptions{})
 
 		if err == nil {
-			fmt.Fprintf(opts.writer, "\n---- Created secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
+			fmt.Fprint(opts.writer, "\n")
+			streamfmt.FprintlnActionf(opts.writer, "Created secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
 		}
 	} else {
 		if secretUnchanged(&secret, oldSecret) {
-			fmt.Fprintf(opts.writer, "\n---- No changes on secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
+			fmt.Fprint(opts.writer, "\n")
+			streamfmt.FprintlnActionf(opts.writer, "No changes on secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
 			return oldSecret, nil
 		}
 
 		secret.ResourceVersion = oldSecret.ResourceVersion
 		newSecret, err = opts.client.CoreV1().Secrets(ns).Update(ctx, &secret, metav1.UpdateOptions{})
 		if err == nil {
-			fmt.Fprintf(opts.writer, "\n---- Updated secret %q for process %q [version %d] ----\n", opts.secretName, opts.process, opts.version.Version())
+			fmt.Fprint(opts.writer, "\n")
+			streamfmt.FprintlnActionf(opts.writer, "Updated secret %q for process %q [version %d]", opts.secretName, opts.process, opts.version.Version())
 		}
 	}
 	return newSecret, errors.WithStack(err)
@@ -1003,7 +1007,8 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 		version int
 	}
 
-	fmt.Fprint(m.writer, "\n---- Cleaning up resources ----\n")
+	fmt.Fprint(m.writer, "\n")
+	streamfmt.FprintlnSectionf(m.writer, "Cleaning up resources")
 
 	baseVersion, err := baseVersionForApp(ctx, m.client, a)
 	if err != nil {
@@ -1025,7 +1030,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 				continue
 			}
 
-			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", depData.dep.Name)
+			streamfmt.FprintlnActionf(m.writer, "Cleaning up deployment %s", depData.dep.Name)
 			err = cleanupSingleDeployment(ctx, m.client, depData.dep)
 			if err != nil {
 				multiErrors.Add(err)
@@ -1033,7 +1038,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 
 			secretName := appSecretPrefix + depData.dep.Name
 
-			fmt.Fprintf(m.writer, " ---> Cleaning up secret %s\n", secretName)
+			streamfmt.FprintlnActionf(m.writer, "Cleaning up secret %s", secretName)
 			err = cleanupAppSecret(ctx, m.client, a, secretName)
 			if err != nil {
 				multiErrors.Add(err)
@@ -1061,7 +1066,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 			continue
 		}
 
-		fmt.Fprintf(m.writer, " ---> Cleaning up service %s\n", svc.Name)
+		streamfmt.FprintlnActionf(m.writer, "Cleaning up service %s", svc.Name)
 		err = m.client.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
@@ -1081,7 +1086,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a *appTypes.App, d
 			continue
 		}
 
-		fmt.Fprintf(m.writer, " ---> Cleaning up PodDisruptionBudget %s\n", pdb.Name)
+		streamfmt.FprintlnActionf(m.writer, "Cleaning up PodDisruptionBudget %s", pdb.Name)
 		err = m.client.PolicyV1().PodDisruptionBudgets(pdb.Namespace).Delete(ctx, pdb.Name, metav1.DeleteOptions{})
 		if err != nil {
 			multiErrors.Add(err)
@@ -1134,7 +1139,7 @@ func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns str
 	crashedUnitsSet := make(map[string]struct{})
 	for i, m := range messages {
 		crashedUnitsSet[m.pod.Name] = struct{}{}
-		msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s", m.message))
+		msgsStr = append(msgsStr, streamfmt.Action(m.message))
 		pods = append(pods, &messages[i].pod)
 	}
 	var crashedUnits []string
@@ -1255,7 +1260,8 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		}
 	}()
 
-	fmt.Fprintf(w, "\n---- Updating units [%s] [version %d] ----\n", processName, version.Version())
+	fmt.Fprint(w, "\n")
+	streamfmt.FprintlnActionf(w, "Waiting for units to be ready [%s] [version %d]", processName, version.Version())
 	kubeConf := getKubeConfig()
 	timer := time.NewTimer(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
@@ -1305,19 +1311,19 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			}
 		}
 		if oldUpdatedReplicas != dep.Status.UpdatedReplicas {
-			fmt.Fprintf(w, " ---> %d of %d new units created\n", dep.Status.UpdatedReplicas, specReplicas)
+			streamfmt.FprintlnActionf(w, "%d of %d new units created", dep.Status.UpdatedReplicas, specReplicas)
 		}
 		if initialCheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
 			allInit, err = allNewPodsRunning(ctx, client, dep)
 			if allInit && err == nil {
 				initialCheckTimeout = time.After(maxWaitTimeDuration)
-				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
+				streamfmt.FprintlnActionf(w, "waiting healthcheck on %d created units", specReplicas)
 			}
 		}
 		readyUnits := dep.Status.UpdatedReplicas - dep.Status.UnavailableReplicas
 		if oldReadyUnits != readyUnits && readyUnits >= 0 {
-			fmt.Fprintf(w, " ---> %d of %d new units ready\n", readyUnits, specReplicas)
+			streamfmt.FprintlnActionf(w, "%d of %d new units ready", readyUnits, specReplicas)
 		}
 		if readyUnits > largestReady {
 			largestReady = readyUnits
@@ -1328,7 +1334,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		}
 		pendingTermination := dep.Status.Replicas - dep.Status.UpdatedReplicas
 		if oldPendingTermination != pendingTermination && pendingTermination > 0 {
-			fmt.Fprintf(w, " ---> %d old units pending termination\n", pendingTermination)
+			streamfmt.FprintlnActionf(w, "%d old units pending termination", pendingTermination)
 		}
 		oldUpdatedReplicas = dep.Status.UpdatedReplicas
 		oldReadyUnits = readyUnits
@@ -1345,14 +1351,16 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				break
 			}
 			if isDeploymentEvent(msg, dep) {
-				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
+				fmt.Fprint(w, " ")
+				streamfmt.FprintlnActionf(w, "%s", formatEvtMessage(msg, false))
 			}
 		case msg, isOpen := <-watchDepCh:
 			if !isOpen {
 				watchDepCh = nil
 				break
 			}
-			fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
+			fmt.Fprint(w, " ")
+			streamfmt.FprintlnActionf(w, "%s", formatEvtMessage(msg, false))
 
 		case msg, isOpen := <-watchRepCh:
 			if !isOpen {
@@ -1360,13 +1368,16 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				break
 			}
 			if isDeploymentEvent(msg, dep) {
-				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
+				fmt.Fprint(w, " ")
+				streamfmt.FprintlnActionf(w, "%s", formatEvtMessage(msg, false))
 			}
 		case <-initialCheckTimeout:
-			fmt.Fprintf(w, "\n**** Healthcheck Timeout of %s exceeded ****\n", maxWaitTimeDuration.String())
+			fmt.Fprintln(w)
+			streamfmt.FprintlnErrorf(w, "Healthcheck Timeout of %s exceeded", maxWaitTimeDuration.String())
 			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, time.Since(t0))
 		case <-timer.C:
-			fmt.Fprintf(w, "\n**** Deployment Progress Timeout of %s exceeded ****\n", kubeConf.DeploymentProgressTimeout.String())
+			fmt.Fprintln(w)
+			streamfmt.FprintlnErrorf(w, "Deployment Progress Timeout of %s exceeded", kubeConf.DeploymentProgressTimeout.String())
 			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, time.Since(t0))
 		case <-ctx.Done():
 			err = ctx.Err()
@@ -1380,7 +1391,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			return revision, err
 		}
 	}
-	fmt.Fprintln(w, " ---> Done updating units")
+	fmt.Fprintln(w, streamfmt.Action("All units ready"))
 	return revision, nil
 }
 
@@ -1388,6 +1399,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if m.writer == nil {
 		m.writer = io.Discard
 	}
+
+	streamfmt.FprintlnSectionf(m.writer, "Updating units [%s] [version %d]", opts.ProcessName, opts.Version.Version())
 
 	err := ensureNamespaceForApp(ctx, m.client, opts.App)
 	if err != nil {
@@ -1462,7 +1475,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 	secret, err := ensureAppSecret(ctx, ensureAppSecretOptions)
 	if err != nil {
-		fmt.Fprintf(m.writer, "**** ERROR CREATING SECRET: %s ****\n ---> %s <---\n", secretName, err)
+		fmt.Fprintf(m.writer, "%s\n%s\n", streamfmt.Error(fmt.Sprintf("ERROR CREATING SECRET: %s", secretName)), streamfmt.Action(fmt.Sprintf(" %s ", err)))
 		return err
 	}
 
@@ -1496,11 +1509,12 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		_, err = ensureAppSecret(ctx, ensureAppSecretOptions)
 
 		if err == nil {
-			fmt.Fprintf(m.writer, "\n---- Updated secret %q ownerReferences ----\n", ensureAppSecretOptions.secretName)
+			fmt.Fprint(m.writer, "\n")
+			streamfmt.FprintlnActionf(m.writer, "Updated secret %q ownerReferences", ensureAppSecretOptions.secretName)
 		}
 
 		if err != nil {
-			fmt.Fprintf(m.writer, "**** ERROR UPDATING SECRET OWNERREFERENCES: %s ****\n ---> %s <---\n", secretName, err)
+			fmt.Fprintf(m.writer, "%s\n%s\n", streamfmt.Error(fmt.Sprintf("ERROR UPDATING SECRET OWNERREFERENCES: %s", secretName)), streamfmt.Action(fmt.Sprintf(" %s ", err)))
 			return err
 		}
 	}
@@ -1514,11 +1528,11 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 			if oldDep != nil && (newRevision == "" || oldRevision == newRevision) {
 				oldDep.Generation = 0
 				oldDep.ResourceVersion = ""
-				fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n")
+				fmt.Fprintf(m.writer, "\n%s\n", streamfmt.Error("UPDATING BACK AFTER FAILURE"))
 				_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(ctx, oldDep, metav1.UpdateOptions{})
 			} else if oldDep == nil {
 				// We have just created the deployment, so we need to remove it
-				fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n")
+				fmt.Fprintf(m.writer, "\n%s\n", streamfmt.Error("DELETING CREATED DEPLOYMENT AFTER FAILURE"))
 				rollbackErrors := tsuruErrors.NewMultiError()
 
 				rollbackErr = m.client.AppsV1().Deployments(ns).Delete(ctx, newDep.Name, metav1.DeleteOptions{})
@@ -1533,7 +1547,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 				rollbackErr = rollbackErrors.ToError()
 			} else {
-				fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
+				fmt.Fprintf(m.writer, "\n%s\n", streamfmt.Error("ROLLING BACK AFTER FAILURE"))
 
 				// This code was copied from kubernetes codebase, in the next update of version of kubectl
 				// we need to move to import this library:
@@ -1542,7 +1556,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 				rollbackErr = rollbacker.Rollback(ctx, m.writer, newDep)
 			}
 			if rollbackErr != nil {
-				fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
+				fmt.Fprintf(m.writer, "\n%s\n%s\n", streamfmt.Error("ERROR DURING ROLLBACK"), streamfmt.Action(fmt.Sprintf(" %s ", rollbackErr)))
 			}
 			if _, ok := err.(provision.ErrUnitStartup); ok {
 				return err
@@ -1550,7 +1564,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 			return provision.ErrUnitStartup{Err: err}
 		}
 	} else {
-		fmt.Fprintf(m.writer, "\n---- No changes on units [%s] [version %d] ----\n", opts.ProcessName, opts.Version.Version())
+		fmt.Fprint(m.writer, "\n")
+		streamfmt.FprintlnSectionf(m.writer, "No changes on units [%s] [version %d]", opts.ProcessName, opts.Version.Version())
 	}
 
 	backendCfgexists, err := ensureBackendConfig(ctx, backendConfigArgs{
@@ -1563,7 +1578,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", opts.ProcessName)
+	fmt.Fprint(m.writer, "\n")
+	streamfmt.FprintlnSectionf(m.writer, "Ensuring services [%s]", opts.ProcessName)
 	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists, opts.PreserveVersions)
 	if err != nil {
 		return err
@@ -1835,7 +1851,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a *appTypes.App, pr
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(m.writer, " ---> Service %s\n", svc.Name)
+		streamfmt.FprintlnActionf(m.writer, "Service %s", svc.Name)
 		if isNew {
 			_, err = m.client.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{})
 		} else {
@@ -1864,7 +1880,7 @@ func (m *serviceManager) createHeadlessService(ctx context.Context, svcPorts []a
 		return nil
 	}
 	svcName := headlessServiceName(a, process)
-	fmt.Fprintf(m.writer, " ---> Service %s\n", svcName)
+	streamfmt.FprintlnActionf(m.writer, "Service %s", svcName)
 
 	labels.SetIsHeadlessService()
 	expandedLabelsHeadless := labels.ToLabels()

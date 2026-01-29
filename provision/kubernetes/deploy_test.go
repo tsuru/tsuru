@@ -2103,7 +2103,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	require.Contains(s.t, buf.String(), "---> 1 of 1 new units created")
 	require.Contains(s.t, buf.String(), "---> 0 of 1 new units ready")
 	require.Contains(s.t, buf.String(), "---> 1 of 1 new units ready")
-	require.Contains(s.t, buf.String(), "---> Done updating units")
+	require.Contains(s.t, buf.String(), "---> All units ready")
 	require.Contains(s.t, buf.String(), "---> pod-name-1 - msg1 [c1]")
 	require.Contains(s.t, buf.String(), "---> pod-name-1 - msg2 [c1, n1]")
 }
@@ -3435,7 +3435,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	require.True(s.t, k8sErrors.IsNotFound(err))
 
 	require.Contains(s.t, buf.String(), "---- Updating units [p1] [version 1] ----")
-	require.Contains(s.t, buf.String(), "Healthcheck Timeout of 1s exceeded")
+	require.Contains(s.t, buf.String(), "HEALTHCHECK TIMEOUT OF 1S EXCEEDED")
 	require.Contains(s.t, buf.String(), "ROLLING BACK AFTER FAILURE")
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	require.NoError(s.t, err)
@@ -3619,7 +3619,7 @@ func (s *S) TestServiceManagerDeployServiceProcessHealthcheckTimeoutExceeded(c *
 	require.Equal(s.t, "1", dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"])
 
 	require.Contains(s.t, buf.String(), "---- Updating units [p1] [version 1] ----")
-	require.Contains(s.t, buf.String(), " Healthcheck Timeout of 5s exceeded")
+	require.Contains(s.t, buf.String(), "HEALTHCHECK TIMEOUT OF 5S EXCEEDED")
 	require.Contains(s.t, buf.String(), "ROLLING BACK AFTER FAILURE")
 }
 
@@ -3682,7 +3682,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	waitDep()
 	require.False(s.t, rollbackCalled)
 	require.Contains(s.t, buf.String(), "---- Updating units [p1] [version 1] ----")
-	require.Contains(s.t, buf.String(), "Deployment Progress Timeout of 2s exceeded")
+	require.Contains(s.t, buf.String(), "DEPLOYMENT PROGRESS TIMEOUT OF 2S EXCEEDED")
 	require.Contains(s.t, buf.String(), "UPDATING BACK AFTER FAILURE")
 }
 
