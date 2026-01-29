@@ -2103,7 +2103,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	require.Contains(s.t, buf.String(), "---> 1 of 1 new units created")
 	require.Contains(s.t, buf.String(), "---> 0 of 1 new units ready")
 	require.Contains(s.t, buf.String(), "---> 1 of 1 new units ready")
-	require.Contains(s.t, buf.String(), "---> Done updating units")
+	require.Contains(s.t, buf.String(), "---> All units ready")
 	require.Contains(s.t, buf.String(), "---> pod-name-1 - msg1 [c1]")
 	require.Contains(s.t, buf.String(), "---> pod-name-1 - msg2 [c1, n1]")
 }

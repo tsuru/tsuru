@@ -1261,7 +1261,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	}()
 
 	fmt.Fprint(w, "\n")
-	streamfmt.FprintlnSectionf(w, "Updating units [%s] [version %d]", processName, version.Version())
+	streamfmt.FprintlnActionf(w, "Waiting for units to be ready [%s] [version %d]", processName, version.Version())
 	kubeConf := getKubeConfig()
 	timer := time.NewTimer(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
@@ -1391,7 +1391,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			return revision, err
 		}
 	}
-	fmt.Fprintln(w, streamfmt.Action("Done updating units"))
+	fmt.Fprintln(w, streamfmt.Action("All units ready"))
 	return revision, nil
 }
 
@@ -1399,6 +1399,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if m.writer == nil {
 		m.writer = io.Discard
 	}
+
+	streamfmt.FprintlnSectionf(m.writer, "Updating units [%s] [version %d]", opts.ProcessName, opts.Version.Version())
 
 	err := ensureNamespaceForApp(ctx, m.client, opts.App)
 	if err != nil {
