@@ -19,7 +19,9 @@ services:
 
   deploy-agent:
     container_name: deploy-agent
-    image: tsuru/deploy-agent:v2.8.1
+    image: tsuru/deploy-agent:v2.10.0
+    environment:
+    - BUILDKIT_DETECT_CPU_ARCH=true
     command:
     - -port=8000
     - -buildkit-addr=tcp://buildkit:8001

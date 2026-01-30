@@ -430,6 +430,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		if platform.Disabled {
 			canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
 				permission.Check(ctx, t, permission.PermPlatformCreate)
+
+			// If the platform is disabled, only admin users can use it.
 			if !canUsePlat {
 				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
 			}
