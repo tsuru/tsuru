@@ -13,11 +13,15 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -324,6 +328,12 @@ func (s *S) TestBootstrapDeployAppForwardWithConfig(c *check.C) {
 	c.Assert(deployOpts.Kind, check.Equals, provisionTypes.DeployKind("image"))
 	c.Assert(deployOpts.OutputStream, check.Equals, io.Discard)
 	c.Assert(deployOpts.Event, check.NotNil)
+
+	evt := deployOpts.Event
+	c.Assert(evt.Target, check.Equals, eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: app.Name})
+	c.Assert(evt.Kind, check.Equals, eventTypes.Kind{Type: "internal", Name: "bootstrap deploy"})
+	c.Assert(evt.Lock, check.IsNil)
+	c.Assert(evt.Allowed, check.DeepEquals, event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app.Name)))
 }
 
 func (s *S) TestBootstrapDeployAppForwardInvalidParam(c *check.C) {
