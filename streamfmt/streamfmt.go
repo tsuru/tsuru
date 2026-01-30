@@ -11,39 +11,39 @@ import (
 )
 
 const (
-	sectionPrefix = "---- "
-	sectionSuffix = " ----"
+	SectionPrefix = "---- "
+	SectionSuffix = " ----"
 
-	actionPrefix = " ---> "
+	ActionPrefix = " ---> "
 
-	errorPrefix = "**** "
-	errorSuffix = " ****"
+	ErrorPrefix = "**** "
+	ErrorSuffix = " ****"
 )
 
 func Section(text string) string {
-	return sectionPrefix + text + sectionSuffix
+	return SectionPrefix + text + SectionSuffix
 }
 
 func Action(text string) string {
-	return actionPrefix + text
+	return ActionPrefix + text
 }
 
 func Error(text string) string {
-	return errorPrefix + strings.ToUpper(text) + errorSuffix
+	return ErrorPrefix + strings.ToUpper(text) + ErrorSuffix
 }
 
 // Formatted versions
 
 func Sectionf(format string, a ...interface{}) string {
-	return sectionPrefix + fmt.Sprintf(format, a...) + sectionSuffix
+	return SectionPrefix + fmt.Sprintf(format, a...) + SectionSuffix
 }
 
 func Actionf(format string, a ...interface{}) string {
-	return actionPrefix + fmt.Sprintf(format, a...)
+	return ActionPrefix + fmt.Sprintf(format, a...)
 }
 
 func Errorf(format string, a ...interface{}) string {
-	return errorPrefix + strings.ToUpper(fmt.Sprintf(format, a...)) + errorSuffix
+	return ErrorPrefix + strings.ToUpper(fmt.Sprintf(format, a...)) + ErrorSuffix
 }
 
 // io.Writer versions
