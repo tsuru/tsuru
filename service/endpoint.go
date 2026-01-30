@@ -76,10 +76,11 @@ func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, 
 	params := map[string][]string{
 		"name":    {instance.Name},
 		"team":    {instance.TeamOwner},
-		"user":    {evt.Owner.Name},
+		"user":    {evt.OwnerEmail()},
 		"eventid": {evt.UniqueID.Hex()},
 		"tags":    instance.Tags,
 	}
+
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
 	}
@@ -113,9 +114,10 @@ func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, 
 		"team":        {instance.TeamOwner},
 		"tags":        instance.Tags,
 		"plan":        {instance.PlanName},
-		"user":        {evt.Owner.Name},
+		"user":        {evt.OwnerEmail()},
 		"eventid":     {evt.UniqueID.Hex()},
 	}
+
 	addParameters(params, instance.Parameters)
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
@@ -138,9 +140,10 @@ func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, 
 func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
-		"user":    {evt.Owner.Name},
+		"user":    {evt.OwnerEmail()},
 		"eventid": {evt.UniqueID.Hex()},
 	}
+
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
@@ -251,9 +254,10 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 	params := map[string][]string{
 		"app-hosts": appAddrs,
 		"app-name":  {app.Name},
-		"user":      {evt.Owner.Name},
+		"user":      {evt.OwnerEmail()},
 		"eventid":   {evt.UniqueID.Hex()},
 	}
+
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
@@ -524,7 +528,7 @@ func addParameters(dst url.Values, params map[string]interface{}) {
 func baseHeader(ctx context.Context, evt *event.Event, si *ServiceInstance, requestID string) (http.Header, error) {
 	header := make(http.Header)
 	if evt != nil {
-		header.Set("X-Tsuru-User", evt.Owner.Name)
+		header.Set("X-Tsuru-User", evt.OwnerEmail())
 		header.Set("X-Tsuru-Eventid", evt.UniqueID.Hex())
 	}
 	requestIDHeader, _ := config.GetString("request-id-header")
@@ -547,7 +551,7 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app *appTypes.App
 	addParameters(params, bindParams)
 	params.Set("app-name", app.Name)
 	if evt != nil {
-		params.Set("user", evt.Owner.Name)
+		params.Set("user", evt.OwnerEmail())
 		params.Set("eventid", evt.UniqueID.Hex())
 	}
 	appAddrs, err := servicemanager.App.GetAddresses(ctx, app)
@@ -596,7 +600,7 @@ func buildBindJobParams(ctx context.Context, evt *event.Event, job *jobTypes.Job
 	params := url.Values{}
 	params.Set("job-name", job.Name)
 	if evt != nil {
-		params.Set("user", evt.Owner.Name)
+		params.Set("user", evt.OwnerEmail())
 		params.Set("eventid", evt.UniqueID.Hex())
 	}
 
