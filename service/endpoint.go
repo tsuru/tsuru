@@ -80,6 +80,12 @@ func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, 
 		"eventid": {evt.UniqueID.Hex()},
 		"tags":    instance.Tags,
 	}
+
+	email := evt.OwnerEmail()
+	if email != "" {
+		params["email"] = []string{email}
+	}
+
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
 	}
@@ -116,6 +122,12 @@ func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, 
 		"user":        {evt.Owner.Name},
 		"eventid":     {evt.UniqueID.Hex()},
 	}
+
+	email := evt.OwnerEmail()
+	if email != "" {
+		params["email"] = []string{email}
+	}
+
 	addParameters(params, instance.Parameters)
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
@@ -141,6 +153,12 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 		"user":    {evt.Owner.Name},
 		"eventid": {evt.UniqueID.Hex()},
 	}
+
+	email := evt.OwnerEmail()
+	if email != "" {
+		params["email"] = []string{email}
+	}
+
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
@@ -254,6 +272,12 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 		"user":      {evt.Owner.Name},
 		"eventid":   {evt.UniqueID.Hex()},
 	}
+
+	email := evt.OwnerEmail()
+	if email != "" {
+		params["email"] = []string{email}
+	}
+
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
@@ -549,6 +573,11 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app *appTypes.App
 	if evt != nil {
 		params.Set("user", evt.Owner.Name)
 		params.Set("eventid", evt.UniqueID.Hex())
+
+		email := evt.OwnerEmail()
+		if email != "" {
+			params["email"] = []string{email}
+		}
 	}
 	appAddrs, err := servicemanager.App.GetAddresses(ctx, app)
 	if err != nil {
@@ -598,6 +627,11 @@ func buildBindJobParams(ctx context.Context, evt *event.Event, job *jobTypes.Job
 	if evt != nil {
 		params.Set("user", evt.Owner.Name)
 		params.Set("eventid", evt.UniqueID.Hex())
+
+		email := evt.OwnerEmail()
+		if email != "" {
+			params["email"] = []string{email}
+		}
 	}
 
 	p, err := servicemanager.Pool.FindByName(ctx, job.Pool)

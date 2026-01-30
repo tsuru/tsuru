@@ -1225,6 +1225,20 @@ func (e *Event) LogsFrom(origin *Event) {
 	e.StructuredLog = append(e.StructuredLog, origin.StructuredLog...)
 }
 
+func (e *Event) OwnerEmail() string {
+	switch e.Owner.Type {
+	case eventTypes.OwnerTypeUser:
+		return e.Owner.Name
+
+	case eventTypes.OwnerTypeToken:
+		return fmt.Sprintf("%s@%s", e.Owner.Name, authTypes.TsuruTokenEmailDomain)
+
+	default:
+		return ""
+	}
+
+}
+
 func checkIsExpired(ctx context.Context, collection *mongo.Collection, lock interface{}) bool {
 	var existingEvt Event
 
