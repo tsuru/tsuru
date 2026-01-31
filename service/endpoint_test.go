@@ -92,6 +92,17 @@ func createEvt(c *check.C) *event.Event {
 	return evt
 }
 
+func createEvtWithTokenOwner(c *check.C) *event.Event {
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: "x"},
+		Kind:     permission.PermServiceInstanceCreate,
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeToken, Name: "my-team-token"},
+		Allowed:  event.Allowed(permission.PermServiceInstanceReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	return evt
+}
+
 func (s *S) TestEndpointCreate(c *check.C) {
 	config.Set("request-id-header", "Request-ID")
 	h := TestHandler{}
@@ -231,6 +242,27 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `^Failed to create the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
+func (s *S) TestEndpointCreateWithTokenOwner(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{
+		Name:        "my-redis",
+		ServiceName: "redis",
+		TeamOwner:   "theteam",
+	}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvtWithTokenOwner(c)
+	err := client.Create(context.TODO(), &instance, evt, "")
+	c.Assert(err, check.IsNil)
+	h.Lock()
+	defer h.Unlock()
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, check.IsNil)
+	c.Assert(v.Get("user"), check.Equals, "my-team-token@tsuru-team-token")
+	c.Assert(h.request.Header.Get("X-Tsuru-User"), check.Equals, "my-team-token@tsuru-team-token")
+}
+
 func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
 	requestIDHeader := "request-id"
 	requestIDValue := "request-id-value"
@@ -285,6 +317,28 @@ func (s *S) TestUpdateShouldReturnErrorIfTheRequestFails(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `Failed to update the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
+func (s *S) TestUpdateWithTokenOwner(c *check.C) {
+	var requests int32
+	instance := ServiceInstance{
+		Name:        "his-redis",
+		ServiceName: "redis",
+		TeamOwner:   "team-owner",
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		r.ParseForm()
+		c.Check(r.FormValue("user"), check.Equals, "my-team-token@tsuru-team-token")
+		c.Check(r.Header.Get("X-Tsuru-User"), check.Equals, "my-team-token@tsuru-team-token")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvtWithTokenOwner(c)
+	err := client.Update(context.TODO(), &instance, evt, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
+}
+
 func (s *S) TestUpdateShouldIgnoreNotFound(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -322,6 +376,23 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	err := client.Destroy(context.TODO(), &instance, evt, "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `Failed to destroy the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
+}
+
+func (s *S) TestDestroyWithTokenOwner(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvtWithTokenOwner(c)
+	err := client.Destroy(context.TODO(), &instance, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, check.IsNil)
+	c.Assert(v.Get("user"), check.Equals, "my-team-token@tsuru-team-token")
+	c.Assert(h.request.Header.Get("X-Tsuru-User"), check.Equals, "my-team-token@tsuru-team-token")
 }
 
 func (s *S) TestDestroyNotFound(c *check.C) {

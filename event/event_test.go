@@ -1691,3 +1691,47 @@ func (s *S) TestEventInfoWithGenericCustomData(c *check.C) {
 		End:   "end",
 	})
 }
+
+func (s *S) TestEventOwnerEmailWithUserOwner(c *check.C) {
+	evt, err := New(context.TODO(), &Opts{
+		Target:   eventTypes.Target{Type: "app", Value: "myapp"},
+		Kind:     permission.PermAppUpdateEnvSet,
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: "my@user.com"},
+		Allowed:  Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.OwnerEmail(), check.Equals, "my@user.com")
+}
+
+func (s *S) TestEventOwnerEmailWithTokenOwner(c *check.C) {
+	evt, err := New(context.TODO(), &Opts{
+		Target:   eventTypes.Target{Type: "app", Value: "myapp"},
+		Kind:     permission.PermAppUpdateEnvSet,
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeToken, Name: "my-team-token"},
+		Allowed:  Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.OwnerEmail(), check.Equals, "my-team-token@tsuru-team-token")
+}
+
+func (s *S) TestEventOwnerEmailWithInternalOwner(c *check.C) {
+	evt, err := New(context.TODO(), &Opts{
+		Target:   eventTypes.Target{Type: "app", Value: "myapp"},
+		Kind:     permission.PermAppUpdateEnvSet,
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeInternal, Name: "internal-process"},
+		Allowed:  Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.OwnerEmail(), check.Equals, "")
+}
+
+func (s *S) TestEventOwnerEmailWithAppOwner(c *check.C) {
+	evt, err := New(context.TODO(), &Opts{
+		Target:   eventTypes.Target{Type: "app", Value: "myapp"},
+		Kind:     permission.PermAppUpdateEnvSet,
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeApp, Name: "myapp"},
+		Allowed:  Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.OwnerEmail(), check.Equals, "")
+}
