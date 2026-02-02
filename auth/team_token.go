@@ -22,13 +22,8 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-// TsuruTokenEmailDomain is the e-mail domain used to fake users from a team
-// token. This TLD is unlikely to be used world-wide, so regular Tsuru users
-// should not be able to register using it.
-const TsuruTokenEmailDomain = "tsuru-team-token"
-
 func IsEmailFromTeamToken(email string) bool {
-	return strings.HasSuffix(email, fmt.Sprintf("@%s", TsuruTokenEmailDomain))
+	return strings.HasSuffix(email, fmt.Sprintf("@%s", authTypes.TsuruTokenEmailDomain))
 }
 
 type teamToken authTypes.TeamToken
@@ -44,7 +39,7 @@ func (t *teamToken) GetValue() string {
 
 func (t *teamToken) User(ctx context.Context) (*authTypes.User, error) {
 	return &authTypes.User{
-		Email:     fmt.Sprintf("%s@%s", t.TokenID, TsuruTokenEmailDomain),
+		Email:     fmt.Sprintf("%s@%s", t.TokenID, authTypes.TsuruTokenEmailDomain),
 		Quota:     quota.UnlimitedQuota,
 		Roles:     t.Roles,
 		FromToken: true,

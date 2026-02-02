@@ -10,6 +10,11 @@ import (
 	"github.com/tsuru/tsuru/types/permission"
 )
 
+// TsuruTokenEmailDomain is the e-mail domain used to fake users from a team
+// token. This TLD is unlikely to be used world-wide, so regular Tsuru users
+// should not be able to register using it.
+const TsuruTokenEmailDomain = "tsuru-team-token"
+
 type Token interface {
 	GetValue() string
 	GetUserName() string
