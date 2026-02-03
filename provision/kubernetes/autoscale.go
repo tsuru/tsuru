@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"strconv"
@@ -233,6 +234,12 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provTypes.AutoSc
 	return spec
 }
 
+// scaleops annotations
+var (
+	scaleOpsOriginalMetrics     = "analysis.scaleops.io/original-metrics"
+	scaleOpsOriginalMinReplicas = "analysis.scaleops.io/original-min-replicas"
+)
+
 func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpec {
 	ls := labelSetFromMeta(&hpa.ObjectMeta)
 	spec := provTypes.AutoScaleSpec{
@@ -247,6 +254,24 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpe
 			},
 		},
 	}
+
+	// check for scaleops integrations
+	// https://scaleops.com/
+	if originalMinReplicasStr, ok := hpa.Annotations[scaleOpsOriginalMinReplicas]; ok {
+		originalMinReplicas, err := strconv.Atoi(originalMinReplicasStr)
+		if err == nil {
+			spec.MinUnits = uint(originalMinReplicas)
+		}
+	}
+	if originalMetricsStr, ok := hpa.Annotations[scaleOpsOriginalMetrics]; ok {
+		originalMetrics := []autoscalingv2.MetricSpec{}
+
+		err := json.Unmarshal([]byte(originalMetricsStr), &originalMetrics)
+		if err == nil {
+			hpa.Spec.Metrics = originalMetrics
+		}
+	}
+
 	if hpa.Spec.MinReplicas != nil {
 		spec.MinUnits = uint(*hpa.Spec.MinReplicas)
 	}
