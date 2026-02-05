@@ -17,7 +17,9 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -25,10 +27,15 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+// mockDeployFunc can be set in tests to mock the Deploy function.
+var mockDeployFunc func(ctx context.Context, opts DeployOptions) (string, error)
 
 var (
 	ErrAppAlreadyExists                      = errors.New("there is already an app with this name")
@@ -230,6 +237,63 @@ var provisionApp = action.Action{
 		if err == nil {
 			prov.Destroy(ctx.Context, app)
 		}
+	},
+	MinParams: 1,
+}
+
+var bootstrapDeployApp = action.Action{
+	Name: "bootstrap-deploy-app",
+	Forward: func(ctx action.FWContext) (result action.Result, err error) {
+		var app *appTypes.App
+		switch ctx.Params[0].(type) {
+		case *appTypes.App:
+			app = ctx.Params[0].(*appTypes.App)
+		default:
+			return nil, errors.New("First parameter must be *App.")
+		}
+
+		bootstrapDeployImage, _ := config.GetString("apps:bootstrap:image")
+
+		if bootstrapDeployImage == "" {
+			return app, nil
+		}
+
+		var evt *event.Event
+		evt, err = event.NewInternal(ctx.Context, &event.Opts{
+			Target:       eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: app.Name},
+			InternalKind: "bootstrap deploy",
+			DisableLock:  true,
+			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app.Name)),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create event")
+		}
+		defer evt.Done(ctx.Context, err)
+
+		opts := &DeployOptions{
+			App:          app,
+			Image:        bootstrapDeployImage,
+			Event:        evt,
+			Message:      "bootstrap deploy",
+			OutputStream: io.Discard,
+		}
+
+		opts.GetKind()
+
+		deployFn := Deploy
+		if mockDeployFunc != nil {
+			deployFn = mockDeployFunc
+		}
+
+		_, err = deployFn(ctx.Context, *opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return app, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		// no rollback needed
 	},
 	MinParams: 1,
 }

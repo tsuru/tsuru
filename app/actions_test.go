@@ -13,11 +13,16 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
@@ -45,6 +50,10 @@ func (s *S) TestReserveUnitsToAddName(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsName(c *check.C) {
 	c.Assert(provisionAddUnits.Name, check.Equals, "provision-add-units")
+}
+
+func (s *S) TestBootstrapDeployAppName(c *check.C) {
+	c.Assert(bootstrapDeployApp.Name, check.Equals, "bootstrap-deploy-app")
 }
 
 func (s *S) TestInsertAppForward(c *check.C) {
@@ -266,6 +275,80 @@ func (s *S) TestProvisionAppBackward(c *check.C) {
 
 func (s *S) TestProvisionAppMinParams(c *check.C) {
 	c.Assert(provisionApp.MinParams, check.Equals, 1)
+}
+
+func (s *S) TestBootstrapDeployAppForwardNoConfig(c *check.C) {
+	config.Unset("apps:bootstrap:image")
+	app := &appTypes.App{
+		Name:      "myapp",
+		Platform:  "django",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(context.TODO(), app, s.user)
+	c.Assert(err, check.IsNil)
+	ctx := action.FWContext{
+		Context: context.TODO(),
+		Params:  []interface{}{app},
+	}
+	result, err := bootstrapDeployApp.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.Equals, app)
+}
+
+func (s *S) TestBootstrapDeployAppForwardWithConfig(c *check.C) {
+	config.Set("apps:bootstrap:image", "myregistry/bootstrap:latest")
+	defer config.Unset("apps:bootstrap:image")
+
+	var deployOpts DeployOptions
+	mockDeployFunc = func(ctx context.Context, opts DeployOptions) (string, error) {
+		deployOpts = opts
+		return "", nil
+	}
+	defer func() { mockDeployFunc = nil }()
+
+	app := &appTypes.App{
+		Name:      "myapp",
+		Platform:  "django",
+		TeamOwner: s.team.Name,
+		Routers:   []appTypes.AppRouter{{Name: "fake"}},
+	}
+	err := CreateApp(context.TODO(), app, s.user)
+	c.Assert(err, check.IsNil)
+	ctx := action.FWContext{
+		Context: context.TODO(),
+		Params:  []interface{}{app},
+	}
+	result, err := bootstrapDeployApp.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.Equals, app)
+
+	c.Assert(deployOpts.App.Name, check.Equals, "myapp")
+	c.Assert(deployOpts.Image, check.Equals, "myregistry/bootstrap:latest")
+	c.Assert(deployOpts.Message, check.Equals, "bootstrap deploy")
+	c.Assert(deployOpts.Kind, check.Equals, provisionTypes.DeployKind("image"))
+	c.Assert(deployOpts.OutputStream, check.Equals, io.Discard)
+	c.Assert(deployOpts.Event, check.NotNil)
+
+	evt := deployOpts.Event
+	c.Assert(evt.Target, check.Equals, eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: app.Name})
+	c.Assert(evt.Kind, check.Equals, eventTypes.Kind{Type: "internal", Name: "bootstrap deploy"})
+	c.Assert(evt.Lock, check.IsNil)
+	c.Assert(evt.Allowed, check.DeepEquals, event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app.Name)))
+}
+
+func (s *S) TestBootstrapDeployAppForwardInvalidParam(c *check.C) {
+	ctx := action.FWContext{
+		Context: context.TODO(),
+		Params:  []interface{}{"invalid"},
+	}
+	result, err := bootstrapDeployApp.Forward(ctx)
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
+}
+
+func (s *S) TestBootstrapDeployAppMinParams(c *check.C) {
+	c.Assert(bootstrapDeployApp.MinParams, check.Equals, 1)
 }
 
 func (s *S) TestReserveUserAppForward(c *check.C) {
