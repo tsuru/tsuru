@@ -1827,3 +1827,406 @@ func TestValidateBehaviorUnitsNoFail(t *testing.T) {
 		require.Equal(t, defaultValue, got)
 	})
 }
+
+func TestHpaToSpec(t *testing.T) {
+	baseLabels := map[string]string{
+		"tsuru.io/app-process": "web",
+		"tsuru.io/app-version": "1",
+	}
+
+	t.Run("basic HPA without annotations", func(t *testing.T) {
+		minReplicas := int32(2)
+		avgUtil := int32(50)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &avgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		require.Equal(t, uint(2), spec.MinUnits)
+		require.Equal(t, uint(10), spec.MaxUnits)
+		require.Equal(t, "web", spec.Process)
+		require.Equal(t, 1, spec.Version)
+		require.Equal(t, "500m", spec.AverageCPU)
+	})
+
+	t.Run("HPA with AverageValue metric type", func(t *testing.T) {
+		minReplicas := int32(2)
+		avgValue := resource.MustParse("200m")
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:         autoscalingv2.AverageValueMetricType,
+								AverageValue: &avgValue,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		require.Equal(t, "200m", spec.AverageCPU)
+	})
+
+	t.Run("HPA with empty metrics", func(t *testing.T) {
+		minReplicas := int32(2)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics:     []autoscalingv2.MetricSpec{},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		require.Equal(t, "", spec.AverageCPU)
+	})
+
+	t.Run("HPA with behavior policies", func(t *testing.T) {
+		minReplicas := int32(2)
+		avgUtil := int32(50)
+		policyMin := autoscalingv2.MinChangePolicySelect
+		stabilizationWindow := int32(120)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+					ScaleDown: &autoscalingv2.HPAScalingRules{
+						SelectPolicy:               &policyMin,
+						StabilizationWindowSeconds: &stabilizationWindow,
+						Policies: []autoscalingv2.HPAScalingPolicy{
+							{
+								Type:          autoscalingv2.PercentScalingPolicy,
+								Value:         25,
+								PeriodSeconds: 60,
+							},
+							{
+								Type:          autoscalingv2.PodsScalingPolicy,
+								Value:         5,
+								PeriodSeconds: 60,
+							},
+						},
+					},
+				},
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &avgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		require.NotNil(t, spec.Behavior.ScaleDown)
+		require.Equal(t, int32(25), *spec.Behavior.ScaleDown.PercentagePolicyValue)
+		require.Equal(t, int32(5), *spec.Behavior.ScaleDown.UnitsPolicyValue)
+		require.Equal(t, int32(120), *spec.Behavior.ScaleDown.StabilizationWindow)
+	})
+}
+
+func TestHpaToSpecWithScaleOpsDotComAnnotations(t *testing.T) {
+	baseLabels := map[string]string{
+		"tsuru.io/app-process": "web",
+		"tsuru.io/app-version": "1",
+	}
+
+	t.Run("HPA with scaleops.com original min replicas annotation", func(t *testing.T) {
+		minReplicas := int32(5) // modified by scaleops
+		avgUtil := int32(80)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-min-replicas": "3", // original value
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &avgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		// Should use hpa.Spec.MinReplicas (5), because scaleops annotation is set first
+		// but then overwritten by hpa.Spec.MinReplicas
+		require.Equal(t, uint(5), spec.MinUnits)
+		require.Equal(t, uint(10), spec.MaxUnits)
+		require.Equal(t, "800m", spec.AverageCPU)
+	})
+
+	t.Run("HPA with scaleops.com original min replicas annotation and nil MinReplicas", func(t *testing.T) {
+		avgUtil := int32(80)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-min-replicas": "3",
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: nil, // scaleops might set this to nil
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &avgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		// Should use the scaleops annotation value since MinReplicas is nil
+		require.Equal(t, uint(3), spec.MinUnits)
+		require.Equal(t, uint(10), spec.MaxUnits)
+	})
+
+	t.Run("HPA with scaleops.com original metrics annotation", func(t *testing.T) {
+		minReplicas := int32(2)
+		// Current metrics set by scaleops (will be ignored)
+		modifiedAvgUtil := int32(90)
+		// Original metrics in annotation
+		originalMetrics := `[{"type":"Resource","resource":{"name":"cpu","target":{"type":"Utilization","averageUtilization":60}}}]`
+
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-metrics": originalMetrics,
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &modifiedAvgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		// Should use original metrics from annotation (60% = 600m)
+		require.Equal(t, uint(2), spec.MinUnits)
+		require.Equal(t, uint(10), spec.MaxUnits)
+		require.Equal(t, "600m", spec.AverageCPU)
+	})
+
+	t.Run("HPA with both scaleops.com annotations", func(t *testing.T) {
+		minReplicas := int32(8) // modified by scaleops
+		modifiedAvgUtil := int32(95)
+		originalMetrics := `[{"type":"Resource","resource":{"name":"cpu","target":{"type":"Utilization","averageUtilization":70}}}]`
+
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-min-replicas": "4",
+					"analysis.scaleops.io/original-metrics":      originalMetrics,
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 20,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &modifiedAvgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		// MinUnits should be 8 (from hpa.Spec.MinReplicas, not annotation)
+		// because the logic first sets from annotation, then overwrites with Spec.MinReplicas
+		require.Equal(t, uint(8), spec.MinUnits)
+		require.Equal(t, uint(20), spec.MaxUnits)
+		// Should use original metrics from annotation (70% = 700m)
+		require.Equal(t, "700m", spec.AverageCPU)
+	})
+
+	t.Run("HPA with invalid scaleops.com original min replicas annotation", func(t *testing.T) {
+		minReplicas := int32(5)
+		avgUtil := int32(50)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-min-replicas": "invalid",
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &avgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		// Should fall back to hpa.Spec.MinReplicas
+		require.Equal(t, uint(5), spec.MinUnits)
+	})
+
+	t.Run("HPA with invalid scaleops.com original metrics annotation", func(t *testing.T) {
+		minReplicas := int32(2)
+		avgUtil := int32(50)
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-metrics": "invalid json",
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics: []autoscalingv2.MetricSpec{
+					{
+						Type: autoscalingv2.ResourceMetricSourceType,
+						Resource: &autoscalingv2.ResourceMetricSource{
+							Name: "cpu",
+							Target: autoscalingv2.MetricTarget{
+								Type:               autoscalingv2.UtilizationMetricType,
+								AverageUtilization: &avgUtil,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		// Should use the current metrics since annotation is invalid
+		require.Equal(t, "500m", spec.AverageCPU)
+	})
+
+	t.Run("HPA with scaleops.com original metrics using AverageValue", func(t *testing.T) {
+		minReplicas := int32(2)
+		originalMetrics := `[{"type":"Resource","resource":{"name":"cpu","target":{"type":"AverageValue","averageValue":"300m"}}}]`
+
+		hpa := autoscalingv2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "myapp-web",
+				Labels: baseLabels,
+				Annotations: map[string]string{
+					"analysis.scaleops.io/original-metrics": originalMetrics,
+				},
+			},
+			Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+				MinReplicas: &minReplicas,
+				MaxReplicas: 10,
+				Metrics:     []autoscalingv2.MetricSpec{},
+			},
+		}
+
+		spec := hpaToSpec(hpa)
+
+		require.Equal(t, "300m", spec.AverageCPU)
+	})
+}
