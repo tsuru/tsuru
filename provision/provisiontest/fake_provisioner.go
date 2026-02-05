@@ -804,7 +804,18 @@ func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.A
 	if p.autoscales == nil {
 		p.autoscales = make(map[string][]provTypes.AutoScaleSpec)
 	}
-	p.autoscales[app.Name] = append(p.autoscales[app.Name], spec)
+	// Update existing autoscale for the process if it exists, otherwise append
+	updated := false
+	for i, existing := range p.autoscales[app.Name] {
+		if existing.Process == spec.Process {
+			p.autoscales[app.Name][i] = spec
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		p.autoscales[app.Name] = append(p.autoscales[app.Name], spec)
+	}
 	return nil
 }
 

@@ -22,6 +22,7 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -519,6 +520,162 @@ func (s *S) TestRemoveOldServicesForward(c *check.C) {
 		{action: "remove", app: fakeApp, processName: "worker1", versionNumber: oldVersion.Version()},
 		{action: "cleanup", app: fakeApp, versionNumber: newVersion.Version()},
 	})
+}
+
+func (s *S) TestRemoveOldServicesWithAutoscaleCleanup(c *check.C) {
+	ctx := context.Background()
+
+	autoscaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	oldProvisioner := provision.DefaultProvisioner
+	provision.DefaultProvisioner = "autoscaleProv"
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoscaleProv, nil
+	})
+	defer func() {
+		provision.Unregister("autoscaleProv")
+		provision.DefaultProvisioner = oldProvisioner
+	}()
+
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	fakeApp.Pool = "" // to trigger default provisioner
+
+	err := autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
+		Process:    "worker1",
+		AverageCPU: "300m",
+		MaxUnits:   10,
+		MinUnits:   2,
+	})
+	c.Assert(err, check.IsNil)
+
+	autoscales, err := autoscaleProv.GetAutoScale(ctx, fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(autoscales, check.HasLen, 1)
+	c.Assert(autoscales[0].Process, check.Equals, "worker1")
+
+	m := &recordManager{}
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":     "python web1",
+			"worker1": "python worker1",
+		},
+	})
+	newVersion := newVersion(c, fakeApp, nil)
+	args := &pipelineArgs{
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
+	}
+
+	_, err = removeOldServices.Forward(action.FWContext{Context: ctx, Params: []interface{}{args}})
+	c.Assert(err, check.IsNil)
+
+	autoscales, err = autoscaleProv.GetAutoScale(ctx, fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(autoscales, check.HasLen, 0)
+
+	c.Assert(m.calls, check.HasLen, 2)
+	c.Assert(m.calls[0].action, check.Equals, "remove")
+	c.Assert(m.calls[0].processName, check.Equals, "worker1")
+}
+
+func (s *S) TestRemoveOldServicesWithMultipleAutoscales(c *check.C) {
+	ctx := context.Background()
+
+	autoscaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	oldProvisioner := provision.DefaultProvisioner
+	provision.DefaultProvisioner = "autoscaleProv"
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoscaleProv, nil
+	})
+	defer func() {
+		provision.Unregister("autoscaleProv")
+		provision.DefaultProvisioner = oldProvisioner
+	}()
+
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	fakeApp.Pool = "" // to trigger default provisioner
+
+	err := autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
+		Process:    "web",
+		AverageCPU: "500m",
+		MaxUnits:   5,
+		MinUnits:   1,
+	})
+	c.Assert(err, check.IsNil)
+
+	err = autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
+		Process:    "worker1",
+		AverageCPU: "300m",
+		MaxUnits:   10,
+		MinUnits:   2,
+	})
+	c.Assert(err, check.IsNil)
+
+	autoscales, err := autoscaleProv.GetAutoScale(ctx, fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(autoscales, check.HasLen, 2)
+
+	m := &recordManager{}
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":     "python web1",
+			"worker1": "python worker1",
+		},
+	})
+	newVersion := newVersion(c, fakeApp, nil)
+	args := &pipelineArgs{
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}}, // Keep only web
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
+	}
+
+	// Remove worker1 process (keep web)
+	_, err = removeOldServices.Forward(action.FWContext{Context: ctx, Params: []interface{}{args}})
+	c.Assert(err, check.IsNil)
+
+	autoscales, err = autoscaleProv.GetAutoScale(ctx, fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(autoscales, check.HasLen, 1)
+	c.Assert(autoscales[0].Process, check.Equals, "web")
+	c.Assert(autoscales[0].AverageCPU, check.Equals, "500m")
+
+	c.Assert(m.calls, check.HasLen, 2)
+	c.Assert(m.calls[0].action, check.Equals, "remove")
+	c.Assert(m.calls[0].processName, check.Equals, "worker1")
+}
+
+func (s *S) TestRemoveOldServicesWithNonAutoscaleProvisioner(c *check.C) {
+	m := &recordManager{}
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":     "python web1",
+			"worker1": "python worker1",
+		},
+	})
+	newVersion := newVersion(c, fakeApp, nil)
+	args := &pipelineArgs{
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
+	}
+
+	// Should not crash even though provisioner doesn't support autoscaling
+	_, err := removeOldServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(m.calls, check.HasLen, 2)
+	c.Assert(m.calls[0].action, check.Equals, "remove")
+	c.Assert(m.calls[0].processName, check.Equals, "worker1")
 }
 
 func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {

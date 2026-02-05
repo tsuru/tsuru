@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -306,8 +307,26 @@ func removeOld(ctx context.Context, args *pipelineArgs) error {
 	}
 	old := set.FromMap(oldProcs)
 	new := set.FromMap(args.newVersionSpec)
+	removedProcesses := old.Difference(new)
+
+	// Cleanup autoscales for removed processes
+	prov, err := pool.GetProvisionerForPool(ctx, args.app.Pool)
+	if err != nil {
+		log.Errorf("unable to get provisioner for pool %s while cleaning up autoscales: %v", args.app.Pool, err)
+	} else {
+		autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+		if ok {
+			for processName := range removedProcesses {
+				err := autoscaleProv.RemoveAutoScale(ctx, args.app, processName)
+				if err != nil {
+					log.Errorf("error removing autoscale for process %s[%s]: %v", args.app.Name, processName, err)
+				}
+			}
+		}
+	}
+
 	errs := tsuruErrors.NewMultiError()
-	for processName := range old.Difference(new) {
+	for processName := range removedProcesses {
 		err = args.manager.RemoveService(ctx, args.app, processName, args.oldVersion.Version())
 		if err != nil {
 			errs.Add(err)

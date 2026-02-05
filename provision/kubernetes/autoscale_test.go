@@ -15,6 +15,8 @@ import (
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/require"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/servicecommon"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
@@ -1826,4 +1828,91 @@ func TestValidateBehaviorUnitsNoFail(t *testing.T) {
 		got := getBehaviorUnitsNoFail(policy, defaultValue)
 		require.Equal(t, defaultValue, got)
 	})
+}
+
+func (s *S) TestProvisionerSetAutoScaleVersionUpdateOnProcessRemoval(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	// Deploy v1 with 2 processes: web and worker
+	version1 := newSuccessfulVersion(c, a, map[string][]string{
+		"web":    {"python", "web.py"},
+		"worker": {"python", "worker.py"},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version1, nil)
+	require.NoError(s.t, err)
+	wait()
+	err = s.p.AddUnits(context.TODO(), a, 1, "worker", version1, nil)
+	require.NoError(s.t, err)
+	wait()
+
+	// Set autoscale on both processes
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "500m",
+	})
+	require.NoError(s.t, err)
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   3,
+		AverageCPU: "500m",
+	})
+	require.NoError(s.t, err)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	require.NoError(s.t, err)
+
+	// Verify both HPAs exist with version 1
+	hpas, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
+	require.NoError(s.t, err)
+	require.Len(s.t, hpas.Items, 2)
+
+	webHPA := findHPAByProcess(hpas.Items, "web")
+	workerHPA := findHPAByProcess(hpas.Items, "worker")
+	require.NotNil(s.t, webHPA, "web HPA should exist")
+	require.NotNil(s.t, workerHPA, "worker HPA should exist")
+	require.Equal(s.t, "1", webHPA.Labels["tsuru.io/app-version"])
+	require.Equal(s.t, "1", workerHPA.Labels["tsuru.io/app-version"])
+
+	// Deploy v2 with only web process (remove worker) - NO preserveVersions
+	version2 := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "web.py"},
+	})
+
+	// Use servicecommon pipeline WITHOUT preserveVersions
+	manager := &serviceManager{client: s.clusterClient, writer: &bytes.Buffer{}}
+	err = servicecommon.RunServicePipeline(context.TODO(), manager, version1.Version(), provision.DeployArgs{
+		App:              a,
+		Version:          version2,
+		PreserveVersions: false, // This is the key difference
+	}, servicecommon.ProcessSpec{
+		"web": {Start: true},
+	})
+	require.NoError(s.t, err)
+	wait()
+
+	// Verify worker HPA is removed
+	hpas, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
+	require.NoError(s.t, err)
+	require.Len(s.t, hpas.Items, 1, "only web HPA should remain")
+
+	// Verify web HPA is updated to version 2 (not stuck at version 1)
+	webHPA = findHPAByProcess(hpas.Items, "web")
+	require.NotNil(s.t, webHPA, "web HPA should still exist")
+	require.Equal(s.t, "2", webHPA.Labels["tsuru.io/app-version"], "web HPA should be updated to version 2")
+
+	// Verify HPA targets the correct deployment
+	require.Equal(s.t, "myapp-web", webHPA.Spec.ScaleTargetRef.Name)
+}
+
+func findHPAByProcess(hpas []autoscalingv2.HorizontalPodAutoscaler, processName string) *autoscalingv2.HorizontalPodAutoscaler {
+	for i := range hpas {
+		if hpas[i].Labels["tsuru.io/app-process"] == processName {
+			return &hpas[i]
+		}
+	}
+	return nil
 }
