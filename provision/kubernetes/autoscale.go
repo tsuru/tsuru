@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
-	"k8s.io/utils/ptr"
 	k8sutilsptr "k8s.io/utils/ptr"
 )
 
@@ -514,7 +513,7 @@ func setHPAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.
 		return nil, errors.WithStack(err)
 	}
 
-	return ptr.To(hpaToSpec(*hpa)), nil
+	return k8sutilsptr.To(hpaToSpec(*hpa)), nil
 }
 
 func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet, preserveVersions bool) (updatedSpec *provTypes.AutoScaleSpec, err error) {
@@ -545,7 +544,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		return ptr.To(scaledObjectToSpec(*expectedKEDAScaledObject)), nil
+		return k8sutilsptr.To(scaledObjectToSpec(*expectedKEDAScaledObject)), nil
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -556,7 +555,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return ptr.To(scaledObjectToSpec(*expectedKEDAScaledObject)), nil
+	return k8sutilsptr.To(scaledObjectToSpec(*expectedKEDAScaledObject)), nil
 }
 
 func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet, preserveVersions bool) (*kedav1alpha1.ScaledObject, error) {

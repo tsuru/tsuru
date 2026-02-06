@@ -6340,3 +6340,662 @@ func (s *S) TestGetInternalBindableAddresses(c *check.C) {
 		"udp://myapp-logs.fake-cluster.local:12201",
 	})
 }
+
+func (s *S) TestMergeAutoscalesBothEmpty(c *check.C) {
+	result := mergeAutoscales(nil, nil)
+	c.Assert(result, check.IsNil)
+}
+
+func (s *S) TestMergeAutoscalesDBEmptyReturnsProv(c *check.C) {
+	provSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 1, MaxUnits: 5, AverageCPU: "500m", Version: 3},
+		{Process: "worker", MinUnits: 2, MaxUnits: 10, AverageCPU: "200m", Version: 3},
+	}
+	result := mergeAutoscales(nil, provSpecs)
+	c.Assert(result, check.DeepEquals, provSpecs)
+}
+
+func (s *S) TestMergeAutoscalesProvEmptyReturnsDB(c *check.C) {
+	dbSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 1, MaxUnits: 5, AverageCPU: "500m"},
+		{Process: "worker", MinUnits: 2, MaxUnits: 10, AverageCPU: "200m"},
+	}
+	result := mergeAutoscales(dbSpecs, nil)
+	c.Assert(result, check.DeepEquals, dbSpecs)
+}
+
+func (s *S) TestMergeAutoscalesSameProcessDBWinsVersionFromProv(c *check.C) {
+	dbSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m"},
+	}
+	provSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 1, MaxUnits: 5, AverageCPU: "500m", Version: 7},
+	}
+	result := mergeAutoscales(dbSpecs, provSpecs)
+	c.Assert(result, check.DeepEquals, []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m", Version: 7},
+	})
+}
+
+func (s *S) TestMergeAutoscalesDifferentProcessesCombined(c *check.C) {
+	dbSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m"},
+	}
+	provSpecs := []provTypes.AutoScaleSpec{
+		{Process: "worker", MinUnits: 1, MaxUnits: 5, AverageCPU: "500m", Version: 2},
+	}
+	result := mergeAutoscales(dbSpecs, provSpecs)
+	c.Assert(result, check.DeepEquals, []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m"},
+		{Process: "worker", MinUnits: 1, MaxUnits: 5, AverageCPU: "500m", Version: 2},
+	})
+}
+
+func (s *S) TestMergeAutoscalesSkipsEmptyProcessName(c *check.C) {
+	dbSpecs := []provTypes.AutoScaleSpec{
+		{Process: "", MinUnits: 1, MaxUnits: 5},
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m"},
+	}
+	provSpecs := []provTypes.AutoScaleSpec{
+		{Process: "", MinUnits: 2, MaxUnits: 10},
+		{Process: "worker", MinUnits: 1, MaxUnits: 5, Version: 2},
+	}
+	result := mergeAutoscales(dbSpecs, provSpecs)
+	c.Assert(result, check.DeepEquals, []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m"},
+		{Process: "worker", MinUnits: 1, MaxUnits: 5, Version: 2},
+	})
+}
+
+func (s *S) TestMergeAutoscalesMultipleOverlapping(c *check.C) {
+	dbSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m"},
+		{Process: "worker", MinUnits: 5, MaxUnits: 20, AverageCPU: "400m"},
+	}
+	provSpecs := []provTypes.AutoScaleSpec{
+		{Process: "web", MinUnits: 1, MaxUnits: 5, AverageCPU: "500m", Version: 3},
+		{Process: "worker", MinUnits: 2, MaxUnits: 10, AverageCPU: "200m", Version: 3},
+		{Process: "scheduler", MinUnits: 1, MaxUnits: 3, AverageCPU: "100m", Version: 3},
+	}
+	result := mergeAutoscales(dbSpecs, provSpecs)
+	c.Assert(result, check.DeepEquals, []provTypes.AutoScaleSpec{
+		{Process: "scheduler", MinUnits: 1, MaxUnits: 3, AverageCPU: "100m", Version: 3},
+		{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "800m", Version: 3},
+		{Process: "worker", MinUnits: 5, MaxUnits: 20, AverageCPU: "400m", Version: 3},
+	})
+}
+
+func (s *S) TestSetAutoScalePersistsToDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-autoscale-db", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+	c.Assert(dbApp.Autoscale[0].Process, check.Equals, "web")
+	c.Assert(dbApp.Autoscale[0].MinUnits, check.Equals, uint(2))
+	c.Assert(dbApp.Autoscale[0].MaxUnits, check.Equals, uint(10))
+	c.Assert(dbApp.Autoscale[0].AverageCPU, check.Equals, "500m")
+}
+
+func (s *S) TestSetAutoScaleUpdatesExistingProcessInDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-autoscale-update", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	// Update the same process with different values
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   5,
+		MaxUnits:   20,
+		AverageCPU: "800m",
+	})
+	c.Assert(err, check.IsNil)
+
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+	c.Assert(dbApp.Autoscale[0].Process, check.Equals, "web")
+	c.Assert(dbApp.Autoscale[0].MinUnits, check.Equals, uint(5))
+	c.Assert(dbApp.Autoscale[0].MaxUnits, check.Equals, uint(20))
+	c.Assert(dbApp.Autoscale[0].AverageCPU, check.Equals, "800m")
+}
+
+func (s *S) TestSetAutoScaleMultipleProcessesInDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-autoscale-multi", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "200m",
+	})
+	c.Assert(err, check.IsNil)
+
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 2)
+	sort.Slice(dbApp.Autoscale, func(i, j int) bool {
+		return dbApp.Autoscale[i].Process < dbApp.Autoscale[j].Process
+	})
+	c.Assert(dbApp.Autoscale[0].Process, check.Equals, "web")
+	c.Assert(dbApp.Autoscale[0].MinUnits, check.Equals, uint(2))
+	c.Assert(dbApp.Autoscale[1].Process, check.Equals, "worker")
+	c.Assert(dbApp.Autoscale[1].MinUnits, check.Equals, uint(1))
+}
+
+func (s *S) TestRemoveAutoScaleRemovesFromDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-remove-autoscale", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "200m",
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload from DB to populate Autoscale field
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 2)
+
+	err = RemoveAutoScale(context.TODO(), dbApp, "web")
+	c.Assert(err, check.IsNil)
+
+	dbApp, err = GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+	c.Assert(dbApp.Autoscale[0].Process, check.Equals, "worker")
+}
+
+func (s *S) TestRemoveAutoScaleErrorWhenMultipleAndNoProcess(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-remove-noprocess", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "200m",
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload from DB to populate Autoscale field
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+
+	err = RemoveAutoScale(context.TODO(), dbApp, "")
+	c.Assert(err, check.ErrorMatches, "process argument is required")
+}
+
+func (s *S) TestRemoveAutoScaleSingleProcessNoProcessArg(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-remove-single", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload from DB to populate Autoscale field
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+
+	err = RemoveAutoScale(context.TODO(), dbApp, "")
+	c.Assert(err, check.IsNil)
+
+	dbApp, err = GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 0)
+}
+
+func (s *S) TestAutoScaleInfoMergesDBAndProvisioner(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-info-merge", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	// Set autoscale via the normal flow (goes to both provisioner and DB)
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload from DB to get Autoscale field populated
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+
+	scales, err := AutoScaleInfo(context.TODO(), dbApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(scales), check.Equals, 1)
+	c.Assert(scales[0].Process, check.Equals, "web")
+	c.Assert(scales[0].MinUnits, check.Equals, uint(2))
+	c.Assert(scales[0].MaxUnits, check.Equals, uint(10))
+	c.Assert(scales[0].AverageCPU, check.Equals, "500m")
+}
+
+func (s *S) TestAutoScaleInfoDBPriorityOverProvisioner(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-info-priority", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	// Write directly to DB with specific values (simulating already-migrated app)
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+	_, err = collection.UpdateOne(context.TODO(),
+		mongoBSON.M{"name": a.Name},
+		mongoBSON.M{"$set": mongoBSON.M{
+			"autoscale": []provTypes.AutoScaleSpec{
+				{Process: "web", MinUnits: 10, MaxUnits: 50, AverageCPU: "900m"},
+			},
+		}},
+	)
+	c.Assert(err, check.IsNil)
+
+	// Also set a different value in the provisioner for the same process
+	_, err = autoScaleProv.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "100m",
+		Version:    4,
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload from DB
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+
+	scales, err := AutoScaleInfo(context.TODO(), dbApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(scales), check.Equals, 1)
+	// DB values should win
+	c.Assert(scales[0].Process, check.Equals, "web")
+	c.Assert(scales[0].MinUnits, check.Equals, uint(10))
+	c.Assert(scales[0].MaxUnits, check.Equals, uint(50))
+	c.Assert(scales[0].AverageCPU, check.Equals, "900m")
+	// Version comes from provisioner
+	c.Assert(scales[0].Version, check.Equals, 4)
+}
+
+func (s *S) TestAutoScaleInfoCombinesDBOnlyAndProvOnlyProcesses(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-info-combine", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	// Write "web" directly to DB only
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+	_, err = collection.UpdateOne(context.TODO(),
+		mongoBSON.M{"name": a.Name},
+		mongoBSON.M{"$set": mongoBSON.M{
+			"autoscale": []provTypes.AutoScaleSpec{
+				{Process: "web", MinUnits: 3, MaxUnits: 15, AverageCPU: "600m"},
+			},
+		}},
+	)
+	c.Assert(err, check.IsNil)
+
+	// Set "worker" in provisioner only (not migrated yet)
+	_, err = autoScaleProv.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "200m",
+		Version:    2,
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload from DB
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+
+	scales, err := AutoScaleInfo(context.TODO(), dbApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(scales), check.Equals, 2)
+	sort.Slice(scales, func(i, j int) bool {
+		return scales[i].Process < scales[j].Process
+	})
+	c.Assert(scales[0].Process, check.Equals, "web")
+	c.Assert(scales[0].MinUnits, check.Equals, uint(3))
+	c.Assert(scales[1].Process, check.Equals, "worker")
+	c.Assert(scales[1].MinUnits, check.Equals, uint(1))
+}
+
+func (s *S) TestMigrateAutoScaleToDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-migrate", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	// Set autoscale only in provisioner (simulating pre-migration state)
+	_, err = autoScaleProv.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = autoScaleProv.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "200m",
+	})
+	c.Assert(err, check.IsNil)
+
+	count, err := MigrateAutoScaleToDB(context.TODO(), &a)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 2)
+
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 2)
+	sort.Slice(dbApp.Autoscale, func(i, j int) bool {
+		return dbApp.Autoscale[i].Process < dbApp.Autoscale[j].Process
+	})
+	c.Assert(dbApp.Autoscale[0].Process, check.Equals, "web")
+	c.Assert(dbApp.Autoscale[0].MinUnits, check.Equals, uint(2))
+	c.Assert(dbApp.Autoscale[1].Process, check.Equals, "worker")
+	c.Assert(dbApp.Autoscale[1].MinUnits, check.Equals, uint(1))
+}
+
+func (s *S) TestMigrateAutoScaleToDBNoAutoscale(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-migrate-empty", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	count, err := MigrateAutoScaleToDB(context.TODO(), &a)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
+
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 0)
+}
+
+func (s *S) TestMigrateAutoScaleToDBAlreadyMigrated(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-migrate-already", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	// Pre-populate DB with autoscale (already migrated, with different values)
+	collection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+	_, err = collection.UpdateOne(context.TODO(),
+		mongoBSON.M{"name": a.Name},
+		mongoBSON.M{"$set": mongoBSON.M{
+			"autoscale": []provTypes.AutoScaleSpec{
+				{Process: "web", MinUnits: 10, MaxUnits: 50, AverageCPU: "900m"},
+			},
+		}},
+	)
+	c.Assert(err, check.IsNil)
+
+	// Also set in provisioner with different values
+	_, err = autoScaleProv.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "100m",
+		Version:    3,
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload to get Autoscale field
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+
+	count, err := MigrateAutoScaleToDB(context.TODO(), dbApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 1)
+
+	// DB values should be preserved (DB wins the merge)
+	dbApp, err = GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+	c.Assert(dbApp.Autoscale[0].Process, check.Equals, "web")
+	c.Assert(dbApp.Autoscale[0].MinUnits, check.Equals, uint(10))
+	c.Assert(dbApp.Autoscale[0].MaxUnits, check.Equals, uint(50))
+	c.Assert(dbApp.Autoscale[0].AverageCPU, check.Equals, "900m")
+}
+
+func (s *S) TestSetAutoScaleVersionNotPersistedInDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-version-bson", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+		Version:    5,
+	})
+	c.Assert(err, check.IsNil)
+
+	// Version field has bson:"-", so it should not be persisted
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+	c.Assert(dbApp.Autoscale[0].Version, check.Equals, 0)
+}
+
+func (s *S) TestRemoveAutoScaleRemovesAllFromDB(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return autoScaleProv, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := appTypes.App{Name: "myapp-remove-all", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   2,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+		Process:    "worker",
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "200m",
+	})
+	c.Assert(err, check.IsNil)
+
+	// Reload and remove first
+	dbApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	err = RemoveAutoScale(context.TODO(), dbApp, "web")
+	c.Assert(err, check.IsNil)
+
+	// Reload and remove second
+	dbApp, err = GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 1)
+	err = RemoveAutoScale(context.TODO(), dbApp, "worker")
+	c.Assert(err, check.IsNil)
+
+	// Verify all removed
+	dbApp, err = GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Autoscale, check.HasLen, 0)
+}
