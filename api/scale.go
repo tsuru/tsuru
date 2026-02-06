@@ -106,7 +106,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	return app.AutoScale(ctx, a, spec)
+	return app.SetAutoScale(ctx, a, spec)
 }
 
 // title: swap unit auto scale

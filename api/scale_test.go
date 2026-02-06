@@ -42,7 +42,7 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 		MaxUnits:   10,
 		MinUnits:   2,
 	}
-	err = app.AutoScale(ctx, &a, autoscaleSpec)
+	err = app.SetAutoScale(ctx, &a, autoscaleSpec)
 	c.Assert(err, check.IsNil)
 
 	token := userWithPermission(c, permTypes.Permission{
@@ -125,7 +125,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	a := appTypes.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.AutoScale(ctx, &a, provTypes.AutoScaleSpec{
+	err = app.SetAutoScale(ctx, &a, provTypes.AutoScaleSpec{
 		Process:    "p1",
 		AverageCPU: "300m",
 		MaxUnits:   10,

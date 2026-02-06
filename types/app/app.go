@@ -42,6 +42,7 @@ type App struct {
 	Routers         []AppRouter
 	Metadata        Metadata
 	Processes       []Process
+	Autoscale       []provision.AutoScaleSpec
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string

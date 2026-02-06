@@ -2732,7 +2732,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
 	}
-	err = AutoScale(context.TODO(), &app, provTypes.AutoScaleSpec{Process: "p1"})
+	err = SetAutoScale(context.TODO(), &app, provTypes.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
@@ -3800,6 +3800,7 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 				{Name: "fake", Opts: map[string]string{}},
 			},
 			Processes: []appTypes.Process{},
+			Autoscale: []provTypes.AutoScaleSpec{},
 			Quota:     quota.UnlimitedQuota,
 		},
 		{
@@ -3830,6 +3831,7 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 				{Name: "fake", Opts: map[string]string{}},
 			},
 			Processes: []appTypes.Process{},
+			Autoscale: []provTypes.AutoScaleSpec{},
 			Quota:     quota.UnlimitedQuota,
 		},
 	})
@@ -3891,6 +3893,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 				Annotations: []appTypes.MetadataItem{},
 			},
 			Processes: []appTypes.Process{},
+			Autoscale: []provTypes.AutoScaleSpec{},
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
@@ -6307,9 +6310,9 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 	a := appTypes.App{Name: "my-test-app", TeamOwner: s.team.Name}
-	err := AutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{Process: "p1"})
+	err := SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
-	err = AutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{Process: "p2"})
+	err = SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{Process: "p2"})
 	c.Assert(err, check.IsNil)
 	scales, err := AutoScaleInfo(context.TODO(), &a)
 	c.Assert(err, check.IsNil)

@@ -2515,6 +2515,15 @@ func explicitVersion(ctx context.Context, app *appTypes.App, version string) (pr
 }
 
 func AutoScaleInfo(ctx context.Context, app *appTypes.App) ([]provTypes.AutoScaleSpec, error) {
+
+	// Tsuru 1.30 start to save the autoscale on database level, so we need to check
+
+	autoscalesFromDB := app.Autoscale
+	if len(autoscalesFromDB) > 0 {
+		return autoscalesFromDB, nil
+	}
+
+	// for non migrated apps we need to get the autoscale from provisioner
 	prov, err := getProvisioner(ctx, app)
 	if err != nil {
 		return nil, err
@@ -2523,7 +2532,29 @@ func AutoScaleInfo(ctx context.Context, app *appTypes.App) ([]provTypes.AutoScal
 	if !ok {
 		return nil, nil
 	}
-	return autoscaleProv.GetAutoScale(ctx, app)
+
+	autoscalesFromProvisioner, err := autoscaleProv.GetAutoScale(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+
+	// migrate autoscale info to database
+	if len(autoscalesFromProvisioner) > 0 && len(autoscalesFromDB) == 0 {
+		collection, err := storagev2.AppsCollection()
+		if err != nil {
+			return nil, err
+		}
+		_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": app.Name}, mongoBSON.M{
+			"$set": mongoBSON.M{
+				"autoscale": autoscalesFromProvisioner,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return autoscalesFromProvisioner, nil
 }
 
 func VerticalAutoScaleRecommendations(ctx context.Context, app *appTypes.App) ([]provTypes.RecommendedResources, error) {
@@ -2550,16 +2581,43 @@ func UnitsMetrics(ctx context.Context, app *appTypes.App) ([]provTypes.UnitMetri
 	return metricsProv.UnitsMetrics(ctx, app)
 }
 
-func AutoScale(ctx context.Context, app *appTypes.App, spec provTypes.AutoScaleSpec) error {
+func SetAutoScale(ctx context.Context, app *appTypes.App, spec provTypes.AutoScaleSpec) error {
 	prov, err := getProvisioner(ctx, app)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get provisioner")
 	}
 	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
 	if !ok {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
-	return autoscaleProv.SetAutoScale(ctx, app, spec)
+
+	collection, err := storagev2.AppsCollection()
+	if err != nil {
+		return errors.Wrap(err, "failed to get apps collection")
+	}
+
+	res, err := collection.UpdateOne(ctx,
+		mongoBSON.M{"name": app.Name, "autoscale.process": spec.Process},
+		mongoBSON.M{"$set": mongoBSON.M{"autoscale.$": spec}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to update autoscale on database")
+	}
+	if res.MatchedCount == 0 {
+		_, err = collection.UpdateOne(ctx,
+			mongoBSON.M{"name": app.Name},
+			mongoBSON.M{"$push": mongoBSON.M{"autoscale": spec}},
+		)
+		if err != nil {
+			return errors.Wrap(err, "failed to append autoscale on database")
+		}
+	}
+
+	err = autoscaleProv.SetAutoScale(ctx, app, spec)
+	if err != nil {
+		return errors.Wrap(err, "failed to set autoscale on provisioner")
+	}
+	return nil
 }
 
 func RemoveAutoScale(ctx context.Context, app *appTypes.App, process string) error {
@@ -2571,6 +2629,19 @@ func RemoveAutoScale(ctx context.Context, app *appTypes.App, process string) err
 	if !ok {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
+
+	collection, err := storagev2.AppsCollection()
+	if err != nil {
+		return errors.Wrap(err, "failed to get apps collection")
+	}
+	_, err = collection.UpdateOne(ctx,
+		mongoBSON.M{"name": app.Name},
+		mongoBSON.M{"$pull": mongoBSON.M{"autoscale": mongoBSON.M{"process": process}}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove autoscale from database")
+	}
+
 	return autoscaleProv.RemoveAutoScale(ctx, app, process)
 }
 
