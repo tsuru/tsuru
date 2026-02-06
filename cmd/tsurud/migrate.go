@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tablecli"
+	appMigrate "github.com/tsuru/tsuru/app/migrate"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/migration"
 	"github.com/tsuru/tsuru/provision"
@@ -30,6 +31,10 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-apps-kubernetes-crd", kubeMigrate.MigrateAppsCRDs)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
+	err = migration.RegisterOptional("migrate-apps-autoscale-to-db", appMigrate.MigrateAppAutoScaleToDB)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -90,6 +95,7 @@ func (c *migrateCmd) Run(cmdContext *cmd.Context) error {
 		Dry:    c.dry,
 		Name:   c.name,
 		Force:  c.force,
+		Args:   cmdContext.Args,
 	})
 }
 
@@ -107,7 +113,7 @@ func (c *migrateCmd) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-func migrateImages() error {
+func migrateImages(args []string) error {
 	provisioner, _ := getProvisioner()
 	if provisioner == defaultProvisionerName {
 		p, err := provision.Get(provisioner)

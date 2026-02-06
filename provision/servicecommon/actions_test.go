@@ -539,7 +539,7 @@ func (s *S) TestRemoveOldServicesWithAutoscaleCleanup(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	fakeApp.Pool = "" // to trigger default provisioner
 
-	err := autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
+	_, err := autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
 		Process:    "worker1",
 		AverageCPU: "300m",
 		MaxUnits:   10,
@@ -598,7 +598,7 @@ func (s *S) TestRemoveOldServicesWithMultipleAutoscales(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	fakeApp.Pool = "" // to trigger default provisioner
 
-	err := autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
+	_, err := autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
 		Process:    "web",
 		AverageCPU: "500m",
 		MaxUnits:   5,
@@ -606,7 +606,7 @@ func (s *S) TestRemoveOldServicesWithMultipleAutoscales(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
+	_, err = autoscaleProv.SetAutoScale(ctx, fakeApp, provTypes.AutoScaleSpec{
 		Process:    "worker1",
 		AverageCPU: "300m",
 		MaxUnits:   10,

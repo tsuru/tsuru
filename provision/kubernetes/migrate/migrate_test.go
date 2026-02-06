@@ -144,7 +144,7 @@ func (s *S) TestMigrateAppsCRDs(c *check.C) {
 	_, err = appsCollection.InsertMany(context.TODO(), apps)
 	c.Assert(err, check.IsNil)
 
-	err = MigrateAppsCRDs()
+	err = MigrateAppsCRDs([]string{})
 	c.Assert(err, check.NotNil)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

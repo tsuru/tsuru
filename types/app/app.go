@@ -42,10 +42,10 @@ type App struct {
 	Routers         []AppRouter
 	Metadata        Metadata
 	Processes       []Process
-	Autoscale       []provision.AutoScaleSpec
 
-	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
-	UUID string
+	// Autoscale field added on version 1.30, we need to migrate apps to
+	// have this field populated.
+	Autoscale []provision.AutoScaleSpec
 
 	Quota quota.Quota
 }

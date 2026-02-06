@@ -4336,7 +4336,7 @@ func (s *S) TestAppUnitsWithAutoscaler(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	err = provisioner.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
+	_, err = provisioner.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
 		Process:    "web",
 		Version:    1,
 		MinUnits:   1,

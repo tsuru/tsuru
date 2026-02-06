@@ -14,7 +14,7 @@ import (
 // MigrateAppsCRDs creates the necessary CRDs for every application
 // on a Kubernetes cluster. This is done by re-provisioning the App
 // on the cluster.
-func MigrateAppsCRDs() error {
+func MigrateAppsCRDs(args []string) error {
 	ctx := context.TODO()
 	config.Set("kubernetes:use-pool-namespaces", false)
 	defer config.Unset("kubernetes:use-pool-namespaces")

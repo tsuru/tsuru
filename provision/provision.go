@@ -273,7 +273,7 @@ func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a *appTypes.App) (int, 
 type AutoScaleProvisioner interface {
 	GetAutoScale(ctx context.Context, a *appTypes.App) ([]provTypes.AutoScaleSpec, error)
 	GetVerticalAutoScaleRecommendations(ctx context.Context, a *appTypes.App) ([]provTypes.RecommendedResources, error)
-	SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) error
+	SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) (updatedSpec *provTypes.AutoScaleSpec, err error)
 	RemoveAutoScale(ctx context.Context, a *appTypes.App, process string) error
 	SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error
 }
