@@ -358,7 +358,7 @@ func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.A
 	multiErr := tsuruErrors.NewMultiError()
 	for _, spec := range scaleSpecs {
 		spec.Version = version
-		err := setAutoScale(ctx, client, a, spec, true)
+		_, err := setAutoScale(ctx, client, a, spec, true)
 		if err != nil {
 			multiErr.Add(err)
 		}
@@ -380,23 +380,23 @@ func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string
 	return nil
 }
 
-func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) error {
+func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a *appTypes.App, spec provTypes.AutoScaleSpec) (updatedSpec *provTypes.AutoScaleSpec, err error) {
 	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return setAutoScale(ctx, client, a, spec, false)
 }
 
-func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, spec provTypes.AutoScaleSpec, preserveVersions bool) error {
+func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, spec provTypes.AutoScaleSpec, preserveVersions bool) (updatedSpec *provTypes.AutoScaleSpec, err error) {
 	depInfo, err := minimumAutoScaleVersion(ctx, client, a, spec.Process)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if preserveVersions {
 		depGroups, err := deploymentsDataForApp(ctx, client, a)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if deps, ok := depGroups.versioned[spec.Version]; ok {
 			for _, dep := range deps {
@@ -422,25 +422,23 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 		},
 	})
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	labels = labels.WithoutIsolated().WithoutRoutable()
 	hpaName := hpaNameForApp(a, depInfo.process)
 
 	if len(spec.Schedules) > 0 || len(spec.Prometheus) > 0 {
-		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels, preserveVersions)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		return nil
+		return setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels, preserveVersions)
 	}
+	return setHPAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels, preserveVersions)
+}
 
+func setHPAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet, preserveVersions bool) (updatedSpec *provTypes.AutoScaleSpec, err error) {
 	minUnits := int32(spec.MinUnits)
 
 	cpuValue, err := provision.CPUValueOfAutoScaleSpec(&spec, a)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	target := autoscalingv2.MetricTarget{}
@@ -487,7 +485,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	existingHPA, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
@@ -496,10 +494,10 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 
 		err = removeKEDAScaleObject(ctx, client, ns, hpaName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if existingHPA != nil {
@@ -512,46 +510,52 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 		_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(ctx, hpa, metav1.CreateOptions{})
 	}
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	return nil
+	return k8sutilsptr.To(hpaToSpec(*hpa)), nil
 }
 
-func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet, preserveVersions bool) error {
+func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet, preserveVersions bool) (updatedSpec *provTypes.AutoScaleSpec, err error) {
 	kedaClient, err := KEDAClientForConfig(client.restConfig)
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	// remove HPA managed by tsuru so KEDA can takeover AutoScaling
 	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	expectedKEDAScaledObject, err := newKEDAScaledObject(spec, a, depInfo, ns, hpaName, labels, preserveVersions)
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, hpaName, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
 		_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(ctx, expectedKEDAScaledObject, metav1.CreateOptions{})
-		return err
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return k8sutilsptr.To(scaledObjectToSpec(*expectedKEDAScaledObject)), nil
 	}
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	expectedKEDAScaledObject.ResourceVersion = observedKEDAScaledObject.ResourceVersion
 	_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Update(ctx, expectedKEDAScaledObject, metav1.UpdateOptions{})
-	return err
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return k8sutilsptr.To(scaledObjectToSpec(*expectedKEDAScaledObject)), nil
 }
 
 func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a *appTypes.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet, preserveVersions bool) (*kedav1alpha1.ScaledObject, error) {
@@ -773,6 +777,9 @@ func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appT
 		depInfo = depInfoNonRoutable
 	}
 	if depInfo == nil {
+		if len(depGroups.versioned) > 0 && process != "" {
+			return nil, provision.InvalidProcessError{Msg: fmt.Sprintf("process %q not found", process)}
+		}
 		return nil, errNoDeploy
 	}
 	return depInfo, nil
@@ -909,7 +916,7 @@ func ensureHPA(ctx context.Context, client *ClusterClient, a *appTypes.App, proc
 
 	multiErr := tsuruErrors.NewMultiError()
 	for _, spec := range autoScaleSpecs {
-		err = setAutoScale(ctx, client, a, spec, true)
+		_, err = setAutoScale(ctx, client, a, spec, true)
 		if err != nil && err != errNoDeploy {
 			multiErr.Add(err)
 		}

@@ -800,10 +800,11 @@ func (p *AutoScaleProvisioner) GetVerticalAutoScaleRecommendations(ctx context.C
 	}, nil
 }
 
-func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.App, spec provTypes.AutoScaleSpec) error {
+func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.App, spec provTypes.AutoScaleSpec) (updatedSpec *provTypes.AutoScaleSpec, err error) {
 	if p.autoscales == nil {
 		p.autoscales = make(map[string][]provTypes.AutoScaleSpec)
 	}
+
 	// Update existing autoscale for the process if it exists, otherwise append
 	updated := false
 	for i, existing := range p.autoscales[app.Name] {
@@ -816,7 +817,8 @@ func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app *appTypes.A
 	if !updated {
 		p.autoscales[app.Name] = append(p.autoscales[app.Name], spec)
 	}
-	return nil
+
+	return &spec, nil
 }
 
 func (p *AutoScaleProvisioner) SwapAutoScale(ctx context.Context, a *appTypes.App, versionStr string) error {

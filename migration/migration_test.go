@@ -52,7 +52,7 @@ Running "migration3"... OK
 	var buf bytes.Buffer
 	var runs []string
 	var mFunc = func(name string) MigrateFunc {
-		return func() error {
+		return func([]string) error {
 			runs = append(runs, name)
 			return nil
 		}
@@ -75,7 +75,7 @@ func (s *Suite) TestMultipleRuns(c *check.C) {
 	var buf bytes.Buffer
 	var runs []string
 	var mFunc = func(name string) MigrateFunc {
-		return func() error {
+		return func([]string) error {
 			runs = append(runs, name)
 			return nil
 		}
@@ -106,7 +106,7 @@ func (s *Suite) TestFailingMigration(c *check.C) {
 	var runs []string
 	var calls int
 	var buf bytes.Buffer
-	err := Register("mig1", func() error {
+	err := Register("mig1", func([]string) error {
 		if calls == 1 {
 			runs = append(runs, "mig1")
 			return nil
@@ -115,7 +115,7 @@ func (s *Suite) TestFailingMigration(c *check.C) {
 		return errors.New("something went wrong")
 	})
 	c.Assert(err, check.IsNil)
-	err = Register("mig2", func() error {
+	err = Register("mig2", func([]string) error {
 		runs = append(runs, "mig2")
 		return nil
 	})
@@ -137,7 +137,7 @@ Running "migration3"... OK
 	var buf bytes.Buffer
 	var runs []string
 	var mFunc = func(name string) MigrateFunc {
-		return func() error {
+		return func([]string) error {
 			runs = append(runs, name)
 			return nil
 		}
@@ -167,7 +167,7 @@ func (s *Suite) TestRunOptional(c *check.C) {
 	var buf bytes.Buffer
 	var runs []string
 	var mFunc = func(name string) MigrateFunc {
-		return func() error {
+		return func([]string) error {
 			runs = append(runs, name)
 			return nil
 		}
@@ -189,7 +189,7 @@ Running "migration2"... OK
 	var buf bytes.Buffer
 	var runs []string
 	var mFunc = func(name string) MigrateFunc {
-		return func() error {
+		return func([]string) error {
 			runs = append(runs, name)
 			return nil
 		}
@@ -210,7 +210,7 @@ Running "migration2"... OK
 
 func (s *Suite) TestRunOptionalNotFound(c *check.C) {
 	var buf bytes.Buffer
-	err := Register("migration1", func() error { return nil })
+	err := Register("migration1", func([]string) error { return nil })
 	c.Assert(err, check.IsNil)
 	err = Run(context.TODO(), RunArgs{Name: "migration1", Writer: &buf, Dry: false, Force: false})
 	c.Assert(err, check.Equals, ErrMigrationMandatory)
@@ -220,7 +220,7 @@ func (s *Suite) TestRunOptionalNotFound(c *check.C) {
 
 func (s *Suite) TestList(c *check.C) {
 	var buf bytes.Buffer
-	nilFn := func() error { return nil }
+	nilFn := func([]string) error { return nil }
 	err := Register("migration1", nilFn)
 	c.Assert(err, check.IsNil)
 	err = RegisterOptional("migration2", nilFn)

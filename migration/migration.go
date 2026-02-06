@@ -41,7 +41,7 @@ var ErrCannotForceMandatory = errors.New("mandatory migrations can only run once
 // MigrateFunc represents a migration function, that can be registered with the
 // Register function. Migrations are later ran in the registration order, and
 // this package keeps track of which migrate have ran already.
-type MigrateFunc func() error
+type MigrateFunc func([]string) error
 
 // RunArgs is used by Run and RunOptional functions to modify how migrations
 // are executed.
@@ -50,6 +50,7 @@ type RunArgs struct {
 	Writer io.Writer
 	Dry    bool
 	Force  bool
+	Args   []string
 }
 
 type migration struct {
@@ -111,7 +112,7 @@ func run(ctx context.Context, args RunArgs) error {
 		}
 		fmt.Fprintf(args.Writer, "Running %q... ", m.Name)
 		if !args.Dry {
-			err := m.fn()
+			err := m.fn(args.Args)
 			if err != nil {
 				return err
 			}
@@ -153,7 +154,7 @@ func runOptional(ctx context.Context, args RunArgs) error {
 		if err != nil {
 			return err
 		}
-		err = toRun.fn()
+		err = toRun.fn(args.Args)
 		if err != nil {
 			return err
 		}

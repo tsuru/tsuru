@@ -12,20 +12,20 @@ type AutoScaleSpec struct {
 	MinUnits   uint                  `json:"minUnits"`
 	MaxUnits   uint                  `json:"maxUnits"`
 	AverageCPU string                `json:"averageCPU,omitempty"`
-	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty"`
-	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty"`
-	Version    int                   `json:"version"`
-	Behavior   BehaviorAutoScaleSpec `json:"behavior,omitempty"`
+	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty" bson:",omitempty"`
+	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty" bson:",omitempty"`
+	Version    int                   `json:"version" bson:"-"` // Version field is used just on AppInfo journeys, it is not stored on database, but it is used to know which version of deployment of the app
+	Behavior   BehaviorAutoScaleSpec `json:"behavior,omitempty" bson:",omitempty"`
 }
 
 type BehaviorAutoScaleSpec struct {
-	ScaleDown *ScaleDownPolicy `json:"scaleDown,omitempty"`
+	ScaleDown *ScaleDownPolicy `json:"scaleDown,omitempty" bson:",omitempty"`
 }
 
 type ScaleDownPolicy struct {
-	StabilizationWindow   *int32 `json:"stabilizationWindow,omitempty"`
-	PercentagePolicyValue *int32 `json:"percentagePolicyValue,omitempty"`
-	UnitsPolicyValue      *int32 `json:"unitsPolicyValue,omitempty"`
+	StabilizationWindow   *int32 `json:"stabilizationWindow,omitempty" bson:",omitempty"`
+	PercentagePolicyValue *int32 `json:"percentagePolicyValue,omitempty" bson:",omitempty"`
+	UnitsPolicyValue      *int32 `json:"unitsPolicyValue,omitempty" bson:",omitempty"`
 }
 
 type AutoScalePrometheus struct {

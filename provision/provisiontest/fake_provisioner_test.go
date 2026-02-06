@@ -580,7 +580,7 @@ func (s *S) TestSwapAutoScale(c *check.C) {
 	p := &AutoScaleProvisioner{}
 
 	// Set up initial autoscale specs with version 1
-	err := p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
+	_, err := p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
 		Process:  "web",
 		MinUnits: 2,
 		MaxUnits: 10,
@@ -588,7 +588,7 @@ func (s *S) TestSwapAutoScale(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
+	_, err = p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
 		Process:  "worker",
 		MinUnits: 1,
 		MaxUnits: 5,
@@ -615,7 +615,7 @@ func (s *S) TestSwapAutoScaleNonNumericVersion(c *check.C) {
 	app := NewFakeApp("myapp", "python", 1)
 	p := &AutoScaleProvisioner{}
 
-	err := p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
+	_, err := p.SetAutoScale(context.TODO(), app, provTypes.AutoScaleSpec{
 		Process:  "web",
 		MinUnits: 2,
 		MaxUnits: 10,
