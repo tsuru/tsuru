@@ -17,6 +17,7 @@ import (
 
 	"github.com/cezarsa/form"
 	"github.com/tsuru/config"
+	"k8s.io/utils/ptr"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -187,6 +188,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule:          "* * * * *",
+		TimeZone:          ptr.To("America/Sao_Paulo"),
 		Manual:            false,
 		ConcurrencyPolicy: func() *string { s := "Allow"; return &s }(),
 	}
@@ -258,6 +260,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:              "* * * * *",
+			TimeZone:              ptr.To("America/Sao_Paulo"),
 			ActiveDeadlineSeconds: func() *int64 { v := int64(0); return &v }(),
 			ConcurrencyPolicy:     func() *string { s := "Allow"; return &s }(),
 			ServiceEnvs:           []bindTypes.ServiceEnvVar{},
@@ -465,6 +468,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "*/15 * * * *",
+		TimeZone: ptr.To("America/Santiago"),
 		ActiveDeadlineSeconds: func() *int64 {
 			v := int64(0)
 			return &v
@@ -514,6 +518,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule: "*/15 * * * *",
+			TimeZone: ptr.To("America/Santiago"),
 			ActiveDeadlineSeconds: func() *int64 {
 				v := int64(0)
 				return &v
