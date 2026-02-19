@@ -557,6 +557,8 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 			for _, u := range units {
 				if val, ok := versionsMap[u.Version]; ok {
 					versions = append(versions, val)
+					// prevents from adding duplicated versions
+					delete(versionsMap, u.Version)
 				}
 			}
 		}
