@@ -748,6 +748,38 @@ func (s *S) TestRestart(c *check.C) {
 	require.NotEqual(s.t, id, units[0].ID)
 }
 
+func (s *S) TestShouldRestartOnlyOnce(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	var updateCount int32
+	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		atomic.AddInt32(&updateCount, 1)
+		return false, nil, nil
+	})
+
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
+	require.NoError(s.t, err)
+	wait()
+	units, err := s.p.Units(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 3)
+
+	atomic.StoreInt32(&updateCount, 0)
+
+	err = s.p.Restart(context.TODO(), a, "", nil, nil)
+	require.NoError(s.t, err)
+	wait()
+
+	require.Equal(s.t, int32(1), atomic.LoadInt32(&updateCount))
+	units, err = s.p.Units(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 3)
+}
+
 func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

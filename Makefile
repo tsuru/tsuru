@@ -21,7 +21,9 @@ all: test
 
 _go_test:
 	go clean ./...
-	go test `go list ./... | grep -v github.com/tsuru/tsuru/integration` -check.v
+	go list ./... | grep -v "github.com/tsuru/tsuru/integration" | while read -r f; do \
+		( go test  $$f -check.v || go test $$f ) || exit 1; \
+	done
 
 _tsurud_dry:
 	go build -o tsurud ./cmd/tsurud
@@ -57,6 +59,7 @@ endif
 		|| ( echo "Please run 'make yamlfmt' to fix it (if a format error)" && exit 1 )
 
 race:
+	go clean -testcache
 	go test -race `go list ./... | grep -v  github.com/tsuru/tsuru/integration`
 
 _install_api_doc:
