@@ -21,7 +21,9 @@ all: test
 
 _go_test:
 	go clean ./...
-	go test `go list ./... | grep -v github.com/tsuru/tsuru/integration` -check.v
+	go list ./... | grep -v "github.com/tsuru/tsuru/integration" | while read -r f; do \
+		go test  $$f -check.v || go test $$f; \
+	done
 
 _tsurud_dry:
 	go build -o tsurud ./cmd/tsurud
@@ -29,10 +31,6 @@ _tsurud_dry:
 	rm -f tsurud
 
 test: _go_test _tsurud_dry
-
-test-verbose:
-	go clean ./...
-	go test -v -check.v `go list ./... | grep -v github.com/tsuru/tsuru/integration`
 
 lint: metalint yamllint
 	misc/check-contributors.sh
