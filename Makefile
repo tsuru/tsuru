@@ -59,6 +59,7 @@ endif
 		|| ( echo "Please run 'make yamlfmt' to fix it (if a format error)" && exit 1 )
 
 race:
+	go clean -testcache
 	go test -race `go list ./... | grep -v  github.com/tsuru/tsuru/integration`
 
 _install_api_doc:

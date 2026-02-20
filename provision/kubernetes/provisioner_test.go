@@ -751,6 +751,13 @@ func (s *S) TestRestart(c *check.C) {
 func (s *S) TestShouldRestartOnlyOnce(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
+
+	var updateCount int32
+	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		atomic.AddInt32(&updateCount, 1)
+		return false, nil, nil
+	})
+
 	version := newSuccessfulVersion(c, a, map[string][]string{
 		"web": {"python", "myapp.py"},
 	})
@@ -761,11 +768,7 @@ func (s *S) TestShouldRestartOnlyOnce(c *check.C) {
 	require.NoError(s.t, err)
 	require.Len(s.t, units, 3)
 
-	var updateCount int32
-	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
-		atomic.AddInt32(&updateCount, 1)
-		return false, nil, nil
-	})
+	atomic.StoreInt32(&updateCount, 0)
 
 	err = s.p.Restart(context.TODO(), a, "", nil, nil)
 	require.NoError(s.t, err)
