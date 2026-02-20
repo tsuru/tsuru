@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -20,7 +21,6 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
-	check "gopkg.in/check.v1"
 )
 
 const baseConfig = `
@@ -39,20 +39,14 @@ type fakePlanOpts struct {
 	}
 }
 
-type S struct {
-	mockTeamService *authTypes.MockTeamService
+type fakePlan struct {
+	Driver string
+	Opt    map[string]string
 }
 
-var _ = check.Suite(&S{})
-
-func Test(t *testing.T) {
-	check.TestingT(t)
-}
-
-func updateConfig(data string) {
-	config.ReadConfigBytes([]byte(data))
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "tsuru_volume_test")
+type fakeOtherPlan struct {
+	Plugin       string
+	StorageClass string `json:"storage-class"`
 }
 
 type otherProvisioner struct {
@@ -84,30 +78,23 @@ func (p *volumeProvisioner) IsVolumeProvisioned(ctx context.Context, name, pool 
 	return p.isProvisioned, nil
 }
 
-func (s *S) SetUpSuite(c *check.C) {
-	otherProv := otherProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
-	provision.Register("other", func() (provision.Provisioner, error) {
-		return &otherProv, nil
-	})
-	updateConfig("")
-}
-
-func (s *S) SetUpTest(c *check.C) {
+func setupTest(t *testing.T) {
+	t.Helper()
 	err := storagev2.ClearAllCollections(nil)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	provisiontest.ProvisionerInstance.Reset()
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "mypool",
 		Provisioner: "fake",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "otherpool",
 		Provisioner: "fake",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	teams := []authTypes.Team{{Name: "myteam"}, {Name: "otherteam"}}
-	s.mockTeamService = &authTypes.MockTeamService{
+	mockTeamService := &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return teams, nil
 		},
@@ -120,20 +107,16 @@ func (s *S) SetUpTest(c *check.C) {
 			return nil, authTypes.ErrTeamNotFound
 		},
 	}
-	servicemanager.Team = s.mockTeamService
-	updateConfig(baseConfig)
+	servicemanager.Team = mockTeamService
+	setupConfig(baseConfig)
 }
 
-func (s *S) TearDownSuite(c *check.C) {
-	err := storagev2.ClearAllCollections(nil)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestVolumeUnmarshalPlan(c *check.C) {
+func TestVolumeUnmarshalPlan(t *testing.T) {
+	setupTest(t)
 	vs := &volumeService{
 		storage: &volumeTypes.MockVolumeStorage{},
 	}
-	updateConfig(`
+	setupConfig(`
 volume-plans:
   nfs:
     fake:
@@ -148,372 +131,373 @@ volume-plans:
     other:
       storage-class: my-ebs-storage-class
 `)
-	type fakePlan struct {
-		Driver string
-		Opt    map[string]string
-	}
-	type fakeOtherPlan struct {
-		Plugin       string
-		StorageClass string `json:"storage-class"`
-	}
+
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "mypool2",
 		Provisioner: "other",
 	})
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	v1 := volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	err = vs.validate(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	var resultFake fakePlan
 	err = v1.UnmarshalPlan(&resultFake)
-	c.Assert(err, check.IsNil)
-	c.Assert(resultFake, check.DeepEquals, fakePlan{
+	require.NoError(t, err)
+	require.EqualValues(t, fakePlan{
 		Driver: "local",
 		Opt: map[string]string{
 			"type": "nfs",
 		},
-	})
+	}, resultFake)
 	v1.Plan.Name = "ebs"
 	err = vs.validate(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	resultFake = fakePlan{}
 	err = v1.UnmarshalPlan(&resultFake)
-	c.Assert(err, check.IsNil)
-	c.Assert(resultFake, check.DeepEquals, fakePlan{
+	require.NoError(t, err)
+	require.EqualValues(t, fakePlan{
 		Driver: "rexray/ebs",
-	})
+	}, resultFake)
 	v1.Plan.Name = "nfs"
 	v1.Pool = "mypool2"
 	err = vs.validate(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	var resultFakeOther fakeOtherPlan
 	err = v1.UnmarshalPlan(&resultFakeOther)
-	c.Assert(err, check.IsNil)
-	c.Assert(resultFakeOther, check.DeepEquals, fakeOtherPlan{
+	require.NoError(t, err)
+	require.EqualValues(t, fakeOtherPlan{
 		Plugin: "nfs",
-	})
+	}, resultFakeOther)
 	v1.Plan.Name = "ebs"
 	err = vs.validate(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 	resultFakeOther = fakeOtherPlan{}
 	err = v1.UnmarshalPlan(&resultFakeOther)
-	c.Assert(err, check.IsNil)
-	c.Assert(resultFakeOther, check.DeepEquals, fakeOtherPlan{
+	require.NoError(t, err)
+	require.EqualValues(t, fakeOtherPlan{
 		StorageClass: "my-ebs-storage-class",
+	}, resultFakeOther)
+}
+
+func TestVolumeCreateAndLoad(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	t.Run("volume name cannot be empty", func(t *testing.T) {
+		err := volumeService.Create(context.TODO(), &volumeTypes.Volume{})
+		require.ErrorContains(t, err, "volume name cannot be empty")
+	})
+	t.Run("volume cannot be created in a pool that does not exists", func(t *testing.T) {
+		err := volumeService.Create(context.TODO(), &volumeTypes.Volume{Name: "v1"})
+		require.ErrorContains(t, err, pool.ErrPoolNotFound.Error())
+	})
+	t.Run("volume cannot be created with a team that does not exists", func(t *testing.T) {
+		err := volumeService.Create(context.TODO(), &volumeTypes.Volume{Name: "v1", Pool: "mypool"})
+		require.ErrorContains(t, err, authTypes.ErrTeamNotFound.Error())
+	})
+	t.Run("volume cannot be created with empty plan name", func(t *testing.T) {
+		err := volumeService.Create(context.TODO(), &volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"})
+		require.ErrorContains(t, err, "key \"volume-plans::fake\" not found")
+	})
+	t.Run("volume cannot be created with plan that does not exists", func(t *testing.T) {
+		err := volumeService.Create(context.TODO(), &volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "bogus"}})
+		require.ErrorContains(t, err, "key \"volume-plans:bogus:fake\" not found")
+	})
+	t.Run("simple volume creation", func(t *testing.T) {
+		vol := &volumeTypes.Volume{
+			Name: "v1",
+			Plan: volumeTypes.VolumePlan{
+				Name: "p1",
+			},
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+		}
+		err := volumeService.Create(context.TODO(), vol)
+		require.NoError(t, err)
+		require.EqualValues(t, map[string]any{
+			"driver": "local",
+			"opt": map[string]any{
+				"type": "nfs",
+			},
+		}, vol.Plan.Opts)
+
+		volumeRegister, err := volumeService.Get(context.TODO(), vol.Name)
+		require.NoError(t, err)
+		require.EqualValues(t, vol, volumeRegister)
+		var planOpts fakePlanOpts
+		err = volumeRegister.UnmarshalPlan(&planOpts)
+		require.NoError(t, err)
+		require.EqualValues(t, fakePlanOpts{
+			Driver: "local",
+			Opt:    struct{ Type string }{Type: "nfs"},
+		}, planOpts)
+	})
+	t.Run("volume creation with options", func(t *testing.T) {
+		vol := &volumeTypes.Volume{
+			Name: "v1",
+			Plan: volumeTypes.VolumePlan{
+				Name: "p1",
+			},
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+			Opts:      map[string]string{"opt1": "val1"},
+		}
+		err := volumeService.Create(context.TODO(), vol)
+		require.NoError(t, err)
+		require.EqualValues(t, map[string]any{
+			"driver": "local",
+			"opt": map[string]any{
+				"type": "nfs",
+			},
+		}, vol.Plan.Opts)
+
+		volumeRegister, err := volumeService.Get(context.TODO(), vol.Name)
+		require.NoError(t, err)
+		require.EqualValues(t, vol, volumeRegister)
+		var planOpts fakePlanOpts
+		err = volumeRegister.UnmarshalPlan(&planOpts)
+		require.NoError(t, err)
+		require.EqualValues(t, fakePlanOpts{
+			Driver: "local",
+			Opt:    struct{ Type string }{Type: "nfs"},
+		}, planOpts)
 	})
 }
 
-func (s *S) TestVolumeCreateLoad(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-
-	tests := []struct {
-		v   volumeTypes.Volume
-		err string
-	}{
-		{
-			v:   volumeTypes.Volume{},
-			err: "volume name cannot be empty",
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1"},
-			err: pool.ErrPoolNotFound.Error(),
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool"},
-			err: authTypes.ErrTeamNotFound.Error(),
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
-			err: "key \"volume-plans::fake\" not found",
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "bogus"}},
-			err: "key \"volume-plans:bogus:fake\" not found",
-		},
-		{
-			v: volumeTypes.Volume{
-				Name: "v1",
-				Plan: volumeTypes.VolumePlan{
-					Name: "p1",
-				},
-				Pool:      "mypool",
-				TeamOwner: "myteam",
+func TestVolumeUpdateAndLoad(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	t.Run("volume cannot be updated if pool cannot be found", func(t *testing.T) {
+		err := volumeService.Update(context.TODO(), &volumeTypes.Volume{Name: "v1"})
+		require.ErrorContains(t, err, pool.ErrPoolNotFound.Error())
+	})
+	t.Run("volume cannot be updated if team cannot be found", func(t *testing.T) {
+		err := volumeService.Update(context.TODO(), &volumeTypes.Volume{Name: "v1", Pool: "mypool"})
+		require.ErrorContains(t, err, authTypes.ErrTeamNotFound.Error())
+	})
+	t.Run("volume cannot be updated if plan is empty", func(t *testing.T) {
+		err := volumeService.Update(context.TODO(), &volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"})
+		require.ErrorContains(t, err, "key \"volume-plans::fake\" not found")
+	})
+	t.Run("volume cannot be updated if plan does not exists", func(t *testing.T) {
+		err := volumeService.Update(context.TODO(), &volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "bogus"}})
+		require.ErrorContains(t, err, "key \"volume-plans:bogus:fake\" not found")
+	})
+	t.Run("simple volume update", func(t *testing.T) {
+		vol := &volumeTypes.Volume{
+			Name: "v1",
+			Plan: volumeTypes.VolumePlan{
+				Name: "p1",
 			},
-		},
-		{
-			v: volumeTypes.Volume{
-				Name: "v1",
-				Plan: volumeTypes.VolumePlan{
-					Name: "p1",
-				},
-				Pool:      "mypool",
-				TeamOwner: "myteam",
-				Opts:      map[string]string{"opt1": "val1"},
-			},
-		},
-	}
-	for i, tt := range tests {
-		err := vs.Create(context.TODO(), &tt.v)
-		if tt.err != "" {
-			c.Assert(err, check.ErrorMatches, tt.err)
-			continue
+			Pool:      "mypool",
+			TeamOwner: "myteam",
 		}
-		c.Assert(err, check.IsNil)
-		c.Assert(tt.v.Plan.Opts, check.DeepEquals, map[string]interface{}{
+		err := volumeService.Update(context.TODO(), vol)
+		require.NoError(t, err)
+		require.EqualValues(t, map[string]any{
 			"driver": "local",
-			"opt": map[string]interface{}{
+			"opt": map[string]any{
 				"type": "nfs",
 			},
-		})
-		dbV, err := vs.Get(context.TODO(), tt.v.Name)
-		c.Assert(err, check.IsNil, check.Commentf("test %d", i))
-		c.Assert(dbV, check.DeepEquals, &tt.v)
+		}, vol.Plan.Opts)
+		volumeRegister, err := volumeService.Get(context.TODO(), vol.Name)
+		require.NoError(t, err)
+		require.EqualValues(t, vol, volumeRegister)
 		var planOpts fakePlanOpts
-		err = dbV.UnmarshalPlan(&planOpts)
-		c.Assert(err, check.IsNil)
-		c.Assert(planOpts, check.DeepEquals, fakePlanOpts{
+		err = volumeRegister.UnmarshalPlan(&planOpts)
+		require.NoError(t, err)
+		require.EqualValues(t, fakePlanOpts{
 			Driver: "local",
 			Opt:    struct{ Type string }{Type: "nfs"},
-		})
-	}
-}
-
-func (s *S) TestVolumeUpdateLoad(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-
-	tests := []struct {
-		v   volumeTypes.Volume
-		err string
-	}{
-		{
-			v:   volumeTypes.Volume{Name: "v1"},
-			err: pool.ErrPoolNotFound.Error(),
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool"},
-			err: authTypes.ErrTeamNotFound.Error(),
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
-			err: "key \"volume-plans::fake\" not found",
-		},
-		{
-			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "bogus"}},
-			err: "key \"volume-plans:bogus:fake\" not found",
-		},
-		{
-			v: volumeTypes.Volume{
-				Name: "v1",
-				Plan: volumeTypes.VolumePlan{
-					Name: "p1",
-				},
-				Pool:      "mypool",
-				TeamOwner: "myteam",
+		}, planOpts)
+	})
+	t.Run("volume update with options", func(t *testing.T) {
+		vol := &volumeTypes.Volume{
+			Name: "v1",
+			Plan: volumeTypes.VolumePlan{
+				Name: "p1",
 			},
-		},
-		{
-			v: volumeTypes.Volume{
-				Name: "v1",
-				Plan: volumeTypes.VolumePlan{
-					Name: "p1",
-				},
-				Pool:      "mypool",
-				TeamOwner: "myteam",
-				Opts:      map[string]string{"opt1": "val1"},
-			},
-		},
-	}
-	for i, tt := range tests {
-		err := vs.Update(context.TODO(), &tt.v)
-		if tt.err != "" {
-			c.Assert(err, check.ErrorMatches, tt.err)
-			continue
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+			Opts:      map[string]string{"opt1": "val1"},
 		}
-		c.Assert(err, check.IsNil)
-		c.Assert(tt.v.Plan.Opts, check.DeepEquals, map[string]interface{}{
+		err := volumeService.Update(context.TODO(), vol)
+		require.NoError(t, err)
+		require.EqualValues(t, map[string]any{
 			"driver": "local",
-			"opt": map[string]interface{}{
+			"opt": map[string]any{
 				"type": "nfs",
 			},
-		})
-		dbV, err := vs.Get(context.TODO(), tt.v.Name)
-		c.Assert(err, check.IsNil, check.Commentf("test %d", i))
-		c.Assert(dbV, check.DeepEquals, &tt.v)
+		}, vol.Plan.Opts)
+		volumeRegister, err := volumeService.Get(context.TODO(), vol.Name)
+		require.NoError(t, err)
+		require.EqualValues(t, vol, volumeRegister)
 		var planOpts fakePlanOpts
-		err = dbV.UnmarshalPlan(&planOpts)
-		c.Assert(err, check.IsNil)
-		c.Assert(planOpts, check.DeepEquals, fakePlanOpts{
+		err = volumeRegister.UnmarshalPlan(&planOpts)
+		require.NoError(t, err)
+		require.EqualValues(t, fakePlanOpts{
 			Driver: "local",
 			Opt:    struct{ Type string }{Type: "nfs"},
-		})
-	}
+		}, planOpts)
+	})
 }
 
-func (s *S) TestVolumeBindApp(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	v := volumeTypes.Volume{
+func TestVolumeBindApp(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	err := volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt1",
 		ReadOnly:   true,
 	})
-	c.Assert(err, check.IsNil)
-	binds, err := vs.Binds(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
+	binds, err := volumeService.Binds(context.TODO(), &vol)
+	require.NoError(t, err)
 	expected := []volumeTypes.VolumeBind{{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: true}}
-	c.Assert(binds, check.DeepEquals, expected)
-	dbV, err := vs.Get(context.TODO(), v.Name)
-	c.Assert(err, check.IsNil)
-	binds, err = vs.Binds(context.TODO(), dbV)
-	c.Assert(err, check.IsNil)
-	c.Assert(binds, check.DeepEquals, expected)
+	require.EqualValues(t, expected, binds)
+	volumeRegister, err := volumeService.Get(context.TODO(), vol.Name)
+	require.NoError(t, err)
+	binds, err = volumeService.Binds(context.TODO(), volumeRegister)
+	require.NoError(t, err)
+	require.EqualValues(t, expected, binds)
 }
 
-func (s *S) TestVolumeBindAppMultipleMounts(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	v := volumeTypes.Volume{
+func TestVolumeBindAppMultipleMounts(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	err := volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt1",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp2",
 		MountPoint: "/mnt1",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt2",
 		ReadOnly:   true,
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.Equals, volumeTypes.ErrVolumeAlreadyBound)
+	require.ErrorIs(t, err, volumeTypes.ErrVolumeAlreadyBound)
 	expected := []volumeTypes.VolumeBind{
 		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
 		{ID: volumeTypes.VolumeBindID{App: "myapp2", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
 		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
 	}
-	binds, err := vs.Binds(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	c.Assert(binds, check.DeepEquals, expected)
+	binds, err := volumeService.Binds(context.TODO(), &vol)
+	require.NoError(t, err)
+	require.EqualValues(t, expected, binds)
 }
 
-func (s *S) TestLoadBindsForApp(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	v := volumeTypes.Volume{
+func TestLoadBindsForApp(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	err := volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt1",
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp2",
 		MountPoint: "/mnt1",
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt2",
 		ReadOnly:   true,
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt2",
 		ReadOnly:   false,
 	})
-	c.Assert(err, check.Equals, volumeTypes.ErrVolumeAlreadyBound)
+	require.ErrorIs(t, err, volumeTypes.ErrVolumeAlreadyBound)
 	expected := []volumeTypes.VolumeBind{
 		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
 		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
 	}
-	binds, err := vs.BindsForApp(context.TODO(), &v, "myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(binds, check.DeepEquals, expected)
+	binds, err := volumeService.BindsForApp(context.TODO(), &vol, "myapp")
+	require.NoError(t, err)
+	require.EqualValues(t, expected, binds)
 }
 
-func (s *S) TestVolumeUnbindApp(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	v := volumeTypes.Volume{
+func TestVolumeUnbindApp(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	err := volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt1",
 		ReadOnly:   true,
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt2",
 		ReadOnly:   true,
 	})
-	c.Assert(err, check.IsNil)
-	err = vs.UnbindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.NoError(t, err)
+	err = volumeService.UnbindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt1",
 	})
-	c.Assert(err, check.IsNil)
-	binds, err := vs.Binds(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
+	binds, err := volumeService.Binds(context.TODO(), &vol)
+	require.NoError(t, err)
 	expected := []volumeTypes.VolumeBind{
 		{
 			ID: volumeTypes.VolumeBindID{
@@ -524,19 +508,18 @@ func (s *S) TestVolumeUnbindApp(c *check.C) {
 			ReadOnly: true,
 		},
 	}
-	c.Assert(binds, check.DeepEquals, expected)
-	err = vs.UnbindApp(context.TODO(), &volumeTypes.BindOpts{
-		Volume:     &v,
+	require.EqualValues(t, expected, binds)
+	err = volumeService.UnbindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &vol,
 		AppName:    "myapp",
 		MountPoint: "/mnt999",
 	})
-	c.Assert(err, check.Equals, volumeTypes.ErrVolumeBindNotFound)
+	require.ErrorIs(t, err, volumeTypes.ErrVolumeBindNotFound)
 }
 
-func (s *S) TestListByApp(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
+func TestListByApp(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
 	volumes := []volumeTypes.Volume{
 		{
 			Name:      "v1",
@@ -564,66 +547,64 @@ func (s *S) TestListByApp(c *check.C) {
 		{ID: volumeTypes.VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
 		{ID: volumeTypes.VolumeBindID{App: "app3", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
 	}
-	for i, v := range volumes {
-		err := vs.Create(context.TODO(), &v)
-		c.Assert(err, check.IsNil)
+	for i, vol := range volumes {
+		err := volumeService.Create(context.TODO(), &vol)
+		require.NoError(t, err)
 
-		volumes[i].Plan.Opts = map[string]interface{}{
+		volumes[i].Plan.Opts = map[string]any{
 			"driver": "local",
-			"opt": map[string]interface{}{
+			"opt": map[string]any{
 				"type": "nfs",
 			},
 		}
 		for _, b := range binds {
-			if b.ID.Volume == v.Name {
-				err := vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
-					Volume:     &v,
+			if b.ID.Volume == vol.Name {
+				err := volumeService.BindApp(context.TODO(), &volumeTypes.BindOpts{
+					Volume:     &vol,
 					AppName:    b.ID.App,
 					MountPoint: b.ID.MountPoint,
 					ReadOnly:   b.ReadOnly,
 				})
-				c.Assert(err, check.IsNil)
+				require.NoError(t, err)
 			}
 		}
 	}
-	appVolumes, err := vs.ListByApp(context.TODO(), "app1")
-	c.Assert(err, check.IsNil)
+	appVolumes, err := volumeService.ListByApp(context.TODO(), "app1")
+	require.NoError(t, err)
 	sort.Slice(appVolumes, func(i, j int) bool { return appVolumes[i].Name < appVolumes[j].Name })
-	c.Assert(appVolumes, check.DeepEquals, []volumeTypes.Volume{volumes[0], volumes[2]})
-	appVolumes, err = vs.ListByApp(context.TODO(), "app2")
-	c.Assert(err, check.IsNil)
-	c.Assert(appVolumes, check.DeepEquals, []volumeTypes.Volume{volumes[1]})
-	appVolumes, err = vs.ListByApp(context.TODO(), "app3")
-	c.Assert(err, check.IsNil)
-	c.Assert(appVolumes, check.DeepEquals, []volumeTypes.Volume{volumes[2]})
-	appVolumes, err = vs.ListByApp(context.TODO(), "app4")
-	c.Assert(err, check.IsNil)
-	c.Assert(appVolumes, check.HasLen, 0)
+	require.EqualValues(t, []volumeTypes.Volume{volumes[0], volumes[2]}, appVolumes)
+	appVolumes, err = volumeService.ListByApp(context.TODO(), "app2")
+	require.NoError(t, err)
+	require.EqualValues(t, []volumeTypes.Volume{volumes[1]}, appVolumes)
+	appVolumes, err = volumeService.ListByApp(context.TODO(), "app3")
+	require.NoError(t, err)
+	require.EqualValues(t, []volumeTypes.Volume{volumes[2]}, appVolumes)
+	appVolumes, err = volumeService.ListByApp(context.TODO(), "app4")
+	require.NoError(t, err)
+	require.Len(t, appVolumes, 0)
 }
 
-func (s *S) TestVolumeDelete(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	v := volumeTypes.Volume{
+func TestVolumeDelete(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	err = vs.Delete(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	_, err = vs.Get(context.TODO(), v.Name)
-	c.Assert(err, check.Equals, volumeTypes.ErrVolumeNotFound)
+	err := volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
+	err = volumeService.Delete(context.TODO(), &vol)
+	require.NoError(t, err)
+	_, err = volumeService.Get(context.TODO(), vol.Name)
+	require.ErrorIs(t, err, volumeTypes.ErrVolumeNotFound)
 }
 
-func (s *S) TestVolumeUpdateAlreadyProvisioned(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	updateConfig(`
+func TestVolumeUpdateAlreadyProvisioned(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	setupConfig(`
 volume-plans:
   p1:
     volumeprov:
@@ -638,25 +619,24 @@ volume-plans:
 		Name:        "volumepool",
 		Provisioner: "volumeprov",
 	})
-	c.Assert(err, check.IsNil)
-	v := volumeTypes.Volume{
+	require.NoError(t, err)
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "volumepool",
 		TeamOwner: "myteam",
 	}
-	err = vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
+	err = volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
 	volumeProv.isProvisioned = true
-	err = vs.Create(context.TODO(), &v)
-	c.Assert(err, check.Equals, volumeTypes.ErrVolumeAlreadyProvisioned)
+	err = volumeService.Create(context.TODO(), &vol)
+	require.ErrorIs(t, err, volumeTypes.ErrVolumeAlreadyProvisioned)
 }
 
-func (s *S) TestVolumeDeleteWithVolumeProvisioner(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	updateConfig(`
+func TestVolumeDeleteWithVolumeProvisioner(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	setupConfig(`
 volume-plans:
   p1:
     volumeprov:
@@ -671,27 +651,26 @@ volume-plans:
 		Name:        "volumepool",
 		Provisioner: "volumeprov",
 	})
-	c.Assert(err, check.IsNil)
-	v := volumeTypes.Volume{
+	require.NoError(t, err)
+	vol := volumeTypes.Volume{
 		Name:      "v1",
 		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "volumepool",
 		TeamOwner: "myteam",
 	}
-	err = vs.Create(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	err = vs.Delete(context.TODO(), &v)
-	c.Assert(err, check.IsNil)
-	c.Assert(volumeProv.deleteCallVolume, check.Equals, "v1")
-	c.Assert(volumeProv.deleteCallPool, check.Equals, "volumepool")
-	_, err = vs.Get(context.TODO(), v.Name)
-	c.Assert(err, check.Equals, volumeTypes.ErrVolumeNotFound)
+	err = volumeService.Create(context.TODO(), &vol)
+	require.NoError(t, err)
+	err = volumeService.Delete(context.TODO(), &vol)
+	require.NoError(t, err)
+	require.Equal(t, "v1", volumeProv.deleteCallVolume)
+	require.Equal(t, "volumepool", volumeProv.deleteCallPool)
+	_, err = volumeService.Get(context.TODO(), vol.Name)
+	require.ErrorIs(t, err, volumeTypes.ErrVolumeNotFound)
 }
 
-func (s *S) TestListByFilter(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
+func TestListByFilter(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
 	volumes := []volumeTypes.Volume{
 		{
 			Name:      "v1",
@@ -715,12 +694,12 @@ func (s *S) TestListByFilter(c *check.C) {
 			TeamOwner: "otherteam",
 		},
 	}
-	for i, v := range volumes {
-		err := vs.Create(context.TODO(), &v)
-		c.Assert(err, check.IsNil)
-		volumes[i].Plan.Opts = map[string]interface{}{
+	for i, vol := range volumes {
+		err := volumeService.Create(context.TODO(), &vol)
+		require.NoError(t, err)
+		volumes[i].Plan.Opts = map[string]any{
 			"driver": "local",
-			"opt": map[string]interface{}{
+			"opt": map[string]any{
 				"type": "nfs",
 			},
 		}
@@ -737,22 +716,20 @@ func (s *S) TestListByFilter(c *check.C) {
 		{filter: &volumeTypes.Filter{Pools: []string{"otherpool", "mypool"}}, expected: volumes},
 	}
 	for _, tt := range tests {
-		vols, err := vs.ListByFilter(context.TODO(), tt.filter)
-		c.Assert(err, check.IsNil)
+		vols, err := volumeService.ListByFilter(context.TODO(), tt.filter)
+		require.NoError(t, err)
 		sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
-		c.Assert(vols, check.DeepEquals, tt.expected)
+		require.EqualValues(t, tt.expected, vols)
 	}
 }
 
-func (s *S) TestVolumeValidateNew(c *check.C) {
+func TestVolumeValidateNew(t *testing.T) {
+	setupTest(t)
 	vol := volumeTypes.Volume{Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "p1"}}
-	msg := "Invalid volume name, volume name should have at most 40 " +
+	nameErr := &tsuruErrors.ValidationError{Message: "Invalid volume name, volume name should have at most 40 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
-		"starting with a letter."
-	nameErr := &tsuruErrors.ValidationError{Message: msg}
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
+		"starting with a letter."}
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
 	tt := []struct {
 		name        string
 		expectedErr error
@@ -766,18 +743,23 @@ func (s *S) TestVolumeValidateNew(c *check.C) {
 		{"volume-with-a-name-longer-than-40-characters", nameErr},
 		{"volume-with-exactly-40-characters-123456", nil},
 	}
-	for _, t := range tt {
-		vol.Name = t.name
-		err := vs.Create(context.TODO(), &vol)
-		c.Check(errors.Cause(err), check.DeepEquals, t.expectedErr, check.Commentf(t.name))
+	for _, test := range tt {
+		vol.Name = test.name
+		err := volumeService.Create(context.TODO(), &vol)
+		if test.expectedErr == nil {
+			require.NoError(t, err, "volumeName: %s", test.name)
+			continue
+		}
+		require.ErrorContains(t, errors.Cause(err), test.expectedErr.Error(), "volumeName: %s", test.name)
 	}
 }
 
-func (s *S) TestVolumeValidate(c *check.C) {
-	vs := &volumeService{
+func TestVolumeValidate(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{
 		storage: &volumeTypes.MockVolumeStorage{},
 	}
-	updateConfig(`
+	setupConfig(`
 volume-plans:
   nfs:
     fake:
@@ -802,26 +784,30 @@ volume-plans:
 		{volumeTypes.Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
 		{volumeTypes.Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
-	for _, t := range tt {
-		c.Check(errors.Cause(vs.validate(context.TODO(), &t.volume)), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
+	for _, test := range tt {
+		err := volumeService.validate(context.TODO(), &test.volume)
+		if test.expectedErr == nil {
+			require.NoError(t, err, "volumeName: %s", test.volume.Name)
+			continue
+		}
+		require.ErrorContains(t, errors.Cause(err), test.expectedErr.Error(), "volumeName: %s", test.volume.Name)
 	}
 }
 
-func (s *S) TestRenameTeam(c *check.C) {
-	vs := &volumeService{
-		storage: &volumeTypes.MockVolumeStorage{},
-	}
-	v1 := volumeTypes.Volume{Name: "v1", Plan: volumeTypes.VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "myteam"}
-	err := vs.Create(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
-	v2 := volumeTypes.Volume{Name: "v2", Plan: volumeTypes.VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "otherteam"}
-	err = vs.Create(context.TODO(), &v2)
-	c.Assert(err, check.IsNil)
-	err = vs.storage.RenameTeam(context.TODO(), "myteam", "mynewteam")
-	c.Assert(err, check.IsNil)
-	vols, err := vs.ListByFilter(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
+func TestRenameTeam(t *testing.T) {
+	setupTest(t)
+	volumeService := &volumeService{storage: &volumeTypes.MockVolumeStorage{}}
+	vol1 := volumeTypes.Volume{Name: "v1", Plan: volumeTypes.VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "myteam"}
+	err := volumeService.Create(context.TODO(), &vol1)
+	require.NoError(t, err)
+	vol2 := volumeTypes.Volume{Name: "v2", Plan: volumeTypes.VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "otherteam"}
+	err = volumeService.Create(context.TODO(), &vol2)
+	require.NoError(t, err)
+	err = volumeService.storage.RenameTeam(context.TODO(), "myteam", "mynewteam")
+	require.NoError(t, err)
+	vols, err := volumeService.ListByFilter(context.TODO(), nil)
+	require.NoError(t, err)
 	sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
-	c.Assert(vols[0].TeamOwner, check.Equals, "mynewteam")
-	c.Assert(vols[1].TeamOwner, check.Equals, "otherteam")
+	require.Equal(t, "mynewteam", vols[0].TeamOwner)
+	require.Equal(t, "otherteam", vols[1].TeamOwner)
 }
