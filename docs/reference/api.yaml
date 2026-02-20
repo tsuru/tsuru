@@ -1053,6 +1053,49 @@ paths:
       - app
       security:
       - Bearer: []
+  /1.0/apps/{app}/log:
+    parameters:
+    - name: app
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: App name.
+    get:
+      operationId: AppLog
+      description: Retrieve logs from an app
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: "Logs retrieved successfully"
+          schema:
+            $ref: "#/definitions/App"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      parameters:
+      - name: lines
+        description: Number of log lines to retrieve.
+        in: query
+        type: string
+      - name: source
+        description: Filter logs by source.
+        in: query
+        type: string
+      - name: unit
+        description: Filter logs by unit.
+        in: query
+        type: string
+      tags:
+      - app
+      security:
+      - Bearer: []
   /1.0/apps/{app}/certificate:
     parameters:
     - name: app
