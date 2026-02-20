@@ -80,7 +80,8 @@ func (s *S) TestCreateJobWithTimeZone(c *check.C) {
 		} else {
 			c.Assert(myJob.Spec.TimeZone, check.IsNil)
 		}
-		servicemanager.Job.RemoveJob(context.TODO(), &newJob)
+		err = servicemanager.Job.RemoveJob(context.TODO(), &newJob)
+		c.Assert(err, check.IsNil)
 	}
 }
 
