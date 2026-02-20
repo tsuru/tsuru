@@ -686,8 +686,14 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 		}
 	}
 	if j.Spec.TimeZone != nil {
-		if _, err := time.LoadLocation(*j.Spec.TimeZone); err != nil {
-			return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()}
+		tz := strings.TrimSpace(*j.Spec.TimeZone)
+		if tz == "" {
+			j.Spec.TimeZone = nil
+		} else {
+			if _, err := time.LoadLocation(tz); err != nil {
+				return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()}
+			}
+			*j.Spec.TimeZone = tz
 		}
 	}
 	if j.Spec.ConcurrencyPolicy != nil {
