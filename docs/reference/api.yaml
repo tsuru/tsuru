@@ -5902,6 +5902,10 @@ definitions:
             type: string
             x-go-custom-type: "*string"
             description: concurrency policy.
+          timeZone:
+            type: string
+            x-go-custom-type: "*string"
+            description: Optional time zone for the schedule, e.g. "America/Sao_Paulo". If not specified, UTC will be used.
           container:
             type: object
             properties:
@@ -5960,6 +5964,10 @@ definitions:
         type: string
         x-go-custom-type: "*string"
         description: concurrency policy.
+      timeZone:
+        type: string
+        x-go-custom-type: "*string"
+        description: Optional time zone for the schedule, e.g. "America/Sao_Paulo". If not specified, UTC will be used.
       container:
         type: object
         $ref: "#/definitions/JobSpecContainer"
