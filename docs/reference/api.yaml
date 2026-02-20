@@ -5659,6 +5659,7 @@ definitions:
     properties:
       date:
         type: string
+        format: date-time
       name:
         type: string
       source:
