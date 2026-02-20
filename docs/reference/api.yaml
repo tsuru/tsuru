@@ -1068,9 +1068,12 @@ paths:
       - application/json
       responses:
         "200":
-          description: "Logs retrieved successfully"
+          description: "App logs"
           schema:
-            $ref: "#/definitions/App"
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/AppLog"
         "401":
           description: Unauthorized.
           schema:
@@ -5649,6 +5652,22 @@ definitions:
           type: object
           $ref: "#/definitions/AutoScaleSpec"
       dashboardURL:
+        type: string
+  AppLog:
+    description: App log.
+    type: object
+    properties:
+      date:
+        type: string
+      name:
+        type: string
+      source:
+        type: string
+      message:
+        type: string
+      unit:
+        type: string
+      type:
         type: string
   UnitMetrics:
     type: object
