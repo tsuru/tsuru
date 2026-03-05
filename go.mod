@@ -7,7 +7,7 @@ require (
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
-	github.com/docker/cli v23.0.3+incompatible
+	github.com/docker/cli v29.2.0+incompatible
 	github.com/docker/docker v28.0.0+incompatible
 	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
