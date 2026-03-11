@@ -8,18 +8,10 @@ import (
 	"sort"
 	"testing"
 
-	check "gopkg.in/check.v1"
+	"github.com/stretchr/testify/require"
 )
 
-func Test(t *testing.T) {
-	check.TestingT(t)
-}
-
-type SetSuite struct{}
-
-var _ = check.Suite(&SetSuite{})
-
-func (s *SetSuite) TestSetIntersection(c *check.C) {
+func TestSetIntersection(t *testing.T) {
 	animals := []string{"dog", "elephant", "snake", "frog"}
 	mammals := []string{"dog", "elephant"}
 	animalsSet := Set{}
@@ -38,21 +30,21 @@ func (s *SetSuite) TestSetIntersection(c *check.C) {
 	expected := []string{"dog", "elephant"}
 	sort.Strings(expected)
 	sort.Strings(result)
-	c.Assert(result, check.DeepEquals, expected)
+	require.Equal(t, expected, result)
 }
 
-func (s *SetSuite) TestSetDiff(c *check.C) {
+func TestSetDiff(t *testing.T) {
 	s1 := FromValues("a", "b", "c")
 	s2 := FromValues("b", "c", "d")
 	diff := s1.Difference(s2)
-	c.Assert(diff, check.DeepEquals, FromValues("a"))
+	require.Equal(t, FromValues("a"), diff)
 	diff = s2.Difference(s1)
-	c.Assert(diff, check.DeepEquals, FromValues("d"))
+	require.Equal(t, FromValues("d"), diff)
 }
 
-func (s *SetSuite) TestFromMap(c *check.C) {
+func TestFromMap(t *testing.T) {
 	set := FromMap(map[string]string{"a": "1", "b": "2"})
-	c.Assert(set, check.DeepEquals, FromValues("a", "b"))
+	require.Equal(t, FromValues("a", "b"), set)
 	set = FromMap(map[string]int{"a": 1, "b": 2})
-	c.Assert(set, check.DeepEquals, FromValues("a", "b"))
+	require.Equal(t, FromValues("a", "b"), set)
 }
