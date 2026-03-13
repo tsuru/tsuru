@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -284,9 +286,15 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer func() { evt.Done(ctx, err) }()
 	requestID := requestIDHeader(r)
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
+	appsNotFound := []string{}
 	if unbindAllBool {
 		for _, appName := range serviceInstance.Apps {
 			_, app, instErr := getServiceInstance(ctx, serviceInstance.ServiceName, serviceInstance.Name, appName)
+			httpErr, isHTTPErr := instErr.(*tsuruErrors.HTTP)
+			if isHTTPErr && httpErr.Code == http.StatusNotFound && httpErr.Message == fmt.Sprintf("App %s not found.", appName) {
+				appsNotFound = append(appsNotFound, appName)
+				continue
+			}
 			if instErr != nil {
 				return instErr
 			}
@@ -310,6 +318,14 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	ignoreErrorsBool, _ := strconv.ParseBool(ignoreErrors)
 	serviceInstance.ForceRemove = ignoreErrorsBool
+	bindedApps := []string{}
+	for _, app := range serviceInstance.Apps {
+		found := slices.Contains(appsNotFound, app)
+		if !found {
+			bindedApps = append(bindedApps, app)
+		}
+	}
+	serviceInstance.Apps = bindedApps
 	err = service.DeleteInstance(ctx, serviceInstance, evt, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
