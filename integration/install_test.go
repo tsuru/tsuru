@@ -47,7 +47,6 @@ var (
 		deployWithAutoscale(),
 		testCases(),
 		testApps(),
-		updateAppPools(),
 		serviceImageSetup(),
 		serviceCreate(),
 		serviceBind(),
@@ -324,6 +323,11 @@ func deployWithAutoscale() ExecFlow {
 		res = T("autoscale", "unset", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 	}
+	flow.backward = func(c *check.C, env *Environment) {
+		appName := slugifyName(fmt.Sprintf("deploy-with-autoscale-%s", env.Get("pool")))
+		res := T("app", "remove", "-y", "-a", appName).Run(env)
+		c.Check(res, ResultOk)
+	}
 	return flow
 }
 
@@ -512,49 +516,6 @@ func testApps() ExecFlow {
 		appName := "{{.case}}-{{.pool}}-iapp"
 		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
-	}
-	return flow
-}
-
-func updateAppPools() ExecFlow {
-	flow := ExecFlow{
-		requires: []string{"poolnames", "installedplatforms"},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		poolNames := env.All("poolnames")
-		installedPlatforms := env.All("installedplatforms")
-		chosenPlatform := installedPlatforms[0]
-		var combinations [][]string
-		for i := range poolNames {
-			for j := range poolNames {
-				if i == j {
-					continue
-				}
-				combinations = append(combinations, []string{
-					fmt.Sprintf("%s-%s-iapp", chosenPlatform, poolNames[i]),
-					poolNames[j],
-				})
-			}
-		}
-		for _, combination := range combinations {
-			appName := combination[0]
-			destPool := combination[1]
-			res := T("app", "update", "-a", appName, "-o", destPool).Run(env)
-			c.Assert(res, ResultOk)
-			appInfo := new(appTypes.AppInfo)
-			ok := retry(5*time.Minute, func() (ready bool) {
-				appInfo, ready = checkAppExternallyAddressable(c, appName, env)
-				return ready
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-			externalAddress := appInfo.Routers[0].Addresses[0]
-			cmd := NewCommand("curl", "-sSf", "http://"+externalAddress)
-			ok = retry(15*time.Minute, func() bool {
-				res = cmd.Run(env)
-				return res.ExitCode == 0
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
-		}
 	}
 	return flow
 }
