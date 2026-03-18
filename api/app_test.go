@@ -2205,6 +2205,20 @@ func (s *S) TestUpdateAppPool(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Matches, "^pool updates are no longer supported, create a new app in the desired pool instead\n$")
 }
 
+func (s *S) TestUpdateAppPoolWithDefaultPoolValue(c *check.C) {
+	a := appTypes.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("pool=test1&description=updated&noRestart=true")
+	request, err := http.NewRequest("PUT", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
 func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)

@@ -562,7 +562,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if updateData.Plan.Override != nil && *updateData.Plan.Override != (appTypes.PlanOverride{}) {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlanoverride)
 	}
-	if updateData.Pool != "" {
+	if updateData.Pool != "" && a.Pool != updateData.Pool {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "pool updates are no longer supported, create a new app in the desired pool instead"}
 	}
 	if updateData.TeamOwner != "" {
