@@ -2183,10 +2183,10 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestUpdateAppPoolWithNoRestart(c *check.C) {
+func (s *S) TestUpdateAppPool(c *check.C) {
 	a := appTypes.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -2203,32 +2203,21 @@ func (s *S) TestUpdateAppPoolWithNoRestart(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Matches, "^You must restart the app when changing the pool.\n$")
+	c.Assert(recorder.Body.String(), check.Matches, "^pool updates are no longer supported, create a new app in the desired pool instead\n$")
 }
 
-func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
-	a := appTypes.App{Name: "myappx", Platform: "zend"}
-
-	appsCollection, err := storagev2.AppsCollection()
+func (s *S) TestUpdateAppPoolWithDefaultPoolValue(c *check.C) {
+	a := appTypes.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-
-	_, err = appsCollection.InsertOne(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "test"}
-	err = pool.AddPool(context.TODO(), opts)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permTypes.Permission{
-		Scheme:  permission.PermAppUpdatePool,
-		Context: permission.Context(permTypes.CtxApp, "-other-"),
-	})
-	body := strings.NewReader("pool=test")
+	body := strings.NewReader("pool=test1&description=updated&noRestart=true")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
 func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
@@ -2241,30 +2230,6 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Matches, "^App myappx not found.\n$")
-}
-
-func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
-	p1 := provisiontest.NewFakeProvisioner()
-	p1.Name = "fake1"
-	provision.Register("fake1", func() (provision.Provisioner, error) {
-		return p1, nil
-	})
-	a := appTypes.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "fakepool", Provisioner: "fake1"}
-	err = pool.AddPool(context.TODO(), opts)
-	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(context.TODO(), "fakepool", []string{s.team.Name})
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("pool=fakepool")
-	request, err := http.NewRequest("PUT", "/apps/myappx", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
 func (s *S) TestUpdateAppPlanOnly(c *check.C) {

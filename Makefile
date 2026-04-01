@@ -32,10 +32,6 @@ _tsurud_dry:
 
 test: _go_test _tsurud_dry
 
-test-verbose:
-	go clean ./...
-	go test -v -check.v `go list ./... | grep -v github.com/tsuru/tsuru/integration`
-
 lint: metalint yamllint
 	misc/check-contributors.sh
 

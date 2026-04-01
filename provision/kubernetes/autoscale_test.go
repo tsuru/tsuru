@@ -1770,6 +1770,75 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 	require.ErrorContains(s.t, err, "autoscale cpu value cannot be greater than 95%")
 }
 
+func (s *S) TestEnsureHPAKEDAPausedReplicasWhenAppStopped(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	require.NoError(s.t, err)
+	wait()
+
+	autoScaleSpec := provTypes.AutoScaleSpec{
+		Process:    "web",
+		MinUnits:   1,
+		MaxUnits:   10,
+		AverageCPU: "500m",
+		Schedules: []provTypes.AutoScaleSchedule{
+			{
+				MinReplicas: 2,
+				Start:       "0 6 * * *",
+				End:         "0 18 * * *",
+				Timezone:    "UTC",
+			},
+		},
+	}
+	err = s.p.SetAutoScale(context.TODO(), a, autoScaleSpec)
+	require.NoError(s.t, err)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	require.NoError(s.t, err)
+
+	scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	require.NoError(s.t, err)
+	_, hasPausedAnnotation := scaledObject.GetAnnotations()[AnnotationKEDAPausedReplicas]
+	require.False(s.t, hasPausedAnnotation,
+		"ScaledObject should not have %s annotation while app is running", AnnotationKEDAPausedReplicas)
+
+	// Stop the app (replicas → 0)
+	err = s.p.Stop(context.TODO(), a, "web", version, &bytes.Buffer{})
+	require.NoError(s.t, err)
+
+	// Call ensureHPA which should detect replicas == 0 and set paused annotation
+	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
+	require.NoError(s.t, err)
+
+	// Verify ScaledObject now has the paused replicas annotation
+	scaledObject, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	require.NoError(s.t, err)
+	pausedValue, hasPausedAnnotation := scaledObject.GetAnnotations()[AnnotationKEDAPausedReplicas]
+	require.True(s.t, hasPausedAnnotation,
+		"ScaledObject should have %s annotation when deployment has 0 replicas", AnnotationKEDAPausedReplicas)
+	require.Equal(s.t, "0", pausedValue,
+		"%s annotation should be '0' when deployment is scaled to 0", AnnotationKEDAPausedReplicas)
+
+	// Start the app (replicas > 0 again)
+	err = s.p.Start(context.TODO(), a, "web", version, &bytes.Buffer{})
+	require.NoError(s.t, err)
+
+	// Call ensureHPA which should detect replicas > 0 and remove paused annotation
+	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
+	require.NoError(s.t, err)
+
+	// Verify ScaledObject no longer has the paused replicas annotation
+	scaledObject, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	require.NoError(s.t, err)
+	_, hasPausedAnnotation = scaledObject.GetAnnotations()[AnnotationKEDAPausedReplicas]
+	require.False(s.t, hasPausedAnnotation,
+		"ScaledObject should not have %s annotation after app is started", AnnotationKEDAPausedReplicas)
+}
+
 func TestValidateBehaviorPercentageNoFail(t *testing.T) {
 	t.Run("nil params returns default value", func(t *testing.T) {
 		defaultValue := int32(50)

@@ -899,7 +899,7 @@ func ensureVPADeleted(ctx context.Context, client *ClusterClient, a *appTypes.Ap
 }
 
 func ensureHPA(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
-	autoScaleSpecs, err := getAutoScale(ctx, client, a, process)
+	autoScaleSpecs, err := GetProvisioner().GetAutoScale(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -909,56 +909,15 @@ func ensureHPA(ctx context.Context, client *ClusterClient, a *appTypes.App, proc
 
 	multiErr := tsuruErrors.NewMultiError()
 	for _, spec := range autoScaleSpecs {
+		if spec.Process != process {
+			continue
+		}
 		err = setAutoScale(ctx, client, a, spec, true)
 		if err != nil && err != errNoDeploy {
 			multiErr.Add(err)
 		}
 	}
 	return multiErr.ToError()
-}
-
-func getAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) ([]provTypes.AutoScaleSpec, error) {
-	ns, err := client.AppNamespace(ctx, a)
-	if err != nil {
-		return nil, err
-	}
-
-	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
-		App:     a,
-		Process: process,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix: tsuruLabelPrefix,
-		},
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	hpas, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	var specs []provTypes.AutoScaleSpec
-	for _, hpa := range hpas.Items {
-		scaledObjectName := kedaScaledObjectName(hpa)
-		if scaledObjectName != "" {
-			kedaClient, err := KEDAClientForConfig(client.restConfig)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			specs = append(specs, scaledObjectToSpec(*observedKEDAScaledObject))
-		} else {
-			specs = append(specs, hpaToSpec(hpa))
-		}
-	}
-	return specs, nil
 }
 
 func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a *appTypes.App) (*vpav1.VerticalPodAutoscalerList, error) {

@@ -7,19 +7,11 @@ package validation
 import (
 	"testing"
 
-	check "gopkg.in/check.v1"
+	"github.com/stretchr/testify/require"
 )
 
-type S struct{}
-
-var _ = check.Suite(&S{})
-
-func Test(t *testing.T) {
-	check.TestingT(t)
-}
-
-func (s *S) TestValidateEmail(c *check.C) {
-	var data = []struct {
+func TestValidateEmail(t *testing.T) {
+	data := []struct {
 		input    string
 		expected bool
 	}{
@@ -36,12 +28,12 @@ func (s *S) TestValidateEmail(c *check.C) {
 		{"invalid@validate", false},
 	}
 	for _, d := range data {
-		c.Check(ValidateEmail(d.input), check.Equals, d.expected)
+		require.Equal(t, d.expected, ValidateEmail(d.input))
 	}
 }
 
-func (s *S) TestValidateLength(c *check.C) {
-	var data = []struct {
+func TestValidateLength(t *testing.T) {
+	data := []struct {
 		input    string
 		min      int
 		max      int
@@ -52,12 +44,12 @@ func (s *S) TestValidateLength(c *check.C) {
 		{"gopher", -1, 3, false},
 	}
 	for _, d := range data {
-		c.Check(ValidateLength(d.input, d.min, d.max), check.Equals, d.expected)
+		require.Equal(t, d.expected, ValidateLength(d.input, d.min, d.max))
 	}
 }
 
-func (s *S) TestValidateName(c *check.C) {
-	var data = []struct {
+func TestValidateName(t *testing.T) {
+	data := []struct {
 		input    string
 		expected bool
 	}{
@@ -75,6 +67,6 @@ func (s *S) TestValidateName(c *check.C) {
 		{"b", true},
 	}
 	for _, d := range data {
-		c.Check(ValidateName(d.input), check.Equals, d.expected)
+		require.Equal(t, d.expected, ValidateName(d.input))
 	}
 }
