@@ -8,6 +8,7 @@ import (
 	stdContext "context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -2190,4 +2191,47 @@ func contextsForApp(a *appTypes.App) []permTypes.PermissionContext {
 		permission.Context(permTypes.CtxApp, a.Name),
 		permission.Context(permTypes.CtxPool, a.Pool),
 	)
+}
+
+// path: /apps/{app}/unit/{unit}/transfer/upload
+// method: POST
+// consumes: application/x-tar
+// parameters:
+//   - name: x-filepath
+//     in: header
+//     description: Path to upload the file to.
+//     required: true
+//     type: string
+//
+// responses:
+//
+//	204: File uploaded
+//	400: Bad request
+//	401: Unauthorized
+func uploadTarFile(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	allowed := permission.Check(ctx, t, permission.PermAppUpdate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(ctx, appName)
+	if err != nil {
+		return err
+	}
+
+	file, err := io.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	unit := r.URL.Query().Get(":unit")
+	filepath := r.Header.Get("x-filepath")
+	if filepath == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "x-filepath header is required"}
+	}
+
+	return app.UploadFiles(ctx, a, unit, file, filepath)
 }
