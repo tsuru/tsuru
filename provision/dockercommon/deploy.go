@@ -54,10 +54,3 @@ func DeployTimeoutFromHealthcheck(healthcheck *provTypes.TsuruYamlHealthcheck) t
 
 	return time.Duration(waitTime) * time.Second
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
