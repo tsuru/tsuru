@@ -2,6 +2,12 @@ services:
   mongo:
     container_name: mongo
     image: mongo:6
+    # Tests open and close many connections to mongoDB in a short span of time, making it open many file descriptors at once.
+    # Some tests might fail without expanding the amount of file descriptors mongo can have open
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
     - 27017:27017
     volumes:
