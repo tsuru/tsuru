@@ -1,189 +1,699 @@
 #
-# Tsuru Service API Specification
+# Tsuru Service Provider API Specification
 #
 openapi: 3.0.0
 
 info:
-  title: Tsuru Service API
-  description: Tsuru Service API used to integration with external services
-  version: "1.0.0"
+  title: Tsuru Service Provider API
+  description: Provider-side API consumed by tsuru service integrations.
+  version: "1.1.0"
+
+tags:
+- name: Plans
+- name: Service Instance
+- name: App Binding
+- name: Job Binding
+- name: Service Proxy
 
 paths:
   /resources/plans:
     get:
-      summary: List plans available
+      parameters:
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Plans
+      summary: List available plans
       description: |
-        The service endpoint returns available service plans
+        Returns the plans available for this service provider.
+
+        Tsuru may also forward pool or cluster related metadata through HTTP headers
+        for multi-cluster services.
       responses:
-        200:
-          description: An array of plans
+        "200":
+          description: Available plans
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Plan'
+                  $ref: "#/components/schemas/Plan"
+        "400":
+          description: Invalid request. Providers may use this to indicate missing required parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Error"
+
   /resources:
     post:
-      summary: Create a new service instance
-      description: |
-        The service endpoint creates a new service instance
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
       - Service Instance
+      summary: Create a service instance
+      description: |
+        Creates a new service instance.
+
+        Requests are sent as `application/x-www-form-urlencoded`.
+        Besides the documented fields below, tsuru may send `parameters.*` fields
+        derived from arbitrary instance parameters.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InstanceForm'
+              $ref: "#/components/schemas/InstanceCreateRequest"
       responses:
-        201:
-          description: Instance successfully created
+        "201":
+          description: Instance created
+        "409":
+          description: Instance already exists
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Error"
+
   /resources/{name}:
     parameters:
     - name: name
       in: path
-      description: Instance name
       required: true
+      description: Service instance identifier. Tsuru may use the instance numeric ID when available.
       schema:
         type: string
     get:
-      summary: Service instance additional information
-      description: |
-        The service endpoint returns additional information about the instance
+      parameters:
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
       - Service Instance
+      summary: Get service instance information
+      description: |
+        Returns additional information about a service instance as a list of
+        `label`/`value` pairs.
+
+        Tsuru exposes this provider response under the `CustomInfo` field of the
+        service instance details endpoint.
       responses:
-        404:
-          description: No additional information available
-        200:
+        "200":
           description: Additional information available
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
-                  description: Additional service instance information
-                  additionalProperties:
-                    type: string
+                  $ref: "#/components/schemas/InfoItem"
+              example:
+              - label: Address
+                value: 10.46.6.241
+              - label: Instances
+                value: "2"
+              - label: Routes
+                value: "/\n/choose\n/debug\n/docs\n/event\n/isolation/choose\n/metrics"
+        "404":
+          description: No additional information available or instance not found
+        default:
+          $ref: "#/components/responses/Error"
     put:
-      summary: Update a service instance
-      description: |
-        The service endpoint updates a service instance
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
       - Service Instance
+      summary: Update a service instance
+      description: |
+        Updates a service instance.
+
+        Requests are sent as `application/x-www-form-urlencoded`.
+        Besides the documented fields below, tsuru may send `parameters.*` fields
+        derived from arbitrary instance parameters.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InstanceForm'
+              $ref: "#/components/schemas/InstanceUpdateRequest"
       responses:
-        200:
+        "200":
           description: Instance updated
-        404:
+        "404":
           description: Instance not found
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Error"
     delete:
-      summary: Delete a service instance
-      description: |
-        The service endpoint removes the service instance
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
       - Service Instance
+      summary: Delete a service instance
+      description: |
+        Removes the service instance.
+
+        Tsuru sends this request with a form-encoded body containing `user` and
+        `eventid`, but that body is intentionally not modeled as an OpenAPI
+        `requestBody` because DELETE request bodies are not well-defined across
+        tooling.
       responses:
-        200:
+        "200":
           description: Instance removed
-        404:
+        "404":
           description: Instance not found
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Error"
+
   /resources/{name}/bind-app:
     parameters:
     - name: name
       in: path
-      description: Instance name
       required: true
+      description: Service instance identifier
       schema:
         type: string
     post:
-      summary: Bind App
-      description: |
-        The service endpoint binds the app to the service instance
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-      - Binding
+      - App Binding
+      summary: Bind an app to a service instance
+      description: |
+        Binds an app to a service instance.
+
+        Requests are sent as `application/x-www-form-urlencoded`. Besides the
+        documented fields below, tsuru may send `parameters.*` fields derived
+        from arbitrary bind parameters.
+
+        For backward compatibility, tsuru falls back to `POST /resources/{name}/bind`
+        if this endpoint returns `404`.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BindAppForm'
+              $ref: "#/components/schemas/AppBindRequest"
       responses:
-        201:
-          description: App successfully bound to the service instance
+        "200":
+          description: App bound successfully
           content:
             application/json:
               schema:
-                type: object
-                description: Environments to be inject on the app
-                additionalProperties:
-                  type: string
-        404:
-          description: Service instance does not exist
-        412:
-          description: Service instance not ready
+                $ref: "#/components/schemas/EnvVars"
+        "201":
+          description: App bound successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvVars"
+        "404":
+          description: Instance not found
+        "412":
+          description: Instance not ready
         default:
-          $ref: '#/components/schemas/Error'
-
+          $ref: "#/components/responses/Error"
     delete:
-      summary: Unbind App
-      description: |
-        The service endpoint unbinds the app from the service instance
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-      - Binding
+      - App Binding
+      summary: Unbind an app from a service instance
+      description: |
+        Unbinds an app from a service instance.
+
+        Tsuru sends this request with a form-encoded body containing `app-name`,
+        `app-host`, repeated `app-hosts`, `user`, and `eventid`, but that body is
+        intentionally not modeled as an OpenAPI `requestBody` because DELETE
+        request bodies are not well-defined across tooling.
+      responses:
+        "200":
+          description: App unbound successfully
+        "404":
+          description: Instance not found
+        default:
+          $ref: "#/components/responses/Error"
+
+  /resources/{name}/bind:
+    parameters:
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
+    post:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      deprecated: true
+      tags:
+      - App Binding
+      summary: Legacy app bind endpoint
+      description: |
+        Deprecated compatibility endpoint.
+
+        Tsuru only uses this endpoint as a fallback when
+        `POST /resources/{name}/bind-app` returns `404`.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BindAppForm'
+              $ref: "#/components/schemas/AppBindRequest"
       responses:
-        200:
-          description: App successfully unbound from service instance
-        404:
-          description: Service instance does not exist
+        "200":
+          description: App bound successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvVars"
+        "201":
+          description: App bound successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvVars"
+        "404":
+          description: Instance not found
+        "412":
+          description: Instance not ready
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Error"
+
+  /resources/{name}/binds/jobs/{job}:
+    parameters:
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
+    - name: job
+      in: path
+      required: true
+      description: Job name
+      schema:
+        type: string
+    put:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Job Binding
+      summary: Bind a job to a service instance
+      description: |
+        Binds a job to a service instance.
+
+        Requests are sent as `application/x-www-form-urlencoded`.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/JobBindRequest"
+      responses:
+        "200":
+          description: Job bound successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvVars"
+        "201":
+          description: Job bound successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvVars"
+        "404":
+          description: Instance not found
+        "412":
+          description: Instance not ready
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Job Binding
+      summary: Unbind a job from a service instance
+      description: Unbinds a job from a service instance.
+      responses:
+        "200":
+          description: Job unbound successfully
+        "404":
+          description: Instance not found
+        default:
+          $ref: "#/components/responses/Error"
+
   /resources/{name}/status:
     get:
-      summary: Service Instance Status
-      description: |
-        The service endpoint returns the service instance status
-      tags:
-      - Service Instance
       parameters:
       - name: name
         in: path
-        description: Instance name
         required: true
+        description: Service instance identifier
         schema:
           type: string
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Service Instance
+      summary: Get service instance status
+      description: |
+        Returns the current service instance status.
+
+        Tsuru interprets responses as:
+        - `200` with a text body: use the body as the status string
+        - `202`: pending
+        - `204`: up
+        - `404`: status not implemented for this provider
+        - `500`: down
       responses:
-        202:
-          description: Instance not available yet
-        204:
-          description: Instance running
+        "200":
+          description: Provider-defined status text
+          content:
+            text/plain:
+              schema:
+                type: string
+        "202":
+          description: Instance is not available yet
+        "204":
+          description: Instance is running
+        "404":
+          description: Status is not implemented for this provider
+        "500":
+          description: Instance is down
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Error"
 
+  /resources/{name}/{path}:
+    parameters:
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
+    - name: path
+      in: path
+      required: true
+      description: |
+        Provider-defined subpath relative to `/resources/{name}`.
+        Tsuru proxies requests to `/resources/{name}/{path}` after path cleaning.
+      schema:
+        type: string
+    get:
+      parameters:
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Service Proxy
+      summary: Proxy a GET request to a service instance subresource
+      description: |
+        Tsuru may proxy provider-defined GET requests to subpaths under
+        `/resources/{name}`.
 
-# Object definitions          
+        Query string parameters are forwarded, except for tsuru internal routing
+        parameters.
+      responses:
+        "200":
+          description: Proxied response from the service provider
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Service Proxy
+      summary: Proxy a POST request to a service instance subresource
+      description: |
+        Tsuru may proxy provider-defined POST requests to subpaths under
+        `/resources/{name}`.
+
+        Non-GET proxy requests are forbidden for reserved instance-management
+        paths: the empty path, `bind-app`, `bind-job`, and `bind`.
+      responses:
+        "200":
+          description: Proxied response from the service provider
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Service Proxy
+      summary: Proxy a PUT request to a service instance subresource
+      description: |
+        Tsuru may proxy provider-defined PUT requests to subpaths under
+        `/resources/{name}`.
+
+        Non-GET proxy requests are forbidden for reserved instance-management
+        paths: the empty path, `bind-app`, `bind-job`, and `bind`.
+      responses:
+        "200":
+          description: Proxied response from the service provider
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Service Proxy
+      summary: Proxy a PATCH request to a service instance subresource
+      description: |
+        Tsuru may proxy provider-defined PATCH requests to subpaths under
+        `/resources/{name}`.
+
+        Non-GET proxy requests are forbidden for reserved instance-management
+        paths: the empty path, `bind-app`, `bind-job`, and `bind`.
+      responses:
+        "200":
+          description: Proxied response from the service provider
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      parameters:
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      tags:
+      - Service Proxy
+      summary: Proxy a DELETE request to a service instance subresource
+      description: |
+        Tsuru may proxy provider-defined DELETE requests to subpaths under
+        `/resources/{name}`.
+
+        Non-GET proxy requests are forbidden for reserved instance-management
+        paths: the empty path, `bind-app`, `bind-job`, and `bind`.
+      responses:
+        "200":
+          description: Proxied response from the service provider
+        default:
+          $ref: "#/components/responses/Error"
+
 components:
+  parameters:
+    TsuruUserHeader:
+      name: X-Tsuru-User
+      in: header
+      required: false
+      description: User email forwarded by tsuru when the request is associated with an event.
+      schema:
+        type: string
+
+    TsuruEventIDHeader:
+      name: X-Tsuru-Eventid
+      in: header
+      required: false
+      description: Tsuru event identifier forwarded when the request is associated with an event.
+      schema:
+        type: string
+
+    TsuruRequestIDHeader:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: |
+        Request correlation header forwarded by tsuru when configured.
+        The concrete header name is controlled by tsuru configuration (`request-id-header`).
+        `X-Request-Id` is used here as the documented default/example name.
+      schema:
+        type: string
+
+    TsuruPoolNameHeader:
+      name: X-Tsuru-Pool-Name
+      in: header
+      required: false
+      description: Pool selected by tsuru for a multi-cluster service request.
+      schema:
+        type: string
+
+    TsuruPoolProvisionerHeader:
+      name: X-Tsuru-Pool-Provisioner
+      in: header
+      required: false
+      description: Provisioner associated with the selected tsuru pool.
+      schema:
+        type: string
+
+    TsuruClusterNameHeader:
+      name: X-Tsuru-Cluster-Name
+      in: header
+      required: false
+      description: Target cluster name derived by tsuru from the selected pool.
+      schema:
+        type: string
+
+    TsuruClusterProvisionerHeader:
+      name: X-Tsuru-Cluster-Provisioner
+      in: header
+      required: false
+      description: Provisioner associated with the target cluster selected by tsuru.
+      schema:
+        type: string
+
+    TsuruClusterAddressesHeader:
+      name: X-Tsuru-Cluster-Addresses
+      in: header
+      required: false
+      description: |
+        Repeated header containing the reachable addresses for the target cluster.
+        Tsuru sends one header value per cluster address.
+      schema:
+        type: array
+        items:
+          type: string
+      style: simple
+      explode: false
+
+    TsuruClusterKubeConfigHeader:
+      name: X-Tsuru-Cluster-Kube-Config
+      in: header
+      required: false
+      description: |
+        Base64-encoded Kubernetes config for the target cluster. Tsuru only sends
+        this header when cluster custom data enables `propagate-kubeconfig` and a
+        kubeconfig is available.
+      schema:
+        type: string
+
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
   schemas:
     Plan:
       type: object
@@ -193,8 +703,20 @@ components:
           description: Plan name
         description:
           type: string
-          description: Plan Description
-    InstanceForm:
+          description: Plan description
+
+    InfoItem:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+      required:
+      - label
+      - value
+
+    InstanceCreateRequest:
       type: object
       properties:
         name:
@@ -205,31 +727,150 @@ components:
           description: Plan name
         team:
           type: string
-          description: Team name
+          description: Team owner name
         user:
           type: string
-          description: User name
-        tag:
+          description: User email or name
+        eventid:
+          type: string
+          description: Tsuru event identifier
+        description:
+          type: string
+          description: Instance description
+        tags:
           type: array
+          description: Repeated service instance tags
           items:
             type: string
+        parameters:
+          type: object
+          description: |
+            Arbitrary parameter bag. On the wire tsuru encodes these fields as
+            `parameters.<key>=<value>` form fields.
+          additionalProperties: true
       required:
       - name
-      - plan
       - team
       - user
-    BindAppForm:
+
+    InstanceUpdateRequest:
       type: object
       properties:
-        app-host:
+        plan:
           type: string
-          description: App host
+          description: Plan name
+        team:
+          type: string
+          description: Team owner name
+        user:
+          type: string
+          description: User email or name
+        eventid:
+          type: string
+          description: Tsuru event identifier
+        description:
+          type: string
+          description: Instance description
+        tags:
+          type: array
+          description: Repeated service instance tags
+          items:
+            type: string
+        parameters:
+          type: object
+          description: |
+            Arbitrary parameter bag. On the wire tsuru encodes these fields as
+            `parameters.<key>=<value>` form fields.
+          additionalProperties: true
+
+    AppBindRequest:
+      type: object
+      properties:
         app-name:
           type: string
           description: App name
+        app-host:
+          type: string
+          description: Primary app host, when available
+        app-hosts:
+          type: array
+          description: Repeated app external hosts
+          items:
+            type: string
+        app-internal-hosts:
+          type: array
+          description: Repeated internal bindable app hosts
+          items:
+            type: string
+        app-pool-name:
+          type: string
+          description: App pool name
+        app-pool-provisioner:
+          type: string
+          description: App pool provisioner
+        app-cluster-name:
+          type: string
+          description: App cluster name
+        app-cluster-provisioner:
+          type: string
+          description: App cluster provisioner
+        app-cluster-addresses:
+          type: array
+          description: Repeated app cluster addresses
+          items:
+            type: string
+        user:
+          type: string
+          description: User email or name
+        eventid:
+          type: string
+          description: Tsuru event identifier
+        parameters:
+          type: object
+          description: |
+            Arbitrary bind parameter bag. On the wire tsuru encodes these fields as
+            `parameters.<key>=<value>` form fields.
+          additionalProperties: true
       required:
-      - app-host
       - app-name
+
+    JobBindRequest:
+      type: object
+      properties:
+        job-name:
+          type: string
+          description: Job name
+        job-pool-name:
+          type: string
+          description: Job pool name
+        job-cluster-name:
+          type: string
+          description: Job cluster name
+        user:
+          type: string
+          description: User email or name
+        eventid:
+          type: string
+          description: Tsuru event identifier
+      required:
+      - job-name
+
+    EnvVars:
+      type: object
+      description: Environment variables returned by the provider to be injected by tsuru.
+      additionalProperties:
+        type: string
+
+    ValidationError:
+      type: object
+      properties:
+        msg:
+          type: string
+        missing_params:
+          type: array
+          items:
+            type: string
+
     Error:
       type: object
       properties:
