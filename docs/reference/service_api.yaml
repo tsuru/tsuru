@@ -9,25 +9,25 @@ info:
   version: "1.1.0"
 
 tags:
-  - name: Plans
-  - name: Service Instance
-  - name: App Binding
-  - name: Job Binding
-  - name: Service Proxy
+- name: Plans
+- name: Service Instance
+- name: App Binding
+- name: Job Binding
+- name: Service Proxy
 
 paths:
   /resources/plans:
     get:
       parameters:
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Plans
+      - Plans
       summary: List available plans
       description: |
         Returns the plans available for this service provider.
@@ -55,17 +55,17 @@ paths:
   /resources:
     post:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Instance
+      - Service Instance
       summary: Create a service instance
       description: |
         Creates a new service instance.
@@ -89,23 +89,23 @@ paths:
 
   /resources/{name}:
     parameters:
-      - name: name
-        in: path
-        required: true
-        description: Service instance identifier. Tsuru may use the instance numeric ID when available.
-        schema:
-          type: string
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier. Tsuru may use the instance numeric ID when available.
+      schema:
+        type: string
     get:
       parameters:
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Instance
+      - Service Instance
       summary: Get service instance information
       description: |
         Returns additional information about a service instance as a list of
@@ -123,29 +123,29 @@ paths:
                 items:
                   $ref: "#/components/schemas/InfoItem"
               example:
-                - label: Address
-                  value: 10.46.6.241
-                - label: Instances
-                  value: "2"
-                - label: Routes
-                  value: "/\n/choose\n/debug\n/docs\n/event\n/isolation/choose\n/metrics"
+              - label: Address
+                value: 10.46.6.241
+              - label: Instances
+                value: "2"
+              - label: Routes
+                value: "/\n/choose\n/debug\n/docs\n/event\n/isolation/choose\n/metrics"
         "404":
           description: No additional information available or instance not found
         default:
           $ref: "#/components/responses/Error"
     put:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Instance
+      - Service Instance
       summary: Update a service instance
       description: |
         Updates a service instance.
@@ -168,17 +168,17 @@ paths:
           $ref: "#/components/responses/Error"
     delete:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Instance
+      - Service Instance
       summary: Delete a service instance
       description: |
         Removes the service instance.
@@ -197,25 +197,25 @@ paths:
 
   /resources/{name}/bind-app:
     parameters:
-      - name: name
-        in: path
-        required: true
-        description: Service instance identifier
-        schema:
-          type: string
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
     post:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - App Binding
+      - App Binding
       summary: Bind an app to a service instance
       description: |
         Binds an app to a service instance.
@@ -253,17 +253,17 @@ paths:
           $ref: "#/components/responses/Error"
     delete:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - App Binding
+      - App Binding
       summary: Unbind an app from a service instance
       description: |
         Unbinds an app from a service instance.
@@ -282,26 +282,26 @@ paths:
 
   /resources/{name}/bind:
     parameters:
-      - name: name
-        in: path
-        required: true
-        description: Service instance identifier
-        schema:
-          type: string
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
     post:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       deprecated: true
       tags:
-        - App Binding
+      - App Binding
       summary: Legacy app bind endpoint
       description: |
         Deprecated compatibility endpoint.
@@ -336,31 +336,31 @@ paths:
 
   /resources/{name}/binds/jobs/{job}:
     parameters:
-      - name: name
-        in: path
-        required: true
-        description: Service instance identifier
-        schema:
-          type: string
-      - name: job
-        in: path
-        required: true
-        description: Job name
-        schema:
-          type: string
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
+    - name: job
+      in: path
+      required: true
+      description: Job name
+      schema:
+        type: string
     put:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Job Binding
+      - Job Binding
       summary: Bind a job to a service instance
       description: |
         Binds a job to a service instance.
@@ -393,17 +393,17 @@ paths:
           $ref: "#/components/responses/Error"
     delete:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Job Binding
+      - Job Binding
       summary: Unbind a job from a service instance
       description: Unbinds a job from a service instance.
       responses:
@@ -417,21 +417,21 @@ paths:
   /resources/{name}/status:
     get:
       parameters:
-        - name: name
-          in: path
-          required: true
-          description: Service instance identifier
-          schema:
-            type: string
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - name: name
+        in: path
+        required: true
+        description: Service instance identifier
+        schema:
+          type: string
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Instance
+      - Service Instance
       summary: Get service instance status
       description: |
         Returns the current service instance status.
@@ -462,31 +462,31 @@ paths:
 
   /resources/{name}/{path}:
     parameters:
-      - name: name
-        in: path
-        required: true
-        description: Service instance identifier
-        schema:
-          type: string
-      - name: path
-        in: path
-        required: true
-        description: |
-          Provider-defined subpath relative to `/resources/{name}`.
-          Tsuru proxies requests to `/resources/{name}/{path}` after path cleaning.
-        schema:
-          type: string
+    - name: name
+      in: path
+      required: true
+      description: Service instance identifier
+      schema:
+        type: string
+    - name: path
+      in: path
+      required: true
+      description: |
+        Provider-defined subpath relative to `/resources/{name}`.
+        Tsuru proxies requests to `/resources/{name}/{path}` after path cleaning.
+      schema:
+        type: string
     get:
       parameters:
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Proxy
+      - Service Proxy
       summary: Proxy a GET request to a service instance subresource
       description: |
         Tsuru may proxy provider-defined GET requests to subpaths under
@@ -501,17 +501,17 @@ paths:
           $ref: "#/components/responses/Error"
     post:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Proxy
+      - Service Proxy
       summary: Proxy a POST request to a service instance subresource
       description: |
         Tsuru may proxy provider-defined POST requests to subpaths under
@@ -526,17 +526,17 @@ paths:
           $ref: "#/components/responses/Error"
     put:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Proxy
+      - Service Proxy
       summary: Proxy a PUT request to a service instance subresource
       description: |
         Tsuru may proxy provider-defined PUT requests to subpaths under
@@ -551,17 +551,17 @@ paths:
           $ref: "#/components/responses/Error"
     patch:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Proxy
+      - Service Proxy
       summary: Proxy a PATCH request to a service instance subresource
       description: |
         Tsuru may proxy provider-defined PATCH requests to subpaths under
@@ -576,17 +576,17 @@ paths:
           $ref: "#/components/responses/Error"
     delete:
       parameters:
-        - $ref: "#/components/parameters/TsuruUserHeader"
-        - $ref: "#/components/parameters/TsuruEventIDHeader"
-        - $ref: "#/components/parameters/TsuruRequestIDHeader"
-        - $ref: "#/components/parameters/TsuruPoolNameHeader"
-        - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterNameHeader"
-        - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
-        - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
-        - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
+      - $ref: "#/components/parameters/TsuruUserHeader"
+      - $ref: "#/components/parameters/TsuruEventIDHeader"
+      - $ref: "#/components/parameters/TsuruRequestIDHeader"
+      - $ref: "#/components/parameters/TsuruPoolNameHeader"
+      - $ref: "#/components/parameters/TsuruPoolProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterNameHeader"
+      - $ref: "#/components/parameters/TsuruClusterProvisionerHeader"
+      - $ref: "#/components/parameters/TsuruClusterAddressesHeader"
+      - $ref: "#/components/parameters/TsuruClusterKubeConfigHeader"
       tags:
-        - Service Proxy
+      - Service Proxy
       summary: Proxy a DELETE request to a service instance subresource
       description: |
         Tsuru may proxy provider-defined DELETE requests to subpaths under
@@ -713,8 +713,8 @@ components:
         value:
           type: string
       required:
-        - label
-        - value
+      - label
+      - value
 
     InstanceCreateRequest:
       type: object
@@ -749,9 +749,9 @@ components:
             `parameters.<key>=<value>` form fields.
           additionalProperties: true
       required:
-        - name
-        - team
-        - user
+      - name
+      - team
+      - user
 
     InstanceUpdateRequest:
       type: object
@@ -832,7 +832,7 @@ components:
             `parameters.<key>=<value>` form fields.
           additionalProperties: true
       required:
-        - app-name
+      - app-name
 
     JobBindRequest:
       type: object
@@ -853,7 +853,7 @@ components:
           type: string
           description: Tsuru event identifier
       required:
-        - job-name
+      - job-name
 
     EnvVars:
       type: object
