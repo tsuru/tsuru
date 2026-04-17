@@ -44,6 +44,8 @@ import (
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
+var appRunMaxDuration = 10 * time.Minute
+
 var (
 	logsAppTail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tsuru_logs_app_tail_current",
@@ -971,17 +973,23 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppRun,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppRun,
+		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		Cancelable:    true,
+		AllowedCancel: event.Allowed(permission.PermAppRun, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
+	ctx, cancel := evt.CancelableContext(ctx)
+	defer cancel()
+	ctx, cancelTimeout := stdContext.WithTimeout(ctx, appRunMaxDuration)
+	defer cancelTimeout()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()

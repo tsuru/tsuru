@@ -3197,6 +3197,57 @@ func (s *S) TestRunAppDoesNotExist(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
 
+func (s *S) TestRunEventIsCancelable(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("output"))
+	a := appTypes.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	collection, err := storagev2.EventsCollection()
+	c.Assert(err, check.IsNil)
+	var evt struct {
+		Cancelable bool `bson:"cancelable"`
+	}
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"kind.name": "app.run"}).Decode(&evt)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Cancelable, check.Equals, true)
+}
+
+func (s *S) TestRunWithMaxDuration(c *check.C) {
+	oldMaxDuration := appRunMaxDuration
+	appRunMaxDuration = 100 * time.Millisecond
+	defer func() { appRunMaxDuration = oldMaxDuration }()
+	a := appTypes.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
+	// Don't prepare output — ExecuteCommand will block, but the context
+	// deadline (100ms) should fire first and terminate the command.
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=sleep+999"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	collection, err := storagev2.EventsCollection()
+	c.Assert(err, check.IsNil)
+	var evt struct {
+		Error string `bson:"error"`
+	}
+	err = collection.FindOne(context.TODO(), mongoBSON.M{"kind.name": "app.run"}).Decode(&evt)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Error, check.Not(check.Equals), "")
+}
+
 func (s *S) TestRunUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := appTypes.App{Name: "secrets", Platform: "zend"}
 	appsCollection, err := storagev2.AppsCollection()

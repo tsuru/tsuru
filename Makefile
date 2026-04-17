@@ -168,7 +168,7 @@ generate-test-certs:
 DOCKER ?= docker
 
 # Kubernetes version used with minikube
-K8S_VERSION = v1.30.0
+K8S_VERSION = v1.32.0
 
 # Tsuru local host
 # This is used to configure the insecure registry in minikube as well as in the

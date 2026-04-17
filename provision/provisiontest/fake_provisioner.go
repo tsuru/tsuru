@@ -621,6 +621,8 @@ func (p *FakeProvisioner) ExecuteCommand(ctx context.Context, opts provision.Exe
 			} else {
 				p.failures <- fail
 			}
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-time.After(2e9):
 			return errors.New("FakeProvisioner timed out waiting for output.")
 		}
