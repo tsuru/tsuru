@@ -51,6 +51,7 @@ type inputJob struct {
 
 	Container             jobTypes.ContainerInfo `json:"container"`
 	Schedule              string                 `json:"schedule"`
+	TimeZone              *string                `json:"timeZone,omitempty"`
 	Manual                bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
 	Trigger               bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
 	ActiveDeadlineSeconds *int64                 `json:"activeDeadlineSeconds,omitempty"`
@@ -383,6 +384,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Spec: jobTypes.JobSpec{
 			ConcurrencyPolicy:     ij.ConcurrencyPolicy,
 			Schedule:              ij.Schedule,
+			TimeZone:              ij.TimeZone,
 			Container:             ij.Container,
 			Manual:                ij.Manual,
 			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
@@ -478,6 +480,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			ConcurrencyPolicy: ij.ConcurrencyPolicy,
 			Manual:            ij.Manual,
 			Schedule:          ij.Schedule,
+			TimeZone:          ij.TimeZone,
 			Container:         ij.Container,
 		},
 	}
