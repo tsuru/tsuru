@@ -1409,6 +1409,13 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !follow {
 		return nil
 	}
+	// Wrap the writer with a keep-alive ticker so intermediaries (reverse
+	// proxies, load balancers) don't close an idle follow-mode stream when
+	// the app is quiet. The '\n' bytes are skipped as whitespace by the
+	// client's json.Decoder between log batches.
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	encoder = json.NewEncoder(keepAliveWriter)
 	watcher, err := logService.Watch(ctx, listArgs)
 	if err != nil {
 		return err
