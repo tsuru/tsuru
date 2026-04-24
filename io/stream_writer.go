@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/moby/moby/client/pkg/jsonmessage"
 	terminal "golang.org/x/term"
 )
 
