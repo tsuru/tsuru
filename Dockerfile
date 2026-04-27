@@ -1,4 +1,4 @@
-ARG alpine_version=3.20
+ARG alpine_version=3.23
 ARG golang_version=1.26.2
 
 FROM golang:${golang_version}-alpine${alpine_version} AS builder
