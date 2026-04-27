@@ -762,6 +762,11 @@ func createAppDeployment(ctx context.Context, opts *createAppDeploymentOptions) 
 		return false, nil, nil, err
 	}
 
+	var runtimeClassName *string
+	if rcn := plan.GetRuntimeClassName(); rcn != "" {
+		runtimeClassName = &rcn
+	}
+
 	metadata := provision.GetAppMetadata(opts.app, opts.process)
 	podLabels := opts.labels.PodLabels()
 
@@ -841,6 +846,7 @@ func createAppDeployment(ctx context.Context, opts *createAppDeploymentOptions) 
 					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
+					RuntimeClassName:              runtimeClassName,
 					TopologySpreadConstraints:     topologySpreadConstraints,
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
 					EnableServiceLinks:            &serviceLinks,
