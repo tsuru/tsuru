@@ -1588,7 +1588,7 @@ func normalizeConfigs(version appTypes.AppVersion) (*provTypes.TsuruYamlKubernet
 	return config, nil
 }
 
-func EnvsForApp(a *appTypes.App, process string, version appTypes.AppVersion) []bindTypes.EnvVar {
+func envsForApp(a *appTypes.App, process string, version appTypes.AppVersion) []bindTypes.EnvVar {
 	envs := provision.EnvsForAppAndVersion(a, process, version)
 
 	portsConfig, err := getProcessPortsForVersion(version, process)

@@ -2514,7 +2514,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	}
 	fa.Env["e1"] = bindTypes.EnvVar{Name: "e1", Value: "v1"}
 
-	envs := EnvsForApp(fa, "proc1", version)
+	envs := envsForApp(fa, "proc1", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
@@ -2526,7 +2526,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc1", Value: "8080,9000", Public: true},
 	}, envs)
 
-	envs = EnvsForApp(fa, "proc2", version)
+	envs = envsForApp(fa, "proc2", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
@@ -2538,7 +2538,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc2", Value: "8000", Public: true},
 	}, envs)
 
-	envs = EnvsForApp(fa, "proc3", version)
+	envs = envsForApp(fa, "proc3", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
@@ -2550,7 +2550,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc3", Value: "8080", Public: true},
 	}, envs)
 
-	envs = EnvsForApp(fa, "proc4", version)
+	envs = envsForApp(fa, "proc4", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
@@ -2564,7 +2564,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc4", Value: "8888", Public: true},
 	}, envs)
 
-	envs = EnvsForApp(fa, "proc5", version)
+	envs = envsForApp(fa, "proc5", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},
@@ -2575,7 +2575,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_HOST", Value: "", Public: true},
 	}, envs)
 
-	envs = EnvsForApp(fa, "proc6", version)
+	envs = envsForApp(fa, "proc6", version)
 	require.EqualValues(s.t, []bindTypes.EnvVar{
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru", Public: true},
 		{Name: "TSURU_APPNAME", Value: "myapp", ManagedBy: "tsuru", Public: true},

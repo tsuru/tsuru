@@ -950,7 +950,7 @@ func annotationsUnchanged(new, old map[string]string) bool {
 }
 
 func appEnvs(a *appTypes.App, process string, secretName string, version appTypes.AppVersion, disableSecrets bool) []apiv1.EnvVar {
-	appEnvs := EnvsForApp(a, process, version)
+	appEnvs := envsForApp(a, process, version)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
 		if disableSecrets || envData.Public {
@@ -976,7 +976,7 @@ func appEnvs(a *appTypes.App, process string, secretName string, version appType
 }
 
 func appSecretEnvs(a *appTypes.App, process string, version appTypes.AppVersion) map[string][]byte {
-	appEnvs := EnvsForApp(a, process, version)
+	appEnvs := envsForApp(a, process, version)
 
 	result := map[string][]byte{}
 
