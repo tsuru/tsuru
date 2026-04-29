@@ -77,6 +77,29 @@ func jobDeploy() ExecFlow {
 	return flow
 }
 
+func jobDeployWithImage() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"jobnames"},
+		matrix: map[string]string{
+			"job": "jobnames",
+		},
+		parallel: true,
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		jobName := env.Get("job")
+		res := T("job", "deploy", "-j", jobName, "--image", "hello-world").Run(env)
+		c.Assert(res, ResultOk, check.Commentf("Failed to deploy job: %v", res))
+		res = T("job", "info", jobName, "--json").Run(env)
+		c.Assert(res, ResultOk, check.Commentf("Failed to get job info: %v", res))
+		jobInfo := new(jobTypes.JobInfo)
+		err := json.NewDecoder(&res.Stdout).Decode(jobInfo)
+		c.Assert(err, check.IsNil)
+		c.Assert(jobInfo.Job.DeployOptions, check.NotNil)
+		c.Assert(jobInfo.Job.DeployOptions.Image, check.Equals, "hello-world")
+	}
+	return flow
+}
+
 func jobTrigger() ExecFlow {
 	flow := ExecFlow{
 		requires: []string{"jobnames"},
