@@ -19,12 +19,13 @@ var _ app.PlanStorage = &PlanStorage{}
 type PlanStorage struct{}
 
 type planOnMongoDB struct {
-	Name     string `bson:"_id"`
-	Memory   int64
-	CPUMilli int
-	CPUBurst *app.CPUBurst
-	Default  bool
-	Override *app.PlanOverride `bson:"-"`
+	Name             string `bson:"_id"`
+	Memory           int64
+	CPUMilli         int
+	CPUBurst         *app.CPUBurst
+	RuntimeClassName string
+	Default          bool
+	Override         *app.PlanOverride `bson:"-"`
 }
 
 func (s *PlanStorage) Insert(ctx context.Context, p app.Plan) error {

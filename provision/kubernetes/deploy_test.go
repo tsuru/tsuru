@@ -2317,6 +2317,56 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	}, dep.Spec.Template.Spec.Containers[0].Resources)
 }
 
+func (s *S) TestServiceManagerDeployServiceWithRuntimeClassName(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	require.NoError(s.t, err)
+	a.Plan = appTypes.Plan{RuntimeClassName: "gvisor"}
+	version := newCommittedVersion(c, a, map[string][]string{"p1": {"cm1"}})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	require.NoError(s.t, err)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	require.NoError(s.t, err)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	require.NoError(s.t, err)
+	require.NotNil(s.t, dep.Spec.Template.Spec.RuntimeClassName)
+	require.Equal(s.t, "gvisor", *dep.Spec.Template.Spec.RuntimeClassName)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithoutRuntimeClassName(c *check.C) {
+	// Regression: when plan has no RuntimeClassName, PodSpec.RuntimeClassName
+	// must remain nil so the cluster's default runtime handler is used.
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	require.NoError(s.t, err)
+	version := newCommittedVersion(c, a, map[string][]string{"p1": {"cm1"}})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	require.NoError(s.t, err)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	require.NoError(s.t, err)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	require.NoError(s.t, err)
+	require.Nil(s.t, dep.Spec.Template.Spec.RuntimeClassName)
+}
+
 func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()

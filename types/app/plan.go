@@ -7,18 +7,20 @@ package app
 import "context"
 
 type Plan struct {
-	Name     string        `json:"name"`
-	Memory   int64         `json:"memory"`
-	CPUMilli int           `json:"cpumilli"`
-	CPUBurst *CPUBurst     `json:"cpuBurst,omitempty"`
-	Default  bool          `json:"default,omitempty"`
-	Override *PlanOverride `json:"override,omitempty"`
+	Name             string        `json:"name"`
+	Memory           int64         `json:"memory"`
+	CPUMilli         int           `json:"cpumilli"`
+	CPUBurst         *CPUBurst     `json:"cpuBurst,omitempty"`
+	RuntimeClassName string        `json:"runtimeClassName,omitempty"`
+	Default          bool          `json:"default,omitempty"`
+	Override         *PlanOverride `json:"override,omitempty"`
 }
 
 type PlanOverride struct {
-	Memory   *int64   `json:"memory"`
-	CPUMilli *int     `json:"cpumilli"`
-	CPUBurst *float64 `json:"cpuBurst"`
+	Memory           *int64   `json:"memory"`
+	CPUMilli         *int     `json:"cpumilli"`
+	CPUBurst         *float64 `json:"cpuBurst"`
+	RuntimeClassName *string  `json:"runtimeClassName,omitempty"`
 }
 
 type CPUBurst struct {
@@ -55,6 +57,14 @@ func (p *Plan) MergeOverride(po PlanOverride) {
 		}
 	}
 
+	if po.RuntimeClassName != nil {
+		if *po.RuntimeClassName == "" {
+			newOverride.RuntimeClassName = nil
+		} else {
+			newOverride.RuntimeClassName = po.RuntimeClassName
+		}
+	}
+
 	if (*newOverride == PlanOverride{}) {
 		p.Override = nil
 	} else {
@@ -85,6 +95,16 @@ func (p Plan) GetCPUBurst() float64 {
 	}
 
 	return 0
+}
+
+// GetRuntimeClassName returns the Kubernetes RuntimeClass name that pods
+// provisioned from this plan should use. An empty string means the cluster's
+// default runtime (typically runc) is used.
+func (p Plan) GetRuntimeClassName() string {
+	if p.Override != nil && p.Override.RuntimeClassName != nil {
+		return *p.Override.RuntimeClassName
+	}
+	return p.RuntimeClassName
 }
 
 type PlanService interface {
