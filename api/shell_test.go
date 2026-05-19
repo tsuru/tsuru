@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/tsurutest"
@@ -256,4 +257,113 @@ func (s *S) TestAppShellGenericError(c *check.C) {
 		return result == "Error: App someapp not found.\n"
 	})
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestAppShellEventDisplaysUnitID(c *check.C) {
+	a := appTypes.App{
+		Name:      "someapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(context.TODO(), &a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	unit := units[0]
+	server := httptest.NewServer(s.testServer)
+	defer server.Close()
+	testServerURL, err := url.Parse(server.URL)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm&unit=%s", testServerURL.Host, a.Name, unit.ID)
+	config, err := websocket.NewConfig(url, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte("echo test"))
+	c.Assert(err, check.IsNil)
+	var shells []provision.ExecOptions
+	err = tsurutest.WaitCondition(5*time.Second, func() bool {
+		shells = s.provisioner.Execs(unit.ID)
+		return len(shells) == 1
+	})
+	c.Assert(err, check.IsNil)
+
+	events, err := event.All(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(events, check.HasLen, 1)
+
+	var eventData []map[string]string
+	err = events[0].StartData(&eventData)
+	c.Assert(err, check.IsNil)
+
+	hasUnitField := false
+	for _, data := range eventData {
+		if data["name"] == "unit" {
+			c.Assert(data["value"], check.Equals, unit.ID)
+			hasUnitField = true
+			break
+		}
+	}
+	c.Assert(hasUnitField, check.Equals, true)
+}
+
+func (s *S) TestAppShellEventDisplaysAutoSelectedUnitID(c *check.C) {
+	a := appTypes.App{
+		Name:      "someapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(context.TODO(), &a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	unit := units[0]
+	server := httptest.NewServer(s.testServer)
+	defer server.Close()
+	testServerURL, err := url.Parse(server.URL)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm", testServerURL.Host, a.Name)
+	config, err := websocket.NewConfig(url, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte("echo test"))
+	c.Assert(err, check.IsNil)
+	var shells []provision.ExecOptions
+	err = tsurutest.WaitCondition(5*time.Second, func() bool {
+		shells = s.provisioner.Execs(unit.ID)
+		return len(shells) == 1
+	})
+	c.Assert(err, check.IsNil)
+
+	events, err := event.All(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(events, check.HasLen, 1)
+
+	// Since there is only one unit in this app, then
+	// the automatically selected unit should be one we created.
+	var eventData []map[string]string
+	err = events[0].StartData(&eventData)
+	c.Assert(err, check.IsNil)
+
+	hasUnitField := false
+	for _, data := range eventData {
+		if data["name"] == "unit" {
+			c.Assert(data["value"], check.Equals, unit.ID)
+			hasUnitField = true
+			break
+		}
+	}
+
+	c.Assert(hasUnitField, check.Equals, true)
 }
