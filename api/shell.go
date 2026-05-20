@@ -162,12 +162,20 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	clientTerm := r.URL.Query().Get("term")
+	units := unitsForShell(ctx, a, unitID, isolated)
+	fields := InputFields(r)
+
+	if unitID == "" && units != nil {
+		unitID = units[0]
+		fields.Add("unit", unitID)
+	}
+
 	evt, err := event.New(ctx, &event.Opts{
 		Target:      appTarget(appName),
 		Kind:        permission.PermAppRunShell,
 		Owner:       token,
 		RemoteAddr:  r.RemoteAddr,
-		CustomData:  event.FormToCustomData(InputFields(r)),
+		CustomData:  event.FormToCustomData(fields),
 		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 		DisableLock: true,
 	})
@@ -219,7 +227,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Stdin:  conn,
 		Width:  width,
 		Height: height,
-		Units:  unitsForShell(ctx, a, unitID, isolated),
+		Units:  units,
 		Term:   clientTerm,
 		Debug:  debug,
 	}
