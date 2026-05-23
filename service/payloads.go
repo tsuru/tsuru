@@ -23,6 +23,7 @@ var (
 	_ Payload = &bindAppPayload{}
 	_ Payload = &unbindAppPayload{}
 	_ Payload = &bindJobPayload{}
+	_ Payload = &unbindJobPayload{}
 )
 
 type createServicePayload struct {
@@ -190,6 +191,18 @@ type bindJobPayload struct {
 
 	JobPoolName    string `json:"jobPoolName,omitempty"`
 	JobClusterName string `json:"jobClusterName,omitempty"`
+}
+
+type unbindJobPayload struct {
+	User    string `json:"user"`
+	EventID string `json:"eventID"`
+}
+
+func (r *unbindJobPayload) Form() url.Values {
+	return url.Values{
+		"user":    {r.User},
+		"eventid": {r.EventID},
+	}
 }
 
 func (r *bindJobPayload) Form() url.Values {

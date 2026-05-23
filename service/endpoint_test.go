@@ -7,6 +7,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -147,6 +148,227 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	c.Assert("application/json", check.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
+}
+
+func (s *S) TestEndpointCreateJSON(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{
+		Name:        "my-redis",
+		ServiceName: "redis",
+		TeamOwner:   "theteam",
+		Description: "xyz",
+		Tags:        []string{"tag 1", "tag 2"},
+		Parameters: map[string]interface{}{
+			"p1": "v1",
+			"p2": map[string]interface{}{
+				"complex1": "complexvalue1",
+			},
+		},
+	}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	err := client.Create(context.TODO(), &instance, evt, "")
+	c.Assert(err, check.IsNil)
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(h.url, check.Equals, "/resources")
+	c.Assert(h.method, check.Equals, http.MethodPost)
+	c.Assert(h.request.Header.Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(h.request.Header.Get("Accept"), check.Equals, "application/json")
+	var result createServicePayload
+	err = json.Unmarshal(h.body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Name, check.Equals, "my-redis")
+	c.Assert(result.Team, check.Equals, "theteam")
+	c.Assert(result.Description, check.Equals, "xyz")
+	c.Assert(result.Tags, check.DeepEquals, []string{"tag 1", "tag 2"})
+	c.Assert(result.User, check.Equals, "my@user")
+	c.Assert(result.EventID, check.Equals, evt.UniqueID.Hex())
+	c.Assert(result.Parameters, check.DeepEquals, map[string]any{
+		"p1": "v1",
+		"p2": map[string]any{
+			"complex1": "complexvalue1",
+		},
+	})
+}
+
+func (s *S) TestEndpointUpdateJSON(c *check.C) {
+	var requests int32
+	instance := ServiceInstance{
+		Name:        "his-redis",
+		ServiceName: "redis",
+		TeamOwner:   "team-owner",
+		Description: "my service",
+		Tags:        []string{"tag1", "tag2"},
+		PlanName:    "small",
+		Parameters: map[string]interface{}{
+			"p1": "v1",
+		},
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		c.Check(r.Method, check.Equals, http.MethodPut)
+		c.Check(r.URL.Path, check.Equals, "/resources/"+instance.Name)
+		c.Check(r.Header.Get("Content-Type"), check.Equals, "application/json")
+		var result updateServicePayload
+		err := json.NewDecoder(r.Body).Decode(&result)
+		c.Assert(err, check.IsNil)
+		c.Check(result.Description, check.Equals, instance.Description)
+		c.Check(result.Team, check.Equals, instance.TeamOwner)
+		c.Check(result.Plan, check.Equals, instance.PlanName)
+		c.Check(result.Tags, check.DeepEquals, instance.Tags)
+		c.Check(result.Parameters, check.DeepEquals, map[string]any{"p1": "v1"})
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	err := client.Update(context.TODO(), &instance, evt, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
+}
+
+func (s *S) TestEndpointDestroyJSON(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	err := client.Destroy(context.TODO(), &instance, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name)
+	c.Assert(h.method, check.Equals, http.MethodDelete)
+	c.Assert(h.request.Header.Get("Content-Type"), check.Equals, "application/json")
+	var result destroyServicePayload
+	err = json.Unmarshal(h.body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.User, check.Equals, "my@user")
+	c.Assert(result.EventID, check.Equals, evt.UniqueID.Hex())
+}
+
+func (s *S) TestEndpointBindAppJSON(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "her-pool", Provisioner: "kubernetes"}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name:        "her-cluster",
+			Provisioner: "kubernetes",
+			Addresses:   []string{"https://kubernetes.example.com"},
+		}, nil
+	}
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeAppWithPool("her-app", "python", "her-pool", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	bindParams := map[string]interface{}{"p1": "v1"}
+	_, err := client.BindApp(context.TODO(), &instance, a, bindParams, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind-app")
+	c.Assert(h.method, check.Equals, http.MethodPost)
+	c.Assert(h.request.Header.Get("Content-Type"), check.Equals, "application/json")
+	var result bindAppPayload
+	err = json.Unmarshal(h.body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.AppName, check.Equals, "her-app")
+	c.Assert(result.User, check.Equals, "my@user")
+	c.Assert(result.EventID, check.Equals, evt.UniqueID.Hex())
+	c.Assert(result.AppPoolName, check.Equals, "her-pool")
+	c.Assert(result.AppPoolProvisioner, check.Equals, "kubernetes")
+	c.Assert(result.AppClusterName, check.Equals, "her-cluster")
+	c.Assert(result.AppClusterProvisioner, check.Equals, "kubernetes")
+	c.Assert(result.AppClusterAddresses, check.DeepEquals, []string{"https://kubernetes.example.com"})
+	c.Assert(result.Parameters, check.DeepEquals, map[string]any{"p1": "v1"})
+}
+
+func (s *S) TestEndpointUnbindAppJSON(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	err := client.UnbindApp(context.TODO(), &instance, a, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/heaven-can-wait/bind-app")
+	c.Assert(h.method, check.Equals, http.MethodDelete)
+	c.Assert(h.request.Header.Get("Content-Type"), check.Equals, "application/json")
+	var result unbindAppPayload
+	err = json.Unmarshal(h.body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.AppName, check.Equals, "arch-enemy")
+	c.Assert(result.AppHosts, check.DeepEquals, []string{"arch-enemy.fakerouter.com"})
+	c.Assert(result.User, check.Equals, "my@user")
+	c.Assert(result.EventID, check.Equals, evt.UniqueID.Hex())
+}
+
+func (s *S) TestEndpointBindJobJSON(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "test-pool", Provisioner: "kubernetes"}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name:        "test-cluster",
+			Provisioner: "kubernetes",
+		}, nil
+	}
+	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/binds/jobs/"+job.Name)
+	c.Assert(h.method, check.Equals, http.MethodPut)
+	c.Assert(h.request.Header.Get("Content-Type"), check.Equals, "application/json")
+	var result bindJobPayload
+	err = json.Unmarshal(h.body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.JobName, check.Equals, "test-job")
+	c.Assert(result.User, check.Equals, "my@user")
+	c.Assert(result.EventID, check.Equals, evt.UniqueID.Hex())
+	c.Assert(result.JobPoolName, check.Equals, "test-pool")
+	c.Assert(result.JobClusterName, check.Equals, "test-cluster")
+}
+
+func (s *S) TestEndpointUnbindJobJSON(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
+	evt := createEvt(c)
+	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/test-redis/binds/jobs/test-job")
+	c.Assert(h.method, check.Equals, http.MethodDelete)
+	c.Assert(h.request.Header.Get("Content-Type"), check.Equals, "application/json")
+	var result unbindJobPayload
+	err = json.Unmarshal(h.body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.User, check.Equals, "my@user")
+	c.Assert(result.EventID, check.Equals, evt.UniqueID.Hex())
 }
 
 func (s *S) TestEndpointCreateEndpointDown(c *check.C) {
@@ -785,7 +1007,13 @@ func (s *S) TestUnbindJob(c *check.C) {
 	c.Assert(h.url, check.Equals, "/resources/test-redis/binds/jobs/test-job")
 	c.Assert(h.method, check.Equals, http.MethodDelete)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
-	c.Assert(string(h.body), check.Equals, "")
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, check.IsNil)
+	expected := map[string][]string{
+		"user":    {"my@user"},
+		"eventid": {evt.UniqueID.Hex()},
+	}
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
 func (s *S) TestUnbindJobRequestFailure(c *check.C) {

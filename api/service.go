@@ -82,6 +82,7 @@ type serviceInput struct {
 	Password  string            `json:"password" form:"password"`
 	Endpoints map[string]string `json:"endpoints" form:"endpoints"`
 	Endpoint  string            `json:"endpoint" form:"endpoint"`
+	Encoding  string            `json:"encoding" form:"encoding"`
 }
 
 func parseService(r *http.Request) (service.Service, error) {
@@ -104,6 +105,13 @@ func parseService(r *http.Request) (service.Service, error) {
 	multiCluster, err := strconv.ParseBool(InputValue(r, "multi-cluster"))
 	if err == nil {
 		s.IsMultiCluster = multiCluster
+	}
+	if inputSvc.Encoding != "" {
+		enc := service.ServiceEncoding(inputSvc.Encoding)
+		if enc != service.ServiceEncodingForm && enc != service.ServiceEncodingJSON {
+			return s, &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("Invalid encoding %q, valid options are: form, json", inputSvc.Encoding)}
+		}
+		s.Encoding = enc
 	}
 	team := InputValue(r, "team")
 	if team != "" {
@@ -219,6 +227,9 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
+	if d.Encoding != "" {
+		s.Encoding = d.Encoding
+	}
 	if len(d.OwnerTeams) != 0 {
 		s.OwnerTeams = d.OwnerTeams
 	}

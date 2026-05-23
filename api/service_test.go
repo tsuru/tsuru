@@ -341,6 +341,72 @@ func (s *ProvisionSuite) TestServiceCreateWithMultiClusterEnabled(c *check.C) {
 	c.Assert(rService.IsMultiCluster, check.Equals, true)
 }
 
+func (s *ProvisionSuite) TestServiceCreateWithJSONEncoding(c *check.C) {
+	v := url.Values{}
+	v.Set("id", "json-service")
+	v.Set("username", "user")
+	v.Set("password", "password")
+	v.Set("endpoint", "http://json.service.example.com")
+	v.Set("encoding", "json")
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	query := mongoBSON.M{"_id": "json-service"}
+	var rService service.Service
+
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), query).Decode(&rService)
+	c.Assert(err, check.IsNil)
+	c.Assert(rService.Endpoint["production"], check.Equals, "http://json.service.example.com")
+	c.Assert(rService.Username, check.Equals, "user")
+	c.Assert(rService.Password, check.Equals, "password")
+	c.Assert(rService.Encoding, check.Equals, service.ServiceEncodingJSON)
+}
+
+func (s *ProvisionSuite) TestServiceCreateWithInvalidEncoding(c *check.C) {
+	v := url.Values{}
+	v.Set("id", "bad-service")
+	v.Set("username", "user")
+	v.Set("password", "password")
+	v.Set("endpoint", "http://bad.service.example.com")
+	v.Set("encoding", "xml")
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*Invalid encoding "xml".*`)
+}
+
+func (s *ProvisionSuite) TestServiceUpdateEncoding(c *check.C) {
+	srv := service.Service{
+		Name:       "mysqlapi",
+		Endpoint:   map[string]string{"production": "sqlapi.com"},
+		OwnerTeams: []string{s.team.Name},
+		Password:   "oldold",
+	}
+	err := service.Create(context.TODO(), srv)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("username", "mysqltest")
+	v.Set("password", "yyyy")
+	v.Set("endpoint", "mysqlapi.com")
+	v.Set("encoding", "json")
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysqlapi", v.Encode(), c)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+
+	err = servicesCollection.FindOne(context.TODO(), mongoBSON.M{"_id": srv.Name}).Decode(&srv)
+	c.Assert(err, check.IsNil)
+	c.Assert(srv.Encoding, check.Equals, service.ServiceEncodingJSON)
+}
+
 func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	srv := service.Service{
 		Name:       "mysqlapi",

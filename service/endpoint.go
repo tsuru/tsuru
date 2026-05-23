@@ -205,7 +205,7 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	log.Debugf("Calling bind of instance %q and %q job at %q API",
 		instance.Name, job.Name, instance.ServiceName)
 
-	params, err := buildBindJobParams(ctx, evt, job)
+	payload, err := buildBindJobParams(ctx, evt, job)
 	if err != nil {
 		log.Errorf("Errors found while building the bind job parameters: %v", err)
 		return nil, err
@@ -215,7 +215,7 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/binds/jobs/"+job.Name, http.MethodPut, params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/binds/jobs/"+job.Name, http.MethodPut, payload, header)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind job %q to service instance "%s/%s"`, job.Name, instance.ServiceName, instance.Name))
 	}
@@ -277,13 +277,17 @@ func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstanc
 	log.Debugf("Calling unbind of service instance %q and job %q at %q", instance.Name, job.Name, instance.ServiceName)
 
 	url := "/resources/" + instance.GetIdentifier() + "/binds/jobs/" + job.Name
+	payload := &unbindJobPayload{
+		User:    evt.OwnerEmail(),
+		EventID: evt.UniqueID.Hex(),
+	}
 
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.issueRequest(ctx, url, http.MethodDelete, nil, header)
+	resp, err := c.issueRequest(ctx, url, http.MethodDelete, payload, header)
 	if err != nil {
 		return err
 	}
@@ -492,7 +496,11 @@ func (c *endpointClient) issueRequest(ctx context.Context, path, method string, 
 	req.Header = header
 	req.Header.Set("Accept", "application/json")
 	if method != "GET" && method != "HEAD" && method != "OPTIONS" {
-		header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if c.encoding == ServiceEncodingJSON {
+			header.Set("Content-Type", "application/json")
+		} else {
+			header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
 	}
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
