@@ -5,6 +5,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cezarsa/form"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -68,32 +68,29 @@ type endpointClient struct {
 	endpoint    string
 	username    string
 	password    string
+	encoding    ServiceEncoding
 }
 
 func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	var err error
 	var resp *http.Response
-	params := map[string][]string{
-		"name":    {instance.Name},
-		"team":    {instance.TeamOwner},
-		"user":    {evt.OwnerEmail()},
-		"eventid": {evt.UniqueID.Hex()},
-		"tags":    instance.Tags,
+	payload := &createServicePayload{
+		Name:        instance.Name,
+		Team:        instance.TeamOwner,
+		Description: instance.Description,
+		Plan:        instance.PlanName,
+		Tags:        instance.Tags,
+		EventID:     evt.UniqueID.Hex(),
+		User:        evt.OwnerEmail(),
+		Parameters:  instance.Parameters,
 	}
 
-	if instance.PlanName != "" {
-		params["plan"] = []string{instance.PlanName}
-	}
-	if instance.Description != "" {
-		params["description"] = []string{instance.Description}
-	}
-	addParameters(params, instance.Parameters)
-	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
+	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, payload.Form())
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
 	}
-	resp, err = c.issueRequest(ctx, "/resources", "POST", params, header)
+	resp, err = c.issueRequest(ctx, "/resources", "POST", payload, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode < 300 {
@@ -109,21 +106,21 @@ func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, 
 
 func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call update of service instance %q at %q api", instance.Name, instance.ServiceName)
-	params := map[string][]string{
-		"description": {instance.Description},
-		"team":        {instance.TeamOwner},
-		"tags":        instance.Tags,
-		"plan":        {instance.PlanName},
-		"user":        {evt.OwnerEmail()},
-		"eventid":     {evt.UniqueID.Hex()},
+	payload := &updateServicePayload{
+		Description: instance.Description,
+		Team:        instance.TeamOwner,
+		Tags:        instance.Tags,
+		Plan:        instance.PlanName,
+		User:        evt.OwnerEmail(),
+		EventID:     evt.UniqueID.Hex(),
+		Parameters:  instance.Parameters,
 	}
 
-	addParameters(params, instance.Parameters)
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "PUT", params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "PUT", payload, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -139,16 +136,16 @@ func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, 
 
 func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
-	params := map[string][]string{
-		"user":    {evt.OwnerEmail()},
-		"eventid": {evt.UniqueID.Hex()},
+	payload := &destroyServicePayload{
+		User:    evt.OwnerEmail(),
+		EventID: evt.UniqueID.Hex(),
 	}
 
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "DELETE", params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "DELETE", payload, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -165,7 +162,7 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance, app *appTypes.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.Name, instance.ServiceName)
-	params, err := buildBindAppParams(ctx, evt, app, bindParams)
+	payload, err := buildBindAppPayload(ctx, evt, app, bindParams)
 	if err != nil {
 		log.Errorf("Ignoring some errors found while building the bind app parameters: %v", err)
 		return nil, err
@@ -174,13 +171,13 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-app", "POST", payload, header)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.Name, instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		resp, err = c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, header)
+		resp, err = c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", payload, header)
 	}
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.Name, instance.ServiceName, instance.Name))
@@ -251,21 +248,18 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 		return err
 	}
 	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
-	params := map[string][]string{
-		"app-hosts": appAddrs,
-		"app-name":  {app.Name},
-		"user":      {evt.OwnerEmail()},
-		"eventid":   {evt.UniqueID.Hex()},
+	payload := &unbindAppPayload{
+		AppHosts: appAddrs,
+		AppName:  app.Name,
+		User:     evt.OwnerEmail(),
+		EventID:  evt.UniqueID.Hex(),
 	}
 
-	if len(appAddrs) > 0 {
-		params["app-host"] = []string{appAddrs[0]}
-	}
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
 	}
-	resp, err := c.issueRequest(ctx, url, "DELETE", params, header)
+	resp, err := c.issueRequest(ctx, url, "DELETE", payload, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -464,16 +458,24 @@ func (c *endpointClient) buildErrorMessage(err error, resp *http.Response) error
 	return nil
 }
 
-func (c *endpointClient) issueRequest(ctx context.Context, path, method string, params map[string][]string, header http.Header) (*http.Response, error) {
+func (c *endpointClient) issueRequest(ctx context.Context, path, method string, payload Payload, header http.Header) (*http.Response, error) {
 	var suffix string
 	var body io.Reader = nil
 
-	if params != nil {
-		v := url.Values(params)
-
+	if payload != nil {
 		if method == "GET" {
+			v := payload.Form()
 			suffix = "?" + v.Encode()
-		} else {
+		} else if c.encoding == ServiceEncodingJSON {
+			var buf bytes.Buffer
+			body = &buf
+			err := json.NewEncoder(&buf).Encode(payload)
+			if err != nil {
+				log.Errorf("Got error while encoding service json: %s", err)
+				return nil, err
+			}
+		} else if c.encoding == ServiceEncodingForm || c.encoding == ServiceEncodingDefault {
+			v := payload.Form()
 			body = strings.NewReader(v.Encode())
 		}
 	}
@@ -512,19 +514,6 @@ func (c *endpointClient) jsonFromResponse(resp *http.Response, v interface{}) er
 	return nil
 }
 
-func addParameters(dst url.Values, params map[string]interface{}) {
-	if params == nil || dst == nil {
-		return
-	}
-	encoded, err := form.EncodeToValues(params)
-	if err != nil {
-		errors.Wrapf(err, "unable to encode parameters")
-	}
-	for key, value := range encoded {
-		dst["parameters."+key] = value
-	}
-}
-
 func baseHeader(ctx context.Context, evt *event.Event, si *ServiceInstance, requestID string) (http.Header, error) {
 	header := make(http.Header)
 	if evt != nil {
@@ -543,84 +532,84 @@ func baseHeader(ctx context.Context, evt *event.Event, si *ServiceInstance, requ
 	return poolMultiCluster.Header(ctx, si.Pool, header)
 }
 
-func buildBindAppParams(ctx context.Context, evt *event.Event, app *appTypes.App, bindParams BindAppParameters) (url.Values, error) {
+func buildBindAppPayload(ctx context.Context, evt *event.Event, app *appTypes.App, bindParams BindAppParameters) (*bindAppPayload, error) {
 	if app == nil {
 		return nil, errors.New("app cannot be nil")
 	}
-	params := url.Values{}
-	addParameters(params, bindParams)
-	params.Set("app-name", app.Name)
+	payload := &bindAppPayload{
+		AppName:    app.Name,
+		Parameters: bindParams,
+	}
+
 	if evt != nil {
-		params.Set("user", evt.OwnerEmail())
-		params.Set("eventid", evt.UniqueID.Hex())
+		payload.User = evt.OwnerEmail()
+		payload.EventID = evt.UniqueID.Hex()
 	}
 	appAddrs, err := servicemanager.App.GetAddresses(ctx, app)
 	if err != nil {
 		return nil, err
 	}
-	params["app-hosts"] = appAddrs
-	if len(appAddrs) > 0 {
-		params.Set("app-host", appAddrs[0])
-	}
+	payload.AppHosts = appAddrs
+
 	internalAddrs, err := servicemanager.App.GetInternalBindableAddresses(ctx, app)
 	if err != nil {
 		return nil, err
 	}
-	params["app-internal-hosts"] = internalAddrs
+	payload.AppInternalHosts = internalAddrs
 
 	p, err := servicemanager.Pool.FindByName(ctx, app.Pool)
 	if err != nil {
 		if err == provTypes.ErrPoolNotFound {
-			return params, nil
+			return payload, nil
 		}
 		return nil, err
 	}
 	if p == nil {
-		return params, nil
+		return payload, nil
 	}
-	params.Set("app-pool-name", p.Name)
-	params.Set("app-pool-provisioner", p.Provisioner)
+	payload.AppPoolName = p.Name
+	payload.AppPoolProvisioner = p.Provisioner
 	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
 	if err != nil || c == nil {
-		return params, nil
+		return payload, nil
 	}
-	params.Set("app-cluster-name", c.Name)
-	params.Set("app-cluster-provisioner", c.Provisioner)
-	for _, addr := range c.Addresses {
-		params.Add("app-cluster-addresses", addr)
-	}
-	return params, nil
+	payload.AppClusterName = c.Name
+	payload.AppClusterProvisioner = c.Provisioner
+	payload.AppClusterAddresses = c.Addresses
+	return payload, nil
 }
 
-func buildBindJobParams(ctx context.Context, evt *event.Event, job *jobTypes.Job) (url.Values, error) {
+func buildBindJobParams(ctx context.Context, evt *event.Event, job *jobTypes.Job) (*bindJobPayload, error) {
 	if job == nil {
 		return nil, errors.New("job cannot be nil")
 	}
 
-	params := url.Values{}
-	params.Set("job-name", job.Name)
+	payload := &bindJobPayload{
+		JobName: job.Name,
+	}
+
 	if evt != nil {
-		params.Set("user", evt.OwnerEmail())
-		params.Set("eventid", evt.UniqueID.Hex())
+		payload.User = evt.OwnerEmail()
+		payload.EventID = evt.UniqueID.Hex()
 	}
 
 	p, err := servicemanager.Pool.FindByName(ctx, job.Pool)
 	if err != nil {
 		if err == provTypes.ErrPoolNotFound {
-			return params, nil
+			return payload, nil
 		}
 		return nil, err
 	}
 	if p == nil {
-		return params, nil
+		return payload, nil
 	}
-	params.Set("job-pool-name", p.Name)
+	payload.JobPoolName = p.Name
 
 	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
 	if err != nil || c == nil {
-		return params, nil
+		return payload, nil
 	}
-	params.Set("job-cluster-name", c.Name)
+	payload.JobClusterName = c.Name
 
-	return params, nil
+	return payload, nil
 }
