@@ -6,6 +6,7 @@ package net
 
 import (
 	"context"
+	"time"
 
 	check "gopkg.in/check.v1"
 )
@@ -23,4 +24,23 @@ func (s *S) TestWithoutCancelContext(c *check.C) {
 	c.Assert(ctx.Err(), check.IsNil)
 	c.Assert(ctx.Done(), check.IsNil)
 	c.Assert(ctx.Value(TSURU_STR), check.Equals, "power")
+}
+
+func (s *S) TestWithoutCancelRemovesDeadline(c *check.C) {
+	parent, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	ctx := WithoutCancel(parent)
+	_, ok := ctx.Deadline()
+
+	c.Assert(ok, check.Equals, false)
+}
+
+func (s *S) TestCancelableParentContext(c *check.C) {
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ctx := WithoutCancel(parent)
+
+	c.Assert(CancelableParentContext(ctx), check.Equals, parent)
 }

@@ -20,18 +20,6 @@ func CancelableParentContext(ctx context.Context) context.Context {
 	return ctx
 }
 
-type withoutCancelContext struct {
-	context.Context
-}
-
-func (*withoutCancelContext) Err() error {
-	return nil
-}
-
-func (*withoutCancelContext) Done() <-chan struct{} {
-	return nil
-}
-
 func WithoutCancel(ctx context.Context) context.Context {
-	return context.WithValue(&withoutCancelContext{Context: ctx}, baseContextValue, ctx)
+	return context.WithValue(context.WithoutCancel(ctx), baseContextValue, ctx)
 }
