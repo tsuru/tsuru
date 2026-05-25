@@ -6,7 +6,7 @@ openapi: 3.0.0
 info:
   title: Tsuru Service Provider API
   description: Provider-side API consumed by tsuru service integrations.
-  version: "1.1.0"
+  version: "1.2.0"
 
 tags:
 - name: Plans
@@ -70,15 +70,20 @@ paths:
       description: |
         Creates a new service instance.
 
-        Requests are sent as `application/x-www-form-urlencoded`.
-        Besides the documented fields below, tsuru may send `parameters.*` fields
-        derived from arbitrary instance parameters.
+        The request content type depends on the service encoding configuration:
+        - `application/x-www-form-urlencoded` (default): parameters are sent as
+          form fields, with nested parameters encoded as `parameters.<key>=<value>`.
+        - `application/json`: parameters are sent as a JSON object with camelCase
+          field names and a nested `parameters` object.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/InstanceCreateRequest"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstanceCreateRequestJSON"
       responses:
         "201":
           description: Instance created
@@ -150,15 +155,20 @@ paths:
       description: |
         Updates a service instance.
 
-        Requests are sent as `application/x-www-form-urlencoded`.
-        Besides the documented fields below, tsuru may send `parameters.*` fields
-        derived from arbitrary instance parameters.
+        The request content type depends on the service encoding configuration:
+        - `application/x-www-form-urlencoded` (default): parameters are sent as
+          form fields, with nested parameters encoded as `parameters.<key>=<value>`.
+        - `application/json`: parameters are sent as a JSON object with camelCase
+          field names and a nested `parameters` object.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/InstanceUpdateRequest"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstanceUpdateRequestJSON"
       responses:
         "200":
           description: Instance updated
@@ -183,10 +193,12 @@ paths:
       description: |
         Removes the service instance.
 
-        Tsuru sends this request with a form-encoded body containing `user` and
-        `eventid`, but that body is intentionally not modeled as an OpenAPI
-        `requestBody` because DELETE request bodies are not well-defined across
-        tooling.
+        Tsuru sends a body containing `user` and `eventid`. The content type
+        depends on the service encoding configuration (`application/x-www-form-urlencoded`
+        by default, or `application/json`).
+
+        Note: DELETE request bodies are not well-defined across tooling, but tsuru
+        sends them for backward compatibility.
       responses:
         "200":
           description: Instance removed
@@ -220,9 +232,11 @@ paths:
       description: |
         Binds an app to a service instance.
 
-        Requests are sent as `application/x-www-form-urlencoded`. Besides the
-        documented fields below, tsuru may send `parameters.*` fields derived
-        from arbitrary bind parameters.
+        The request content type depends on the service encoding configuration:
+        - `application/x-www-form-urlencoded` (default): parameters are sent as
+          form fields, with bind parameters encoded as `parameters.<key>=<value>`.
+        - `application/json`: parameters are sent as a JSON object with camelCase
+          field names and a nested `parameters` object.
 
         For backward compatibility, tsuru falls back to `POST /resources/{name}/bind`
         if this endpoint returns `404`.
@@ -232,6 +246,9 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/AppBindRequest"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppBindRequestJSON"
       responses:
         "200":
           description: App bound successfully
@@ -268,10 +285,12 @@ paths:
       description: |
         Unbinds an app from a service instance.
 
-        Tsuru sends this request with a form-encoded body containing `app-name`,
-        `app-host`, repeated `app-hosts`, `user`, and `eventid`, but that body is
-        intentionally not modeled as an OpenAPI `requestBody` because DELETE
-        request bodies are not well-defined across tooling.
+        Tsuru sends a body containing app information, user, and event ID.
+        The content type depends on the service encoding configuration
+        (`application/x-www-form-urlencoded` by default, or `application/json`).
+
+        Note: DELETE request bodies are not well-defined across tooling, but tsuru
+        sends them for backward compatibility.
       responses:
         "200":
           description: App unbound successfully
@@ -314,6 +333,9 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/AppBindRequest"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppBindRequestJSON"
       responses:
         "200":
           description: App bound successfully
@@ -365,13 +387,18 @@ paths:
       description: |
         Binds a job to a service instance.
 
-        Requests are sent as `application/x-www-form-urlencoded`.
+        The request content type depends on the service encoding configuration:
+        - `application/x-www-form-urlencoded` (default): parameters are sent as form fields.
+        - `application/json`: parameters are sent as a JSON object with camelCase field names.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/JobBindRequest"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobBindRequestJSON"
       responses:
         "200":
           description: Job bound successfully
@@ -405,7 +432,15 @@ paths:
       tags:
       - Job Binding
       summary: Unbind a job from a service instance
-      description: Unbinds a job from a service instance.
+      description: |
+        Unbinds a job from a service instance.
+
+        Tsuru sends a body containing `user` and `eventID`. The content type
+        depends on the service encoding configuration (`application/x-www-form-urlencoded`
+        by default, or `application/json`).
+
+        Note: DELETE request bodies are not well-defined across tooling, but tsuru
+        sends them for backward compatibility.
       responses:
         "200":
           description: Job unbound successfully
@@ -716,8 +751,13 @@ components:
       - label
       - value
 
+    # ──────────────────────────────────────────────
+    # Form-encoded schemas (legacy / default)
+    # ──────────────────────────────────────────────
+
     InstanceCreateRequest:
       type: object
+      description: Form-encoded instance creation request.
       properties:
         name:
           type: string
@@ -755,6 +795,7 @@ components:
 
     InstanceUpdateRequest:
       type: object
+      description: Form-encoded instance update request.
       properties:
         plan:
           type: string
@@ -785,6 +826,7 @@ components:
 
     AppBindRequest:
       type: object
+      description: Form-encoded app bind request.
       properties:
         app-name:
           type: string
@@ -836,6 +878,7 @@ components:
 
     JobBindRequest:
       type: object
+      description: Form-encoded job bind request.
       properties:
         job-name:
           type: string
@@ -854,6 +897,148 @@ components:
           description: Tsuru event identifier
       required:
       - job-name
+
+    # ──────────────────────────────────────────────
+    # JSON schemas (encoding: json)
+    # ──────────────────────────────────────────────
+
+    InstanceCreateRequestJSON:
+      type: object
+      description: JSON instance creation request. Sent when the service encoding is `json`.
+      properties:
+        name:
+          type: string
+          description: Instance name
+        plan:
+          type: string
+          description: Plan name
+        team:
+          type: string
+          description: Team owner name
+        user:
+          type: string
+          description: User email or name
+        eventID:
+          type: string
+          description: Tsuru event identifier
+        description:
+          type: string
+          description: Instance description
+        tags:
+          type: array
+          description: Service instance tags
+          items:
+            type: string
+        parameters:
+          type: object
+          description: Arbitrary parameter bag as a nested JSON object.
+          additionalProperties: true
+      required:
+      - name
+      - team
+      - user
+
+    InstanceUpdateRequestJSON:
+      type: object
+      description: JSON instance update request. Sent when the service encoding is `json`.
+      properties:
+        description:
+          type: string
+          description: Instance description
+        plan:
+          type: string
+          description: Plan name
+        team:
+          type: string
+          description: Team owner name
+        user:
+          type: string
+          description: User email or name
+        eventID:
+          type: string
+          description: Tsuru event identifier
+        tags:
+          type: array
+          description: Service instance tags
+          items:
+            type: string
+        parameters:
+          type: object
+          description: Arbitrary parameter bag as a nested JSON object.
+          additionalProperties: true
+
+    AppBindRequestJSON:
+      type: object
+      description: JSON app bind request. Sent when the service encoding is `json`.
+      properties:
+        appName:
+          type: string
+          description: App name
+        appHosts:
+          type: array
+          description: App external hosts
+          items:
+            type: string
+        appInternalHosts:
+          type: array
+          description: Internal bindable app hosts
+          items:
+            type: string
+        appPoolName:
+          type: string
+          description: App pool name
+        appPoolProvisioner:
+          type: string
+          description: App pool provisioner
+        appClusterName:
+          type: string
+          description: App cluster name
+        appClusterProvisioner:
+          type: string
+          description: App cluster provisioner
+        appClusterAddresses:
+          type: array
+          description: App cluster addresses
+          items:
+            type: string
+        user:
+          type: string
+          description: User email or name
+        eventID:
+          type: string
+          description: Tsuru event identifier
+        parameters:
+          type: object
+          description: Arbitrary bind parameter bag as a nested JSON object.
+          additionalProperties: true
+      required:
+      - appName
+
+    JobBindRequestJSON:
+      type: object
+      description: JSON job bind request. Sent when the service encoding is `json`.
+      properties:
+        jobName:
+          type: string
+          description: Job name
+        jobPoolName:
+          type: string
+          description: Job pool name
+        jobClusterName:
+          type: string
+          description: Job cluster name
+        user:
+          type: string
+          description: User email or name
+        eventID:
+          type: string
+          description: Tsuru event identifier
+      required:
+      - jobName
+
+    # ──────────────────────────────────────────────
+    # Shared schemas
+    # ──────────────────────────────────────────────
 
     EnvVars:
       type: object

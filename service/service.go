@@ -24,6 +24,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type ServiceEncoding string
+
+var (
+	ServiceEncodingDefault = ServiceEncoding("") // default is form
+	ServiceEncodingForm    = ServiceEncoding("form")
+	ServiceEncodingJSON    = ServiceEncoding("json")
+)
+
 type Service struct {
 	Name         string `bson:"_id"`
 	Username     string
@@ -39,6 +47,10 @@ type Service struct {
 	//
 	// This field is immutable (after creating Service).
 	IsMultiCluster bool `bson:"is_multi_cluster"`
+
+	// Encoding defines how modern is the backend
+	// Tsuru started with a form encoding, but some services may support a more modern JSON encoding.
+	Encoding ServiceEncoding `bson:"encoding"`
 }
 
 type BindAppParameters map[string]interface{}
@@ -325,7 +337,13 @@ func (s *Service) getClient(endpoints ...string) (ServiceClient, error) {
 			if p := schemeRegexp.MatchString(e); !p {
 				e = "http://" + e
 			}
-			cli := &endpointClient{serviceName: s.Name, endpoint: e, username: s.getUsername(), password: s.Password}
+			cli := &endpointClient{
+				serviceName: s.Name,
+				endpoint:    e,
+				username:    s.getUsername(),
+				password:    s.Password,
+				encoding:    s.Encoding,
+			}
 			return cli, nil
 		} else {
 			err = errors.New("Unknown endpoint: " + endpoint)
