@@ -14,11 +14,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/codegangsta/negroni"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
+	negroni "github.com/urfave/negroni/v3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"

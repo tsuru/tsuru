@@ -6,7 +6,6 @@ require (
 	github.com/adhocore/gronx v1.6.6
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
-	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/docker/cli v23.0.3+incompatible
 	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
@@ -34,6 +33,7 @@ require (
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/ugorji/go/codec v1.1.7
+	github.com/urfave/negroni/v3 v3.1.1
 	go.mongodb.org/mongo-driver v1.17.3
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
 	go.opentelemetry.io/otel v1.41.0

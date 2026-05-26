@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codegangsta/negroni"
+	negroni "github.com/urfave/negroni/v3"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"

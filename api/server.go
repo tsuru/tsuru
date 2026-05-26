@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/cezarsa/form"
-	"github.com/codegangsta/negroni"
 	"github.com/felixge/fgprof"
 	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
@@ -56,6 +55,7 @@ import (
 	"github.com/tsuru/tsuru/tag"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
+	negroni "github.com/urfave/negroni/v3"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/net/websocket"
 )
