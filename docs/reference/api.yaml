@@ -5014,6 +5014,12 @@ definitions:
         type: string
       team:
         type: string
+      encoding:
+        type: string
+        description: Encoding format used to communicate with the service API backend. Valid options are "form" (default) and "json".
+        enum:
+        - form
+        - json
   ServiceInfo:
     type: object
     properties:
