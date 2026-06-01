@@ -373,6 +373,26 @@ func assembleHealthProbe(y *provTypes.TsuruYamlHealthcheck, port int) (*apiv1.Pr
 	return probe, nil
 }
 
+func dissasembleHealthProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlHealthcheck, error) {
+	y := &provTypes.TsuruYamlHealthcheck{}
+	if err := y.EnsureDefaults(); err != nil {
+		return nil, err
+	}
+	y.AllowedFailures = int(probe.FailureThreshold)
+	y.IntervalSeconds = int(probe.PeriodSeconds)
+	y.TimeoutSeconds = int(probe.TimeoutSeconds)
+	if probe.HTTPGet != nil {
+		y.Path = probe.HTTPGet.Path
+		headers := map[string]string{}
+		for _, header := range probe.HTTPGet.HTTPHeaders {
+			headers[header.Name] = header.Value
+		}
+	} else if probe.Exec != nil {
+		y.Command = probe.Exec.Command
+	}
+	return y, nil
+}
+
 func assembleStartupProbe(y *provTypes.TsuruYamlStartupcheck, port int) (*apiv1.Probe, error) {
 	if err := y.EnsureDefaults(); err != nil {
 		return nil, err
@@ -411,6 +431,26 @@ func assembleStartupProbe(y *provTypes.TsuruYamlStartupcheck, port int) (*apiv1.
 		}
 	}
 	return probe, nil
+}
+
+func dissasembleStartupProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlStartupcheck, error) {
+	y := &provTypes.TsuruYamlStartupcheck{}
+	if err := y.EnsureDefaults(); err != nil {
+		return nil, err
+	}
+	y.AllowedFailures = int(probe.FailureThreshold)
+	y.IntervalSeconds = int(probe.PeriodSeconds)
+	y.TimeoutSeconds = int(probe.TimeoutSeconds)
+	if probe.HTTPGet != nil {
+		y.Path = probe.HTTPGet.Path
+		headers := map[string]string{}
+		for _, header := range probe.HTTPGet.HTTPHeaders {
+			headers[header.Name] = header.Value
+		}
+	} else if probe.Exec != nil {
+		y.Command = probe.Exec.Command
+	}
+	return y, nil
 }
 
 func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app *appTypes.App) error {
@@ -1219,7 +1259,8 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	if evt.Source.Host != "" {
 		component = append(component, evt.Source.Host)
 	}
-	return fmt.Sprintf("%s%s - %s [%s]",
+	return fmt.Sprintf(
+		"%s%s - %s [%s]",
 		evt.InvolvedObject.Name,
 		subStr,
 		evt.Message,

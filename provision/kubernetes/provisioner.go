@@ -905,6 +905,66 @@ func (p *kubernetesProvisioner) podsForApps(ctx context.Context, client *Cluster
 	return podCopies, nil
 }
 
+func (p *kubernetesProvisioner) Processes(ctx context.Context, a *appTypes.App) ([]appTypes.Process, error) {
+	client, err := clusterForPool(ctx, a.Pool)
+	if err != nil {
+		return nil, err
+	}
+	groupedDeploys, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentsByname := map[string]deploymentInfo{}
+	for _, versionDeploys := range groupedDeploys.versioned {
+		for _, deploy := range versionDeploys {
+			if !deploy.isBase {
+				continue
+			}
+			currentDeploy, found := deploymentsByname[deploy.process]
+			if !found {
+				deploymentsByname[deploy.process] = deploy
+				continue
+			}
+			if currentDeploy.version > deploy.version {
+				continue
+			}
+			deploymentsByname[deploy.process] = deploy
+		}
+	}
+
+	processes := make([]appTypes.Process, 0)
+	for _, deploy := range deploymentsByname {
+		container := deploy.dep.Spec.Template.Spec.Containers[0]
+		readinessProbe := container.ReadinessProbe
+		livenessProbe := container.LivenessProbe
+		startupProbe := container.StartupProbe
+		var healthcheck *provTypes.TsuruYamlHealthcheck
+		if readinessProbe != nil {
+			healthcheck, err = dissasembleHealthProbe(readinessProbe)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if livenessProbe != nil {
+			healthcheck.ForceRestart = true
+		}
+		var startupcheck *provTypes.TsuruYamlStartupcheck
+		if startupProbe != nil {
+			startupcheck, err = dissasembleStartupProbe(startupProbe)
+			if err != nil {
+				return nil, err
+			}
+		}
+		processes = append(processes, appTypes.Process{
+			Name:         deploy.process,
+			Healthcheck:  healthcheck,
+			Startupcheck: startupcheck,
+		})
+	}
+	return processes, nil
+}
+
 func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a *appTypes.App) ([]appTypes.RoutableAddresses, error) {
 	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {

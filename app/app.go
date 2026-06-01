@@ -135,6 +135,18 @@ func AppUnits(ctx context.Context, app *appTypes.App) ([]provTypes.Unit, error) 
 	return units, err
 }
 
+func AppProcesses(ctx context.Context, app *appTypes.App) ([]appTypes.Process, error) {
+	prov, err := getProvisioner(ctx, app)
+	if err != nil {
+		return []appTypes.Process{}, err
+	}
+	processes, err := prov.Processes(ctx, app)
+	if err != nil {
+		return []appTypes.Process{}, err
+	}
+	return processes, nil
+}
+
 // AppInfo returns a agregated format of app
 func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) {
 	var errMsgs []string
@@ -188,8 +200,13 @@ func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) 
 	}
 	result.Routers = routers
 
+	processes, err := AppProcesses(ctx, app)
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app processes: %+v", err))
+	}
+	result.Processes = processes
 	if len(app.Processes) > 0 {
-		result.Processes = app.Processes
+		result.Processes = mergeProcesses(processes, app.Processes)
 	}
 
 	q, err := GetQuota(ctx, app)
@@ -268,6 +285,28 @@ func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) 
 	}
 
 	return result, nil
+}
+
+func mergeProcesses(providerProcesses, appProcesses []appTypes.Process) []appTypes.Process {
+	appByName := make(map[string]appTypes.Process, len(appProcesses))
+	for _, ap := range appProcesses {
+		appByName[ap.Name] = ap
+	}
+
+	mergedProcesses := make([]appTypes.Process, 0, len(providerProcesses))
+
+	for _, providerProcess := range providerProcesses {
+		mergedProcess := providerProcess
+
+		if ap, ok := appByName[providerProcess.Name]; ok {
+			mergedProcess.Plan = ap.Plan
+			mergedProcess.Metadata = ap.Metadata
+		}
+
+		mergedProcesses = append(mergedProcesses, mergedProcess)
+	}
+
+	return mergedProcesses
 }
 
 // GetByName queries the database to find an app identified by the given
@@ -536,8 +575,8 @@ func Update(ctx context.Context, app *appTypes.App, args UpdateAppArgs) (err err
 	return action.NewPipeline(actions...).Execute(ctx, app, &oldApp, args.Writer)
 }
 
-func updateProcesses(ctx context.Context, app *appTypes.App, new []appTypes.Process) (changed bool, err error) {
-	if len(app.Processes) == 0 && len(new) == 0 {
+func updateProcesses(ctx context.Context, app *appTypes.App, newProcs []appTypes.Process) (changed bool, err error) {
+	if len(app.Processes) == 0 && len(newProcs) == 0 {
 		return false, nil
 	}
 
@@ -551,7 +590,7 @@ func updateProcesses(ctx context.Context, app *appTypes.App, new []appTypes.Proc
 		positionByName[p.Name] = func(n int) *int { return &n }(i)
 	}
 
-	for _, p := range new {
+	for _, p := range newProcs {
 		if p.Plan != "" && p.Plan != "$default" {
 			_, err = servicemanager.Plan.FindByName(ctx, p.Plan)
 			if err != nil {
