@@ -5010,6 +5010,12 @@ definitions:
         type: string
       endpoint:
         type: string
+        description: Single service endpoint URL. When set without "endpoints", it is stored as endpoints["production"]. Mutually exclusive in practice with "endpoints" (if both are sent, "endpoints" wins).
+      endpoints:
+        type: object
+        description: Map of endpoint name to URL, allowing multiple endpoints per service (e.g. one per cluster). Sent as form fields with keys "endpoints.<name>". When provided, it overrides "endpoint".
+        additionalProperties:
+          type: string
       multi-cluster:
         type: string
       team:
