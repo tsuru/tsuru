@@ -71,6 +71,23 @@ type Filter struct {
 	Extra     map[string][]string
 }
 
+// JobStorage is the persistence boundary for jobs.
+type JobStorage interface {
+	// Insert persists a new job. Returns ErrJobAlreadyExists if a job with the
+	// same name already exists.
+	Insert(ctx context.Context, job Job) error
+	// Update replaces an existing job by name. Returns ErrJobNotFound if absent.
+	Update(ctx context.Context, job Job) error
+	// FindByName returns the job, or ErrJobNotFound.
+	FindByName(ctx context.Context, name string) (*Job, error)
+	// ListByFilter returns jobs matching filter (nil filter returns all).
+	ListByFilter(ctx context.Context, filter *Filter) ([]Job, error)
+	// Delete removes a job by name. Returns ErrJobNotFound if absent.
+	Delete(ctx context.Context, name string) error
+	// UpdateServiceEnvs sets the spec.serviceenvs field for the named job.
+	UpdateServiceEnvs(ctx context.Context, name string, serviceEnvs []bindTypes.ServiceEnvVar) error
+}
+
 type AddInstanceArgs struct {
 	Envs   []bindTypes.ServiceEnvVar
 	Writer io.Writer
