@@ -24,7 +24,66 @@ import (
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
+	"k8s.io/utils/ptr"
 )
+
+func (s *S) TestCreateJobWithTimeZone(c *check.C) {
+	var tests = []struct {
+		name        string
+		timeZone    *string
+		expectedErr error
+	}{
+		{
+			name:     "valid timezone",
+			timeZone: ptr.To("America/Sao_Paulo"),
+		},
+		{
+			name:     "valid timezone UTC",
+			timeZone: ptr.To("UTC"),
+		},
+		{
+			name:        "invalid timezone",
+			timeZone:    ptr.To("Invalid/TimeZone"),
+			expectedErr: &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()},
+		},
+		{
+			name:     "nil timezone",
+			timeZone: nil,
+		},
+	}
+	for _, t := range tests {
+		c.Logf("test %q", t.name)
+		newJob := jobTypes.Job{
+			Name:      "some-job",
+			TeamOwner: s.team.Name,
+			Pool:      s.Pool,
+			Spec: jobTypes.JobSpec{
+				Schedule: "* * * * *",
+				TimeZone: t.timeZone,
+				Container: jobTypes.ContainerInfo{
+					OriginalImageSrc: "alpine:latest",
+					Command:          []string{"echo", "hello!"},
+				},
+			},
+		}
+		err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
+		if t.expectedErr != nil {
+			c.Assert(err, check.DeepEquals, t.expectedErr)
+			continue
+		}
+		c.Assert(err, check.IsNil)
+		myJob, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
+		c.Assert(err, check.IsNil)
+		if t.timeZone != nil {
+			c.Assert(myJob.Spec.TimeZone, check.NotNil)
+			c.Assert(*myJob.Spec.TimeZone, check.Equals, *t.timeZone)
+		} else {
+			c.Assert(myJob.Spec.TimeZone, check.IsNil)
+		}
+		err = servicemanager.Job.RemoveJob(context.TODO(), &newJob)
+		c.Assert(err, check.IsNil)
+	}
+}
 
 func (s *S) TestCreateJobWithInvalidName(c *check.C) {
 	newJob := jobTypes.Job{
@@ -855,6 +914,74 @@ func (s *S) TestUpdateJob(c *check.C) {
 				},
 			},
 			expectedErr: nil,
+		},
+		{
+			name: "update job with valid timezone",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					TimeZone: ptr.To("America/Sao_Paulo"),
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Tags:      []string{},
+				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+				DeployOptions: &jobTypes.DeployOptions{
+					Kind:  provisionTypes.DeployImage,
+					Image: "alpine:latest",
+				},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					TimeZone: ptr.To("America/Sao_Paulo"),
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc:      "alpine:latest",
+						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+						Command:               []string{"echo", "hello!"},
+					},
+					ServiceEnvs:           []bind.ServiceEnvVar{},
+					Envs:                  []bind.EnvVar{},
+					ActiveDeadlineSeconds: ptr.To(int64(0)),
+				},
+			},
+		},
+		{
+			name: "update job with invalid timezone",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					TimeZone: ptr.To("Invalid/TimeZone"),
+				},
+			},
+			expectedErr: &tsuruErrors.ValidationError{Message: "invalid time zone"},
 		},
 		{
 			name: "update concurrency policy",
