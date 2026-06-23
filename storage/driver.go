@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/event"
+	"github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/router"
@@ -39,6 +40,7 @@ type DbDriver struct {
 	AuthGroupStorage       auth.GroupStorage
 	PoolStorage            provision.PoolStorage
 	VolumeStorage          volume.VolumeStorage
+	JobStorage             job.JobStorage
 }
 
 var (
