@@ -69,13 +69,14 @@ var (
 	ErrRouterAlreadyLinked = errors.New("router already linked to this app")
 	ErrNoRouterWithTLS     = errors.New("no router with tls support")
 
-	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
-	ErrKillUnitProvisioner  = errors.New("The current app provisioner does not support killing a unit")
-	ErrSwapMultipleVersions = errors.New("swapping apps with multiple versions is not allowed")
-	ErrSwapMultipleRouters  = errors.New("swapping apps with multiple routers is not supported")
-	ErrSwapDifferentRouters = errors.New("swapping apps with different routers is not supported")
-	ErrSwapNoCNames         = errors.New("no cnames to swap")
-	ErrSwapDeprecated       = errors.New("swapping without cnameOnly is deprecated")
+	ErrNoVersionProvisioner    = errors.New("The current app provisioner does not support multiple versions handling")
+	ErrKillUnitProvisioner     = errors.New("The current app provisioner does not support killing a unit")
+	ErrSwapMultipleVersions    = errors.New("swapping apps with multiple versions is not allowed")
+	ErrSwapMultipleRouters     = errors.New("swapping apps with multiple routers is not supported")
+	ErrSwapDifferentRouters    = errors.New("swapping apps with different routers is not supported")
+	ErrSwapNoCNames            = errors.New("no cnames to swap")
+	ErrSwapDeprecated          = errors.New("swapping without cnameOnly is deprecated")
+	ErrFileTransferProvisioner = errors.New("The current app provisioner does not support transfering files")
 )
 
 var (
@@ -2606,4 +2607,18 @@ func GetRegistry(ctx context.Context, app *appTypes.App) (imgTypes.ImageRegistry
 		return "", nil
 	}
 	return registryProv.RegistryForPool(ctx, app.Pool)
+}
+
+func UploadFiles(ctx context.Context, app *appTypes.App, unit string, file []byte, filepath string) error {
+	prov, err := getProvisioner(ctx, app)
+	if err != nil {
+		return err
+	}
+
+	fileTransferProv, ok := prov.(provision.FileTransferProvisioner)
+	if !ok {
+		return ErrFileTransferProvisioner
+	}
+
+	return fileTransferProv.UploadFile(ctx, app, unit, file, filepath)
 }
