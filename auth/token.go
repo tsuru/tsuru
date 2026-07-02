@@ -60,3 +60,11 @@ func BaseTokenPermission(ctx context.Context, t Token) ([]permTypes.Permission, 
 	}
 	return u.Permissions(ctx)
 }
+
+func BaseTokenDynamicPermission(ctx context.Context, t Token) ([]permTypes.Permission, error) {
+	u, err := ConvertNewUser(t.User(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return u.DynamicPermissions(ctx)
+}

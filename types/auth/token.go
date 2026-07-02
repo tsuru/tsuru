@@ -21,6 +21,7 @@ type Token interface {
 	User(ctx context.Context) (*User, error)
 	Engine() string
 	Permissions(ctx context.Context) ([]permission.Permission, error)
+	DynamicPermissions(ctx context.Context) ([]permission.Permission, error)
 }
 
 type NamedToken interface {

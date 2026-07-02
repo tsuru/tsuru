@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"time"
 
 	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -48,12 +49,27 @@ func (s *S) TestCreateService(c *check.C) {
 	endpt := map[string]string{
 		"production": "somehost.com",
 	}
+	legacyEnabledAt := time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC)
 	service := &Service{
 		Name:       "my-service",
 		Username:   "test",
 		Endpoint:   endpt,
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
+		Manifest: &ServiceManifest{
+			Enabled:         true,
+			StrictActions:   true,
+			LegacyCompat:    true,
+			LegacyEnabledAt: &legacyEnabledAt,
+			Operations: []ManifestOperation{{
+				Name:       "sync-rule",
+				Method:     "POST",
+				Path:       "/rules/{ruleId}/sync",
+				Action:     "rules.sync",
+				Scope:      "entity",
+				EntityType: "rules",
+			}},
+		},
 	}
 	err := Create(context.TODO(), *service)
 	c.Assert(err, check.IsNil)
@@ -64,9 +80,11 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(se.OwnerTeams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, check.Equals, false)
 	c.Assert(se.Username, check.Equals, "test")
+	c.Assert(se.Manifest, check.DeepEquals, service.Manifest)
 
 	service.Name = "per-cluster-endpoing"
 	service.Endpoint = map[string]string{"my-cluster": "https://my.cluster"}
+	service.Manifest = nil
 	err = Create(context.TODO(), *service)
 	c.Assert(err, check.IsNil)
 	se, err = Get(context.TODO(), service.Name)
@@ -302,6 +320,17 @@ func (s *S) TestUpdateService(c *check.C) {
 	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	service.Doc = "doc"
+	service.Manifest = &ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []ManifestOperation{{
+			Name:   "list-rules",
+			Method: "GET",
+			Path:   "/rules",
+			Action: "rules.list",
+			Scope:  "collection",
+		}},
+	}
 	err = Update(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 
@@ -311,6 +340,17 @@ func (s *S) TestUpdateService(c *check.C) {
 	err = servicesCollection.FindOne(context.TODO(), mongoBSON.M{"_id": service.Name}).Decode(&service)
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Doc, check.Equals, "doc")
+	c.Assert(service.Manifest, check.DeepEquals, &ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []ManifestOperation{{
+			Name:   "list-rules",
+			Method: "GET",
+			Path:   "/rules",
+			Action: "rules.list",
+			Scope:  "collection",
+		}},
+	})
 }
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
@@ -532,6 +572,60 @@ func (s *S) TestProxy(c *check.C) {
 	err = Proxy(context.TODO(), &service, "/aaa", evt, "", recorder, request)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *S) TestServiceManifestMatch(c *check.C) {
+	manifest := &ServiceManifest{
+		Operations: []ManifestOperation{
+			{
+				Name:   "read-rule",
+				Method: "GET",
+				Path:   "/rules/{ruleId}",
+				Action: "rules.read",
+				Scope:  "entity",
+			},
+			{
+				Name:   "sync-rule",
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+				Scope:  "entity",
+			},
+			{
+				Name:   "list-rules",
+				Method: "GET",
+				Path:   "/rules",
+				Action: "rules.list",
+				Scope:  "collection",
+			},
+			{
+				Name:   "literal-wins",
+				Method: "GET",
+				Path:   "/rules/sync",
+				Action: "rules.sync.literal",
+				Scope:  "entity",
+			},
+		},
+	}
+	testCases := []struct {
+		method string
+		path   string
+		action string
+		match  bool
+	}{
+		{method: "GET", path: "/rules", action: "rules.list", match: true},
+		{method: "GET", path: "/rules/123", action: "rules.read", match: true},
+		{method: "POST", path: "/rules/123/sync", action: "rules.sync", match: true},
+		{method: "GET", path: "/rules/sync", action: "rules.sync.literal", match: true},
+		{method: "GET", path: "rules/sync", action: "rules.sync.literal", match: true},
+		{method: "DELETE", path: "/rules/123", match: false},
+		{method: "GET", path: "/unknown", match: false},
+	}
+	for _, test := range testCases {
+		action, match := manifest.Match(test.method, test.path)
+		c.Assert(match, check.Equals, test.match, check.Commentf("method=%s path=%s", test.method, test.path))
+		c.Assert(action, check.Equals, test.action, check.Commentf("method=%s path=%s", test.method, test.path))
+	}
 }
 
 func (s *S) TestRenameServiceTeam(c *check.C) {

@@ -64,6 +64,10 @@ func (t *Token) Permissions(ctx context.Context) ([]permTypes.Permission, error)
 	}, nil
 }
 
+func (t *Token) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return auth.BaseTokenDynamicPermission(ctx, t)
+}
+
 func TokenValue() string {
 	token, _ := config.GetString("auth:peer:token")
 

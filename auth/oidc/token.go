@@ -75,3 +75,7 @@ func (t *jwtToken) Engine() string {
 func (t *jwtToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return auth.BaseTokenPermission(ctx, t)
 }
+
+func (t *jwtToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return auth.BaseTokenDynamicPermission(ctx, t)
+}

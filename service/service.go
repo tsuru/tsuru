@@ -8,8 +8,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path"
 	"regexp"
+	"sort"
+	"strings"
+	"sync"
+	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -50,7 +56,48 @@ type Service struct {
 
 	// Encoding defines how modern is the backend
 	// Tsuru started with a form encoding, but some services may support a more modern JSON encoding.
-	Encoding ServiceEncoding `bson:"encoding"`
+	Encoding ServiceEncoding  `bson:"encoding"`
+	// Manifest defines the provider operations that can be matched for fine-grained authorization.
+	Manifest *ServiceManifest `bson:"manifest,omitempty" json:"manifest,omitempty"`
+}
+
+// ServiceManifest describes the provider operations exposed by a service for
+// fine-grained authorization checks.
+type ServiceManifest struct {
+	Enabled         bool                `bson:"enabled" json:"enabled"`
+	StrictActions   bool                `bson:"strict_actions" json:"strict_actions"`
+	LegacyCompat    bool                `bson:"legacy_compat" json:"legacy_compat"`
+	LegacyEnabledAt *time.Time          `bson:"legacy_enabled_at,omitempty" json:"legacy_enabled_at,omitempty"`
+	Operations      []ManifestOperation `bson:"operations" json:"operations"`
+
+	matchOnce sync.Once                   `bson:"-" json:"-"`
+	matchErr  error                       `bson:"-" json:"-"`
+	matchOps  []compiledManifestOperation `bson:"-" json:"-"`
+}
+
+// ManifestOperation maps an HTTP method and path template to an authorization action.
+type ManifestOperation struct {
+	Name       string `bson:"name" json:"name"`
+	Method     string `bson:"method" json:"method"`
+	Path       string `bson:"path" json:"path"`
+	Action     string `bson:"action" json:"action"`
+	Scope      string `bson:"scope" json:"scope"`
+	EntityType string `bson:"entity_type,omitempty" json:"entity_type,omitempty"`
+}
+
+type compiledManifestOperation struct {
+	action string
+	method string
+	path   *regexp.Regexp
+	score  manifestOperationScore
+	index  int
+}
+
+type manifestOperationScore struct {
+	segments        int
+	literalSegments int
+	literalLength   int
+	variableCount   int
 }
 
 type BindAppParameters map[string]interface{}
@@ -62,6 +109,123 @@ type ProxyOpts struct {
 	RequestID string
 	Writer    http.ResponseWriter
 	Request   *http.Request
+}
+
+// Match resolves the manifest action for the given method and path.
+func (m *ServiceManifest) Match(method, rawPath string) (string, bool) {
+	if m == nil {
+		return "", false
+	}
+	ops, err := m.compiledOperations()
+	if err != nil {
+		return "", false
+	}
+	method = strings.ToUpper(strings.TrimSpace(method))
+	matchPath := normalizeManifestPath(rawPath)
+	for _, op := range ops {
+		if op.method != method {
+			continue
+		}
+		if op.path.MatchString(matchPath) {
+			return op.action, true
+		}
+	}
+	return "", false
+}
+
+func (m *ServiceManifest) compiledOperations() ([]compiledManifestOperation, error) {
+	m.matchOnce.Do(func() {
+		ops := make([]compiledManifestOperation, 0, len(m.Operations))
+		for i, op := range m.Operations {
+			compiled, err := compileManifestOperation(op, i)
+			if err != nil {
+				m.matchErr = err
+				return
+			}
+			ops = append(ops, compiled)
+		}
+		// More specific paths are matched first so overlapping templates resolve deterministically.
+		sort.SliceStable(ops, func(i, j int) bool {
+			return compareManifestOperationScore(ops[i], ops[j])
+		})
+		m.matchOps = ops
+	})
+	return m.matchOps, m.matchErr
+}
+
+func compileManifestOperation(op ManifestOperation, index int) (compiledManifestOperation, error) {
+	normalizedPath := normalizeManifestPath(op.Path)
+	route := mux.NewRouter().NewRoute().Path(normalizedPath)
+	pathExpr, err := route.GetPathRegexp()
+	if err != nil {
+		return compiledManifestOperation{}, err
+	}
+	pathRegexp, err := regexp.Compile(pathExpr)
+	if err != nil {
+		return compiledManifestOperation{}, err
+	}
+	return compiledManifestOperation{
+		action: op.Action,
+		method: strings.ToUpper(strings.TrimSpace(op.Method)),
+		path:   pathRegexp,
+		score:  manifestPathScore(normalizedPath),
+		index:  index,
+	}, nil
+}
+
+func compareManifestOperationScore(left, right compiledManifestOperation) bool {
+	// Precedence favors longer paths, then more literal structure, then earlier declaration order.
+	if left.score.segments != right.score.segments {
+		return left.score.segments > right.score.segments
+	}
+	if left.score.literalSegments != right.score.literalSegments {
+		return left.score.literalSegments > right.score.literalSegments
+	}
+	if left.score.literalLength != right.score.literalLength {
+		return left.score.literalLength > right.score.literalLength
+	}
+	if left.score.variableCount != right.score.variableCount {
+		return left.score.variableCount < right.score.variableCount
+	}
+	return left.index < right.index
+}
+
+func manifestPathScore(rawPath string) manifestOperationScore {
+	normalizedPath := normalizeManifestPath(rawPath)
+	trimmed := strings.Trim(normalizedPath, "/")
+	if trimmed == "" {
+		return manifestOperationScore{}
+	}
+	segments := strings.Split(trimmed, "/")
+	score := manifestOperationScore{segments: len(segments)}
+	for _, segment := range segments {
+		if isManifestVariableSegment(segment) {
+			score.variableCount++
+			continue
+		}
+		score.literalSegments++
+		score.literalLength += len(segment)
+	}
+	return score
+}
+
+func normalizeManifestPath(rawPath string) string {
+	cleaned := strings.TrimSpace(rawPath)
+	if cleaned == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(cleaned, "/") {
+		cleaned = "/" + cleaned
+	}
+	cleaned = path.Clean(cleaned)
+	if cleaned == "." {
+		return "/"
+	}
+	return cleaned
+}
+
+func isManifestVariableSegment(segment string) bool {
+	return strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}")
 }
 
 // TODO: use requestID inside the context
