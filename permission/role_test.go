@@ -122,6 +122,56 @@ func (s *S) TestRemovePermissions(c *check.C) {
 	c.Assert(dbR.SchemeNames, check.DeepEquals, expected)
 }
 
+func (s *S) TestRoleAddDynamicPermissions(c *check.C) {
+	resetDynamicRegistryForTest()
+	err := RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules", "service-action.acl.rules.sync")
+	c.Assert(err, check.IsNil)
+	sort.Strings(r.DynamicSchemeNames)
+	expected := []string{
+		"service-action.acl.rules",
+		"service-action.acl.rules.sync",
+	}
+	c.Assert(r.DynamicSchemeNames, check.DeepEquals, expected)
+	dbR, err := FindRole(context.TODO(), "myrole")
+	c.Assert(err, check.IsNil)
+	sort.Strings(dbR.DynamicSchemeNames)
+	c.Assert(dbR.DynamicSchemeNames, check.DeepEquals, expected)
+	c.Assert(dbR.SchemeNames, check.DeepEquals, []string{})
+}
+
+func (s *S) TestRoleAddDynamicPermissionsInvalid(c *check.C) {
+	resetDynamicRegistryForTest()
+	err := RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxServiceInstance})
+	c.Assert(err, check.IsNil)
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.read")
+	c.Assert(err, check.ErrorMatches, `permission named "service-action.acl.rules.read" not found`)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
+	c.Assert(err, check.ErrorMatches, `permission "service-action.acl.rules.sync" not allowed with context of type "team"`)
+}
+
+func (s *S) TestRoleRemoveDynamicPermissions(c *check.C) {
+	resetDynamicRegistryForTest()
+	err := RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules", "service-action.acl.rules.sync")
+	c.Assert(err, check.IsNil)
+	err = r.RemoveDynamicPermissions(context.TODO(), "service-action.acl.rules")
+	c.Assert(err, check.IsNil)
+	expected := []string{"service-action.acl.rules.sync"}
+	c.Assert(r.DynamicSchemeNames, check.DeepEquals, expected)
+	dbR, err := FindRole(context.TODO(), "myrole")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbR.DynamicSchemeNames, check.DeepEquals, expected)
+}
+
 func (s *S) TestDestroyRole(c *check.C) {
 	_, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
@@ -147,6 +197,33 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	r.SchemeNames = append(r.SchemeNames, "invalidxxx")
 	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)
+}
+
+func (s *S) TestDynamicPermissionsFor(c *check.C) {
+	resetDynamicRegistryForTest()
+	err := RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions(context.TODO(), "app.update")
+	c.Assert(err, check.IsNil)
+	r.DynamicSchemeNames = []string{
+		"service-action.acl.rules.sync",
+		"service-action.acl.rules",
+		"service-action.acl.rules.removed",
+	}
+	expected := []permTypes.Permission{
+		{Scheme: mustLookupDynamicCheck(c, "service-action.acl.rules"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
+		{Scheme: mustLookupDynamicCheck(c, "service-action.acl.rules.sync"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
+	}
+	perms := r.DynamicPermissionsFor("something")
+	c.Assert(perms, check.DeepEquals, expected)
+	c.Assert(r.DynamicSchemeNames, check.DeepEquals, []string{
+		"service-action.acl.rules.sync",
+		"service-action.acl.rules",
+		"service-action.acl.rules.removed",
+	})
+	c.Assert(r.SchemeNames, check.DeepEquals, []string{"app.update"})
 }
 
 func (s *S) TestRoleAddEvent(c *check.C) {
@@ -255,4 +332,10 @@ func (s *S) TestAdd(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r2.Add(context.TODO())
 	c.Assert(err, check.Equals, permTypes.ErrRoleAlreadyExists)
+}
+
+func mustLookupDynamicCheck(c *check.C, name string) *permTypes.PermissionScheme {
+	scheme, ok := LookupDynamic(name)
+	c.Assert(ok, check.Equals, true)
+	return scheme
 }
