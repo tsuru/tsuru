@@ -287,6 +287,30 @@ func (s *S) TestUserPermissionsIncludeGroups(c *check.C) {
 	})
 }
 
+func (s *S) TestUserDynamicPermissions(c *check.C) {
+	u := User{Email: "dynamic@tsuru.com", Password: "123", Groups: []string{"g1"}}
+	err := u.Create(context.TODO())
+	c.Assert(err, check.IsNil)
+
+	c.Assert(permission.RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam}), check.IsNil)
+	role, err := permission.NewRole(context.TODO(), "dynamic-user-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
+	c.Assert(err, check.IsNil)
+
+	err = u.AddRole(context.TODO(), role.Name, "team-1")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.AuthGroup.AddRole(context.TODO(), "g1", role.Name, "team-2")
+	c.Assert(err, check.IsNil)
+
+	perms, err := u.DynamicPermissions(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
+		{Scheme: mustLookupDynamic(c, "service-action.acl.rules.sync"), Context: permission.Context(permTypes.CtxTeam, "team-1")},
+		{Scheme: mustLookupDynamic(c, "service-action.acl.rules.sync"), Context: permission.Context(permTypes.CtxTeam, "team-2")},
+	})
+}
+
 func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	role, err := permission.NewRole(context.TODO(), "test", "team", "")
 	c.Assert(err, check.IsNil)

@@ -43,6 +43,10 @@ func (t *tokenWrapper) Permissions(ctx context.Context) ([]permTypes.Permission,
 	return auth.BaseTokenPermission(ctx, t)
 }
 
+func (t *tokenWrapper) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return auth.BaseTokenDynamicPermission(ctx, t)
+}
+
 func getToken(ctx context.Context, header string) (*tokenWrapper, error) {
 	var t tokenWrapper
 	token, err := auth.ParseToken(header)

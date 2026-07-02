@@ -44,6 +44,10 @@ func (t *userToken) Permissions(ctx context.Context) ([]permTypes.Permission, er
 	return t.permissions, nil
 }
 
+func (t *userToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return nil, nil
+}
+
 func (s *S) Test_TeamTokenService_Create(c *check.C) {
 	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
@@ -121,9 +125,30 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	perms, err := t.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)
+	dynamicPerms, err := t.DynamicPermissions(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(dynamicPerms, check.HasLen, 0)
 	dbToken, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), token.TokenID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbToken.LastAccess.IsZero(), check.Equals, false)
+}
+
+func (s *S) TestTeamTokenDynamicPermissions(c *check.C) {
+	c.Assert(permission.RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam}), check.IsNil)
+	role, err := permission.NewRole(context.TODO(), "dynamic-team-token-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
+	c.Assert(err, check.IsNil)
+
+	token := teamToken{
+		Roles: []authTypes.RoleInstance{{Name: role.Name, ContextValue: "team-1"}},
+	}
+	perms, err := token.DynamicPermissions(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permTypes.Permission{{
+		Scheme:  mustLookupDynamic(c, "service-action.acl.rules.sync"),
+		Context: permission.Context(permTypes.CtxTeam, "team-1"),
+	}})
 }
 
 func (s *S) Test_TeamTokenService_Authenticate_NotFound(c *check.C) {

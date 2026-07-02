@@ -187,6 +187,24 @@ func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleIn
 	return permissions, nil
 }
 
+func expandDynamicRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permTypes.Permission, error) {
+	var permissions []permTypes.Permission
+	roles := make(map[string]*permission.Role)
+	for _, roleData := range roleInstances {
+		role := roles[roleData.Name]
+		if role == nil {
+			foundRole, err := permission.FindRole(ctx, roleData.Name)
+			if err != nil && err != permTypes.ErrRoleNotFound {
+				return nil, err
+			}
+			role = &foundRole
+			roles[roleData.Name] = role
+		}
+		permissions = append(permissions, role.DynamicPermissionsFor(roleData.ContextValue)...)
+	}
+	return permissions, nil
+}
+
 func (u *User) UserGroups() ([]authTypes.Group, error) {
 	groupsFilter := []string{}
 	if u.Groups != nil {
@@ -216,6 +234,18 @@ func (u *User) Permissions(ctx context.Context) ([]permTypes.Permission, error) 
 		Scheme:  permission.PermUser,
 		Context: permission.Context(permTypes.CtxUser, u.Email),
 	}}, permissions...), nil
+}
+
+func (u *User) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
+	groups, err := u.UserGroups()
+	if err != nil {
+		return nil, err
+	}
+	allRoles := u.Roles
+	for _, group := range groups {
+		allRoles = append(allRoles, group.Roles...)
+	}
+	return expandDynamicRolePermissions(ctx, allRoles)
 }
 
 func (u *User) AddRole(ctx context.Context, roleName string, contextValue string) error {

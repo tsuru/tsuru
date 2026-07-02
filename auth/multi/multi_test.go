@@ -642,3 +642,7 @@ func (t fakeToken) Engine() string {
 func (t fakeToken) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
 	return []permTypes.Permission{}, nil
 }
+
+func (t fakeToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
+	return []permTypes.Permission{}, nil
+}
