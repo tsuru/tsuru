@@ -211,6 +211,24 @@ func makeRequestToCreateServiceInstance(params map[string]interface{}, c *check.
 	return recorder, request
 }
 
+func (s *ServiceInstanceSuite) createTokenWithDynamicServiceAction(c *check.C, roleName, serviceName, action string) auth.Token {
+	user := &auth.User{Email: roleName + "@groundcontrol.com", Password: "123456"}
+	_, err := nativeScheme.Create(stdContext.TODO(), user)
+	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.Login(stdContext.TODO(), map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	permName := "service-action." + serviceName + "." + action
+	err = permission.RegisterDynamic(permName, []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxService, permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole(stdContext.TODO(), roleName, "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(stdContext.TODO(), permName)
+	c.Assert(err, check.IsNil)
+	err = user.AddRole(stdContext.TODO(), role.Name, s.team.Name)
+	c.Assert(err, check.IsNil)
+	return token
+}
+
 func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 	requestIDHeader := "RequestID"
 	config.Set("request-id-header", requestIDHeader)
@@ -2448,6 +2466,182 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		IsEmpty: true,
 	}, eventtest.HasEvent)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyDynamicPermission(c *check.C) {
+	var proxiedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxiedRequest = r
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &service.ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			Operations: []service.ManifestOperation{{
+				Name:   "sync-rule",
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+				Scope:  "entity",
+			}},
+		},
+	}
+	err := service.Create(stdContext.TODO(), se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
+	c.Assert(err, check.IsNil)
+	token := s.createTokenWithDynamicServiceAction(c, "dynamic-proxy-role", se.Name, "rules.sync")
+	request, err := http.NewRequest("POST", fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/%s/rules/123/sync", si.ServiceName, si.Name, si.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(proxiedRequest, check.NotNil)
+	c.Assert(proxiedRequest.URL.String(), check.Equals, "/resources/foo-instance/rules/123/sync")
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("foo", "foo-instance"),
+		Owner:  token.GetUserName(),
+		Kind:   "service-instance.update.proxy",
+		StartCustomData: []map[string]interface{}{
+			{"name": "method", "value": "POST"},
+			{"name": "action", "value": "rules.sync"},
+			{"name": "operation", "value": "sync-rule"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyStrictActionsDeniesLegacyPermission(c *check.C) {
+	var proxiedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxiedRequest = r
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &service.ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			LegacyCompat:  false,
+			Operations: []service.ManifestOperation{{
+				Name:   "sync-rule",
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+				Scope:  "entity",
+			}},
+		},
+	}
+	err := service.Create(stdContext.TODO(), se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/%s/unknown", si.ServiceName, si.Name, si.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(proxiedRequest, check.IsNil)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyLegacyCompatFallback(c *check.C) {
+	var proxiedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxiedRequest = r
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &service.ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			LegacyCompat:  true,
+			Operations: []service.ManifestOperation{{
+				Name:   "sync-rule",
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+				Scope:  "entity",
+			}},
+		},
+	}
+	err := service.Create(stdContext.TODO(), se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", fmt.Sprintf("/services/%s/proxy/%s?callback=/resources/%s/rules/123/sync", si.ServiceName, si.Name, si.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(proxiedRequest, check.NotNil)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2UnmatchedNonStrictFallsBackToLegacyPermission(c *check.C) {
+	var proxiedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxiedRequest = r
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &service.ServiceManifest{
+			Enabled:       true,
+			StrictActions: false,
+			LegacyCompat:  false,
+			Operations: []service.ManifestOperation{{
+				Name:   "sync-rule",
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+				Scope:  "entity",
+			}},
+		},
+	}
+	err := service.Create(stdContext.TODO(), se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
+	c.Assert(err, check.IsNil)
+	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", fmt.Sprintf("/1.20/services/%s/resources/%s/unknown", si.ServiceName, si.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(proxiedRequest, check.NotNil)
+	c.Assert(proxiedRequest.URL.String(), check.Equals, "/resources/foo-instance/unknown")
 }
 
 func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
