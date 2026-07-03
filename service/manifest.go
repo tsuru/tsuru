@@ -263,6 +263,37 @@ func persistManifest(ctx context.Context, serviceName string, manifest *ServiceM
 	return nil
 }
 
+func RepopulateDynamicPermissions(ctx context.Context) error {
+	services, err := GetServices(ctx)
+	if err != nil {
+		return err
+	}
+	for _, svc := range services {
+		// NOTE:(ravilock) Startup rebuild is best-effort: a single broken manifest must not block API boot
+		// or static authorization for unrelated services, so failures degrade only that service.
+		if err := registerManifestPermissions(svc.Name, svc.Manifest); err != nil {
+			log.Errorf("failed to re-register dynamic permissions for service %q: %v", svc.Name, err)
+		}
+	}
+	return nil
+}
+
+func registerManifestPermissions(serviceName string, manifest *ServiceManifest) error {
+	if manifest == nil || !manifest.Enabled {
+		return nil
+	}
+	normalized, err := normalizeManifest(manifest, manifest)
+	if err != nil {
+		return err
+	}
+	for permName := range registeredManifestPermissions(serviceName, normalized) {
+		if err := permission.RegisterDynamic(permName, validManifestPermissionContexts); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func manifestGrantConflicts(ctx context.Context, serviceName string, removedActions []string) ([]ManifestGrantConflict, error) {
 	if len(removedActions) == 0 {
 		return nil, nil

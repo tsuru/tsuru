@@ -186,3 +186,55 @@ func (s *S) TestManifestGrantConflicts(c *check.C) {
 		Roles:  []string{"manifest-conflicts-role"},
 	}})
 }
+
+func (s *S) TestRepopulateDynamicPermissions(c *check.C) {
+	validService := Service{
+		Name:       "manifest-startup-valid",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			Operations: []ManifestOperation{{
+				Name:   "sync-rule",
+				Method: http.MethodPost,
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			}},
+		},
+	}
+	err := Create(context.TODO(), validService)
+	c.Assert(err, check.IsNil)
+	invalidService := Service{
+		Name:       "manifest-startup-invalid",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			Operations: []ManifestOperation{{
+				Name:   "bad-rule",
+				Method: http.MethodGet,
+				Path:   "/rules",
+				Action: "invalid action",
+			}},
+		},
+	}
+	err = Create(context.TODO(), invalidService)
+	c.Assert(err, check.IsNil)
+
+	validPerm := "service-action.manifest-startup-valid.rules.sync"
+	invalidPerm := "service-action.manifest-startup-invalid.invalid action"
+	_ = permission.UnregisterDynamic(validPerm)
+	_ = permission.UnregisterDynamic(invalidPerm)
+
+	err = RepopulateDynamicPermissions(context.TODO())
+	c.Assert(err, check.IsNil)
+
+	_, ok := permission.LookupDynamic(validPerm)
+	c.Assert(ok, check.Equals, true)
+	_, ok = permission.LookupDynamic(invalidPerm)
+	c.Assert(ok, check.Equals, false)
+}
