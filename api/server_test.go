@@ -5,6 +5,7 @@
 package api
 
 import (
+	stdcontext "context"
 	cryptoRand "crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/service"
 	check "gopkg.in/check.v1"
 )
 
@@ -130,6 +133,37 @@ func (s *S) TestIsNotAdmin(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert("POST", check.Equals, rec.Body.String())
+}
+
+func (s *S) TestRunServerRepopulatesDynamicPermissions(c *check.C) {
+	svc := service.Service{
+		Name:       "api-startup-manifest",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &service.ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			Operations: []service.ManifestOperation{{
+				Name:   "sync-rule",
+				Method: http.MethodPost,
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			}},
+		},
+	}
+	err := service.Create(stdcontext.TODO(), svc)
+	c.Assert(err, check.IsNil)
+
+	permName := "service-action.api-startup-manifest.rules.sync"
+	_ = permission.UnregisterDynamic(permName)
+	_, ok := permission.LookupDynamic(permName)
+	c.Assert(ok, check.Equals, false)
+
+	RunServer(true)
+
+	_, ok = permission.LookupDynamic(permName)
+	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestCreateServersHTTPOnly(c *check.C) {
