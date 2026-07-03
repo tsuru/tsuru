@@ -8,14 +8,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -56,7 +53,7 @@ type Service struct {
 
 	// Encoding defines how modern is the backend
 	// Tsuru started with a form encoding, but some services may support a more modern JSON encoding.
-	Encoding ServiceEncoding  `bson:"encoding"`
+	Encoding ServiceEncoding `bson:"encoding"`
 	// Manifest defines the provider operations that can be matched for fine-grained authorization.
 	Manifest *ServiceManifest `bson:"manifest,omitempty" json:"manifest,omitempty"`
 }
@@ -70,9 +67,10 @@ type ServiceManifest struct {
 	LegacyEnabledAt *time.Time          `bson:"legacy_enabled_at,omitempty" json:"legacy_enabled_at,omitempty"`
 	Operations      []ManifestOperation `bson:"operations" json:"operations"`
 
-	matchOnce sync.Once                   `bson:"-" json:"-"`
-	matchErr  error                       `bson:"-" json:"-"`
-	matchOps  []compiledManifestOperation `bson:"-" json:"-"`
+	matchOnce       sync.Once         `bson:"-" json:"-"`
+	matchErr        error             `bson:"-" json:"-"`
+	matcher         *http.ServeMux    `bson:"-" json:"-"`
+	actionByPattern map[string]string `bson:"-" json:"-"`
 }
 
 // ManifestOperation maps an HTTP method and path template to an authorization action.
@@ -85,22 +83,7 @@ type ManifestOperation struct {
 	EntityType string `bson:"entity_type,omitempty" json:"entity_type,omitempty"`
 }
 
-type compiledManifestOperation struct {
-	action string
-	method string
-	path   *regexp.Regexp
-	score  manifestOperationScore
-	index  int
-}
-
-type manifestOperationScore struct {
-	segments        int
-	literalSegments int
-	literalLength   int
-	variableCount   int
-}
-
-type BindAppParameters map[string]interface{}
+type BindAppParameters map[string]any
 
 type ProxyOpts struct {
 	Instance  *ServiceInstance
@@ -116,100 +99,61 @@ func (m *ServiceManifest) Match(method, rawPath string) (string, bool) {
 	if m == nil {
 		return "", false
 	}
-	ops, err := m.compiledOperations()
+	matcher, actionByPattern, err := m.compiledMatcher()
 	if err != nil {
 		return "", false
 	}
-	method = strings.ToUpper(strings.TrimSpace(method))
-	matchPath := normalizeManifestPath(rawPath)
-	for _, op := range ops {
-		if op.method != method {
-			continue
-		}
-		if op.path.MatchString(matchPath) {
-			return op.action, true
-		}
+	req, err := http.NewRequest(strings.ToUpper(strings.TrimSpace(method)), manifestRequestURL(rawPath), nil)
+	if err != nil {
+		return "", false
 	}
-	return "", false
+	_, pattern := matcher.Handler(req)
+	action, ok := actionByPattern[pattern]
+	return action, ok
 }
 
-func (m *ServiceManifest) compiledOperations() ([]compiledManifestOperation, error) {
+func (m *ServiceManifest) compiledMatcher() (*http.ServeMux, map[string]string, error) {
 	m.matchOnce.Do(func() {
-		ops := make([]compiledManifestOperation, 0, len(m.Operations))
-		for i, op := range m.Operations {
-			compiled, err := compileManifestOperation(op, i)
+		matcher := http.NewServeMux()
+		actionByPattern := make(map[string]string, len(m.Operations))
+		for _, op := range m.Operations {
+			pattern := manifestRoutePattern(op)
+			err := registerManifestRoute(matcher, pattern)
 			if err != nil {
 				m.matchErr = err
 				return
 			}
-			ops = append(ops, compiled)
+			actionByPattern[pattern] = op.Action
 		}
-		// More specific paths are matched first so overlapping templates resolve deterministically.
-		sort.SliceStable(ops, func(i, j int) bool {
-			return compareManifestOperationScore(ops[i], ops[j])
-		})
-		m.matchOps = ops
+		m.matcher = matcher
+		m.actionByPattern = actionByPattern
 	})
-	return m.matchOps, m.matchErr
+	return m.matcher, m.actionByPattern, m.matchErr
 }
 
-func compileManifestOperation(op ManifestOperation, index int) (compiledManifestOperation, error) {
-	normalizedPath := normalizeManifestPath(op.Path)
-	route := mux.NewRouter().NewRoute().Path(normalizedPath)
-	pathExpr, err := route.GetPathRegexp()
-	if err != nil {
-		return compiledManifestOperation{}, err
-	}
-	pathRegexp, err := regexp.Compile(pathExpr)
-	if err != nil {
-		return compiledManifestOperation{}, err
-	}
-	return compiledManifestOperation{
-		action: op.Action,
-		method: strings.ToUpper(strings.TrimSpace(op.Method)),
-		path:   pathRegexp,
-		score:  manifestPathScore(normalizedPath),
-		index:  index,
-	}, nil
-}
-
-func compareManifestOperationScore(left, right compiledManifestOperation) bool {
-	// Precedence favors longer paths, then more literal structure, then earlier declaration order.
-	if left.score.segments != right.score.segments {
-		return left.score.segments > right.score.segments
-	}
-	if left.score.literalSegments != right.score.literalSegments {
-		return left.score.literalSegments > right.score.literalSegments
-	}
-	if left.score.literalLength != right.score.literalLength {
-		return left.score.literalLength > right.score.literalLength
-	}
-	if left.score.variableCount != right.score.variableCount {
-		return left.score.variableCount < right.score.variableCount
-	}
-	return left.index < right.index
-}
-
-func manifestPathScore(rawPath string) manifestOperationScore {
-	normalizedPath := normalizeManifestPath(rawPath)
-	trimmed := strings.Trim(normalizedPath, "/")
-	if trimmed == "" {
-		return manifestOperationScore{}
-	}
-	segments := strings.Split(trimmed, "/")
-	score := manifestOperationScore{segments: len(segments)}
-	for _, segment := range segments {
-		if isManifestVariableSegment(segment) {
-			score.variableCount++
-			continue
+func registerManifestRoute(matcher *http.ServeMux, pattern string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("invalid manifest route %q: %v", pattern, r)
 		}
-		score.literalSegments++
-		score.literalLength += len(segment)
-	}
-	return score
+	}()
+	matcher.Handle(pattern, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	return nil
 }
 
-func normalizeManifestPath(rawPath string) string {
+func manifestRoutePattern(op ManifestOperation) string {
+	method := strings.ToUpper(strings.TrimSpace(op.Method))
+	if method == "" {
+		return manifestPatternPath(op.Path)
+	}
+	return method + " " + manifestPatternPath(op.Path)
+}
+
+func manifestRequestURL(rawPath string) string {
+	return "http://manifest.local" + manifestPatternPath(rawPath)
+}
+
+func manifestPatternPath(rawPath string) string {
 	cleaned := strings.TrimSpace(rawPath)
 	if cleaned == "" {
 		return "/"
@@ -217,15 +161,7 @@ func normalizeManifestPath(rawPath string) string {
 	if !strings.HasPrefix(cleaned, "/") {
 		cleaned = "/" + cleaned
 	}
-	cleaned = path.Clean(cleaned)
-	if cleaned == "." {
-		return "/"
-	}
 	return cleaned
-}
-
-func isManifestVariableSegment(segment string) bool {
-	return strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}")
 }
 
 // TODO: use requestID inside the context
@@ -382,7 +318,8 @@ func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
 	models := []mongo.WriteModel{}
 
 	for _, field := range []string{"owner_teams", "teams"} {
-		models = append(models,
+		models = append(
+			models,
 			mongo.NewUpdateManyModel().
 				SetFilter(mongoBSON.M{field: oldName}).
 				SetUpdate(mongoBSON.M{"$addToSet": mongoBSON.M{field: newName}}),
