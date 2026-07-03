@@ -96,20 +96,37 @@ type ProxyOpts struct {
 
 // Match resolves the manifest action for the given method and path.
 func (m *ServiceManifest) Match(method, rawPath string) (string, bool) {
-	if m == nil {
+	op, ok := m.MatchOperation(method, rawPath)
+	if !ok {
 		return "", false
+	}
+	return op.Action, true
+}
+
+// MatchOperation resolves the manifest operation for the given method and path.
+func (m *ServiceManifest) MatchOperation(method, rawPath string) (ManifestOperation, bool) {
+	if m == nil {
+		return ManifestOperation{}, false
 	}
 	matcher, actionByPattern, err := m.compiledMatcher()
 	if err != nil {
-		return "", false
+		return ManifestOperation{}, false
 	}
 	req, err := http.NewRequest(strings.ToUpper(strings.TrimSpace(method)), manifestRequestURL(rawPath), nil)
 	if err != nil {
-		return "", false
+		return ManifestOperation{}, false
 	}
 	_, pattern := matcher.Handler(req)
 	action, ok := actionByPattern[pattern]
-	return action, ok
+	if !ok {
+		return ManifestOperation{}, false
+	}
+	for _, op := range m.Operations {
+		if manifestRoutePattern(op) == pattern && op.Action == action {
+			return op, true
+		}
+	}
+	return ManifestOperation{}, false
 }
 
 func (m *ServiceManifest) compiledMatcher() (*http.ServeMux, map[string]string, error) {
