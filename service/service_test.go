@@ -616,6 +616,7 @@ func (s *S) TestServiceManifestMatch(c *check.C) {
 		{method: "GET", path: "/rules", action: "rules.list", match: true},
 		{method: "GET", path: "/rules/123", action: "rules.read", match: true},
 		{method: "POST", path: "/rules/123/sync", action: "rules.sync", match: true},
+		{method: "HEAD", path: "/rules", action: "rules.list", match: true},
 		{method: "GET", path: "/rules/sync", action: "rules.sync.literal", match: true},
 		{method: "GET", path: "rules/sync", action: "rules.sync.literal", match: true},
 		{method: "DELETE", path: "/rules/123", match: false},
@@ -626,6 +627,29 @@ func (s *S) TestServiceManifestMatch(c *check.C) {
 		c.Assert(match, check.Equals, test.match, check.Commentf("method=%s path=%s", test.method, test.path))
 		c.Assert(action, check.Equals, test.action, check.Commentf("method=%s path=%s", test.method, test.path))
 	}
+}
+
+func (s *S) TestServiceManifestConflictingRoutes(c *check.C) {
+	manifest := &ServiceManifest{
+		Operations: []ManifestOperation{
+			{
+				Name:   "read-rule-a",
+				Method: "GET",
+				Path:   "/rules/{ruleId}",
+				Action: "rules.read.a",
+				Scope:  "entity",
+			},
+			{
+				Name:   "read-rule-b",
+				Method: "GET",
+				Path:   "/rules/{name}",
+				Action: "rules.read.b",
+				Scope:  "entity",
+			},
+		},
+	}
+	_, _, err := manifest.compiledMatcher()
+	c.Assert(err, check.ErrorMatches, `invalid manifest route "GET /rules/\{name\}": pattern "GET /rules/\{name\}" \(registered at .*?\) conflicts with pattern "GET /rules/\{ruleId\}" \(registered at .*?\):(?s).*`)
 }
 
 func (s *S) TestRenameServiceTeam(c *check.C) {
