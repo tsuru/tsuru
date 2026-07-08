@@ -1007,6 +1007,166 @@ func (s *S) TestListPermissions(c *check.C) {
 	})
 }
 
+func (s *S) findDynamicPermissionService(groups []dynamicPermissionService, serviceName string) (dynamicPermissionService, bool) {
+	for _, group := range groups {
+		if group.Service == serviceName {
+			return group, true
+		}
+	}
+	return dynamicPermissionService{}, false
+}
+
+func (s *S) TestListDynamicPermissions(c *check.C) {
+	svc := service.Service{
+		Name:       "dynamic-permissions-list",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "https://dynamic-permissions-list"},
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := service.Create(context.TODO(), svc)
+	c.Assert(err, check.IsNil)
+	err = service.UpdateManifest(context.TODO(), svc.Name, &service.ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []service.ManifestOperation{{
+			Name:       "sync-rule",
+			Method:     http.MethodPost,
+			Path:       "/rules/{ruleId}/sync",
+			Action:     "rules.sync",
+			Scope:      "entity",
+			EntityType: "rules",
+		}},
+	}, false)
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodGet, "/dynamic-permissions", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	var data []dynamicPermissionService
+	err = json.Unmarshal(rec.Body.Bytes(), &data)
+	c.Assert(err, check.IsNil)
+	dynamicService, ok := s.findDynamicPermissionService(data, svc.Name)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(len(dynamicService.Actions), check.Equals, 1)
+	c.Assert(dynamicService.Actions[0].Name, check.Equals, "service-action.dynamic-permissions-list.rules.sync")
+	c.Assert(dynamicService.Actions[0].Action, check.Equals, "rules.sync")
+	c.Assert(dynamicService.Actions[0].Method, check.Equals, http.MethodPost)
+	c.Assert(dynamicService.Actions[0].Path, check.Equals, "/rules/{ruleId}/sync")
+	c.Assert(dynamicService.Actions[0].Scope, check.Equals, "entity")
+	c.Assert(dynamicService.Actions[0].EntityType, check.Equals, "rules")
+	actionContexts := append([]string(nil), dynamicService.Actions[0].Contexts...)
+	sort.Strings(actionContexts)
+	c.Assert(actionContexts, check.DeepEquals, []string{
+		string(permTypes.CtxGlobal),
+		string(permTypes.CtxService),
+		string(permTypes.CtxServiceInstance),
+		string(permTypes.CtxTeam),
+	})
+}
+
+func (s *S) TestListDynamicPermissionsUnauthorized(c *check.C) {
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodGet, "/dynamic-permissions", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestAddDynamicPermissions(c *check.C) {
+	err := permission.RegisterDynamic("service-action.dynamic-add.example", []permTypes.ContextType{permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
+	defer permission.UnregisterDynamic("service-action.dynamic-add.example")
+	_, err = permission.NewRole(context.TODO(), "dynamic-role", "team", "")
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("permission=service-action.dynamic-add.example")
+	req, err := http.NewRequest(http.MethodPost, "/roles/dynamic-role/dynamic-permissions", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	role, err := permission.FindRole(context.TODO(), "dynamic-role")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.DynamicSchemeNames, check.DeepEquals, []string{"service-action.dynamic-add.example"})
+}
+
+func (s *S) TestAddDynamicPermissionsPermissionNotFound(c *check.C) {
+	_, err := permission.NewRole(context.TODO(), "dynamic-role-notfound", "team", "")
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("permission=service-action.not-registered")
+	req, err := http.NewRequest(http.MethodPost, "/roles/dynamic-role-notfound/dynamic-permissions", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(rec.Body.String(), check.Matches, "permission named .* not found\n")
+}
+
+func (s *S) TestRemoveDynamicPermissions(c *check.C) {
+	err := permission.RegisterDynamic("service-action.dynamic-remove.example", []permTypes.ContextType{permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
+	defer permission.UnregisterDynamic("service-action.dynamic-remove.example")
+	role, err := permission.NewRole(context.TODO(), "dynamic-remove-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(context.TODO(), "service-action.dynamic-remove.example")
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodDelete, "/roles/dynamic-remove-role/dynamic-permissions/service-action.dynamic-remove.example", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	role, err = permission.FindRole(context.TODO(), "dynamic-remove-role")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.DynamicSchemeNames, check.HasLen, 0)
+}
+
+func (s *S) TestRemoveDynamicPermissionsRoleNotFound(c *check.C) {
+	req, err := http.NewRequest(http.MethodDelete, "/roles/dynamic-missing/dynamic-permissions/service-action.dynamic-delete", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	rec := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestAddDefaultRole(c *check.C) {
 	_, err := permission.NewRole(context.TODO(), "r1", "team", "")
 	c.Assert(err, check.IsNil)

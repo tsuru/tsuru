@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -447,6 +448,189 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(permList)
+}
+
+type dynamicPermissionAction struct {
+	Name       string   `json:"name"`
+	Action     string   `json:"action"`
+	Method     string   `json:"method"`
+	Path       string   `json:"path"`
+	Scope      string   `json:"scope"`
+	EntityType string   `json:"entity_type"`
+	Contexts   []string `json:"contexts"`
+}
+
+type dynamicPermissionService struct {
+	Service string                    `json:"service"`
+	Actions []dynamicPermissionAction `json:"actions"`
+}
+
+// title: list dynamic permissions
+// path: /dynamic-permissions
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: Ok
+//	401: Unauthorized
+func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermRoleUpdate) {
+		return permission.ErrUnauthorized
+	}
+	operationByName := make(map[string]service.ManifestOperation)
+	services, err := service.GetServices(ctx)
+	if err != nil {
+		return err
+	}
+	for _, svc := range services {
+		if svc.Manifest == nil {
+			continue
+		}
+		for _, op := range svc.Manifest.Operations {
+			actionName := fmt.Sprintf("service-actions.%s.%s", svc.Name, op.Action)
+			operationByName[actionName] = op
+		}
+	}
+
+	actionsByService := map[string][]dynamicPermissionAction{}
+	for _, scheme := range permission.ListDynamic() {
+		operation, ok := operationByName[scheme.FullName()]
+		if !ok {
+			continue
+		}
+		serviceAndAction := strings.TrimPrefix(scheme.FullName(), "service-action.")
+		if serviceAndAction == scheme.FullName() {
+			continue
+		}
+		parts := strings.SplitN(serviceAndAction, ".", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		serviceName := parts[0]
+		contexts := scheme.AllowedContexts()
+		contextNames := make([]string, len(contexts))
+		for j, ctx := range contexts {
+			contextNames[j] = string(ctx)
+		}
+		actionsByService[serviceName] = append(actionsByService[serviceName], dynamicPermissionAction{
+			Name:       scheme.FullName(),
+			Action:     operation.Action,
+			Method:     operation.Method,
+			Path:       operation.Path,
+			Scope:      operation.Scope,
+			EntityType: operation.EntityType,
+			Contexts:   contextNames,
+		})
+	}
+
+	result := make([]dynamicPermissionService, 0, len(actionsByService))
+	for serviceName, actions := range actionsByService {
+		sort.Slice(actions, func(i, j int) bool {
+			return actions[i].Name < actions[j].Name
+		})
+		result = append(result, dynamicPermissionService{
+			Service: serviceName,
+			Actions: actions,
+		})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Service < result[j].Service
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(result)
+}
+
+// title: add dynamic permissions
+// path: /roles/{name}/dynamic-permissions
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	409: Permission not allowed
+func addDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermRoleUpdatePermissionAdd) {
+		return permission.ErrUnauthorized
+	}
+	roleName := r.URL.Query().Get(":name")
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdatePermissionAdd,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(ctx, err) }()
+	role, err := permission.FindRole(ctx, roleName)
+	if err != nil {
+		return err
+	}
+
+	permissions, _ := InputValues(r, "permission")
+	err = role.AddDynamicPermissions(ctx, permissions...)
+	if err == permTypes.ErrInvalidPermissionName {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	if perr, ok := err.(*permTypes.ErrPermissionNotFound); ok {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: perr.Error(),
+		}
+	}
+	if perr, ok := err.(*permTypes.ErrPermissionNotAllowed); ok {
+		return &errors.HTTP{
+			Code:    http.StatusConflict,
+			Message: perr.Error(),
+		}
+	}
+	return err
+}
+
+// title: remove dynamic permission
+// path: /roles/{name}/dynamic-permissions/{permission}
+// method: DELETE
+// responses:
+//
+//	200: Permission removed
+//	401: Unauthorized
+//	404: Not found
+func removeDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermRoleUpdatePermissionRemove) {
+		return permission.ErrUnauthorized
+	}
+	roleName := r.URL.Query().Get(":name")
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdatePermissionRemove,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(ctx, err) }()
+	permName := r.URL.Query().Get(":permission")
+	role, err := getRoleReturnNotFound(ctx, roleName)
+	if err != nil {
+		return err
+	}
+
+	return role.RemoveDynamicPermissions(ctx, permName)
 }
 
 // title: add default role

@@ -260,6 +260,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/services/{name}/plans", AuthorizationRequiredHandler(servicePlans))
 	m.Add("1.0", http.MethodGet, "/services/{name}/doc", AuthorizationRequiredHandler(serviceDoc))
 	m.Add("1.0", http.MethodPut, "/services/{name}/doc", AuthorizationRequiredHandler(serviceAddDoc))
+	m.Add("1.0", http.MethodPut, "/services/{service}/manifest", AuthorizationRequiredHandler(setServiceManifest))
+	m.Add("1.0", http.MethodGet, "/services/{service}/manifest", AuthorizationRequiredHandler(getServiceManifest))
 	m.Add("1.0", http.MethodPut, "/services/{service}/team/{team}", AuthorizationRequiredHandler(grantServiceAccess))
 	m.Add("1.0", http.MethodDelete, "/services/{service}/team/{team}", AuthorizationRequiredHandler(revokeServiceAccess))
 
@@ -408,8 +410,11 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/role/default", AuthorizationRequiredHandler(addDefaultRole))
 	m.Add("1.0", http.MethodDelete, "/role/default", AuthorizationRequiredHandler(removeDefaultRole))
 	m.Add("1.0", http.MethodGet, "/permissions", AuthorizationRequiredHandler(listPermissions))
+	m.Add("1.0", http.MethodGet, "/dynamic-permissions", AuthorizationRequiredHandler(listDynamicPermissions))
 	m.Add("1.6", http.MethodPost, "/roles/{name}/token", AuthorizationRequiredHandler(assignRoleToToken))
 	m.Add("1.6", http.MethodDelete, "/roles/{name}/token/{token_id}", AuthorizationRequiredHandler(dissociateRoleFromToken))
+	m.Add("1.0", http.MethodPost, "/roles/{name}/dynamic-permissions", AuthorizationRequiredHandler(addDynamicPermissions))
+	m.Add("1.0", http.MethodDelete, "/roles/{name}/dynamic-permissions/{permission}", AuthorizationRequiredHandler(removeDynamicPermissions))
 	m.Add("1.9", http.MethodPost, "/roles/{name}/group", AuthorizationRequiredHandler(assignRoleToGroup))
 	m.Add("1.9", http.MethodDelete, "/roles/{name}/group/{group_name}", AuthorizationRequiredHandler(dissociateRoleFromGroup))
 
