@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -51,7 +50,6 @@ var (
 
 type ServiceInstance struct {
 	Name        string                 `json:"name"`
-	Id          int                    `json:"id"`
 	ServiceName string                 `bson:"service_name" json:"service_name"`
 	PlanName    string                 `bson:"plan_name" json:"plan_name"`
 	Apps        []string               `json:"apps"`
@@ -103,14 +101,10 @@ func DeleteInstance(ctx context.Context, si *ServiceInstance, evt *event.Event, 
 }
 
 func (si *ServiceInstance) GetIdentifier() string {
-	if si.Id != 0 {
-		return strconv.Itoa(si.Id)
-	}
 	return si.Name
 }
 
 type ServiceInstanceWithInfo struct {
-	Id          int
 	Name        string
 	Pool        string
 	Teams       []string
@@ -130,7 +124,6 @@ func (si *ServiceInstance) ToInfo(ctx context.Context) (ServiceInstanceWithInfo,
 		info = nil
 	}
 	return ServiceInstanceWithInfo{
-		Id:          si.Id,
 		Name:        si.Name,
 		Pool:        si.Pool,
 		Teams:       si.Teams,

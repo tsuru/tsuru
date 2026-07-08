@@ -493,7 +493,6 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 			"name":         "my instance",
 			"tags":         []interface{}{"my tag"},
 			"team_owner":   "t1",
-			"id":           float64(0),
 			"teams":        []interface{}{"t1", "t2"},
 			"apps":         []interface{}{"app1", "app2"},
 			"jobs":         []interface{}{"job1"},

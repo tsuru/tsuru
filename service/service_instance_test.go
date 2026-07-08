@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -649,7 +648,6 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"Id":          float64(0),
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -678,7 +676,6 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"Id":          float64(0),
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -707,7 +704,6 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *che
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"Id":          float64(0),
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -1356,9 +1352,6 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 	srv := ServiceInstance{Name: "mongodb"}
 	identifier := srv.GetIdentifier()
 	c.Assert(identifier, check.Equals, srv.Name)
-	srv.Id = 10
-	identifier = srv.GetIdentifier()
-	c.Assert(identifier, check.Equals, strconv.Itoa(srv.Id))
 }
 
 func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
