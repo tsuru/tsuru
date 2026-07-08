@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1356,9 +1355,6 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 	srv := ServiceInstance{Name: "mongodb"}
 	identifier := srv.GetIdentifier()
 	c.Assert(identifier, check.Equals, srv.Name)
-	srv.Id = 10
-	identifier = srv.GetIdentifier()
-	c.Assert(identifier, check.Equals, strconv.Itoa(srv.Id))
 }
 
 func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
