@@ -2777,3 +2777,55 @@ func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
 		},
 	}, appCRD.Spec)
 }
+
+// This test is currently commented out because the "POST" verb of the mock client
+// is always returning nil.
+//
+// func (s *S) TestUploadFile(c *check.C) {
+// 	ctx := context.TODO()
+// 	app, wait, rollback := s.mock.DefaultReactions(c)
+// 	defer rollback()
+
+// 	version := newSuccessfulVersion(c, app, map[string][]string{
+// 		"web": {"python", "myapp.py"},
+// 	})
+// 	err := s.p.AddUnits(ctx, app, 1, "web", version, nil)
+// 	require.NoError(s.t, err)
+// 	wait()
+
+// 	pods, err := s.client.CoreV1().Pods("default").List(ctx, metav1.ListOptions{})
+// 	require.NoError(s.t, err)
+// 	require.Len(s.t, pods.Items, 1)
+// 	unit := pods.Items[0].Name
+
+// 	filename := "file.txt"
+// 	content := []byte("test file")
+// 	path := fmt.Sprintf("/home/application/current/%s", filename)
+
+// 	var file bytes.Buffer
+// 	tarWriter := tar.NewWriter(&file)
+// 	header := &tar.Header{
+// 		Name: filename,
+// 		Mode: 0644,
+// 		Size: int64(len(content)),
+// 	}
+// 	tarWriter.WriteHeader(header)
+// 	tarWriter.Write(content)
+// 	err = tarWriter.Close()
+// 	require.NoError(s.t, err)
+
+// 	err = s.p.UploadFile(ctx, app, unit, file.Bytes(), path)
+// 	require.NoError(s.t, err)
+
+// 	actions := s.client.Actions()
+// 	var execAction *ktesting.GetActionImpl
+// 	for _, action := range actions {
+// 		if action.GetSubresource() == "exec" {
+// 			execAction = action.(*ktesting.GetActionImpl)
+// 			break
+// 		}
+// 	}
+
+// 	require.NotNil(s.t, execAction)
+// 	require.Equal(s.t, unit, execAction.GetName())
+// }
