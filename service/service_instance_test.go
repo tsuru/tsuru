@@ -648,7 +648,6 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"Id":          float64(0),
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -677,7 +676,6 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"Id":          float64(0),
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -706,7 +704,6 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *che
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"Id":          float64(0),
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
