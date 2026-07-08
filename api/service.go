@@ -362,6 +362,91 @@ func serviceAuthenticatedResourcesProxy(w http.ResponseWriter, r *http.Request, 
 	return service.Proxy(ctx, &s, path, evt, requestIDHeader(r), w, r)
 }
 
+// title: set service manifest
+// path: /services/{service}/manifest
+// method: PUT
+// consume: application/json
+// responses:
+//
+//	200: Manifest applied
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Service not found
+//	409: Manifest would orphan dynamic grants
+func setServiceManifest(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	serviceName := r.URL.Query().Get(":service")
+	s, err := getService(ctx, serviceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdate,
+		contextsForServiceProvision(&s)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	var force bool
+	force, _ = strconv.ParseBool(r.URL.Query().Get("force"))
+	var manifest service.ServiceManifest
+	if err = ParseInput(r, &manifest); err != nil {
+		return err
+	}
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceUpdate,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(ctx, err) }()
+	if err = service.UpdateManifest(ctx, s.Name, &manifest, force); err != nil {
+		if conflictErr, ok := err.(*service.ManifestConflictError); ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			if encodeErr := json.NewEncoder(w).Encode(conflictErr); encodeErr != nil {
+				return encodeErr
+			}
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+// title: get service manifest
+// path: /services/{service}/manifest
+// method: GET
+// responses:
+//
+//	200: Stored manifest
+//	401: Unauthorized
+//	404: Service not found
+func getServiceManifest(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	serviceName := r.URL.Query().Get(":service")
+	s, err := getService(ctx, serviceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdate,
+		contextsForServiceProvision(&s)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(s.Manifest)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // title: grant access to a service
 // path: /services/{service}/team/{team}
 // method: PUT
