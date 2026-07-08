@@ -480,13 +480,59 @@ and unchanged.
 
 ## 14. Events / audit
 
-Reuse the existing `event.New` block in the proxy handlers (non-GET/HEAD). For
-feature-enabled matched requests, set the event's `CustomData` to include the
-resolved `action` and manifest operation `name` (and keep the `method`). This gives
-per-action audit trails aligned with the V3 goal of mapping operations to tsuru
-events. Do not change the event `Kind` type signature; carry the action in custom
-data (or a dedicated field) to avoid touching the static permission scheme used as
-`Kind`.
+Reuse the existing `event.New` block in the proxy handlers (non-GET/HEAD), but for
+feature-enabled **matched** requests the event MUST be created with the resolved
+dynamic permission scheme as `Kind`:
+
+```go
+kind, ok := permission.LookupDynamic("service-action." + svc.Name + "." + op.Action)
+if !ok {
+    // Registry/startup/ingest bug: fail closed instead of emitting an event with
+    // an action that cannot be granted or audited consistently.
+    return permission.ErrUnauthorized
+}
+evt, err = event.New(ctx, &event.Opts{
+    Target:     serviceInstanceTarget(serviceName, serviceInstance.Name),
+    Kind:       kind,
+    Owner:      t,
+    RemoteAddr: r.RemoteAddr,
+    CustomData: serviceInstanceProxyEventData(r, authResult),
+    Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
+        contextsForServiceInstance(serviceInstance, serviceName)...),
+})
+```
+
+Keep `Allowed` as the existing static `service-instance.read.events` permission
+with the service-instance contexts. Event read access (`api/event.go:eventInfo` and
+`eventList`) authorizes through `Allowed.Scheme`, not through `Kind`, so dynamic
+event kinds do not require dynamic read-event permissions and do not leak through
+the static `Permissions(ctx)` path.
+
+Current event code supports this without storage changes:
+
+- `event.Opts.Kind` is a `*permTypes.PermissionScheme`; `event.New` stores
+  `kind.type="permission"` and `kind.name=opts.Kind.FullName()` without resolving
+  the kind through the static permission registry.
+- `types/event.EventData.Kind` is persisted as plain `{type, name}` data.
+- The `events` collection already indexes `kind.name`, `starttime`,
+  `allowed.scheme`, and the compound
+  `{target.value, kind.name, starttime}` in `db/storagev2/indexes.go`; dynamic
+  action names therefore use the same event-list/kind-filter indexes as static
+  event kinds.
+- `/events/kinds` uses Mongo `Distinct("kind")`, so dynamic action kinds will show
+  up automatically after events are emitted.
+- Webhooks match exact `KindNames` from `evt.Kind.Name`; event blocks use prefix
+  matching on `KindName`. Dynamic names therefore enable per-action webhook and
+  block behavior such as `service-action.acl.rules.sync` or the broader prefix
+  `service-action.acl.rules`.
+
+For feature-disabled services and feature-enabled requests that are allowed only
+through an unmatched-path legacy fallback, keep the legacy
+`service-instance.update.proxy` event kind because there is no resolved dynamic
+action. For matched requests allowed by `legacyCompat`, still use the resolved
+dynamic kind; `legacyCompat` changes only the authorization fallback, not the audit
+identity. Keep `CustomData` with `method`, resolved `action`, and manifest
+operation `name` for display and migration diagnostics.
 
 ---
 
@@ -527,6 +573,9 @@ data (or a dedicated field) to avoid touching the static permission scheme used 
   per-service `strictActions` flag, defaulting to `true` (deny).
 - **R10** — Scheme names MUST be namespaced `service-action.<service>.<action>` with
   validated charset; `<action>` MAY be dotted for hierarchical grants.
+- **R11** — For feature-enabled matched proxy requests, tsuru events MUST use the
+  resolved dynamic permission scheme as `Kind`; event visibility MUST remain gated
+  by the static `service-instance.read.events` `Allowed` permission.
 
 ---
 
@@ -548,7 +597,8 @@ data (or a dedicated field) to avoid touching the static permission scheme used 
 6. **Startup re-population** — hook in API bootstrap before serving; iterate
    `GetServices` and register. Test restart resolves grants.
 7. **Proxy enforcement** — implement §11 algorithm in the instance proxy handlers;
-   wire `legacyCompat`/`strictActions`; event custom-data.
+   wire `legacyCompat`/`strictActions`; create matched proxy events with the
+   dynamic permission `Kind` and keep event custom-data.
 8. **API endpoints** — `PUT/GET /services/{service}/manifest`,
    `GET /dynamic-permissions`, `POST/DELETE /roles/{name}/dynamic-permissions`.
 9. **Migration nudge** — recurring warning while `legacyCompat` enabled;

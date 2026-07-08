@@ -2511,8 +2511,8 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyDynamicPermission(c *chec
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  token.GetUserName(),
-		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		Kind:   "service-action.foo.rules.sync",
+		StartCustomData: []map[string]any{
 			{"name": "method", "value": "POST"},
 			{"name": "action", "value": "rules.sync"},
 			{"name": "operation", "value": "sync-rule"},
@@ -2588,6 +2588,8 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyLegacyCompatFallback(c *c
 	}
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
+	err = permission.RegisterDynamic("service-action.foo.rules.sync", []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxService, permTypes.CtxTeam})
+	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -2600,6 +2602,16 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyLegacyCompatFallback(c *c
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(proxiedRequest, check.NotNil)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("foo", "foo-instance"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-action.foo.rules.sync",
+		StartCustomData: []map[string]any{
+			{"name": "method", "value": "POST"},
+			{"name": "action", "value": "rules.sync"},
+			{"name": "operation", "value": "sync-rule"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2UnmatchedNonStrictFallsBackToLegacyPermission(c *check.C) {
