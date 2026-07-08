@@ -33,18 +33,19 @@ import (
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
+type serviceInstanceProxyAuthResult struct {
+	matched       bool
+	action        string
+	operationName string
+	eventKind     *permTypes.PermissionScheme
+}
+
 func serviceInstanceTarget(name, instance string) eventTypes.Target {
 	return eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
 }
 
 func serviceIntancePermName(serviceName, instanceName string) string {
 	return fmt.Sprintf("%s/%s", serviceName, instanceName)
-}
-
-type serviceInstanceProxyAuthResult struct {
-	matched       bool
-	action        string
-	operationName string
 }
 
 func dynamicActionPermissionName(serviceName, action string) string {
@@ -66,36 +67,42 @@ func normalizeServiceInstanceManifestPath(instance *service.ServiceInstance, req
 
 func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc service.Service, instance *service.ServiceInstance, method, requestPath string) (serviceInstanceProxyAuthResult, error) {
 	ctxs := contextsForServiceInstance(instance, svc.Name)
+	result := serviceInstanceProxyAuthResult{
+		eventKind: permission.PermServiceInstanceUpdateProxy,
+	}
 	if svc.Manifest == nil || !svc.Manifest.Enabled {
 		if !permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy, ctxs...) {
 			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
 		}
-		return serviceInstanceProxyAuthResult{}, nil
+		return result, nil
 	}
 	normalizedPath := normalizeServiceInstanceManifestPath(instance, requestPath)
 	op, matched := svc.Manifest.MatchOperation(method, normalizedPath)
 	if matched {
+		kind, ok := permission.LookupDynamic(dynamicActionPermissionName(svc.Name, op.Action))
+		if !ok {
+			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
+		}
+		result.eventKind = kind
 		dynamicPerms, err := t.DynamicPermissions(ctx)
 		if err != nil {
 			return serviceInstanceProxyAuthResult{}, err
 		}
 		if permission.CheckDynamic(dynamicPerms, dynamicActionPermissionName(svc.Name, op.Action), ctxs...) {
-			return serviceInstanceProxyAuthResult{
-				matched:       true,
-				action:        op.Action,
-				operationName: op.Name,
-			}, nil
+			result.matched = true
+			result.action = op.Action
+			result.operationName = op.Name
+			return result, nil
 		}
 	}
 	allowLegacy := svc.Manifest.LegacyCompat && (matched || !svc.Manifest.StrictActions)
 	allowUnmatchedFallback := !matched && !svc.Manifest.StrictActions && !svc.Manifest.LegacyCompat
 	if allowLegacy || allowUnmatchedFallback {
 		if permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy, ctxs...) {
-			return serviceInstanceProxyAuthResult{
-				matched:       matched,
-				action:        op.Action,
-				operationName: op.Name,
-			}, nil
+			result.matched = matched
+			result.action = op.Action
+			result.operationName = op.Name
+			return result, nil
 		}
 	}
 	return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
@@ -814,7 +821,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
-			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Kind:       authResult.eventKind,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
 			CustomData: serviceInstanceProxyEventData(r, authResult),
@@ -861,7 +868,7 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
-			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Kind:       authResult.eventKind,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
 			CustomData: serviceInstanceProxyEventData(r, authResult),
