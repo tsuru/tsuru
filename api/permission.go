@@ -482,8 +482,8 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			contextNames[j] = string(ctx)
 		}
 		actionsByService[serviceName] = append(actionsByService[serviceName], permissionSchemeData{
-			Name:       scheme.FullName(),
-			Contexts:   contextNames,
+			Name:     scheme.FullName(),
+			Contexts: contextNames,
 		})
 	}
 

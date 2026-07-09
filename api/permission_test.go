@@ -1020,13 +1020,13 @@ func (s *S) TestListPermissionsIncludesDynamicPermissions(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []service.ManifestOperation{{
-			Method:     http.MethodPost,
-			Path:       "/rules/{ruleId}/sync",
-			Action:     "rules.sync",
+			Method: http.MethodPost,
+			Path:   "/rules/{ruleId}/sync",
+			Action: "rules.sync",
 		}, {
-			Method:     http.MethodGet,
-			Path:       "/rules/{ruleId}",
-			Action:     "rules.get",
+			Method: http.MethodGet,
+			Path:   "/rules/{ruleId}",
+			Action: "rules.get",
 		}},
 	}, false)
 	c.Assert(err, check.IsNil)

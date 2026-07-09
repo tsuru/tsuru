@@ -34,9 +34,9 @@ import (
 )
 
 type serviceInstanceProxyAuthResult struct {
-	matched       bool
-	action        string
-	eventKind     *permTypes.PermissionScheme
+	matched   bool
+	action    string
+	eventKind *permTypes.PermissionScheme
 }
 
 func serviceInstanceTarget(name, instance string) eventTypes.Target {

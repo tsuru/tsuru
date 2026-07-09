@@ -62,9 +62,9 @@ func (s *S) TestCreateService(c *check.C) {
 			LegacyCompat:    true,
 			LegacyEnabledAt: &legacyEnabledAt,
 			Operations: []ManifestOperation{{
-				Method:     "POST",
-				Path:       "/rules/{ruleId}/sync",
-				Action:     "rules.sync",
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
 			}},
 		},
 	}
