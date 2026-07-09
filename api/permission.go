@@ -486,9 +486,8 @@ func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token
 	for _, svc := range services {
 		if svc.Manifest == nil {
 			continue
-		}
 		for _, op := range svc.Manifest.Operations {
-			actionName := fmt.Sprintf("service-actions.%s.%s", svc.Name, op.Action)
+			actionName := fmt.Sprintf("service-action.%s.%s", svc.Name, op.Action)
 			operationByName[actionName] = op
 		}
 	}
