@@ -131,41 +131,29 @@ func normalizeManifest(manifest *ServiceManifest, previous *ServiceManifest) (*S
 			normalized.LegacyEnabledAt = &now
 		}
 	}
-	seenNames := map[string]struct{}{}
+	seenActions := map[string]struct{}{}
 	seenRoutes := map[string]struct{}{}
 	for _, rawOp := range manifest.Operations {
 		op := ManifestOperation{
-			Name:       strings.TrimSpace(rawOp.Name),
-			Method:     strings.ToUpper(strings.TrimSpace(rawOp.Method)),
-			Path:       manifestPatternPath(rawOp.Path),
-			Action:     strings.TrimSpace(rawOp.Action),
-			Scope:      strings.TrimSpace(rawOp.Scope),
-			EntityType: strings.TrimSpace(rawOp.EntityType),
-		}
-		if op.Name == "" {
-			return nil, fmt.Errorf("manifest operation name is required")
-		}
-		if _, ok := seenNames[op.Name]; ok {
-			return nil, fmt.Errorf("duplicate manifest operation name %q", op.Name)
-		}
-		seenNames[op.Name] = struct{}{}
-		if _, ok := validManifestHTTPMethods[op.Method]; !ok {
-			return nil, fmt.Errorf("invalid manifest method %q for operation %q", op.Method, op.Name)
+			Method: strings.ToUpper(strings.TrimSpace(rawOp.Method)),
+			Path:   manifestPatternPath(rawOp.Path),
+			Action: strings.TrimSpace(rawOp.Action),
 		}
 		if op.Action == "" {
-			return nil, fmt.Errorf("manifest action is required for operation %q", op.Name)
+			return nil, fmt.Errorf("manifest action is required for operation %q", op.Path)
+		}
+		if _, ok := seenActions[op.Action]; ok {
+			return nil, fmt.Errorf("duplicate manifest operation action %q", op.Action)
+		}
+		seenActions[op.Action] = struct{}{}
+		if _, ok := validManifestHTTPMethods[op.Method]; !ok {
+			return nil, fmt.Errorf("invalid manifest method %q for operation %q", op.Method, op.Action)
 		}
 		if !manifestActionValidationRegexp.MatchString(op.Action) {
-			return nil, fmt.Errorf("invalid manifest action %q for operation %q", op.Action, op.Name)
+			return nil, fmt.Errorf("invalid manifest action %q for operation %q", op.Action, op.Path)
 		}
 		if strings.TrimSpace(rawOp.Path) == "" {
-			return nil, fmt.Errorf("manifest path is required for operation %q", op.Name)
-		}
-		if op.Scope == "" {
-			op.Scope = "entity"
-		}
-		if op.Scope != "entity" && op.Scope != "collection" {
-			return nil, fmt.Errorf("invalid manifest scope %q for operation %q", op.Scope, op.Name)
+			return nil, fmt.Errorf("manifest path is required for operation %q", op.Action)
 		}
 		routeKey := op.Method + routeKeySeparator + op.Path
 		if _, ok := seenRoutes[routeKey]; ok {

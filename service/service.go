@@ -75,12 +75,9 @@ type ServiceManifest struct {
 
 // ManifestOperation maps an HTTP method and path template to an authorization action.
 type ManifestOperation struct {
-	Name       string `bson:"name" json:"name"`
-	Method     string `bson:"method" json:"method"`
-	Path       string `bson:"path" json:"path"`
-	Action     string `bson:"action" json:"action"`
-	Scope      string `bson:"scope" json:"scope"`
-	EntityType string `bson:"entity_type,omitempty" json:"entity_type,omitempty"`
+	Method string `bson:"method" json:"method"`
+	Path   string `bson:"path" json:"path"`
+	Action string `bson:"action" json:"action"`
 }
 
 type BindAppParameters map[string]any

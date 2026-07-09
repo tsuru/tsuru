@@ -1029,12 +1029,9 @@ func (s *S) TestListDynamicPermissions(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []service.ManifestOperation{{
-			Name:       "sync-rule",
 			Method:     http.MethodPost,
 			Path:       "/rules/{ruleId}/sync",
 			Action:     "rules.sync",
-			Scope:      "entity",
-			EntityType: "rules",
 		}},
 	}, false)
 	c.Assert(err, check.IsNil)
@@ -1060,8 +1057,6 @@ func (s *S) TestListDynamicPermissions(c *check.C) {
 	c.Assert(dynamicService.Actions[0].Action, check.Equals, "rules.sync")
 	c.Assert(dynamicService.Actions[0].Method, check.Equals, http.MethodPost)
 	c.Assert(dynamicService.Actions[0].Path, check.Equals, "/rules/{ruleId}/sync")
-	c.Assert(dynamicService.Actions[0].Scope, check.Equals, "entity")
-	c.Assert(dynamicService.Actions[0].EntityType, check.Equals, "rules")
 	actionContexts := append([]string(nil), dynamicService.Actions[0].Contexts...)
 	sort.Strings(actionContexts)
 	c.Assert(actionContexts, check.DeepEquals, []string{

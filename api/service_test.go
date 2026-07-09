@@ -461,7 +461,7 @@ func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
 		Scheme:  permission.PermServiceUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	manifest := `{"enabled":true,"strict_actions":true,"operations":[{"name":"sync-rule","method":"post","path":"/rules/{ruleId}/sync","action":"rules.sync","scope":"entity","entity_type":"rules"}]}`
+	manifest := `{"enabled":true,"strict_actions":true,"operations":[{"method":"post","path":"/rules/{ruleId}/sync","action":"rules.sync"}]}`
 
 	putRecorder, putRequest := s.makeRequest(http.MethodPut, "/services/manifest-service/manifest", manifest, c)
 	putRequest.Header.Set("Content-Type", "application/json")
@@ -480,12 +480,9 @@ func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []service.ManifestOperation{{
-			Name:       "sync-rule",
 			Method:     http.MethodPost,
 			Path:       "/rules/{ruleId}/sync",
 			Action:     "rules.sync",
-			Scope:      "entity",
-			EntityType: "rules",
 		}},
 	})
 }
@@ -503,7 +500,6 @@ func (s *ProvisionSuite) TestSetServiceManifestConflictWithoutForce(c *check.C) 
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []service.ManifestOperation{{
-			Name:   "sync-rule",
 			Method: http.MethodPost,
 			Path:   "/rules/{ruleId}/sync",
 			Action: "rules.sync",

@@ -26,7 +26,6 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "sync-rule",
 			Method: "post",
 			Path:   "rules/{ruleId}/sync",
 			Action: "rules.sync",
@@ -45,11 +44,9 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "sync-rule",
 			Method: http.MethodPost,
 			Path:   "/rules/{ruleId}/sync",
 			Action: "rules.sync",
-			Scope:  "entity",
 		}},
 	})
 }
@@ -67,7 +64,6 @@ func (s *S) TestIngestManifestRejectsOrphanedDynamicGrants(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "sync-rule",
 			Method: http.MethodPost,
 			Path:   "/rules/{ruleId}/sync",
 			Action: "rules.sync",
@@ -84,7 +80,6 @@ func (s *S) TestIngestManifestRejectsOrphanedDynamicGrants(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "list-rules",
 			Method: http.MethodGet,
 			Path:   "/rules",
 			Action: "rules.list",
@@ -117,7 +112,6 @@ func (s *S) TestIngestManifestForceRemovesOrphanedDynamicGrants(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "sync-rule",
 			Method: http.MethodPost,
 			Path:   "/rules/{ruleId}/sync",
 			Action: "rules.sync",
@@ -134,7 +128,6 @@ func (s *S) TestIngestManifestForceRemovesOrphanedDynamicGrants(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "list-rules",
 			Method: http.MethodGet,
 			Path:   "/rules",
 			Action: "rules.list",
@@ -164,11 +157,11 @@ func (s *S) TestIngestManifestValidation(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{
-			{Name: "dup", Method: http.MethodGet, Path: "/rules", Action: "rules.list"},
-			{Name: "dup", Method: http.MethodPost, Path: "/rules", Action: "rules.sync"},
+			{Method: http.MethodGet, Path: "/rules", Action: "rules.duplicate"},
+			{Method: http.MethodPost, Path: "/rules/{id}", Action: "rules.duplicate"},
 		},
 	}, false)
-	c.Assert(err, check.ErrorMatches, `duplicate manifest operation name "dup"`)
+	c.Assert(err, check.ErrorMatches, `duplicate manifest operation action "rules\\.duplicate"`)
 }
 
 func (s *S) TestManifestGrantConflicts(c *check.C) {
@@ -197,7 +190,6 @@ func (s *S) TestRepopulateDynamicPermissions(c *check.C) {
 			Enabled:       true,
 			StrictActions: true,
 			Operations: []ManifestOperation{{
-				Name:   "sync-rule",
 				Method: http.MethodPost,
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
@@ -215,7 +207,6 @@ func (s *S) TestRepopulateDynamicPermissions(c *check.C) {
 			Enabled:       true,
 			StrictActions: true,
 			Operations: []ManifestOperation{{
-				Name:   "bad-rule",
 				Method: http.MethodGet,
 				Path:   "/rules",
 				Action: "invalid action",

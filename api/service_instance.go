@@ -91,7 +91,7 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 		if permission.CheckDynamic(dynamicPerms, dynamicActionPermissionName(svc.Name, op.Action), ctxs...) {
 			result.matched = true
 			result.action = op.Action
-			result.operationName = op.Name
+			result.operationName = op.Action
 			return result, nil
 		}
 	}
@@ -101,7 +101,7 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 		if permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy, ctxs...) {
 			result.matched = matched
 			result.action = op.Action
-			result.operationName = op.Name
+			result.operationName = op.Action
 			return result, nil
 		}
 	}
