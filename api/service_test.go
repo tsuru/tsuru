@@ -445,7 +445,7 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 			{"name": "username", "value": "mysqltest"},
 			{"name": "endpoint", "value": "mysqlapi.com"},
 		},
-		}, eventtest.HasEvent)
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
@@ -480,9 +480,9 @@ func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []service.ManifestOperation{{
-			Method:     http.MethodPost,
-			Path:       "/rules/{ruleId}/sync",
-			Action:     "rules.sync",
+			Method: http.MethodPost,
+			Path:   "/rules/{ruleId}/sync",
+			Action: "rules.sync",
 		}},
 	})
 }
@@ -522,7 +522,7 @@ func (s *ProvisionSuite) TestSetServiceManifestConflictWithoutForce(c *check.C) 
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	var conflict struct {
-		Service  string `json:"service"`
+		Service   string `json:"service"`
 		Conflicts []struct {
 			Action string   `json:"action"`
 			Roles  []string `json:"roles"`
