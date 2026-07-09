@@ -1007,16 +1007,7 @@ func (s *S) TestListPermissions(c *check.C) {
 	})
 }
 
-func (s *S) findDynamicPermissionService(groups []dynamicPermissionService, serviceName string) (dynamicPermissionService, bool) {
-	for _, group := range groups {
-		if group.Service == serviceName {
-			return group, true
-		}
-	}
-	return dynamicPermissionService{}, false
-}
-
-func (s *S) TestListDynamicPermissions(c *check.C) {
+func (s *S) TestListPermissionsIncludesDynamicPermissions(c *check.C) {
 	svc := service.Service{
 		Name:       "dynamic-permissions-list",
 		Password:   "abcde",
@@ -1032,12 +1023,16 @@ func (s *S) TestListDynamicPermissions(c *check.C) {
 			Method:     http.MethodPost,
 			Path:       "/rules/{ruleId}/sync",
 			Action:     "rules.sync",
+		}, {
+			Method:     http.MethodGet,
+			Path:       "/rules/{ruleId}",
+			Action:     "rules.get",
 		}},
 	}, false)
 	c.Assert(err, check.IsNil)
 
 	rec := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodGet, "/dynamic-permissions", nil)
+	req, err := http.NewRequest(http.MethodGet, "/permissions", nil)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permTypes.Permission{
 		Scheme:  permission.PermRoleUpdate,
@@ -1047,29 +1042,35 @@ func (s *S) TestListDynamicPermissions(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	var data []dynamicPermissionService
+	var data []permissionSchemeData
 	err = json.Unmarshal(rec.Body.Bytes(), &data)
 	c.Assert(err, check.IsNil)
-	dynamicService, ok := s.findDynamicPermissionService(data, svc.Name)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(len(dynamicService.Actions), check.Equals, 1)
-	c.Assert(dynamicService.Actions[0].Name, check.Equals, "service-action.dynamic-permissions-list.rules.sync")
-	c.Assert(dynamicService.Actions[0].Action, check.Equals, "rules.sync")
-	c.Assert(dynamicService.Actions[0].Method, check.Equals, http.MethodPost)
-	c.Assert(dynamicService.Actions[0].Path, check.Equals, "/rules/{ruleId}/sync")
-	actionContexts := append([]string(nil), dynamicService.Actions[0].Contexts...)
+	servicePermissionPrefix := "service-action." + svc.Name + "."
+	dynamicPermissions := make([]string, 0, 2)
+	contextsByName := make(map[string][]string)
+	for _, perm := range data {
+		if !strings.HasPrefix(perm.Name, servicePermissionPrefix) {
+			continue
+		}
+		dynamicPermissions = append(dynamicPermissions, perm.Name)
+		contextsByName[perm.Name] = perm.Contexts
+	}
+	c.Assert(dynamicPermissions, check.DeepEquals, []string{
+		servicePermissionPrefix + "rules.get",
+		servicePermissionPrefix + "rules.sync",
+	})
+	actionContexts := append([]string(nil), contextsByName[servicePermissionPrefix+"rules.get"]...)
 	sort.Strings(actionContexts)
 	c.Assert(actionContexts, check.DeepEquals, []string{
-		string(permTypes.CtxGlobal),
 		string(permTypes.CtxService),
 		string(permTypes.CtxServiceInstance),
 		string(permTypes.CtxTeam),
 	})
 }
 
-func (s *S) TestListDynamicPermissionsUnauthorized(c *check.C) {
+func (s *S) TestListPermissionsUnauthorized(c *check.C) {
 	rec := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodGet, "/dynamic-permissions", nil)
+	req, err := http.NewRequest(http.MethodGet, "/permissions", nil)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
