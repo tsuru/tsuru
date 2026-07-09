@@ -74,7 +74,7 @@ func CheckDynamic(granted []permTypes.Permission, requested string, contexts ...
 
 func (r *dynamicRegistry) register(name string, ctxs []permTypes.ContextType) error {
 	if name == "" {
-		return nil
+		return permTypes.ErrInvalidPermissionName
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
