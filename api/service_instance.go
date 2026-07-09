@@ -36,7 +36,6 @@ import (
 type serviceInstanceProxyAuthResult struct {
 	matched       bool
 	action        string
-	operationName string
 	eventKind     *permTypes.PermissionScheme
 }
 
@@ -91,7 +90,6 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 		if permission.CheckDynamic(dynamicPerms, dynamicActionPermissionName(svc.Name, op.Action), ctxs...) {
 			result.matched = true
 			result.action = op.Action
-			result.operationName = op.Action
 			return result, nil
 		}
 	}
@@ -101,7 +99,6 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 		if permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy, ctxs...) {
 			result.matched = matched
 			result.action = op.Action
-			result.operationName = op.Action
 			return result, nil
 		}
 	}
@@ -117,7 +114,7 @@ func serviceInstanceProxyEventData(r *http.Request, authResult serviceInstancePr
 		customData = append(
 			customData,
 			map[string]any{"name": "action", "value": authResult.action},
-			map[string]any{"name": "operation", "value": authResult.operationName},
+			map[string]any{"name": "operation", "value": authResult.action},
 		)
 	}
 	return customData
