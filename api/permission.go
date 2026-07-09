@@ -434,47 +434,17 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	lst := permission.PermissionRegistry.Permissions()
 	sort.Sort(lst)
-	permList := make([]permissionSchemeData, len(lst))
-	for i, perm := range lst {
+	permList := make([]permissionSchemeData, 0, len(lst))
+	for _, perm := range lst {
 		contexts := perm.AllowedContexts()
 		contextNames := make([]string, len(contexts))
 		for j, ctx := range contexts {
 			contextNames[j] = string(ctx)
 		}
-		permList[i] = permissionSchemeData{
+		permList = append(permList, permissionSchemeData{
 			Name:     perm.FullName(),
 			Contexts: contextNames,
-		}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(permList)
-}
-
-type dynamicPermissionAction struct {
-	Name     string   `json:"name"`
-	Action   string   `json:"action"`
-	Method   string   `json:"method"`
-	Path     string   `json:"path"`
-	Contexts []string `json:"contexts"`
-}
-
-type dynamicPermissionService struct {
-	Service string                    `json:"service"`
-	Actions []dynamicPermissionAction `json:"actions"`
-}
-
-// title: list dynamic permissions
-// path: /dynamic-permissions
-// method: GET
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	if !permission.Check(ctx, t, permission.PermRoleUpdate) {
-		return permission.ErrUnauthorized
+		})
 	}
 	operationByName := make(map[string]service.ManifestOperation)
 	services, err := service.GetServices(ctx)
@@ -491,9 +461,9 @@ func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token
 		}
 	}
 
-	actionsByService := map[string][]dynamicPermissionAction{}
+	actionsByService := map[string][]permissionSchemeData{}
 	for _, scheme := range permission.ListDynamic() {
-		operation, ok := operationByName[scheme.FullName()]
+		_, ok := operationByName[scheme.FullName()]
 		if !ok {
 			continue
 		}
@@ -511,31 +481,27 @@ func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token
 		for j, ctx := range contexts {
 			contextNames[j] = string(ctx)
 		}
-		actionsByService[serviceName] = append(actionsByService[serviceName], dynamicPermissionAction{
+		actionsByService[serviceName] = append(actionsByService[serviceName], permissionSchemeData{
 			Name:       scheme.FullName(),
-			Action:     operation.Action,
-			Method:     operation.Method,
-			Path:       operation.Path,
 			Contexts:   contextNames,
 		})
 	}
 
-	result := make([]dynamicPermissionService, 0, len(actionsByService))
-	for serviceName, actions := range actionsByService {
+	servicesWithActions := make([]string, 0, len(actionsByService))
+	for serviceName := range actionsByService {
+		servicesWithActions = append(servicesWithActions, serviceName)
+	}
+	sort.Strings(servicesWithActions)
+	for _, serviceName := range servicesWithActions {
+		actions := actionsByService[serviceName]
 		sort.Slice(actions, func(i, j int) bool {
 			return actions[i].Name < actions[j].Name
 		})
-		result = append(result, dynamicPermissionService{
-			Service: serviceName,
-			Actions: actions,
-		})
+		permList = append(permList, actions...)
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Service < result[j].Service
-	})
 
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(result)
+	return json.NewEncoder(w).Encode(permList)
 }
 
 // title: add dynamic permissions

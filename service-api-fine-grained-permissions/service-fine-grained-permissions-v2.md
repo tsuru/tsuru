@@ -208,7 +208,7 @@ func UnregisterDynamic(name string) error
 // LookupDynamic returns the scheme and whether it exists.
 func LookupDynamic(name string) (*permTypes.PermissionScheme, bool)
 
-// ListDynamic returns all dynamic schemes (for the /dynamic-permissions endpoint).
+// ListDynamic returns all dynamic schemes (for inclusion in GET /permissions).
 func ListDynamic() permTypes.PermissionSchemeList
 
 // CheckDynamic returns true if any granted name is an ancestor-or-equal of the
@@ -437,39 +437,25 @@ All additive; existing handlers unchanged.
 (Provider-served `GET /resources/manifest` is the backend contract used by the
 optional provider-fetch path, §10.1.)
 
-### 13.2 Dynamic permission discovery & role grants
+### 13.2 Permission discovery & role grants
 
-- `GET /dynamic-permissions` — grouped by service, each action enriched with
-  manifest metadata. Gate on `PermRoleUpdate` (same as `listPermissions`). Shape:
-
-  ```json
-  [
-    {
-      "service": "acl",
-      "actions": [
-        {
-          "name": "service-action.acl.rules.sync",
-          "action": "acl.rules.sync",
-          "method": "POST",
-          "path": "/sync",
-          "contexts": ["service-instance", "service", "team"]
-        }
-      ]
-    }
-  ]
-  ```
-
-  `name` is the grantable scheme (what goes into `DynamicSchemeNames`); the rest are
-  carried from the manifest for human context. Implementation joins `ListDynamic()`
-  back to each service's manifest operation.
+- `GET /permissions` — unchanged response schema (`[{ "name": "...", "contexts": [...] }]`)
+  and unchanged status codes, but dynamic permissions are now included in this list:
+  - keep the existing static permission items first as today;
+  - append each `service-action.<service>.<action>` permission as separate entries;
+  - keep all dynamic entries grouped by service, sorted by action within each service;
+  - place each service block at the end of that service segment.
+  
+  `name` is the grantable scheme (what goes into `DynamicSchemeNames`).
+  The action/path metadata for each dynamic scheme is discoverable via each service's
+  manifest endpoint.
 
 - `POST /roles/{name}/dynamic-permissions` — body: permission names →
   `Role.AddDynamicPermissions`.
 - `DELETE /roles/{name}/dynamic-permissions/{permission}` →
   `Role.RemoveDynamicPermissions`.
 
-Existing `/permissions` and `/roles/{name}/permissions` endpoints remain static-only
-and unchanged.
+Existing `/roles/{name}/permissions` endpoint remains static-only and unchanged.
 
 ---
 
@@ -595,7 +581,7 @@ operation `action` for display and migration diagnostics.
    wire `legacyCompat`/`strictActions`; create matched proxy events with the
    dynamic permission `Kind` and keep event custom-data.
 8. **API endpoints** — `PUT/GET /services/{service}/manifest`,
-   `GET /dynamic-permissions`, `POST/DELETE /roles/{name}/dynamic-permissions`.
+   `GET /permissions` (now includes dynamic entries), `POST/DELETE /roles/{name}/dynamic-permissions`.
 9. **Migration nudge** — recurring warning while `legacyCompat` enabled;
    `LegacyEnabledAt`.
 10. **Docs/CLI** — client commands for manifest set/get and dynamic role grants;
@@ -615,7 +601,7 @@ operation `action` for display and migration diagnostics.
 | `service/endpoint.go` | `endpointClient.Manifest` (`GET /resources/manifest`) |
 | `api/service.go` | `PUT/GET /services/{service}/manifest`; optional `serviceProxy` enforcement |
 | `api/service_instance.go` | Enforcement in `serviceInstanceProxy` / `serviceInstanceProxyV2` |
-| `api/permission.go` | `GET /dynamic-permissions`; dynamic role grant/revoke handlers |
+| `api/permission.go` | `GET /permissions` (adds dynamic permission items); dynamic role grant/revoke handlers |
 | `api/server.go` | Register new routes |
 | API bootstrap (startup) | Re-populate dynamic registry from manifests before serving |
 
@@ -651,4 +637,4 @@ operation `action` for display and migration diagnostics.
 | Q5 | No role auto-provisioning; `legacyCompat` migration bridge |
 | force | `?force=true` query parameter on the admin manifest-set endpoint |
 | legacyCompat nudge | Recurring warning, no hard TTL; record `LegacyEnabledAt` |
-| `/dynamic-permissions` shape | Grouped by service, actions enriched with manifest metadata |
+| `/permissions` shape | Response contract unchanged; dynamic entries are `service-action.<service>.<action>` sorted and grouped per service |
