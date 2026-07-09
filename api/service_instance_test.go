@@ -2484,11 +2484,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyDynamicPermission(c *chec
 			Enabled:       true,
 			StrictActions: true,
 			Operations: []service.ManifestOperation{{
-				Name:   "sync-rule",
 				Method: "POST",
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
-				Scope:  "entity",
 			}},
 		},
 	}
@@ -2515,7 +2513,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyDynamicPermission(c *chec
 		StartCustomData: []map[string]any{
 			{"name": "method", "value": "POST"},
 			{"name": "action", "value": "rules.sync"},
-			{"name": "operation", "value": "sync-rule"},
+			{"name": "operation", "value": "rules.sync"},
 		},
 	}, eventtest.HasEvent)
 }
@@ -2537,11 +2535,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyStrictActionsDeniesLegacy
 			StrictActions: true,
 			LegacyCompat:  false,
 			Operations: []service.ManifestOperation{{
-				Name:   "sync-rule",
 				Method: "POST",
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
-				Scope:  "entity",
 			}},
 		},
 	}
@@ -2578,11 +2574,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyLegacyCompatFallback(c *c
 			StrictActions: true,
 			LegacyCompat:  true,
 			Operations: []service.ManifestOperation{{
-				Name:   "sync-rule",
 				Method: "POST",
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
-				Scope:  "entity",
 			}},
 		},
 	}
@@ -2609,7 +2603,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyLegacyCompatFallback(c *c
 		StartCustomData: []map[string]any{
 			{"name": "method", "value": "POST"},
 			{"name": "action", "value": "rules.sync"},
-			{"name": "operation", "value": "sync-rule"},
+			{"name": "operation", "value": "rules.sync"},
 		},
 	}, eventtest.HasEvent)
 }
@@ -2631,11 +2625,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2UnmatchedNonStrictFalls
 			StrictActions: false,
 			LegacyCompat:  false,
 			Operations: []service.ManifestOperation{{
-				Name:   "sync-rule",
 				Method: "POST",
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
-				Scope:  "entity",
 			}},
 		},
 	}

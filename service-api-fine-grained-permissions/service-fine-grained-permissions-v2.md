@@ -145,12 +145,9 @@ type ServiceManifest struct {
 }
 
 type ManifestOperation struct {
-    Name       string `bson:"name"`        // unique within service
     Method     string `bson:"method"`      // GET|POST|PUT|PATCH|DELETE
     Path       string `bson:"path"`        // provider path / pattern, e.g. "/rules/{ruleId}/sync"
     Action     string `bson:"action"`      // authorization action, e.g. "rules.sync"
-    Scope      string `bson:"scope"`        // entity|collection (optional; default entity)
-    EntityType string `bson:"entity_type,omitempty"` // for display/metadata
 }
 ```
 
@@ -306,15 +303,15 @@ Either path runs the same ingest routine.
 ### 10.2 Validation (shallow — tsuru does not validate provider payloads)
 
 - Service name matches an existing service.
-- Each operation: non-empty `name` (unique within service), `method` in the allowed
-  enum, non-empty `action` matching the charset in §6, compilable `path` pattern,
-  `scope` in `{entity, collection}` (default `entity`).
-- Reject duplicate operation names and duplicate `(method, path)` pairs.
+- Each operation: non-empty `action` (unique within service), `method` in the
+  allowed enum, non-empty `action` matching the charset in §6, compilable
+  `path` pattern.
+- Reject duplicate operation actions and duplicate `(method, path)` pairs.
 
 ### 10.3 Guarded rename/removal policy (locked)
 
 The `action` string is the **stability contract**. Providers MAY freely change an
-operation's `path`, `method`, or `name` as long as `action` is unchanged — existing
+operation's `path` or `method` as long as `action` is unchanged — existing
 grants keep working.
 
 On ingest, compute the set of `action`s being **removed or renamed** (present in the
@@ -455,8 +452,6 @@ optional provider-fetch path, §10.1.)
           "action": "acl.rules.sync",
           "method": "POST",
           "path": "/sync",
-          "scope": "entity",
-          "entityType": "rules",
           "contexts": ["service-instance", "service", "team"]
         }
       ]
@@ -532,7 +527,7 @@ through an unmatched-path legacy fallback, keep the legacy
 action. For matched requests allowed by `legacyCompat`, still use the resolved
 dynamic kind; `legacyCompat` changes only the authorization fallback, not the audit
 identity. Keep `CustomData` with `method`, resolved `action`, and manifest
-operation `name` for display and migration diagnostics.
+operation `action` for display and migration diagnostics.
 
 ---
 
@@ -630,7 +625,7 @@ operation `name` for display and migration diagnostics.
 - Role: add/remove/resolve dynamic grants; static `SchemeNames` untouched;
   `filterValidSchemes` never drops dynamic grants.
 - Token: every implementer returns dynamic perms; `Permissions()` unchanged.
-- Matcher: entity/collection scope, parented paths, unmatched.
+- Matcher: parented paths, unmatched.
 - Enforcement: full truth table (§11.2) incl. `legacyCompat`/`strictActions`.
 - Ingest: Guarded reject vs `?force`; validation failures; startup re-population
   after simulated restart.

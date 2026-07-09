@@ -451,13 +451,11 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 type dynamicPermissionAction struct {
-	Name       string   `json:"name"`
-	Action     string   `json:"action"`
-	Method     string   `json:"method"`
-	Path       string   `json:"path"`
-	Scope      string   `json:"scope"`
-	EntityType string   `json:"entity_type"`
-	Contexts   []string `json:"contexts"`
+	Name     string   `json:"name"`
+	Action   string   `json:"action"`
+	Method   string   `json:"method"`
+	Path     string   `json:"path"`
+	Contexts []string `json:"contexts"`
 }
 
 type dynamicPermissionService struct {
@@ -486,6 +484,7 @@ func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token
 	for _, svc := range services {
 		if svc.Manifest == nil {
 			continue
+		}
 		for _, op := range svc.Manifest.Operations {
 			actionName := fmt.Sprintf("service-action.%s.%s", svc.Name, op.Action)
 			operationByName[actionName] = op
@@ -517,8 +516,6 @@ func listDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token
 			Action:     operation.Action,
 			Method:     operation.Method,
 			Path:       operation.Path,
-			Scope:      operation.Scope,
-			EntityType: operation.EntityType,
 			Contexts:   contextNames,
 		})
 	}

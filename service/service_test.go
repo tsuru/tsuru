@@ -62,12 +62,9 @@ func (s *S) TestCreateService(c *check.C) {
 			LegacyCompat:    true,
 			LegacyEnabledAt: &legacyEnabledAt,
 			Operations: []ManifestOperation{{
-				Name:       "sync-rule",
 				Method:     "POST",
 				Path:       "/rules/{ruleId}/sync",
 				Action:     "rules.sync",
-				Scope:      "entity",
-				EntityType: "rules",
 			}},
 		},
 	}
@@ -324,11 +321,9 @@ func (s *S) TestUpdateService(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "list-rules",
 			Method: "GET",
 			Path:   "/rules",
 			Action: "rules.list",
-			Scope:  "collection",
 		}},
 	}
 	err = Update(context.TODO(), service)
@@ -344,11 +339,9 @@ func (s *S) TestUpdateService(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Name:   "list-rules",
 			Method: "GET",
 			Path:   "/rules",
 			Action: "rules.list",
-			Scope:  "collection",
 		}},
 	})
 }
@@ -578,32 +571,24 @@ func (s *S) TestServiceManifestMatch(c *check.C) {
 	manifest := &ServiceManifest{
 		Operations: []ManifestOperation{
 			{
-				Name:   "read-rule",
 				Method: "GET",
 				Path:   "/rules/{ruleId}",
 				Action: "rules.read",
-				Scope:  "entity",
 			},
 			{
-				Name:   "sync-rule",
 				Method: "POST",
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
-				Scope:  "entity",
 			},
 			{
-				Name:   "list-rules",
 				Method: "GET",
 				Path:   "/rules",
 				Action: "rules.list",
-				Scope:  "collection",
 			},
 			{
-				Name:   "literal-wins",
 				Method: "GET",
 				Path:   "/rules/sync",
 				Action: "rules.sync.literal",
-				Scope:  "entity",
 			},
 		},
 	}
@@ -633,18 +618,14 @@ func (s *S) TestServiceManifestConflictingRoutes(c *check.C) {
 	manifest := &ServiceManifest{
 		Operations: []ManifestOperation{
 			{
-				Name:   "read-rule-a",
 				Method: "GET",
 				Path:   "/rules/{ruleId}",
 				Action: "rules.read.a",
-				Scope:  "entity",
 			},
 			{
-				Name:   "read-rule-b",
 				Method: "GET",
 				Path:   "/rules/{name}",
 				Action: "rules.read.b",
-				Scope:  "entity",
 			},
 		},
 	}

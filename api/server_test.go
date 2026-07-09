@@ -145,7 +145,6 @@ func (s *S) TestRunServerRepopulatesDynamicPermissions(c *check.C) {
 			Enabled:       true,
 			StrictActions: true,
 			Operations: []service.ManifestOperation{{
-				Name:   "sync-rule",
 				Method: http.MethodPost,
 				Path:   "/rules/{ruleId}/sync",
 				Action: "rules.sync",
