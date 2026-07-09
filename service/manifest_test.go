@@ -161,7 +161,7 @@ func (s *S) TestIngestManifestValidation(c *check.C) {
 			{Method: http.MethodPost, Path: "/rules/{id}", Action: "rules.duplicate"},
 		},
 	}, false)
-	c.Assert(err, check.ErrorMatches, `duplicate manifest operation action "rules\\.duplicate"`)
+	c.Assert(err, check.ErrorMatches, `duplicate manifest operation action "rules\.duplicate"`)
 }
 
 func (s *S) TestManifestGrantConflicts(c *check.C) {
