@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"fmt"
 	"maps"
 	"strconv"
 	"sync"
@@ -89,6 +90,7 @@ expandedloop:
 		}
 		for _, req := range f.requires {
 			if !newEnv.Has(req) {
+				fmt.Println("DEBUG: Skipping flow because requirements were not met", req)
 				continue expandedloop
 			}
 		}
