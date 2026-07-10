@@ -62,10 +62,6 @@ func (t *teamToken) Permissions(ctx context.Context) ([]permTypes.Permission, er
 	return expandRolePermissions(ctx, t.Roles)
 }
 
-func (t *teamToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
-	return expandDynamicRolePermissions(ctx, t.Roles)
-}
-
 type teamTokenService struct {
 	storage authTypes.TeamTokenStorage
 }
