@@ -11,10 +11,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -58,27 +58,20 @@ type Service struct {
 	Manifest *ServiceManifest `bson:"manifest,omitempty" json:"manifest,omitempty"`
 }
 
-// ServiceManifest describes the provider operations exposed by a service for
-// fine-grained authorization checks.
-type ServiceManifest struct {
-	Enabled         bool                `bson:"enabled" json:"enabled"`
-	StrictActions   bool                `bson:"strict_actions" json:"strict_actions"`
-	LegacyCompat    bool                `bson:"legacy_compat" json:"legacy_compat"`
-	LegacyEnabledAt *time.Time          `bson:"legacy_enabled_at,omitempty" json:"legacy_enabled_at,omitempty"`
-	Operations      []ManifestOperation `bson:"operations" json:"operations"`
+// ServiceManifest wraps the canonical type from types/service and provides
+// matching behavior for in-package authorization checks.
+type ServiceManifest serviceTypes.ServiceManifest
 
-	matchOnce       sync.Once         `bson:"-" json:"-"`
-	matchErr        error             `bson:"-" json:"-"`
-	matcher         *http.ServeMux    `bson:"-" json:"-"`
-	actionByPattern map[string]string `bson:"-" json:"-"`
+type ManifestOperation = serviceTypes.ManifestOperation
+
+type manifestMatchState struct {
+	matchOnce       sync.Once
+	matchErr        error
+	matcher         *http.ServeMux
+	actionByPattern map[string]string
 }
 
-// ManifestOperation maps an HTTP method and path template to an authorization action.
-type ManifestOperation struct {
-	Method string `bson:"method" json:"method"`
-	Path   string `bson:"path" json:"path"`
-	Action string `bson:"action" json:"action"`
-}
+var manifestMatchStates sync.Map
 
 type BindAppParameters map[string]any
 
@@ -127,22 +120,34 @@ func (m *ServiceManifest) MatchOperation(method, rawPath string) (ManifestOperat
 }
 
 func (m *ServiceManifest) compiledMatcher() (*http.ServeMux, map[string]string, error) {
-	m.matchOnce.Do(func() {
+	state := manifestMatchStateFor(m)
+
+	state.matchOnce.Do(func() {
 		matcher := http.NewServeMux()
 		actionByPattern := make(map[string]string, len(m.Operations))
 		for _, op := range m.Operations {
 			pattern := manifestRoutePattern(op)
 			err := registerManifestRoute(matcher, pattern)
 			if err != nil {
-				m.matchErr = err
+				state.matchErr = err
 				return
 			}
 			actionByPattern[pattern] = op.Action
 		}
-		m.matcher = matcher
-		m.actionByPattern = actionByPattern
+		state.matcher = matcher
+		state.actionByPattern = actionByPattern
 	})
-	return m.matcher, m.actionByPattern, m.matchErr
+	return state.matcher, state.actionByPattern, state.matchErr
+}
+
+func manifestMatchStateFor(m *ServiceManifest) *manifestMatchState {
+	state, ok := manifestMatchStates.Load(m)
+	if ok {
+		return state.(*manifestMatchState)
+	}
+	statePtr := &manifestMatchState{}
+	actual, _ := manifestMatchStates.LoadOrStore(m, statePtr)
+	return actual.(*manifestMatchState)
 }
 
 func registerManifestRoute(matcher *http.ServeMux, pattern string) (err error) {

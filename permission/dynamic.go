@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/db/storagev2"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -48,14 +49,7 @@ func ExistsDynamic(ctx context.Context, name string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	var svc struct {
-		Manifest *struct {
-			Enabled    bool `bson:"enabled"`
-			Operations []struct {
-				Action string `bson:"action"`
-			} `bson:"operations"`
-		} `bson:"manifest"`
-	}
+	var svc serviceTypes.Service
 	err = servicesCollection.FindOne(ctx, mongoBSON.M{"_id": serviceName}).Decode(&svc)
 	if err == mongo.ErrNoDocuments {
 		return false, nil
