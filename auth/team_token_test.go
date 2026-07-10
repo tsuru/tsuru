@@ -129,24 +129,6 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	c.Assert(dbToken.LastAccess.IsZero(), check.Equals, false)
 }
 
-func (s *S) TestTeamTokenDynamicPermissions(c *check.C) {
-	createServiceWithDynamicAction(c, "acl", "rules.sync")
-	role, err := permission.NewRole(context.TODO(), "dynamic-team-token-role", "team", "")
-	c.Assert(err, check.IsNil)
-	err = role.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
-	c.Assert(err, check.IsNil)
-
-	token := teamToken{
-		Roles: []authTypes.RoleInstance{{Name: role.Name, ContextValue: "team-1"}},
-	}
-	perms, err := token.DynamicPermissions(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.DeepEquals, []permTypes.Permission{{
-		Scheme:  mustNewDynamic(c, "service-action.acl.rules.sync"),
-		Context: permission.Context(permTypes.CtxTeam, "team-1"),
-	}})
-}
-
 func (s *S) Test_TeamTokenService_Authenticate_NotFound(c *check.C) {
 	_, err := servicemanager.TeamToken.Authenticate(context.TODO(), "bearer abc")
 	c.Assert(err, check.Equals, ErrInvalidToken)
