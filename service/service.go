@@ -14,7 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -22,6 +21,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/validation"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
