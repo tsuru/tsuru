@@ -81,11 +81,7 @@ func serviceFineGrainedPermissionsFlow() ExecFlow {
 		res = T("role", "assign", roleName, adminUser, teamName).Run(env)
 		c.Assert(res, ResultOk)
 
-		grantPermissionURL := fmt.Sprintf("%s/1.31/roles/%s/dynamic-permissions", targetAddr, roleName)
-		res = NewCommand("curl", "-sS", "-X", "POST", grantPermissionURL,
-			"-H", authHeader,
-			"-H", "'Content-Type: application/x-www-form-urlencoded'",
-			"-d", fmt.Sprintf("'permission=%s'", permissionName)).Run(env)
+		res = T("role", "permission", "add", roleName, permissionName).Run(env)
 		c.Assert(res, ResultOk)
 
 		res = NewCommand("curl", "-sS", "-X", "GET", fmt.Sprintf("%s/1.0/roles/%s", targetAddr, roleName),
@@ -130,9 +126,7 @@ func serviceFineGrainedPermissionsFlow() ExecFlow {
 		authHeader := fmt.Sprintf("'Authorization: Bearer %s'", env.Get("apitoken"))
 
 		if permissionName != "" {
-			res := NewCommand("curl", "-sS", "-X", "DELETE",
-				fmt.Sprintf("%s/1.31/roles/%s/dynamic-permissions/%s", targetAddr, roleName, permissionName),
-				"-H", authHeader).Run(env)
+			res := T("role", "permission", "remove", roleName, permissionName).Run(env)
 			c.Check(res, ResultOk)
 		}
 
