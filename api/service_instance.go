@@ -78,7 +78,7 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 	normalizedPath := normalizeServiceInstanceManifestPath(instance, requestPath)
 	op, matched := svc.Manifest.MatchOperation(method, normalizedPath)
 	if matched {
-		kind, ok := permission.LookupDynamic(dynamicActionPermissionName(svc.Name, op.Action))
+		kind, ok := permission.NewDynamic(dynamicActionPermissionName(svc.Name, op.Action))
 		if !ok {
 			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
 		}

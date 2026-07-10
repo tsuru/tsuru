@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strings"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -464,45 +463,30 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			Contexts: contextNames,
 		})
 	}
-	operationByName := make(map[string]service.ManifestOperation)
 	services, err := service.GetServices(ctx)
 	if err != nil {
 		return err
 	}
+	actionsByService := map[string][]permissionSchemeData{}
 	for _, svc := range services {
-		if svc.Manifest == nil {
+		if svc.Manifest == nil || !svc.Manifest.Enabled {
 			continue
 		}
 		for _, op := range svc.Manifest.Operations {
-			actionName := fmt.Sprintf(permission.DynamicPermissionPrefix+"%s.%s", svc.Name, op.Action)
-			operationByName[actionName] = op
+			scheme, ok := permission.NewDynamic(permission.DynamicPermissionPrefix + svc.Name + "." + op.Action)
+			if !ok {
+				continue
+			}
+			contexts := scheme.AllowedContexts()
+			contextNames := make([]string, len(contexts))
+			for j, ctx := range contexts {
+				contextNames[j] = string(ctx)
+			}
+			actionsByService[svc.Name] = append(actionsByService[svc.Name], permissionSchemeData{
+				Name:     scheme.FullName(),
+				Contexts: contextNames,
+			})
 		}
-	}
-
-	actionsByService := map[string][]permissionSchemeData{}
-	for _, scheme := range permission.ListDynamic() {
-		_, ok := operationByName[scheme.FullName()]
-		if !ok {
-			continue
-		}
-		serviceAndAction := strings.TrimPrefix(scheme.FullName(), permission.DynamicPermissionPrefix)
-		if serviceAndAction == scheme.FullName() {
-			continue
-		}
-		parts := strings.SplitN(serviceAndAction, ".", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		serviceName := parts[0]
-		contexts := scheme.AllowedContexts()
-		contextNames := make([]string, len(contexts))
-		for j, ctx := range contexts {
-			contextNames[j] = string(ctx)
-		}
-		actionsByService[serviceName] = append(actionsByService[serviceName], permissionSchemeData{
-			Name:     scheme.FullName(),
-			Contexts: contextNames,
-		})
 	}
 
 	servicesWithActions := make([]string, 0, len(actionsByService))

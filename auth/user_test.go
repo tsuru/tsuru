@@ -292,7 +292,7 @@ func (s *S) TestUserDynamicPermissions(c *check.C) {
 	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 
-	c.Assert(permission.RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam}), check.IsNil)
+	createServiceWithDynamicAction(c, "acl", "rules.sync")
 	role, err := permission.NewRole(context.TODO(), "dynamic-user-role", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
@@ -306,8 +306,8 @@ func (s *S) TestUserDynamicPermissions(c *check.C) {
 	perms, err := u.DynamicPermissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permTypes.Permission{
-		{Scheme: mustLookupDynamic(c, "service-action.acl.rules.sync"), Context: permission.Context(permTypes.CtxTeam, "team-1")},
-		{Scheme: mustLookupDynamic(c, "service-action.acl.rules.sync"), Context: permission.Context(permTypes.CtxTeam, "team-2")},
+		{Scheme: mustNewDynamic(c, "service-action.acl.rules.sync"), Context: permission.Context(permTypes.CtxTeam, "team-1")},
+		{Scheme: mustNewDynamic(c, "service-action.acl.rules.sync"), Context: permission.Context(permTypes.CtxTeam, "team-2")},
 	})
 }
 

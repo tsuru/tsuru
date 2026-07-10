@@ -367,10 +367,25 @@ func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
 	c.Assert(rec.Body.String(), check.Matches, "permission .* not allowed with context of type .*\n")
 }
 
+func createServiceWithDynamicAction(serviceName string, actions ...string) error {
+	servicesCollection, err := storagev2.ServicesCollection()
+	if err != nil {
+		return err
+	}
+	operations := make([]mongoBSON.M, len(actions))
+	for i, action := range actions {
+		operations[i] = mongoBSON.M{"method": "POST", "path": "/sync", "action": action}
+	}
+	_, err = servicesCollection.InsertOne(context.TODO(), mongoBSON.M{
+		"_id":      serviceName,
+		"manifest": mongoBSON.M{"enabled": true, "operations": operations},
+	})
+	return err
+}
+
 func (s *S) TestAddPermissionsToARoleDynamicPermission(c *check.C) {
-	err := permission.RegisterDynamic("service-action.dynamic-add-via-permissions", []permTypes.ContextType{permTypes.CtxTeam})
+	err := createServiceWithDynamicAction("dynamic-add-via-permissions", "rules.sync")
 	c.Assert(err, check.IsNil)
-	defer permission.UnregisterDynamic("service-action.dynamic-add-via-permissions")
 	_, err = permission.NewRole(context.TODO(), "test-dynamic-add", "team", "")
 	c.Assert(err, check.IsNil)
 
@@ -393,9 +408,8 @@ func (s *S) TestAddPermissionsToARoleDynamicPermission(c *check.C) {
 }
 
 func (s *S) TestAddPermissionsToARoleCannotMixStaticAndDynamicPermissions(c *check.C) {
-	err := permission.RegisterDynamic("service-action.dynamic-add-via-permissions", []permTypes.ContextType{permTypes.CtxTeam})
+	err := createServiceWithDynamicAction("dynamic-add-via-permissions", "rules.sync")
 	c.Assert(err, check.IsNil)
-	defer permission.UnregisterDynamic("service-action.dynamic-add-via-permissions")
 	_, err = permission.NewRole(context.TODO(), "test-mixed-add", "team", "")
 	c.Assert(err, check.IsNil)
 
@@ -1133,9 +1147,8 @@ func (s *S) TestListPermissionsUnauthorized(c *check.C) {
 }
 
 func (s *S) TestRemovePermissionsCanRemoveDynamicPermission(c *check.C) {
-	err := permission.RegisterDynamic("service-action.dynamic-remove-via-permissions", []permTypes.ContextType{permTypes.CtxTeam})
+	err := createServiceWithDynamicAction("dynamic-remove-via-permissions", "rules.sync")
 	c.Assert(err, check.IsNil)
-	defer permission.UnregisterDynamic("service-action.dynamic-remove-via-permissions")
 	role, err := permission.NewRole(context.TODO(), "dynamic-remove-role-permissions", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddDynamicPermissions(context.TODO(), "service-action.dynamic-remove-via-permissions")

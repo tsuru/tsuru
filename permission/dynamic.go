@@ -5,47 +5,73 @@
 package permission
 
 import (
-	"sort"
+	"context"
 	"strings"
-	"sync"
 
+	"github.com/tsuru/tsuru/db/storagev2"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
 	DynamicPermissionPrefix = "service-action."
 )
 
-type dynamicRegistry struct {
-	mu                 sync.RWMutex
-	schemeByActionName map[string]*permTypes.PermissionScheme
+// Dynamic schemes are pure values derived from the permission name; the
+// service manifests stored in the database are the source of truth for which
+// action names exist.
+var dynamicPermissionContexts = []permTypes.ContextType{
+	permTypes.CtxServiceInstance,
+	permTypes.CtxService,
+	permTypes.CtxTeam,
 }
 
-var DynamicPermissionRegistry = &dynamicRegistry{
-	schemeByActionName: make(map[string]*permTypes.PermissionScheme),
+// NewDynamic builds the scheme (with its parent lineage) for a dynamic
+// permission name.
+func NewDynamic(name string) (*permTypes.PermissionScheme, bool) {
+	if !IsDynamicPermissionName(name) {
+		return nil, false
+	}
+	var scheme *permTypes.PermissionScheme
+	for part := range strings.SplitSeq(name, ".") {
+		scheme = &permTypes.PermissionScheme{Name: part, Parent: scheme, Contexts: dynamicPermissionContexts}
+	}
+	return scheme, true
 }
 
-// RegisterDynamic registers (idempotently) an action scheme with the given contexts.
-// Safe for concurrent use.
-func RegisterDynamic(name string, ctxs []permTypes.ContextType) error {
-	return DynamicPermissionRegistry.register(name, ctxs)
-}
-
-// UnregisterDynamic removes an action scheme (used on explicit manifest changes /
-// service deletion). Idempotent.
-func UnregisterDynamic(name string) error {
-	DynamicPermissionRegistry.unregister(name)
-	return nil
-}
-
-// LookupDynamic returns the scheme and whether it exists.
-func LookupDynamic(name string) (*permTypes.PermissionScheme, bool) {
-	return DynamicPermissionRegistry.lookup(name)
-}
-
-// ListDynamic returns all dynamic schemes.
-func ListDynamic() permTypes.PermissionSchemeList {
-	return DynamicPermissionRegistry.list()
+// ExistsDynamic reports whether name is an ancestor-or-equal of an action
+// declared by an enabled service manifest.
+func ExistsDynamic(ctx context.Context, name string) (bool, error) {
+	serviceName, _, _ := strings.Cut(strings.TrimPrefix(name, DynamicPermissionPrefix), ".")
+	servicesCollection, err := storagev2.ServicesCollection()
+	if err != nil {
+		return false, err
+	}
+	var svc struct {
+		Manifest *struct {
+			Enabled    bool `bson:"enabled"`
+			Operations []struct {
+				Action string `bson:"action"`
+			} `bson:"operations"`
+		} `bson:"manifest"`
+	}
+	err = servicesCollection.FindOne(ctx, mongoBSON.M{"_id": serviceName}).Decode(&svc)
+	if err == mongo.ErrNoDocuments {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if svc.Manifest == nil || !svc.Manifest.Enabled {
+		return false, nil
+	}
+	for _, op := range svc.Manifest.Operations {
+		if isDynamicAncestorOrSelf(name, DynamicPermissionPrefix+serviceName+"."+op.Action) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func IsDynamicPermissionName(name string) bool {
@@ -53,19 +79,15 @@ func IsDynamicPermissionName(name string) bool {
 }
 
 // CheckDynamic returns true if any granted name is an ancestor-or-equal of the
-// requested name and the granted permission context matches the request contexts.
+// requested name and the granted permission context matches the request
+// contexts. Callers must only pass requested names taken from an enabled
+// service manifest.
 func CheckDynamic(granted []permTypes.Permission, requested string, contexts ...permTypes.PermissionContext) bool {
-	if requested == "" {
-		return false
-	}
-	if _, ok := LookupDynamic(requested); !ok {
+	if !IsDynamicPermissionName(requested) {
 		return false
 	}
 	for _, perm := range granted {
-		if perm.Scheme == nil {
-			continue
-		}
-		if !isDynamicAncestorOrSelf(perm.Scheme.FullName(), requested) {
+		if perm.Scheme == nil || !isDynamicAncestorOrSelf(perm.Scheme.FullName(), requested) {
 			continue
 		}
 		if perm.Context.CtxType == permTypes.CtxGlobal {
@@ -80,76 +102,6 @@ func CheckDynamic(granted []permTypes.Permission, requested string, contexts ...
 	return false
 }
 
-func (r *dynamicRegistry) register(name string, ctxs []permTypes.ContextType) error {
-	if name == "" {
-		return permTypes.ErrInvalidPermissionName
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	var parent *permTypes.PermissionScheme
-	for _, fullName := range schemeLineage(name) {
-		scheme, ok := r.schemeByActionName[fullName]
-		if !ok {
-			scheme = &permTypes.PermissionScheme{
-				Name:     schemeSegment(fullName),
-				Parent:   parent,
-				Contexts: cloneContextTypes(ctxs),
-			}
-			r.schemeByActionName[fullName] = scheme
-		}
-		parent = scheme
-	}
-	return nil
-}
-
-func (r *dynamicRegistry) unregister(name string) {
-	if name == "" {
-		return
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.schemeByActionName, name)
-}
-
-func (r *dynamicRegistry) lookup(name string) (*permTypes.PermissionScheme, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	scheme, ok := r.schemeByActionName[name]
-	return scheme, ok
-}
-
-func (r *dynamicRegistry) list() permTypes.PermissionSchemeList {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	names := make([]string, 0, len(r.schemeByActionName))
-	for name := range r.schemeByActionName {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	result := make(permTypes.PermissionSchemeList, 0, len(names))
-	for _, name := range names {
-		result = append(result, r.schemeByActionName[name])
-	}
-	return result
-}
-
-func schemeLineage(name string) []string {
-	parts := strings.Split(name, ".")
-	result := make([]string, 0, len(parts))
-	for i := range parts {
-		result = append(result, strings.Join(parts[:i+1], "."))
-	}
-	return result
-}
-
-func schemeSegment(name string) string {
-	lastDot := strings.LastIndex(name, ".")
-	if lastDot == -1 {
-		return name
-	}
-	return name[lastDot+1:]
-}
-
 func isDynamicAncestorOrSelf(granted string, requested string) bool {
 	if granted == "" || requested == "" {
 		return false
@@ -161,13 +113,4 @@ func isDynamicAncestorOrSelf(granted string, requested string) bool {
 		return false
 	}
 	return len(requested) > len(granted) && requested[len(granted)] == '.'
-}
-
-func cloneContextTypes(ctxs []permTypes.ContextType) []permTypes.ContextType {
-	if ctxs == nil {
-		return nil
-	}
-	cloned := make([]permTypes.ContextType, len(ctxs))
-	copy(cloned, ctxs)
-	return cloned
 }

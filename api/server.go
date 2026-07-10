@@ -50,7 +50,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
-	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/tag"
@@ -215,10 +214,6 @@ func RunServer(dry bool) http.Handler {
 	err = InitializeDBServices()
 	if err != nil {
 		fatal(err)
-	}
-	err = service.RepopulateDynamicPermissions(context.Background())
-	if err != nil {
-		log.Errorf("failed to re-populate dynamic service permissions at startup: %v", err)
 	}
 	m := apiRouter.NewRouter()
 

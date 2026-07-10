@@ -8,9 +8,11 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -55,7 +57,7 @@ func (t *dynamicPermissionToken) Permissions(ctx context.Context) ([]permTypes.P
 }
 
 func (s *S) TestBaseTokenDynamicPermission(c *check.C) {
-	c.Assert(permission.RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam}), check.IsNil)
+	createServiceWithDynamicAction(c, "acl", "rules.sync")
 	role, err := permission.NewRole(context.TODO(), "dynamic-role-base-token", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
@@ -70,7 +72,7 @@ func (s *S) TestBaseTokenDynamicPermission(c *check.C) {
 	perms, err := BaseTokenDynamicPermission(context.TODO(), token)
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permTypes.Permission{{
-		Scheme:  mustLookupDynamic(c, "service-action.acl.rules.sync"),
+		Scheme:  mustNewDynamic(c, "service-action.acl.rules.sync"),
 		Context: permission.Context(permTypes.CtxTeam, "team-1"),
 	}})
 }
@@ -80,8 +82,22 @@ func (s *S) TestBaseTokenDynamicPermissionUserError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "boom")
 }
 
-func mustLookupDynamic(c *check.C, name string) *permTypes.PermissionScheme {
-	scheme, ok := permission.LookupDynamic(name)
+func mustNewDynamic(c *check.C, name string) *permTypes.PermissionScheme {
+	scheme, ok := permission.NewDynamic(name)
 	c.Assert(ok, check.Equals, true)
 	return scheme
+}
+
+func createServiceWithDynamicAction(c *check.C, serviceName string, actions ...string) {
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	operations := make([]mongoBSON.M, len(actions))
+	for i, action := range actions {
+		operations[i] = mongoBSON.M{"method": "POST", "path": "/sync", "action": action}
+	}
+	_, err = servicesCollection.InsertOne(context.TODO(), mongoBSON.M{
+		"_id":      serviceName,
+		"manifest": mongoBSON.M{"enabled": true, "operations": operations},
+	})
+	c.Assert(err, check.IsNil)
 }
