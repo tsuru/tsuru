@@ -218,8 +218,6 @@ func (s *ServiceInstanceSuite) createTokenWithDynamicServiceAction(c *check.C, r
 	token, err := nativeScheme.Login(stdContext.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	permName := "service-action." + serviceName + "." + action
-	err = permission.RegisterDynamic(permName, []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxService, permTypes.CtxTeam})
-	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole(stdContext.TODO(), roleName, "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddDynamicPermissions(stdContext.TODO(), permName)
@@ -2581,8 +2579,6 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyLegacyCompatFallback(c *c
 		},
 	}
 	err := service.Create(stdContext.TODO(), se)
-	c.Assert(err, check.IsNil)
-	err = permission.RegisterDynamic("service-action.foo.rules.sync", []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxService, permTypes.CtxTeam})
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()

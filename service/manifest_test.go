@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/permission"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -34,9 +33,9 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 	err = svc.IngestManifest(context.TODO(), manifest, false)
 	c.Assert(err, check.IsNil)
 
-	scheme, ok := permission.LookupDynamic("service-action.manifest-ingest-register.rules.sync")
-	c.Assert(ok, check.Equals, true)
-	c.Assert(scheme.FullName(), check.Equals, "service-action.manifest-ingest-register.rules.sync")
+	exists, err := permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-register.rules.sync")
+	c.Assert(err, check.IsNil)
+	c.Assert(exists, check.Equals, true)
 
 	stored, err := Get(context.TODO(), svc.Name)
 	c.Assert(err, check.IsNil)
@@ -95,8 +94,9 @@ func (s *S) TestIngestManifestRejectsOrphanedDynamicGrants(c *check.C) {
 	stored, getErr := Get(context.TODO(), svc.Name)
 	c.Assert(getErr, check.IsNil)
 	c.Assert(stored.Manifest.Operations[0].Action, check.Equals, "rules.sync")
-	_, ok := permission.LookupDynamic("service-action.manifest-ingest-guarded.rules.sync")
-	c.Assert(ok, check.Equals, true)
+	exists, err := permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-guarded.rules.sync")
+	c.Assert(err, check.IsNil)
+	c.Assert(exists, check.Equals, true)
 }
 
 func (s *S) TestIngestManifestForceRemovesOrphanedDynamicGrants(c *check.C) {
@@ -138,10 +138,12 @@ func (s *S) TestIngestManifestForceRemovesOrphanedDynamicGrants(c *check.C) {
 	stored, getErr := Get(context.TODO(), svc.Name)
 	c.Assert(getErr, check.IsNil)
 	c.Assert(stored.Manifest.Operations[0].Action, check.Equals, "rules.list")
-	_, ok := permission.LookupDynamic("service-action.manifest-ingest-force.rules.sync")
-	c.Assert(ok, check.Equals, false)
-	_, ok = permission.LookupDynamic("service-action.manifest-ingest-force.rules.list")
-	c.Assert(ok, check.Equals, true)
+	exists, err := permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-force.rules.sync")
+	c.Assert(err, check.IsNil)
+	c.Assert(exists, check.Equals, false)
+	exists, err = permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-force.rules.list")
+	c.Assert(err, check.IsNil)
+	c.Assert(exists, check.Equals, true)
 }
 
 func (s *S) TestIngestManifestValidation(c *check.C) {
@@ -165,7 +167,20 @@ func (s *S) TestIngestManifestValidation(c *check.C) {
 }
 
 func (s *S) TestManifestGrantConflicts(c *check.C) {
-	err := permission.RegisterDynamic("service-action.manifest-conflicts.rules.sync", []permTypes.ContextType{permTypes.CtxTeam})
+	err := Create(context.TODO(), Service{
+		Name:       "manifest-conflicts",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &ServiceManifest{
+			Enabled: true,
+			Operations: []ManifestOperation{{
+				Method: http.MethodPost,
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			}},
+		},
+	})
 	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole(context.TODO(), "manifest-conflicts-role", "team", "")
 	c.Assert(err, check.IsNil)
@@ -178,54 +193,4 @@ func (s *S) TestManifestGrantConflicts(c *check.C) {
 		Action: "rules.sync",
 		Roles:  []string{"manifest-conflicts-role"},
 	}})
-}
-
-func (s *S) TestRepopulateDynamicPermissions(c *check.C) {
-	validService := Service{
-		Name:       "manifest-startup-valid",
-		Password:   "abcde",
-		Endpoint:   map[string]string{"production": "url"},
-		OwnerTeams: []string{s.team.Name},
-		Manifest: &ServiceManifest{
-			Enabled:       true,
-			StrictActions: true,
-			Operations: []ManifestOperation{{
-				Method: http.MethodPost,
-				Path:   "/rules/{ruleId}/sync",
-				Action: "rules.sync",
-			}},
-		},
-	}
-	err := Create(context.TODO(), validService)
-	c.Assert(err, check.IsNil)
-	invalidService := Service{
-		Name:       "manifest-startup-invalid",
-		Password:   "abcde",
-		Endpoint:   map[string]string{"production": "url"},
-		OwnerTeams: []string{s.team.Name},
-		Manifest: &ServiceManifest{
-			Enabled:       true,
-			StrictActions: true,
-			Operations: []ManifestOperation{{
-				Method: http.MethodGet,
-				Path:   "/rules",
-				Action: "invalid action",
-			}},
-		},
-	}
-	err = Create(context.TODO(), invalidService)
-	c.Assert(err, check.IsNil)
-
-	validPerm := "service-action.manifest-startup-valid.rules.sync"
-	invalidPerm := "service-action.manifest-startup-invalid.invalid action"
-	_ = permission.UnregisterDynamic(validPerm)
-	_ = permission.UnregisterDynamic(invalidPerm)
-
-	err = RepopulateDynamicPermissions(context.TODO())
-	c.Assert(err, check.IsNil)
-
-	_, ok := permission.LookupDynamic(validPerm)
-	c.Assert(ok, check.Equals, true)
-	_, ok = permission.LookupDynamic(invalidPerm)
-	c.Assert(ok, check.Equals, false)
 }

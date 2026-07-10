@@ -241,18 +241,18 @@ func (r *Role) RemovePermissions(ctx context.Context, permNames ...string) error
 
 func (r *Role) AddDynamicPermissions(ctx context.Context, permNames ...string) error {
 	for _, permName := range permNames {
-		if permName == "" {
+		scheme, ok := NewDynamic(permName)
+		if !ok {
 			return permTypes.ErrInvalidPermissionName
 		}
-		scheme, ok := LookupDynamic(permName)
-		if !ok {
+		exists, err := ExistsDynamic(ctx, permName)
+		if err != nil {
+			return err
+		}
+		if !exists {
 			return &permTypes.ErrPermissionNotFound{Permission: permName}
 		}
-		var found bool
-		if slices.Contains(scheme.AllowedContexts(), r.ContextType) {
-			found = true
-		}
-		if !found {
+		if !slices.Contains(scheme.AllowedContexts(), r.ContextType) {
 			return &permTypes.ErrPermissionNotAllowed{
 				Permission:  permName,
 				ContextType: r.ContextType,
@@ -333,7 +333,7 @@ func (r *Role) DynamicPermissionsFor(contextValue string) []permTypes.Permission
 	sort.Strings(schemeNames)
 	permissions := make([]permTypes.Permission, 0, len(schemeNames))
 	for _, schemeName := range schemeNames {
-		scheme, ok := LookupDynamic(schemeName)
+		scheme, ok := NewDynamic(schemeName)
 		if !ok {
 			continue
 		}

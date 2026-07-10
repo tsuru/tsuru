@@ -5,9 +5,6 @@
 package permission
 
 import (
-	"fmt"
-	"sort"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,98 +12,38 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
-func resetDynamicRegistryForTest() {
-	DynamicPermissionRegistry = &dynamicRegistry{
-		schemeByActionName: make(map[string]*permTypes.PermissionScheme),
+func TestNewDynamicBuildsLineage(t *testing.T) {
+	scheme, ok := NewDynamic("service-action.acl.rules.sync")
+	require.True(t, ok)
+	expectedContexts := []permTypes.ContextType{
+		permTypes.CtxGlobal,
+		permTypes.CtxServiceInstance,
+		permTypes.CtxService,
+		permTypes.CtxTeam,
 	}
-}
-
-func TestRegisterDynamicCreatesLineage(t *testing.T) {
-	resetDynamicRegistryForTest()
-	err := RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxTeam})
-	require.NoError(t, err)
-	tests := []struct {
-		name   string
-		parent string
-	}{
-		{name: "service-action", parent: ""},
-		{name: "service-action.acl", parent: "service-action"},
-		{name: "service-action.acl.rules", parent: "service-action.acl"},
-		{name: "service-action.acl.rules.sync", parent: "service-action.acl.rules"},
-	}
-	for _, tt := range tests {
-		scheme, ok := LookupDynamic(tt.name)
-		require.True(t, ok, "expected %q to be registered", tt.name)
-		assert.Equal(t, tt.name, scheme.FullName())
-		if tt.parent == "" {
-			assert.Nil(t, scheme.Parent, "expected %q parent to be nil", tt.name)
-		} else {
-			require.NotNil(t, scheme.Parent, "expected %q parent to be set", tt.name)
-			assert.Equal(t, tt.parent, scheme.Parent.FullName())
-		}
-	}
-	leaf, _ := LookupDynamic("service-action.acl.rules.sync")
-	expectedContexts := []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxServiceInstance, permTypes.CtxTeam}
-	assert.Equal(t, expectedContexts, leaf.AllowedContexts())
-	ancestor, _ := LookupDynamic("service-action.acl.rules")
-	assert.Equal(t, expectedContexts, ancestor.AllowedContexts())
-}
-
-func TestRegisterDynamicIsIdempotent(t *testing.T) {
-	resetDynamicRegistryForTest()
-	name := "service-action.acl.rules.sync"
-	err := RegisterDynamic(name, []permTypes.ContextType{permTypes.CtxTeam})
-	require.NoError(t, err)
-	err = RegisterDynamic(name, []permTypes.ContextType{permTypes.CtxTeam})
-	require.NoError(t, err)
-	list := ListDynamic()
-	assert.Len(t, list, 4)
-	leaf, ok := LookupDynamic(name)
-	require.True(t, ok, "expected %q lookup to succeed", name)
-	expectedContexts := []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxTeam}
-	assert.Equal(t, expectedContexts, leaf.AllowedContexts())
-}
-
-func TestUnregisterDynamicIsIdempotent(t *testing.T) {
-	resetDynamicRegistryForTest()
-	name := "service-action.acl.rules.sync"
-	require.NoError(t, RegisterDynamic(name, []permTypes.ContextType{permTypes.CtxTeam}))
-	require.NoError(t, UnregisterDynamic(name))
-	if _, ok := LookupDynamic(name); ok {
-		t.Fatalf("expected %q to be removed", name)
-	}
-	_, ok := LookupDynamic("service-action.acl.rules")
-	assert.True(t, ok, "expected ancestor scheme to remain available")
-	require.NoError(t, UnregisterDynamic(name))
-}
-
-func TestListDynamicIsSorted(t *testing.T) {
-	resetDynamicRegistryForTest()
-	for _, name := range []string{
-		"service-action.beta.rules.sync",
-		"service-action.acl.rules.read",
+	for _, fullName := range []string{
 		"service-action.acl.rules.sync",
+		"service-action.acl.rules",
+		"service-action.acl",
+		"service-action",
 	} {
-		require.NoError(t, RegisterDynamic(name, []permTypes.ContextType{permTypes.CtxTeam}))
+		require.NotNil(t, scheme, "expected scheme for %q", fullName)
+		assert.Equal(t, fullName, scheme.FullName())
+		assert.Equal(t, expectedContexts, scheme.AllowedContexts())
+		scheme = scheme.Parent
 	}
-	got := make([]string, 0, len(ListDynamic()))
-	for _, scheme := range ListDynamic() {
-		got = append(got, scheme.FullName())
+	assert.Nil(t, scheme, "expected lineage to end at the root")
+}
+
+func TestNewDynamicRejectsNonDynamicNames(t *testing.T) {
+	for _, name := range []string{"", "app.deploy", "service-action"} {
+		scheme, ok := NewDynamic(name)
+		assert.False(t, ok, "expected %q to be rejected", name)
+		assert.Nil(t, scheme)
 	}
-	want := append([]string(nil), got...)
-	sort.Strings(want)
-	assert.Equal(t, fmt.Sprint(want), fmt.Sprint(got))
 }
 
 func TestCheckDynamic(t *testing.T) {
-	resetDynamicRegistryForTest()
-	for _, name := range []string{
-		"service-action.acl.rules.sync",
-		"service-action.acl.rules.read",
-		"service-action.acl.rulex.sync",
-	} {
-		require.NoError(t, RegisterDynamic(name, []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxTeam}))
-	}
 	tests := []struct {
 		name     string
 		granted  []permTypes.Permission
@@ -117,7 +54,7 @@ func TestCheckDynamic(t *testing.T) {
 		{
 			name: "exact match",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules.sync"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules.sync"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team-1"},
 			}},
 			request:  "service-action.acl.rules.sync",
@@ -127,7 +64,7 @@ func TestCheckDynamic(t *testing.T) {
 		{
 			name: "ancestor match",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxServiceInstance, Value: "instance-1"},
 			}},
 			request:  "service-action.acl.rules.sync",
@@ -137,7 +74,7 @@ func TestCheckDynamic(t *testing.T) {
 		{
 			name: "global context",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 			}},
 			request: "service-action.acl.rules.read",
@@ -146,7 +83,7 @@ func TestCheckDynamic(t *testing.T) {
 		{
 			name: "reject string prefix false positive",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team-1"},
 			}},
 			request:  "service-action.acl.rulex.sync",
@@ -156,7 +93,7 @@ func TestCheckDynamic(t *testing.T) {
 		{
 			name: "reject context type mismatch",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules.sync"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules.sync"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxService, Value: "svc-1"},
 			}},
 			request:  "service-action.acl.rules.sync",
@@ -166,7 +103,7 @@ func TestCheckDynamic(t *testing.T) {
 		{
 			name: "reject context value mismatch",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules.sync"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules.sync"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team-2"},
 			}},
 			request:  "service-action.acl.rules.sync",
@@ -174,12 +111,12 @@ func TestCheckDynamic(t *testing.T) {
 			want:     false,
 		},
 		{
-			name: "reject unknown requested scheme",
+			name: "reject non-dynamic requested name",
 			granted: []permTypes.Permission{{
-				Scheme:  mustLookupDynamic(t, "service-action.acl.rules"),
+				Scheme:  mustNewDynamic(t, "service-action.acl.rules"),
 				Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 			}},
-			request: "service-action.acl.rules.delete",
+			request: "app.deploy",
 			want:    false,
 		},
 		{
@@ -200,42 +137,9 @@ func TestCheckDynamic(t *testing.T) {
 	}
 }
 
-func TestDynamicRegistryConcurrentAccess(t *testing.T) {
-	resetDynamicRegistryForTest()
-	const workers = 24
-	const perWorker = 20
-	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			for j := 0; j < perWorker; j++ {
-				name := fmt.Sprintf("service-action.svc-%d.action-%d.read", i, j)
-				assert.NoError(t, RegisterDynamic(name, []permTypes.ContextType{permTypes.CtxTeam}), "register failed for %q", name)
-				scheme, ok := LookupDynamic(name)
-				if !assert.True(t, ok, "lookup failed for %q", name) {
-					return
-				}
-				granted := []permTypes.Permission{{
-					Scheme:  scheme,
-					Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team-1"},
-				}}
-				assert.True(t, CheckDynamic(granted, name, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team-1"}), "check failed for %q", name)
-				_ = ListDynamic()
-			}
-		}(i)
-	}
-	wg.Wait()
-	if t.Failed() {
-		return
-	}
-	want := 1 + workers + (workers * perWorker * 2)
-	assert.Len(t, ListDynamic(), want)
-}
-
-func mustLookupDynamic(t *testing.T, name string) *permTypes.PermissionScheme {
+func mustNewDynamic(t *testing.T, name string) *permTypes.PermissionScheme {
 	t.Helper()
-	scheme, ok := LookupDynamic(name)
-	require.True(t, ok, "expected %q lookup to succeed", name)
+	scheme, ok := NewDynamic(name)
+	require.True(t, ok, "expected %q to build a dynamic scheme", name)
 	return scheme
 }

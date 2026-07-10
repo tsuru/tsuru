@@ -17,7 +17,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
@@ -31,11 +30,6 @@ var (
 		http.MethodPatch:   {},
 		http.MethodPost:    {},
 		http.MethodPut:     {},
-	}
-	validManifestPermissionContexts = []permTypes.ContextType{
-		permTypes.CtxServiceInstance,
-		permTypes.CtxService,
-		permTypes.CtxTeam,
 	}
 	// Using NUL character commonly used for separator between values for a single concatenated key
 	routeKeySeparator = "\x00"
@@ -86,22 +80,7 @@ func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest,
 	if len(conflicts) > 0 {
 		log.Errorf("WARNING: manifest ingest for service %q forced removal of actions: %#v", s.Name, conflicts)
 	}
-	oldRegistered := registeredManifestPermissions(s.Name, s.Manifest)
-	newRegistered := registeredManifestPermissions(s.Name, normalized)
-	addedPermissions, removedPermissions := diffManifestPermissions(oldRegistered, newRegistered)
-	for _, permName := range addedPermissions {
-		if err := permission.RegisterDynamic(permName, validManifestPermissionContexts); err != nil {
-			return err
-		}
-	}
-	for _, permName := range removedPermissions {
-		if err := permission.UnregisterDynamic(permName); err != nil {
-			rollbackManifestRegistry(addedPermissions, removedPermissions)
-			return err
-		}
-	}
 	if err := persistManifest(ctx, s.Name, normalized); err != nil {
-		rollbackManifestRegistry(addedPermissions, removedPermissions)
 		return err
 	}
 	s.Manifest = normalized
@@ -196,42 +175,6 @@ func manifestActionNames(manifest *ServiceManifest) map[string]struct{} {
 	return result
 }
 
-func registeredManifestPermissions(serviceName string, manifest *ServiceManifest) map[string]struct{} {
-	result := map[string]struct{}{}
-	if manifest == nil || !manifest.Enabled {
-		return result
-	}
-	for action := range manifestActionNames(manifest) {
-		result[dynamicActionPermissionName(serviceName, action)] = struct{}{}
-	}
-	return result
-}
-
-func diffManifestPermissions(current, next map[string]struct{}) (added []string, removed []string) {
-	for permName := range next {
-		if _, ok := current[permName]; !ok {
-			added = append(added, permName)
-		}
-	}
-	for permName := range current {
-		if _, ok := next[permName]; !ok {
-			removed = append(removed, permName)
-		}
-	}
-	sort.Strings(added)
-	sort.Strings(removed)
-	return added, removed
-}
-
-func rollbackManifestRegistry(addedPermissions, removedPermissions []string) {
-	for _, permName := range addedPermissions {
-		_ = permission.UnregisterDynamic(permName)
-	}
-	for _, permName := range removedPermissions {
-		_ = permission.RegisterDynamic(permName, validManifestPermissionContexts)
-	}
-}
-
 func persistManifest(ctx context.Context, serviceName string, manifest *ServiceManifest) error {
 	servicesCollection, err := storagev2.ServicesCollection()
 	if err != nil {
@@ -247,37 +190,6 @@ func persistManifest(ctx context.Context, serviceName string, manifest *ServiceM
 	}
 	if result.MatchedCount == 0 {
 		return ErrServiceNotFound
-	}
-	return nil
-}
-
-func RepopulateDynamicPermissions(ctx context.Context) error {
-	services, err := GetServices(ctx)
-	if err != nil {
-		return err
-	}
-	for _, svc := range services {
-		// NOTE:(ravilock) Startup rebuild is best-effort: a single broken manifest must not block API boot
-		// or static authorization for unrelated services, so failures degrade only that service.
-		if err := registerManifestPermissions(svc.Name, svc.Manifest); err != nil {
-			log.Errorf("failed to re-register dynamic permissions for service %q: %v", svc.Name, err)
-		}
-	}
-	return nil
-}
-
-func registerManifestPermissions(serviceName string, manifest *ServiceManifest) error {
-	if manifest == nil || !manifest.Enabled {
-		return nil
-	}
-	normalized, err := normalizeManifest(manifest, manifest)
-	if err != nil {
-		return err
-	}
-	for permName := range registeredManifestPermissions(serviceName, normalized) {
-		if err := permission.RegisterDynamic(permName, validManifestPermissionContexts); err != nil {
-			return err
-		}
 	}
 	return nil
 }
