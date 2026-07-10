@@ -1114,6 +1114,7 @@ func (s *S) TestListPermissionsIncludesDynamicPermissions(c *check.C) {
 	actionContexts := append([]string(nil), contextsByName[servicePermissionPrefix+"rules.get"]...)
 	sort.Strings(actionContexts)
 	c.Assert(actionContexts, check.DeepEquals, []string{
+		string(permTypes.CtxGlobal),
 		string(permTypes.CtxService),
 		string(permTypes.CtxServiceInstance),
 		string(permTypes.CtxTeam),
