@@ -54,10 +54,6 @@ func (t *dynamicPermissionToken) Permissions(ctx context.Context) ([]permTypes.P
 	return nil, nil
 }
 
-func (t *dynamicPermissionToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
-	return nil, nil
-}
-
 func (s *S) TestBaseTokenDynamicPermission(c *check.C) {
 	c.Assert(permission.RegisterDynamic("service-action.acl.rules.sync", []permTypes.ContextType{permTypes.CtxTeam}), check.IsNil)
 	role, err := permission.NewRole(context.TODO(), "dynamic-role-base-token", "team", "")
