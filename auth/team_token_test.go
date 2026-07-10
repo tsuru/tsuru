@@ -125,7 +125,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	perms, err := t.Permissions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)
-	dynamicPerms, err := t.DynamicPermissions(context.TODO())
+	dynamicPerms, err := BaseTokenDynamicPermission(context.TODO(), t)
 	c.Assert(err, check.IsNil)
 	c.Assert(dynamicPerms, check.HasLen, 0)
 	dbToken, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), token.TokenID)

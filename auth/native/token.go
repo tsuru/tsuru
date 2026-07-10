@@ -64,10 +64,6 @@ func (t *Token) Permissions(ctx context.Context) ([]permTypes.Permission, error)
 	return auth.BaseTokenPermission(ctx, t)
 }
 
-func (t *Token) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
-	return auth.BaseTokenDynamicPermission(ctx, t)
-}
-
 func loadConfig() error {
 	if cost == 0 && tokenExpire == 0 {
 		var err error
