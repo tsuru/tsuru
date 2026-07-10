@@ -52,6 +52,7 @@ var (
 		serviceGeneralFlow(),
 		serviceBind(),
 		serviceFineGrainedPermissionsFlow(),
+		serviceFineGrainedPermissionsSharedActionsFlow(),
 		appRouters(),
 		appVersions(),
 		multiversionRollbackTest(),
