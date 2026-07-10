@@ -6,6 +6,7 @@ package permission
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	DynamicPermissionPrefix = "service-action."
+	DynamicPermissionPrefix = "service-action"
 )
 
 // Dynamic schemes are pure values derived from the permission name; the
@@ -36,6 +37,12 @@ func NewDynamic(name string) (*permTypes.PermissionScheme, bool) {
 	}
 	var scheme *permTypes.PermissionScheme
 	for part := range strings.SplitSeq(name, ".") {
+		if part == DynamicPermissionPrefix {
+			continue
+		}
+		if scheme == nil {
+			part = fmt.Sprintf("%s.%s", DynamicPermissionPrefix, part)
+		}
 		scheme = &permTypes.PermissionScheme{Name: part, Parent: scheme, Contexts: dynamicPermissionContexts}
 	}
 	return scheme, true
@@ -44,7 +51,7 @@ func NewDynamic(name string) (*permTypes.PermissionScheme, bool) {
 // ExistsDynamic reports whether name is an ancestor-or-equal of an action
 // declared by an enabled service manifest.
 func ExistsDynamic(ctx context.Context, name string) (bool, error) {
-	serviceName, _, _ := strings.Cut(strings.TrimPrefix(name, DynamicPermissionPrefix), ".")
+	serviceName, _, _ := strings.Cut(strings.TrimPrefix(name, DynamicPermissionPrefix+"."), ".")
 	servicesCollection, err := storagev2.ServicesCollection()
 	if err != nil {
 		return false, err
@@ -61,7 +68,7 @@ func ExistsDynamic(ctx context.Context, name string) (bool, error) {
 		return false, nil
 	}
 	for _, op := range svc.Manifest.Operations {
-		if isDynamicAncestorOrSelf(name, DynamicPermissionPrefix+serviceName+"."+op.Action) {
+		if isDynamicAncestorOrSelf(name, DynamicPermissionPrefix+"."+serviceName+"."+op.Action) {
 			return true, nil
 		}
 	}
@@ -69,7 +76,14 @@ func ExistsDynamic(ctx context.Context, name string) (bool, error) {
 }
 
 func IsDynamicPermissionName(name string) bool {
-	return strings.HasPrefix(name, DynamicPermissionPrefix)
+	if !strings.HasPrefix(name, DynamicPermissionPrefix) {
+		return false
+	}
+	if strings.TrimSpace(name) == DynamicPermissionPrefix {
+		return false
+	}
+	parts := strings.Split(name, ".")
+	return len(parts) >= 2
 }
 
 // CheckDynamic returns true if any granted name is an ancestor-or-equal of the
