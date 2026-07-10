@@ -476,15 +476,13 @@ func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
 	var gotManifest service.ServiceManifest
 	err = json.Unmarshal(getRecorder.Body.Bytes(), &gotManifest)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotManifest, check.DeepEquals, service.ServiceManifest{
-		Enabled:       true,
-		StrictActions: true,
-		Operations: []service.ManifestOperation{{
-			Method: http.MethodPost,
-			Path:   "/rules/{ruleId}/sync",
-			Action: "rules.sync",
-		}},
-	})
+	c.Assert(gotManifest.Enabled, check.Equals, true)
+	c.Assert(gotManifest.StrictActions, check.Equals, true)
+	c.Assert(gotManifest.Operations, check.DeepEquals, []service.ManifestOperation{{
+		Method: http.MethodPost,
+		Path:   "/rules/{ruleId}/sync",
+		Action: "rules.sync",
+	}})
 }
 
 func (s *ProvisionSuite) TestSetServiceManifestConflictWithoutForce(c *check.C) {
