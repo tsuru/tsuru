@@ -450,12 +450,14 @@ optional provider-fetch path, §10.1.)
   The action/path metadata for each dynamic scheme is discoverable via each service's
   manifest endpoint.
 
-- `POST /roles/{name}/dynamic-permissions` — body: permission names →
-  `Role.AddDynamicPermissions`.
-- `DELETE /roles/{name}/dynamic-permissions/{permission}` →
-  `Role.RemoveDynamicPermissions`.
+- `POST /roles/{name}/permissions` — body: permission names, inferred by prefix:
+  names prefixed with `service-action.` are dynamic and written to
+  `Role.DynamicSchemeNames`; non-prefixed names are static and written to
+  `Role.SchemeNames`.
+- `DELETE /roles/{name}/permissions/{permission}` removes a permission, inferring
+  dynamic vs static by the same `service-action.` prefix rule.
 
-Existing `/roles/{name}/permissions` endpoint remains static-only and unchanged.
+`/roles/{name}/permissions` rejects requests that mix static and dynamic permissions.
 
 ---
 
@@ -581,7 +583,7 @@ operation `action` for display and migration diagnostics.
    wire `legacyCompat`/`strictActions`; create matched proxy events with the
    dynamic permission `Kind` and keep event custom-data.
 8. **API endpoints** — `PUT/GET /services/{service}/manifest`,
-   `GET /permissions` (now includes dynamic entries), `POST/DELETE /roles/{name}/dynamic-permissions`.
+   `GET /permissions` (now includes dynamic entries), `POST/DELETE /roles/{name}/permissions` (permission-type inference by `service-action.` prefix).
 9. **Migration nudge** — recurring warning while `legacyCompat` enabled;
    `LegacyEnabledAt`.
 10. **Docs/CLI** — client commands for manifest set/get and dynamic role grants;
@@ -601,7 +603,7 @@ operation `action` for display and migration diagnostics.
 | `service/endpoint.go` | `endpointClient.Manifest` (`GET /resources/manifest`) |
 | `api/service.go` | `PUT/GET /services/{service}/manifest`; optional `serviceProxy` enforcement |
 | `api/service_instance.go` | Enforcement in `serviceInstanceProxy` / `serviceInstanceProxyV2` |
-| `api/permission.go` | `GET /permissions` (adds dynamic permission items); dynamic role grant/revoke handlers |
+| `api/permission.go` | `GET /permissions` (adds dynamic permission items); unified permission add/remove with static/dynamic inference |
 | `api/server.go` | Register new routes |
 | API bootstrap (startup) | Re-populate dynamic registry from manifests before serving |
 

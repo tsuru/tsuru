@@ -412,8 +412,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/permissions", AuthorizationRequiredHandler(listPermissions))
 	m.Add("1.6", http.MethodPost, "/roles/{name}/token", AuthorizationRequiredHandler(assignRoleToToken))
 	m.Add("1.6", http.MethodDelete, "/roles/{name}/token/{token_id}", AuthorizationRequiredHandler(dissociateRoleFromToken))
-	m.Add("1.31", http.MethodPost, "/roles/{name}/dynamic-permissions", AuthorizationRequiredHandler(addDynamicPermissions))
-	m.Add("1.31", http.MethodDelete, "/roles/{name}/dynamic-permissions/{permission}", AuthorizationRequiredHandler(removeDynamicPermissions))
 	m.Add("1.9", http.MethodPost, "/roles/{name}/group", AuthorizationRequiredHandler(assignRoleToGroup))
 	m.Add("1.9", http.MethodDelete, "/roles/{name}/group/{group_name}", AuthorizationRequiredHandler(dissociateRoleFromGroup))
 
