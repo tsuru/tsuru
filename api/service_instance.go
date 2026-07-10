@@ -83,7 +83,7 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
 		}
 		result.eventKind = kind
-		dynamicPerms, err := t.DynamicPermissions(ctx)
+		dynamicPerms, err := auth.BaseTokenDynamicPermission(ctx, t)
 		if err != nil {
 			return serviceInstanceProxyAuthResult{}, err
 		}

@@ -40,10 +40,6 @@ func (t *APIToken) Permissions(ctx context.Context) ([]permTypes.Permission, err
 	return BaseTokenPermission(ctx, t)
 }
 
-func (t *APIToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
-	return BaseTokenDynamicPermission(ctx, t)
-}
-
 func APIAuth(ctx context.Context, header string) (*APIToken, error) {
 	usersCollection, err := storagev2.UsersCollection()
 	if err != nil {
