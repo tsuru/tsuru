@@ -12,6 +12,10 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
+const (
+	DynamicPermissionPrefix = "service-action."
+)
+
 type dynamicRegistry struct {
 	mu                 sync.RWMutex
 	schemeByActionName map[string]*permTypes.PermissionScheme
@@ -42,6 +46,10 @@ func LookupDynamic(name string) (*permTypes.PermissionScheme, bool) {
 // ListDynamic returns all dynamic schemes.
 func ListDynamic() permTypes.PermissionSchemeList {
 	return DynamicPermissionRegistry.list()
+}
+
+func IsDynamicPermissionName(name string) bool {
+	return strings.HasPrefix(name, DynamicPermissionPrefix)
 }
 
 // CheckDynamic returns true if any granted name is an ancestor-or-equal of the

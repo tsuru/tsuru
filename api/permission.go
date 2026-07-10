@@ -6,6 +6,7 @@ package api
 
 import (
 	"context"
+	stderrors "errors"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -94,6 +95,10 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
+	_, err = getRoleReturnNotFound(ctx, roleName)
+	if err != nil {
+		return err
+	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleDelete,
@@ -114,7 +119,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: permTypes.ErrRemoveRoleWithUsers.Error()}
 	}
 	err = permission.DestroyRole(ctx, roleName)
-	if err == permTypes.ErrRoleNotFound {
+	if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
@@ -169,13 +174,7 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
-	role, err := permission.FindRole(ctx, roleName)
-	if err == permTypes.ErrRoleNotFound {
-		return &errors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: err.Error(),
-		}
-	}
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
@@ -216,14 +215,37 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := permission.FindRole(ctx, roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
 
 	permissions, _ := InputValues(r, "permission")
-	err = role.AddPermissions(ctx, permissions...)
+	staticPermissions := make([]string, 0, len(permissions))
+	dynamicPermissions := make([]string, 0, len(permissions))
+	for _, permissionName := range permissions {
+		if permission.IsDynamicPermissionName(permissionName) {
+			dynamicPermissions = append(dynamicPermissions, permissionName)
+		} else {
+			staticPermissions = append(staticPermissions, permissionName)
+		}
+	}
+	if len(staticPermissions) > 0 && len(dynamicPermissions) > 0 {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "cannot mix static and dynamic permissions in one request",
+		}
+	}
 
+	if len(dynamicPermissions) > 0 {
+		err = role.AddDynamicPermissions(ctx, dynamicPermissions...)
+	} else {
+		err = role.AddPermissions(ctx, staticPermissions...)
+	}
+	return mapAddRolePermissionError(err)
+}
+
+func mapAddRolePermissionError(err error) error {
 	if err == permTypes.ErrInvalidPermissionName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -272,24 +294,20 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(ctx, err) }()
 	permName := r.URL.Query().Get(":permission")
-	role, err := permission.FindRole(ctx, roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
-		if err == permTypes.ErrRoleNotFound {
-			return &errors.HTTP{
-				Code:    http.StatusNotFound,
-				Message: err.Error(),
-			}
-		}
 		return err
 	}
-
+	if permission.IsDynamicPermissionName(permName) {
+		return role.RemoveDynamicPermissions(ctx, permName)
+	}
 	return role.RemovePermissions(ctx, permName)
 }
 
 func getRoleReturnNotFound(ctx context.Context, roleName string) (permission.Role, error) {
 	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
-		if err == permTypes.ErrRoleNotFound {
+		if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 			return permission.Role{}, &errors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
@@ -456,7 +474,7 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			continue
 		}
 		for _, op := range svc.Manifest.Operations {
-			actionName := fmt.Sprintf("service-action.%s.%s", svc.Name, op.Action)
+			actionName := fmt.Sprintf(permission.DynamicPermissionPrefix+"%s.%s", svc.Name, op.Action)
 			operationByName[actionName] = op
 		}
 	}
@@ -467,7 +485,7 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		if !ok {
 			continue
 		}
-		serviceAndAction := strings.TrimPrefix(scheme.FullName(), "service-action.")
+		serviceAndAction := strings.TrimPrefix(scheme.FullName(), permission.DynamicPermissionPrefix)
 		if serviceAndAction == scheme.FullName() {
 			continue
 		}
@@ -502,97 +520,6 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(permList)
-}
-
-// title: add dynamic permissions
-// path: /roles/{name}/dynamic-permissions
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//
-//	200: Ok
-//	400: Invalid data
-//	401: Unauthorized
-//	409: Permission not allowed
-func addDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	if !permission.Check(ctx, t, permission.PermRoleUpdatePermissionAdd) {
-		return permission.ErrUnauthorized
-	}
-	roleName := r.URL.Query().Get(":name")
-	evt, err := event.New(ctx, &event.Opts{
-		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
-		Kind:       permission.PermRoleUpdatePermissionAdd,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermRoleReadEvents),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(ctx, err) }()
-	role, err := permission.FindRole(ctx, roleName)
-	if err != nil {
-		return err
-	}
-
-	permissions, _ := InputValues(r, "permission")
-	err = role.AddDynamicPermissions(ctx, permissions...)
-	if err == permTypes.ErrInvalidPermissionName {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	if perr, ok := err.(*permTypes.ErrPermissionNotFound); ok {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: perr.Error(),
-		}
-	}
-	if perr, ok := err.(*permTypes.ErrPermissionNotAllowed); ok {
-		return &errors.HTTP{
-			Code:    http.StatusConflict,
-			Message: perr.Error(),
-		}
-	}
-	return err
-}
-
-// title: remove dynamic permission
-// path: /roles/{name}/dynamic-permissions/{permission}
-// method: DELETE
-// responses:
-//
-//	200: Permission removed
-//	401: Unauthorized
-//	404: Not found
-func removeDynamicPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	if !permission.Check(ctx, t, permission.PermRoleUpdatePermissionRemove) {
-		return permission.ErrUnauthorized
-	}
-	roleName := r.URL.Query().Get(":name")
-	evt, err := event.New(ctx, &event.Opts{
-		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
-		Kind:       permission.PermRoleUpdatePermissionRemove,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermRoleReadEvents),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(ctx, err) }()
-	permName := r.URL.Query().Get(":permission")
-	role, err := getRoleReturnNotFound(ctx, roleName)
-	if err != nil {
-		return err
-	}
-
-	return role.RemoveDynamicPermissions(ctx, permName)
 }
 
 // title: add default role
@@ -631,7 +558,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		defer func() { evt.Done(ctx, err) }()
 		role, err := permission.FindRole(ctx, roleName)
 		if err != nil {
-			if err == permTypes.ErrRoleNotFound {
+			if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 				return &errors.HTTP{
 					Code:    http.StatusBadRequest,
 					Message: err.Error(),
@@ -691,7 +618,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		defer func() { evt.Done(ctx, err) }()
 		role, err := permission.FindRole(ctx, roleName)
 		if err != nil {
-			if err == permTypes.ErrRoleNotFound {
+			if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 				return &errors.HTTP{
 					Code:    http.StatusBadRequest,
 					Message: err.Error(),
