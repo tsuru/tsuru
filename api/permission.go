@@ -449,15 +449,21 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !permission.Check(ctx, t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
 	}
+	permList, err := permissionList(ctx)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(permList)
+}
+
+func permissionList(ctx context.Context) ([]permissionSchemeData, error) {
 	lst := permission.PermissionRegistry.Permissions()
 	sort.Sort(lst)
 	permList := make([]permissionSchemeData, 0, len(lst))
 	for _, perm := range lst {
 		contexts := perm.AllowedContexts()
-		contextNames := make([]string, len(contexts))
-		for j, ctx := range contexts {
-			contextNames[j] = string(ctx)
-		}
+		contextNames := contextsToNames(contexts)
 		permList = append(permList, permissionSchemeData{
 			Name:     perm.FullName(),
 			Contexts: contextNames,
@@ -465,7 +471,7 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	services, err := service.GetServices(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	actionsByService := map[string][]permissionSchemeData{}
 	for _, svc := range services {
@@ -478,10 +484,7 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 				continue
 			}
 			contexts := scheme.AllowedContexts()
-			contextNames := make([]string, len(contexts))
-			for j, ctx := range contexts {
-				contextNames[j] = string(ctx)
-			}
+			contextNames := contextsToNames(contexts)
 			actionsByService[svc.Name] = append(actionsByService[svc.Name], permissionSchemeData{
 				Name:     scheme.FullName(),
 				Contexts: contextNames,
@@ -502,8 +505,15 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		permList = append(permList, actions...)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(permList)
+	return permList, nil
+}
+
+func contextsToNames(contexts []permission.Context) []string {
+	contextNames := make([]string, len(contexts))
+	for j, ctx := range contexts {
+		contextNames[j] = string(ctx)
+	}
+	return contextNames
 }
 
 // title: add default role
