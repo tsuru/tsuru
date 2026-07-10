@@ -44,10 +44,6 @@ func (t *userToken) Permissions(ctx context.Context) ([]permTypes.Permission, er
 	return t.permissions, nil
 }
 
-func (t *userToken) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
-	return nil, nil
-}
-
 func (s *S) Test_TeamTokenService_Create(c *check.C) {
 	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
