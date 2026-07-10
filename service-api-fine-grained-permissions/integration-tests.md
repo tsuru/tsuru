@@ -35,7 +35,8 @@
   - Use curl for role-management API calls (as requested):
       - POST /1.0/roles to create role (name, context=team).
       - POST /1.0/roles/{role}/user to assign admin user (email={{.adminuser}}, context={{.team}}).
-      - POST /1.31/roles/{role}/dynamic-permissions and DELETE for grant/revoke.
+- Grant/revoke via CLI: `tsuru role permission add <role> <permission>` and
+  `tsuru role permission remove <role> <permission>`.
       - GET /1.0/roles/{role} and `/permissions` assertions for `service-action.<service>.<action>` entries.
 
   - Authorization checks:
@@ -86,4 +87,4 @@
 
   - Chosen FG scope: include proxy authorization behavior (user-selected).
   - The test runner must be logged in with an admin-capable tsuru user; integration code should call `tsuru token show` to retrieve the token required for role endpoints and manifest write.
-  - Use API versioned path 1.0 for base roles endpoints and `/permissions`, and 1.31 for dynamic permissions and services/{name}/manifest calls.
+- Use API versioned path 1.0 for base roles endpoints and `/permissions`, and 1.31 for services/{name}/manifest calls.
