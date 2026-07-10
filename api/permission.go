@@ -479,7 +479,7 @@ func permissionList(ctx context.Context) ([]permissionSchemeData, error) {
 			continue
 		}
 		for _, op := range svc.Manifest.Operations {
-			scheme, ok := permission.NewDynamic(permission.DynamicPermissionPrefix + svc.Name + "." + op.Action)
+			scheme, ok := permission.NewDynamic(permission.DynamicPermissionPrefix + "." + svc.Name + "." + op.Action)
 			if !ok {
 				continue
 			}

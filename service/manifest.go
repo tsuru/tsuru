@@ -242,5 +242,5 @@ func manifestGrantConflicts(ctx context.Context, serviceName string, removedActi
 }
 
 func dynamicActionPermissionName(serviceName, action string) string {
-	return permission.DynamicPermissionPrefix + serviceName + "." + action
+	return permission.DynamicPermissionPrefix + "." + serviceName + "." + action
 }

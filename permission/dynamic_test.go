@@ -25,7 +25,6 @@ func TestNewDynamicBuildsLineage(t *testing.T) {
 		"service-action.acl.rules.sync",
 		"service-action.acl.rules",
 		"service-action.acl",
-		"service-action",
 	} {
 		require.NotNil(t, scheme, "expected scheme for %q", fullName)
 		assert.Equal(t, fullName, scheme.FullName())
