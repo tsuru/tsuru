@@ -4,14 +4,13 @@
   "operations": [
     {
       "method": "GET",
-      "path": "/rules/{ruleId}",
-      "action": "rules.view"
+      "path": "/databases/{databaseId}",
+      "action": "database.read"
     },
     {
       "method": "POST",
-      "path": "/rules/{ruleId}/sync",
-      "action": "rules.sync"
+      "path": "/databases/{databaseId}/users",
+      "action": "database.users.create"
     }
   ]
 }
-
