@@ -508,7 +508,7 @@ func permissionList(ctx context.Context) ([]permissionSchemeData, error) {
 	return permList, nil
 }
 
-func contextsToNames(contexts []permission.Context) []string {
+func contextsToNames(contexts []permTypes.ContextType) []string {
 	contextNames := make([]string, len(contexts))
 	for j, ctx := range contexts {
 		contextNames[j] = string(ctx)
