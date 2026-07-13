@@ -608,9 +608,9 @@ func (s *S) TestServiceManifestMatch(c *check.C) {
 		{method: "GET", path: "/unknown", match: false},
 	}
 	for _, test := range testCases {
-		action, match := manifest.Match(test.method, test.path)
+		op, match := manifest.MatchOperation(test.method, test.path)
 		c.Assert(match, check.Equals, test.match, check.Commentf("method=%s path=%s", test.method, test.path))
-		c.Assert(action, check.Equals, test.action, check.Commentf("method=%s path=%s", test.method, test.path))
+		c.Assert(op.Action, check.Equals, test.action, check.Commentf("method=%s path=%s", test.method, test.path))
 	}
 }
 

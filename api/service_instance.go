@@ -47,10 +47,6 @@ func serviceIntancePermName(serviceName, instanceName string) string {
 	return fmt.Sprintf("%s/%s", serviceName, instanceName)
 }
 
-func dynamicActionPermissionName(serviceName, action string) string {
-	return "service-action." + serviceName + "." + action
-}
-
 func normalizeServiceInstanceManifestPath(instance *service.ServiceInstance, requestPath string) string {
 	prefix := fmt.Sprintf("/resources/%s", instance.GetIdentifier())
 	cleanPath := path.Clean("/" + requestPath)
@@ -78,7 +74,8 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 	normalizedPath := normalizeServiceInstanceManifestPath(instance, requestPath)
 	op, matched := svc.Manifest.MatchOperation(method, normalizedPath)
 	if matched {
-		kind, ok := permission.NewDynamic(dynamicActionPermissionName(svc.Name, op.Action))
+		permName := permission.DynamicActionPermissionName(svc.Name, op.Action)
+		kind, ok := permission.NewDynamic(permName)
 		if !ok {
 			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
 		}
@@ -87,7 +84,7 @@ func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc ser
 		if err != nil {
 			return serviceInstanceProxyAuthResult{}, err
 		}
-		if permission.CheckDynamic(dynamicPerms, dynamicActionPermissionName(svc.Name, op.Action), ctxs...) {
+		if permission.CheckDynamic(dynamicPerms, permName, ctxs...) {
 			result.matched = true
 			result.action = op.Action
 			return result, nil
