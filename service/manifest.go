@@ -201,7 +201,7 @@ func manifestGrantConflicts(ctx context.Context, serviceName string, removedActi
 	targetPerms := make(map[string]string, len(removedActions))
 	permNames := make([]string, 0, len(removedActions))
 	for _, action := range removedActions {
-		permName := dynamicActionPermissionName(serviceName, action)
+		permName := permission.DynamicActionPermissionName(serviceName, action)
 		targetPerms[permName] = action
 		permNames = append(permNames, permName)
 	}
@@ -239,8 +239,4 @@ func manifestGrantConflicts(ctx context.Context, serviceName string, removedActi
 		return conflicts[i].Action < conflicts[j].Action
 	})
 	return conflicts, nil
-}
-
-func dynamicActionPermissionName(serviceName, action string) string {
-	return permission.DynamicPermissionPrefix + "." + serviceName + "." + action
 }

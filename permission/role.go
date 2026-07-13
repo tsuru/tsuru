@@ -259,37 +259,36 @@ func (r *Role) AddDynamicPermissions(ctx context.Context, permNames ...string) e
 			}
 		}
 	}
-	collection, err := storagev2.RolesCollection()
+	err := r.updateDynamicSchemeNames(ctx, mongoBSON.M{"$addToSet": mongoBSON.M{"dynamic_scheme_names": mongoBSON.M{"$each": permNames}}})
 	if err != nil {
 		return err
 	}
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$addToSet": mongoBSON.M{"dynamic_scheme_names": mongoBSON.M{"$each": permNames}}})
-	if err != nil {
-		return err
+	for _, permName := range permNames {
+		if !slices.Contains(r.DynamicSchemeNames, permName) {
+			r.DynamicSchemeNames = append(r.DynamicSchemeNames, permName)
+		}
 	}
-	dbRole, err := FindRole(ctx, r.Name)
-	if err != nil {
-		return err
-	}
-	r.DynamicSchemeNames = dbRole.DynamicSchemeNames
 	return nil
 }
 
 func (r *Role) RemoveDynamicPermissions(ctx context.Context, permNames ...string) error {
+	err := r.updateDynamicSchemeNames(ctx, mongoBSON.M{"$pullAll": mongoBSON.M{"dynamic_scheme_names": permNames}})
+	if err != nil {
+		return err
+	}
+	r.DynamicSchemeNames = slices.DeleteFunc(r.DynamicSchemeNames, func(name string) bool {
+		return slices.Contains(permNames, name)
+	})
+	return nil
+}
+
+func (r *Role) updateDynamicSchemeNames(ctx context.Context, update mongoBSON.M) error {
 	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return err
 	}
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$pullAll": mongoBSON.M{"dynamic_scheme_names": permNames}})
-	if err != nil {
-		return err
-	}
-	dbRole, err := FindRole(ctx, r.Name)
-	if err != nil {
-		return err
-	}
-	r.DynamicSchemeNames = dbRole.DynamicSchemeNames
-	return nil
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, update)
+	return err
 }
 
 func (r *Role) filterValidSchemes() permTypes.PermissionSchemeList {

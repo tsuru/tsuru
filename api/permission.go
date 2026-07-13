@@ -436,6 +436,18 @@ type permissionSchemeData struct {
 	Contexts []string
 }
 
+func newPermissionSchemeData(scheme *permTypes.PermissionScheme) permissionSchemeData {
+	contexts := scheme.AllowedContexts()
+	contextNames := make([]string, len(contexts))
+	for i, ctx := range contexts {
+		contextNames[i] = string(ctx)
+	}
+	return permissionSchemeData{
+		Name:     scheme.FullName(),
+		Contexts: contextNames,
+	}
+}
+
 // title: list permissions
 // path: /permissions
 // method: GET
@@ -462,58 +474,33 @@ func permissionList(ctx context.Context) ([]permissionSchemeData, error) {
 	sort.Sort(lst)
 	permList := make([]permissionSchemeData, 0, len(lst))
 	for _, perm := range lst {
-		contexts := perm.AllowedContexts()
-		contextNames := contextsToNames(contexts)
-		permList = append(permList, permissionSchemeData{
-			Name:     perm.FullName(),
-			Contexts: contextNames,
-		})
+		permList = append(permList, newPermissionSchemeData(perm))
 	}
 	services, err := service.GetServices(ctx)
 	if err != nil {
 		return nil, err
 	}
-	actionsByService := map[string][]permissionSchemeData{}
+	sort.Slice(services, func(i, j int) bool {
+		return services[i].Name < services[j].Name
+	})
 	for _, svc := range services {
 		if svc.Manifest == nil || !svc.Manifest.Enabled {
 			continue
 		}
+		actions := make([]permissionSchemeData, 0, len(svc.Manifest.Operations))
 		for _, op := range svc.Manifest.Operations {
-			scheme, ok := permission.NewDynamic(permission.DynamicPermissionPrefix + "." + svc.Name + "." + op.Action)
+			scheme, ok := permission.NewDynamic(permission.DynamicActionPermissionName(svc.Name, op.Action))
 			if !ok {
 				continue
 			}
-			contexts := scheme.AllowedContexts()
-			contextNames := contextsToNames(contexts)
-			actionsByService[svc.Name] = append(actionsByService[svc.Name], permissionSchemeData{
-				Name:     scheme.FullName(),
-				Contexts: contextNames,
-			})
+			actions = append(actions, newPermissionSchemeData(scheme))
 		}
-	}
-
-	servicesWithActions := make([]string, 0, len(actionsByService))
-	for serviceName := range actionsByService {
-		servicesWithActions = append(servicesWithActions, serviceName)
-	}
-	sort.Strings(servicesWithActions)
-	for _, serviceName := range servicesWithActions {
-		actions := actionsByService[serviceName]
 		sort.Slice(actions, func(i, j int) bool {
 			return actions[i].Name < actions[j].Name
 		})
 		permList = append(permList, actions...)
 	}
-
 	return permList, nil
-}
-
-func contextsToNames(contexts []permTypes.ContextType) []string {
-	contextNames := make([]string, len(contexts))
-	for j, ctx := range contexts {
-		contextNames[j] = string(ctx)
-	}
-	return contextNames
 }
 
 // title: add default role

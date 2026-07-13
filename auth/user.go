@@ -169,8 +169,14 @@ func (u *User) reload(ctx context.Context) error {
 	return usersCollection.FindOne(ctx, mongoBSON.M{"email": u.Email}).Decode(u)
 }
 
-func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permTypes.Permission, error) {
-	var permissions []permTypes.Permission
+type roleWithContext struct {
+	role         *permission.Role
+	contextValue string
+}
+
+// resolveRoles fetches each role instance's role, caching lookups by name.
+func resolveRoles(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]roleWithContext, error) {
+	resolved := make([]roleWithContext, 0, len(roleInstances))
 	roles := make(map[string]*permission.Role)
 	for _, roleData := range roleInstances {
 		role := roles[roleData.Name]
@@ -182,25 +188,31 @@ func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleIn
 			role = &foundRole
 			roles[roleData.Name] = role
 		}
-		permissions = append(permissions, role.PermissionsFor(roleData.ContextValue)...)
+		resolved = append(resolved, roleWithContext{role: role, contextValue: roleData.ContextValue})
+	}
+	return resolved, nil
+}
+
+func expandRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permTypes.Permission, error) {
+	resolved, err := resolveRoles(ctx, roleInstances)
+	if err != nil {
+		return nil, err
+	}
+	var permissions []permTypes.Permission
+	for _, rc := range resolved {
+		permissions = append(permissions, rc.role.PermissionsFor(rc.contextValue)...)
 	}
 	return permissions, nil
 }
 
 func expandDynamicRolePermissions(ctx context.Context, roleInstances []authTypes.RoleInstance) ([]permTypes.Permission, error) {
+	resolved, err := resolveRoles(ctx, roleInstances)
+	if err != nil {
+		return nil, err
+	}
 	var permissions []permTypes.Permission
-	roles := make(map[string]*permission.Role)
-	for _, roleData := range roleInstances {
-		role := roles[roleData.Name]
-		if role == nil {
-			foundRole, err := permission.FindRole(ctx, roleData.Name)
-			if err != nil && err != permTypes.ErrRoleNotFound {
-				return nil, err
-			}
-			role = &foundRole
-			roles[roleData.Name] = role
-		}
-		permissions = append(permissions, role.DynamicPermissionsFor(roleData.ContextValue)...)
+	for _, rc := range resolved {
+		permissions = append(permissions, rc.role.DynamicPermissionsFor(rc.contextValue)...)
 	}
 	return permissions, nil
 }
@@ -217,7 +229,7 @@ func (u *User) UserGroups() ([]authTypes.Group, error) {
 	return groups, nil
 }
 
-func (u *User) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
+func (u *User) roleInstances() ([]authTypes.RoleInstance, error) {
 	groups, err := u.UserGroups()
 	if err != nil {
 		return nil, err
@@ -225,6 +237,14 @@ func (u *User) Permissions(ctx context.Context) ([]permTypes.Permission, error) 
 	allRoles := u.Roles
 	for _, group := range groups {
 		allRoles = append(allRoles, group.Roles...)
+	}
+	return allRoles, nil
+}
+
+func (u *User) Permissions(ctx context.Context) ([]permTypes.Permission, error) {
+	allRoles, err := u.roleInstances()
+	if err != nil {
+		return nil, err
 	}
 	permissions, err := expandRolePermissions(ctx, allRoles)
 	if err != nil {
@@ -237,13 +257,9 @@ func (u *User) Permissions(ctx context.Context) ([]permTypes.Permission, error) 
 }
 
 func (u *User) DynamicPermissions(ctx context.Context) ([]permTypes.Permission, error) {
-	groups, err := u.UserGroups()
+	allRoles, err := u.roleInstances()
 	if err != nil {
 		return nil, err
-	}
-	allRoles := u.Roles
-	for _, group := range groups {
-		allRoles = append(allRoles, group.Roles...)
 	}
 	return expandDynamicRolePermissions(ctx, allRoles)
 }

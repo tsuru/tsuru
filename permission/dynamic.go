@@ -86,6 +86,12 @@ func IsDynamicPermissionName(name string) bool {
 	return len(parts) >= 2
 }
 
+// DynamicActionPermissionName builds the dynamic permission name for a service
+// manifest action.
+func DynamicActionPermissionName(serviceName, action string) string {
+	return DynamicPermissionPrefix + "." + serviceName + "." + action
+}
+
 // CheckDynamic returns true if any granted name is an ancestor-or-equal of the
 // requested name and the granted permission context matches the request
 // contexts. Callers must only pass requested names taken from an enabled
