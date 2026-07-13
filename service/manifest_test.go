@@ -43,8 +43,8 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Method: http.MethodPost,
-			Path:   "/rules/{ruleId}/sync",
+			Method: "post",
+			Path:   "rules/{ruleId}/sync",
 			Action: "rules.sync",
 		}},
 	})

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
-	"time"
 
 	"github.com/tsuru/tsuru/db/storagev2"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -49,7 +48,6 @@ func (s *S) TestCreateService(c *check.C) {
 	endpt := map[string]string{
 		"production": "somehost.com",
 	}
-	legacyEnabledAt := time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC)
 	service := &Service{
 		Name:       "my-service",
 		Username:   "test",
@@ -57,10 +55,9 @@ func (s *S) TestCreateService(c *check.C) {
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
 		Manifest: &ServiceManifest{
-			Enabled:         true,
-			StrictActions:   true,
-			LegacyCompat:    true,
-			LegacyEnabledAt: &legacyEnabledAt,
+			Enabled:       true,
+			StrictActions: true,
+			LegacyCompat:  true,
 			Operations: []ManifestOperation{{
 				Method: "POST",
 				Path:   "/rules/{ruleId}/sync",
