@@ -83,7 +83,7 @@ var (
 		Name: "tsuru_node_status_not_found",
 		Help: "The number of not found nodes received in tsuru node status.",
 	})
-	envVarNameRegexp = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
+	envVarNameRegexp = regexp.MustCompile("^[_a-zA-Z][-_a-zA-Z0-9]*$")
 )
 
 func init() {

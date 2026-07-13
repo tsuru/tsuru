@@ -1219,7 +1219,7 @@ func (s *S) TestSetEnvsValidation(c *check.C) {
 		{"lowcase", true},
 		{"ENV-WITH-DASHES", true},
 		{"-NO_LEADING_DASH", false},
-		{"_NO_LEADING_UNDERSCORE", false},
+		{"_LEADING_UNDERSCORE", true},
 		{"ENV.WITH.DOTS", false},
 		{"ENV VAR WITH SPACES", false},
 		{"0NO_LEADING_NUMBER", false},
