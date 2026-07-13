@@ -4,20 +4,15 @@
 
 package service
 
-import (
-	"time"
-)
-
 type Service struct {
 	Manifest *ServiceManifest `bson:"manifest,omitempty" json:"manifest,omitempty"`
 }
 
 type ServiceManifest struct {
-	Enabled         bool                `bson:"enabled" json:"enabled"`
-	StrictActions   bool                `bson:"strict_actions" json:"strict_actions"`
-	LegacyCompat    bool                `bson:"legacy_compat" json:"legacy_compat"`
-	LegacyEnabledAt *time.Time          `bson:"legacy_enabled_at,omitempty" json:"legacy_enabled_at,omitempty"`
-	Operations      []ManifestOperation `bson:"operations" json:"operations"`
+	Enabled       bool                `bson:"enabled" json:"enabled"`
+	StrictActions bool                `bson:"strict_actions" json:"strict_actions"`
+	LegacyCompat  bool                `bson:"legacy_compat" json:"legacy_compat"`
+	Operations    []ManifestOperation `bson:"operations" json:"operations"`
 }
 
 type ManifestOperation struct {

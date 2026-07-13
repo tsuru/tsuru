@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -65,11 +64,10 @@ func UpdateManifest(ctx context.Context, serviceName string, manifest *ServiceMa
 }
 
 func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest, force bool) error {
-	normalized, err := normalizeManifest(manifest, s.Manifest)
-	if err != nil {
+	if err := validateManifest(manifest); err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
-	removedActions := removedManifestActions(s.Manifest, normalized)
+	removedActions := removedManifestActions(s.Manifest, manifest)
 	conflicts, err := manifestGrantConflicts(ctx, s.Name, removedActions)
 	if err != nil {
 		return err
@@ -80,71 +78,48 @@ func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest,
 	if len(conflicts) > 0 {
 		log.Errorf("WARNING: manifest ingest for service %q forced removal of actions: %#v", s.Name, conflicts)
 	}
-	if err := persistManifest(ctx, s.Name, normalized); err != nil {
+	if err := persistManifest(ctx, s.Name, manifest); err != nil {
 		return err
 	}
-	s.Manifest = normalized
+	s.Manifest = manifest
 	return nil
 }
 
-func normalizeManifest(manifest *ServiceManifest, previous *ServiceManifest) (*ServiceManifest, error) {
+func validateManifest(manifest *ServiceManifest) error {
 	if manifest == nil {
-		return nil, nil
+		return nil
 	}
-	normalized := &ServiceManifest{
-		Enabled:       manifest.Enabled,
-		StrictActions: manifest.StrictActions,
-		LegacyCompat:  manifest.LegacyCompat,
-		Operations:    make([]ManifestOperation, 0, len(manifest.Operations)),
-	}
-	if normalized.LegacyCompat {
-		switch {
-		case manifest.LegacyEnabledAt != nil:
-			t := manifest.LegacyEnabledAt.UTC()
-			normalized.LegacyEnabledAt = &t
-		case previous != nil && previous.LegacyCompat && previous.LegacyEnabledAt != nil:
-			t := previous.LegacyEnabledAt.UTC()
-			normalized.LegacyEnabledAt = &t
-		default:
-			now := time.Now().UTC()
-			normalized.LegacyEnabledAt = &now
-		}
-	}
+
 	seenActions := map[string]struct{}{}
 	seenRoutes := map[string]struct{}{}
-	for _, rawOp := range manifest.Operations {
-		op := ManifestOperation{
-			Method: strings.ToUpper(strings.TrimSpace(rawOp.Method)),
-			Path:   manifestPatternPath(rawOp.Path),
-			Action: strings.TrimSpace(rawOp.Action),
-		}
+	for _, op := range manifest.Operations {
 		if op.Action == "" {
-			return nil, fmt.Errorf("manifest action is required for operation %q", op.Path)
+			return fmt.Errorf("manifest action is required for operation %q", op.Path)
 		}
 		if _, ok := seenActions[op.Action]; ok {
-			return nil, fmt.Errorf("duplicate manifest operation action %q", op.Action)
+			return fmt.Errorf("duplicate manifest operation action %q", op.Action)
 		}
 		seenActions[op.Action] = struct{}{}
-		if _, ok := validManifestHTTPMethods[op.Method]; !ok {
-			return nil, fmt.Errorf("invalid manifest method %q for operation %q", op.Method, op.Action)
+		method := strings.ToUpper(strings.TrimSpace(op.Method))
+		if _, ok := validManifestHTTPMethods[method]; !ok {
+			return fmt.Errorf("invalid manifest method %q for operation %q", op.Method, op.Action)
 		}
 		if !manifestActionValidationRegexp.MatchString(op.Action) {
-			return nil, fmt.Errorf("invalid manifest action %q for operation %q", op.Action, op.Path)
+			return fmt.Errorf("invalid manifest action %q for operation %q", op.Action, op.Path)
 		}
-		if strings.TrimSpace(rawOp.Path) == "" {
-			return nil, fmt.Errorf("manifest path is required for operation %q", op.Action)
+		if strings.TrimSpace(op.Path) == "" {
+			return fmt.Errorf("manifest path is required for operation %q", op.Action)
 		}
-		routeKey := op.Method + routeKeySeparator + op.Path
+		routeKey := method + routeKeySeparator + manifestPatternPath(op.Path)
 		if _, ok := seenRoutes[routeKey]; ok {
-			return nil, fmt.Errorf("duplicate manifest route %s %s", op.Method, op.Path)
+			return fmt.Errorf("duplicate manifest route %s %s", op.Method, op.Path)
 		}
 		seenRoutes[routeKey] = struct{}{}
-		normalized.Operations = append(normalized.Operations, op)
 	}
-	if _, _, err := normalized.compiledMatcher(); err != nil {
-		return nil, err
+	if _, _, err := manifest.compiledMatcher(); err != nil {
+		return err
 	}
-	return normalized, nil
+	return nil
 }
 
 func removedManifestActions(current *ServiceManifest, next *ServiceManifest) []string {
