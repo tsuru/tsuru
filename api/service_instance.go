@@ -22,6 +22,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
@@ -467,6 +468,7 @@ type serviceInstanceInfo struct {
 	PlanName        string
 	PlanDescription string
 	Pool            string
+	Cluster         string
 	CustomInfo      map[string]string
 	Tags            []string
 	Parameters      map[string]interface{}
@@ -520,6 +522,17 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		CustomInfo:      info,
 		Tags:            serviceInstance.Tags,
 		Parameters:      serviceInstance.Parameters,
+	}
+
+	if serviceInstance.Pool != "" {
+		cluster, err := servicemanager.Cluster.FindByPool(ctx, "kubernetes", serviceInstance.Pool)
+
+		if err != nil {
+			log.Errorf("unable to fetch cluster: %s", err)
+		}
+		if cluster != nil && err == nil {
+			sInfo.Cluster = cluster.Name
+		}
 	}
 	if sInfo.PlanName == "" {
 		sInfo.PlanName = serviceInstance.PlanName
