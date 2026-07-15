@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -64,15 +63,6 @@ type ServiceManifest serviceTypes.ServiceManifest
 
 type ManifestOperation = serviceTypes.ManifestOperation
 
-type manifestMatchState struct {
-	matchOnce       sync.Once
-	matchErr        error
-	matcher         *http.ServeMux
-	actionByPattern map[string]string
-}
-
-var manifestMatchStates sync.Map
-
 type BindAppParameters map[string]any
 
 type ProxyOpts struct {
@@ -120,34 +110,17 @@ func (m *ServiceManifest) MatchOperation(method, rawPath string) (ManifestOperat
 }
 
 func (m *ServiceManifest) compiledMatcher() (*http.ServeMux, map[string]string, error) {
-	state := manifestMatchStateFor(m)
-
-	state.matchOnce.Do(func() {
-		matcher := http.NewServeMux()
-		actionByPattern := make(map[string]string, len(m.Operations))
-		for _, op := range m.Operations {
-			pattern := manifestRoutePattern(op)
-			err := registerManifestRoute(matcher, pattern)
-			if err != nil {
-				state.matchErr = err
-				return
-			}
-			actionByPattern[pattern] = op.Action
+	matcher := http.NewServeMux()
+	actionByPattern := make(map[string]string, len(m.Operations))
+	for _, op := range m.Operations {
+		pattern := manifestRoutePattern(op)
+		err := registerManifestRoute(matcher, pattern)
+		if err != nil {
+			return nil, nil, err
 		}
-		state.matcher = matcher
-		state.actionByPattern = actionByPattern
-	})
-	return state.matcher, state.actionByPattern, state.matchErr
-}
-
-func manifestMatchStateFor(m *ServiceManifest) *manifestMatchState {
-	state, ok := manifestMatchStates.Load(m)
-	if ok {
-		return state.(*manifestMatchState)
+		actionByPattern[pattern] = op.Action
 	}
-	statePtr := &manifestMatchState{}
-	actual, _ := manifestMatchStates.LoadOrStore(m, statePtr)
-	return actual.(*manifestMatchState)
+	return matcher, actionByPattern, nil
 }
 
 func registerManifestRoute(matcher *http.ServeMux, pattern string) (err error) {
