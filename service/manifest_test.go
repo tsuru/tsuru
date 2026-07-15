@@ -25,7 +25,7 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Method: "post",
+			Method: http.MethodPost,
 			Path:   "rules/{ruleId}/sync",
 			Action: "rules.sync",
 		}},
@@ -43,7 +43,7 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 		Enabled:       true,
 		StrictActions: true,
 		Operations: []ManifestOperation{{
-			Method: "post",
+			Method: http.MethodPost,
 			Path:   "rules/{ruleId}/sync",
 			Action: "rules.sync",
 		}},
