@@ -7,11 +7,11 @@ package integration
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"net/url"
-	"strconv"
+	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 

@@ -461,7 +461,7 @@ func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
 		Scheme:  permission.PermServiceUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	manifest := `{"enabled":true,"strict_actions":true,"operations":[{"method":"post","path":"/rules/{ruleId}/sync","action":"rules.sync"}]}`
+	manifest := `{"enabled":true,"strict_actions":true,"operations":[{"method":"POST","path":"/rules/{ruleId}/sync","action":"rules.sync"}]}`
 
 	putRecorder, putRequest := s.makeRequest(http.MethodPut, "/services/manifest-service/manifest", manifest, c)
 	putRequest.Header.Set("Content-Type", "application/json")

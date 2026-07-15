@@ -100,8 +100,7 @@ func validateManifest(manifest *ServiceManifest) error {
 			return fmt.Errorf("duplicate manifest operation action %q", op.Action)
 		}
 		seenActions[op.Action] = struct{}{}
-		method := strings.ToUpper(strings.TrimSpace(op.Method))
-		if _, ok := validManifestHTTPMethods[method]; !ok {
+		if _, ok := validManifestHTTPMethods[op.Method]; !ok {
 			return fmt.Errorf("invalid manifest method %q for operation %q", op.Method, op.Action)
 		}
 		if !manifestActionValidationRegexp.MatchString(op.Action) {
@@ -110,7 +109,7 @@ func validateManifest(manifest *ServiceManifest) error {
 		if strings.TrimSpace(op.Path) == "" {
 			return fmt.Errorf("manifest path is required for operation %q", op.Action)
 		}
-		routeKey := method + routeKeySeparator + manifestPatternPath(op.Path)
+		routeKey := op.Method + routeKeySeparator + manifestPatternPath(op.Path)
 		if _, ok := seenRoutes[routeKey]; ok {
 			return fmt.Errorf("duplicate manifest route %s %s", op.Method, op.Path)
 		}
