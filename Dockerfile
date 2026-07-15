@@ -1,5 +1,5 @@
 ARG alpine_version=3.23
-ARG golang_version=1.26.3
+ARG golang_version=1.26.5
 
 FROM golang:${golang_version}-alpine${alpine_version} AS builder
 RUN apk add --update --no-cache bash make git
