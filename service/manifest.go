@@ -7,8 +7,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -68,7 +70,7 @@ func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest,
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
 	removedActions := removedManifestActions(s.Manifest, manifest)
-	conflicts, err := manifestGrantConflicts(ctx, s.Name, removedActions)
+	conflicts, err := manifestGrantConflicts(ctx, s.Name, removedActions, manifest)
 	if err != nil {
 		return err
 	}
@@ -168,23 +170,26 @@ func persistManifest(ctx context.Context, serviceName string, manifest *ServiceM
 	return nil
 }
 
-func manifestGrantConflicts(ctx context.Context, serviceName string, removedActions []string) ([]ManifestGrantConflict, error) {
+// manifestGrantConflicts finds roles whose dynamic grants for serviceName
+// would stop matching any action after the manifest update. Grants may sit at
+// ancestor levels (e.g. "service-action.<svc>.rules" or "service-action.<svc>"),
+// so a grant only conflicts when no action kept by the next manifest is still
+// covered by it.
+func manifestGrantConflicts(ctx context.Context, serviceName string, removedActions []string, next *ServiceManifest) ([]ManifestGrantConflict, error) {
 	if len(removedActions) == 0 {
 		return nil, nil
 	}
-	targetPerms := make(map[string]string, len(removedActions))
-	permNames := make([]string, 0, len(removedActions))
-	for _, action := range removedActions {
-		permName := permission.DynamicActionPermissionName(serviceName, action)
-		targetPerms[permName] = action
-		permNames = append(permNames, permName)
+	servicePermPrefix := permission.DynamicPermissionPrefix + "." + serviceName
+	remainingPerms := []string{}
+	for action := range manifestActionNames(next) {
+		remainingPerms = append(remainingPerms, permission.DynamicActionPermissionName(serviceName, action))
 	}
 	rolesCollection, err := storagev2.RolesCollection()
 	if err != nil {
 		return nil, err
 	}
 	cursor, err := rolesCollection.Find(ctx, mongoBSON.M{
-		"dynamic_scheme_names": mongoBSON.M{"$in": permNames},
+		"dynamic_scheme_names": mongoBSON.M{"$regex": "^" + regexp.QuoteMeta(servicePermPrefix) + "(\\.|$)"},
 	})
 	if err != nil {
 		return nil, err
@@ -193,20 +198,33 @@ func manifestGrantConflicts(ctx context.Context, serviceName string, removedActi
 	if err := cursor.All(ctx, &roles); err != nil {
 		return nil, err
 	}
-	roleNamesByPermission := make(map[string][]string, len(permNames))
+	roleNamesByAction := map[string]map[string]struct{}{}
 	for _, role := range roles {
-		for _, permName := range role.DynamicSchemeNames {
-			if _, ok := targetPerms[permName]; ok {
-				roleNamesByPermission[permName] = append(roleNamesByPermission[permName], role.Name)
+		for _, grant := range role.DynamicSchemeNames {
+			if grant != servicePermPrefix && !strings.HasPrefix(grant, servicePermPrefix+".") {
+				continue
+			}
+			stillValid := slices.ContainsFunc(remainingPerms, func(permName string) bool {
+				return permission.DynamicPermissionCovers(grant, permName)
+			})
+			if stillValid {
+				continue
+			}
+			for _, action := range removedActions {
+				if permission.DynamicPermissionCovers(grant, permission.DynamicActionPermissionName(serviceName, action)) {
+					if roleNamesByAction[action] == nil {
+						roleNamesByAction[action] = map[string]struct{}{}
+					}
+					roleNamesByAction[action][role.Name] = struct{}{}
+				}
 			}
 		}
 	}
-	conflicts := make([]ManifestGrantConflict, 0, len(roleNamesByPermission))
-	for permName, roleNames := range roleNamesByPermission {
-		sort.Strings(roleNames)
+	conflicts := make([]ManifestGrantConflict, 0, len(roleNamesByAction))
+	for action, roleNameSet := range roleNamesByAction {
 		conflicts = append(conflicts, ManifestGrantConflict{
-			Action: targetPerms[permName],
-			Roles:  roleNames,
+			Action: action,
+			Roles:  slices.Sorted(maps.Keys(roleNameSet)),
 		})
 	}
 	sort.Slice(conflicts, func(i, j int) bool {

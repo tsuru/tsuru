@@ -623,7 +623,7 @@ func serviceBind() ExecFlow {
 			"app": "appnames",
 		},
 		parallel: true,
-		requires: []string{"appnames", "servicename"},
+		requires: []string{"appnames", "servicename", "team"},
 		provides: []string{"bindnames"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {

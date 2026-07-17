@@ -116,6 +116,12 @@ func CheckDynamic(granted []permTypes.Permission, requested string, contexts ...
 	return false
 }
 
+// DynamicPermissionCovers reports whether the granted dynamic permission name
+// is an ancestor-or-equal of the requested one.
+func DynamicPermissionCovers(granted, requested string) bool {
+	return isDynamicAncestorOrSelf(granted, requested)
+}
+
 func isDynamicAncestorOrSelf(granted string, requested string) bool {
 	if granted == "" || requested == "" {
 		return false
