@@ -90,7 +90,9 @@ expandedloop:
 		}
 		for _, req := range f.requires {
 			if !newEnv.Has(req) {
-				fmt.Println("DEBUG: Skipping flow because requirements were not met", req)
+				if newEnv.VerboseLevel() > 0 {
+					fmt.Printf("skipping flow providing %v: missing required env %q\n", f.provides, req)
+				}
 				continue expandedloop
 			}
 		}

@@ -187,10 +187,104 @@ func (s *S) TestManifestGrantConflicts(c *check.C) {
 	err = role.AddDynamicPermissions(context.TODO(), "service-action.manifest-conflicts.rules.sync")
 	c.Assert(err, check.IsNil)
 
-	conflicts, err := manifestGrantConflicts(context.TODO(), "manifest-conflicts", []string{"rules.sync"})
+	conflicts, err := manifestGrantConflicts(context.TODO(), "manifest-conflicts", []string{"rules.sync"}, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conflicts, check.DeepEquals, []ManifestGrantConflict{{
 		Action: "rules.sync",
 		Roles:  []string{"manifest-conflicts-role"},
 	}})
+}
+
+func (s *S) TestManifestGrantConflictsAncestorGrants(c *check.C) {
+	err := Create(context.TODO(), Service{
+		Name:       "manifest-ancestor-conflicts",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &ServiceManifest{
+			Enabled: true,
+			Operations: []ManifestOperation{{
+				Method: http.MethodPost,
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			}, {
+				Method: http.MethodGet,
+				Path:   "/status",
+				Action: "status.read",
+			}},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	prefixRole, err := permission.NewRole(context.TODO(), "manifest-ancestor-prefix-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = prefixRole.AddDynamicPermissions(context.TODO(), "service-action.manifest-ancestor-conflicts.rules")
+	c.Assert(err, check.IsNil)
+	serviceRole, err := permission.NewRole(context.TODO(), "manifest-ancestor-service-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = serviceRole.AddDynamicPermissions(context.TODO(), "service-action.manifest-ancestor-conflicts")
+	c.Assert(err, check.IsNil)
+
+	nextManifest := &ServiceManifest{
+		Enabled: true,
+		Operations: []ManifestOperation{{
+			Method: http.MethodGet,
+			Path:   "/status",
+			Action: "status.read",
+		}},
+	}
+	conflicts, err := manifestGrantConflicts(context.TODO(), "manifest-ancestor-conflicts", []string{"rules.sync"}, nextManifest)
+	c.Assert(err, check.IsNil)
+	c.Assert(conflicts, check.DeepEquals, []ManifestGrantConflict{{
+		Action: "rules.sync",
+		Roles:  []string{"manifest-ancestor-prefix-role"},
+	}})
+
+	emptyManifest := &ServiceManifest{Enabled: true}
+	conflicts, err = manifestGrantConflicts(context.TODO(), "manifest-ancestor-conflicts", []string{"rules.sync", "status.read"}, emptyManifest)
+	c.Assert(err, check.IsNil)
+	c.Assert(conflicts, check.DeepEquals, []ManifestGrantConflict{{
+		Action: "rules.sync",
+		Roles:  []string{"manifest-ancestor-prefix-role", "manifest-ancestor-service-role"},
+	}, {
+		Action: "status.read",
+		Roles:  []string{"manifest-ancestor-service-role"},
+	}})
+}
+
+func (s *S) TestManifestGrantConflictsAncestorGrantStillCoversRemainingAction(c *check.C) {
+	err := Create(context.TODO(), Service{
+		Name:       "manifest-ancestor-kept",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
+		Manifest: &ServiceManifest{
+			Enabled: true,
+			Operations: []ManifestOperation{{
+				Method: http.MethodPost,
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			}, {
+				Method: http.MethodGet,
+				Path:   "/rules",
+				Action: "rules.list",
+			}},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole(context.TODO(), "manifest-ancestor-kept-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(context.TODO(), "service-action.manifest-ancestor-kept.rules")
+	c.Assert(err, check.IsNil)
+
+	nextManifest := &ServiceManifest{
+		Enabled: true,
+		Operations: []ManifestOperation{{
+			Method: http.MethodGet,
+			Path:   "/rules",
+			Action: "rules.list",
+		}},
+	}
+	conflicts, err := manifestGrantConflicts(context.TODO(), "manifest-ancestor-kept", []string{"rules.sync"}, nextManifest)
+	c.Assert(err, check.IsNil)
+	c.Assert(conflicts, check.HasLen, 0)
 }
