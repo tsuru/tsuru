@@ -49,7 +49,10 @@ var (
 		testApps(),
 		serviceImageSetup(),
 		serviceCreate(),
+		serviceGeneralFlow(),
 		serviceBind(),
+		serviceFineGrainedPermissionsFlow(),
+		serviceFineGrainedPermissionsSharedActionsFlow(),
 		appRouters(),
 		appVersions(),
 		multiversionRollbackTest(),
@@ -620,14 +623,14 @@ func serviceBind() ExecFlow {
 			"app": "appnames",
 		},
 		parallel: true,
-		requires: []string{"appnames", "servicename"},
+		requires: []string{"appnames", "servicename", "team"},
 		provides: []string{"bindnames"},
 	}
-	bindName := "{{.servicename}}-{{.app}}"
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("service", "instance", "add", "{{.servicename}}", bindName, "-t", "integration-team").Run(env)
+		resolvedBindName := fmt.Sprintf("%s-%s", env.Get("servicename"), env.Get("app"))
+		res := T("service", "instance", "add", "{{.servicename}}", resolvedBindName, "-t", "{{.team}}").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("service", "instance", "bind", "{{.servicename}}", bindName, "-a", "{{.app}}").Run(env)
+		res = T("service", "instance", "bind", "{{.servicename}}", resolvedBindName, "-a", "{{.app}}").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
 			res = T("event", "list", "-k", "app.update.bind", "-v", "{{.app}}", "-r").Run(env)
@@ -650,10 +653,11 @@ func serviceBind() ExecFlow {
 			return strings.Contains(res.Stdout.String(), "INTEGRATION_ENV=TRUE")
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("env not injected after 1 minute: %v", res))
-		env.Add("bindnames", bindName)
+		env.Add("bindnames", resolvedBindName)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("service", "instance", "remove", "{{.servicename}}", bindName, "-f", "-y").Run(env)
+		resolvedBindName := fmt.Sprintf("%s-%s", env.Get("servicename"), env.Get("app"))
+		res := T("service", "instance", "remove", "{{.servicename}}", resolvedBindName, "-f", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow

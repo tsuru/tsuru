@@ -7,6 +7,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -93,6 +94,10 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
+	_, err = getRoleReturnNotFound(ctx, roleName)
+	if err != nil {
+		return err
+	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleDelete,
@@ -113,7 +118,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: permTypes.ErrRemoveRoleWithUsers.Error()}
 	}
 	err = permission.DestroyRole(ctx, roleName)
-	if err == permTypes.ErrRoleNotFound {
+	if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
@@ -168,13 +173,7 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
-	role, err := permission.FindRole(ctx, roleName)
-	if err == permTypes.ErrRoleNotFound {
-		return &errors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: err.Error(),
-		}
-	}
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
@@ -215,14 +214,37 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := permission.FindRole(ctx, roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
 
 	permissions, _ := InputValues(r, "permission")
-	err = role.AddPermissions(ctx, permissions...)
+	staticPermissions := make([]string, 0, len(permissions))
+	dynamicPermissions := make([]string, 0, len(permissions))
+	for _, permissionName := range permissions {
+		if permission.IsDynamicPermissionName(permissionName) {
+			dynamicPermissions = append(dynamicPermissions, permissionName)
+		} else {
+			staticPermissions = append(staticPermissions, permissionName)
+		}
+	}
+	if len(staticPermissions) > 0 && len(dynamicPermissions) > 0 {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "cannot mix static and dynamic permissions in one request",
+		}
+	}
 
+	if len(dynamicPermissions) > 0 {
+		err = role.AddDynamicPermissions(ctx, dynamicPermissions...)
+	} else {
+		err = role.AddPermissions(ctx, staticPermissions...)
+	}
+	return mapAddRolePermissionError(err)
+}
+
+func mapAddRolePermissionError(err error) error {
 	if err == permTypes.ErrInvalidPermissionName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -271,24 +293,20 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(ctx, err) }()
 	permName := r.URL.Query().Get(":permission")
-	role, err := permission.FindRole(ctx, roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
-		if err == permTypes.ErrRoleNotFound {
-			return &errors.HTTP{
-				Code:    http.StatusNotFound,
-				Message: err.Error(),
-			}
-		}
 		return err
 	}
-
+	if permission.IsDynamicPermissionName(permName) {
+		return role.RemoveDynamicPermissions(ctx, permName)
+	}
 	return role.RemovePermissions(ctx, permName)
 }
 
 func getRoleReturnNotFound(ctx context.Context, roleName string) (permission.Role, error) {
 	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
-		if err == permTypes.ErrRoleNotFound {
+		if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 			return permission.Role{}, &errors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
@@ -418,6 +436,18 @@ type permissionSchemeData struct {
 	Contexts []string
 }
 
+func newPermissionSchemeData(scheme *permTypes.PermissionScheme) permissionSchemeData {
+	contexts := scheme.AllowedContexts()
+	contextNames := make([]string, len(contexts))
+	for i, ctx := range contexts {
+		contextNames[i] = string(ctx)
+	}
+	return permissionSchemeData{
+		Name:     scheme.FullName(),
+		Contexts: contextNames,
+	}
+}
+
 // title: list permissions
 // path: /permissions
 // method: GET
@@ -431,22 +461,46 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !permission.Check(ctx, t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
 	}
-	lst := permission.PermissionRegistry.Permissions()
-	sort.Sort(lst)
-	permList := make([]permissionSchemeData, len(lst))
-	for i, perm := range lst {
-		contexts := perm.AllowedContexts()
-		contextNames := make([]string, len(contexts))
-		for j, ctx := range contexts {
-			contextNames[j] = string(ctx)
-		}
-		permList[i] = permissionSchemeData{
-			Name:     perm.FullName(),
-			Contexts: contextNames,
-		}
+	permList, err := permissionList(ctx)
+	if err != nil {
+		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(permList)
+}
+
+func permissionList(ctx context.Context) ([]permissionSchemeData, error) {
+	lst := permission.PermissionRegistry.Permissions()
+	sort.Sort(lst)
+	permList := make([]permissionSchemeData, 0, len(lst))
+	for _, perm := range lst {
+		permList = append(permList, newPermissionSchemeData(perm))
+	}
+	services, err := service.GetServices(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(services, func(i, j int) bool {
+		return services[i].Name < services[j].Name
+	})
+	for _, svc := range services {
+		if svc.Manifest == nil || !svc.Manifest.Enabled {
+			continue
+		}
+		actions := make([]permissionSchemeData, 0, len(svc.Manifest.Operations))
+		for _, op := range svc.Manifest.Operations {
+			scheme, ok := permission.NewDynamic(permission.DynamicActionPermissionName(svc.Name, op.Action))
+			if !ok {
+				continue
+			}
+			actions = append(actions, newPermissionSchemeData(scheme))
+		}
+		sort.Slice(actions, func(i, j int) bool {
+			return actions[i].Name < actions[j].Name
+		})
+		permList = append(permList, actions...)
+	}
+	return permList, nil
 }
 
 // title: add default role
@@ -485,7 +539,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		defer func() { evt.Done(ctx, err) }()
 		role, err := permission.FindRole(ctx, roleName)
 		if err != nil {
-			if err == permTypes.ErrRoleNotFound {
+			if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 				return &errors.HTTP{
 					Code:    http.StatusBadRequest,
 					Message: err.Error(),
@@ -545,7 +599,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		defer func() { evt.Done(ctx, err) }()
 		role, err := permission.FindRole(ctx, roleName)
 		if err != nil {
-			if err == permTypes.ErrRoleNotFound {
+			if stderrors.Is(err, permTypes.ErrRoleNotFound) {
 				return &errors.HTTP{
 					Code:    http.StatusBadRequest,
 					Message: err.Error(),

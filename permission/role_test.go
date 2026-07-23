@@ -122,6 +122,54 @@ func (s *S) TestRemovePermissions(c *check.C) {
 	c.Assert(dbR.SchemeNames, check.DeepEquals, expected)
 }
 
+func (s *S) TestRoleAddDynamicPermissions(c *check.C) {
+	createServiceWithDynamicAction(c, "acl", "rules.sync")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules", "service-action.acl.rules.sync")
+	c.Assert(err, check.IsNil)
+	sort.Strings(r.DynamicSchemeNames)
+	expected := []string{
+		"service-action.acl.rules",
+		"service-action.acl.rules.sync",
+	}
+	c.Assert(r.DynamicSchemeNames, check.DeepEquals, expected)
+	dbR, err := FindRole(context.TODO(), "myrole")
+	c.Assert(err, check.IsNil)
+	sort.Strings(dbR.DynamicSchemeNames)
+	c.Assert(dbR.DynamicSchemeNames, check.DeepEquals, expected)
+	c.Assert(dbR.SchemeNames, check.DeepEquals, []string{})
+}
+
+func (s *S) TestRoleAddDynamicPermissionsInvalid(c *check.C) {
+	createServiceWithDynamicAction(c, "acl", "rules.sync")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddDynamicPermissions(context.TODO(), "app.deploy")
+	c.Assert(err, check.Equals, permTypes.ErrInvalidPermissionName)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.read")
+	c.Assert(err, check.ErrorMatches, `permission named "service-action.acl.rules.read" not found`)
+	appRole, err := NewRole(context.TODO(), "myapprole", "app", "")
+	c.Assert(err, check.IsNil)
+	err = appRole.AddDynamicPermissions(context.TODO(), "service-action.acl.rules.sync")
+	c.Assert(err, check.ErrorMatches, `permission "service-action.acl.rules.sync" not allowed with context of type "app"`)
+}
+
+func (s *S) TestRoleRemoveDynamicPermissions(c *check.C) {
+	createServiceWithDynamicAction(c, "acl", "rules.sync")
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddDynamicPermissions(context.TODO(), "service-action.acl.rules", "service-action.acl.rules.sync")
+	c.Assert(err, check.IsNil)
+	err = r.RemoveDynamicPermissions(context.TODO(), "service-action.acl.rules")
+	c.Assert(err, check.IsNil)
+	expected := []string{"service-action.acl.rules.sync"}
+	c.Assert(r.DynamicSchemeNames, check.DeepEquals, expected)
+	dbR, err := FindRole(context.TODO(), "myrole")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbR.DynamicSchemeNames, check.DeepEquals, expected)
+}
+
 func (s *S) TestDestroyRole(c *check.C) {
 	_, err := NewRole(context.TODO(), "myrole", "team", "")
 	c.Assert(err, check.IsNil)
@@ -147,6 +195,30 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	r.SchemeNames = append(r.SchemeNames, "invalidxxx")
 	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)
+}
+
+func (s *S) TestDynamicPermissionsFor(c *check.C) {
+	r, err := NewRole(context.TODO(), "myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions(context.TODO(), "app.update")
+	c.Assert(err, check.IsNil)
+	r.DynamicSchemeNames = []string{
+		"service-action.acl.rules.sync",
+		"service-action.acl.rules",
+		"not-dynamic.acl.rules",
+	}
+	expected := []permTypes.Permission{
+		{Scheme: mustNewDynamicCheck(c, "service-action.acl.rules"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
+		{Scheme: mustNewDynamicCheck(c, "service-action.acl.rules.sync"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
+	}
+	perms := r.DynamicPermissionsFor("something")
+	c.Assert(perms, check.DeepEquals, expected)
+	c.Assert(r.DynamicSchemeNames, check.DeepEquals, []string{
+		"service-action.acl.rules.sync",
+		"service-action.acl.rules",
+		"not-dynamic.acl.rules",
+	})
+	c.Assert(r.SchemeNames, check.DeepEquals, []string{"app.update"})
 }
 
 func (s *S) TestRoleAddEvent(c *check.C) {
@@ -255,4 +327,24 @@ func (s *S) TestAdd(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r2.Add(context.TODO())
 	c.Assert(err, check.Equals, permTypes.ErrRoleAlreadyExists)
+}
+
+func mustNewDynamicCheck(c *check.C, name string) *permTypes.PermissionScheme {
+	scheme, ok := NewDynamic(name)
+	c.Assert(ok, check.Equals, true)
+	return scheme
+}
+
+func createServiceWithDynamicAction(c *check.C, serviceName string, actions ...string) {
+	servicesCollection, err := storagev2.ServicesCollection()
+	c.Assert(err, check.IsNil)
+	operations := make([]mongoBSON.M, len(actions))
+	for i, action := range actions {
+		operations[i] = mongoBSON.M{"method": "POST", "path": "/sync", "action": action}
+	}
+	_, err = servicesCollection.InsertOne(context.TODO(), mongoBSON.M{
+		"_id":      serviceName,
+		"manifest": mongoBSON.M{"enabled": true, "operations": operations},
+	})
+	c.Assert(err, check.IsNil)
 }

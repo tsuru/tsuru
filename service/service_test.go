@@ -54,6 +54,16 @@ func (s *S) TestCreateService(c *check.C) {
 		Endpoint:   endpt,
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
+		Manifest: &ServiceManifest{
+			Enabled:       true,
+			StrictActions: true,
+			LegacyCompat:  true,
+			Operations: []ManifestOperation{{
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			}},
+		},
 	}
 	err := Create(context.TODO(), *service)
 	c.Assert(err, check.IsNil)
@@ -64,9 +74,11 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(se.OwnerTeams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, check.Equals, false)
 	c.Assert(se.Username, check.Equals, "test")
+	c.Assert(se.Manifest, check.DeepEquals, service.Manifest)
 
 	service.Name = "per-cluster-endpoing"
 	service.Endpoint = map[string]string{"my-cluster": "https://my.cluster"}
+	service.Manifest = nil
 	err = Create(context.TODO(), *service)
 	c.Assert(err, check.IsNil)
 	se, err = Get(context.TODO(), service.Name)
@@ -302,6 +314,15 @@ func (s *S) TestUpdateService(c *check.C) {
 	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	service.Doc = "doc"
+	service.Manifest = &ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []ManifestOperation{{
+			Method: "GET",
+			Path:   "/rules",
+			Action: "rules.list",
+		}},
+	}
 	err = Update(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 
@@ -311,6 +332,15 @@ func (s *S) TestUpdateService(c *check.C) {
 	err = servicesCollection.FindOne(context.TODO(), mongoBSON.M{"_id": service.Name}).Decode(&service)
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Doc, check.Equals, "doc")
+	c.Assert(service.Manifest, check.DeepEquals, &ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []ManifestOperation{{
+			Method: "GET",
+			Path:   "/rules",
+			Action: "rules.list",
+		}},
+	})
 }
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
@@ -532,6 +562,72 @@ func (s *S) TestProxy(c *check.C) {
 	err = Proxy(context.TODO(), &service, "/aaa", evt, "", recorder, request)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *S) TestServiceManifestMatch(c *check.C) {
+	manifest := &ServiceManifest{
+		Operations: []ManifestOperation{
+			{
+				Method: "GET",
+				Path:   "/rules/{ruleId}",
+				Action: "rules.read",
+			},
+			{
+				Method: "POST",
+				Path:   "/rules/{ruleId}/sync",
+				Action: "rules.sync",
+			},
+			{
+				Method: "GET",
+				Path:   "/rules",
+				Action: "rules.list",
+			},
+			{
+				Method: "GET",
+				Path:   "/rules/sync",
+				Action: "rules.sync.literal",
+			},
+		},
+	}
+	testCases := []struct {
+		method string
+		path   string
+		action string
+		match  bool
+	}{
+		{method: "GET", path: "/rules", action: "rules.list", match: true},
+		{method: "GET", path: "/rules/123", action: "rules.read", match: true},
+		{method: "POST", path: "/rules/123/sync", action: "rules.sync", match: true},
+		{method: "HEAD", path: "/rules", action: "rules.list", match: true},
+		{method: "GET", path: "/rules/sync", action: "rules.sync.literal", match: true},
+		{method: "GET", path: "rules/sync", action: "rules.sync.literal", match: true},
+		{method: "DELETE", path: "/rules/123", match: false},
+		{method: "GET", path: "/unknown", match: false},
+	}
+	for _, test := range testCases {
+		op, match := manifest.MatchOperation(test.method, test.path)
+		c.Assert(match, check.Equals, test.match, check.Commentf("method=%s path=%s", test.method, test.path))
+		c.Assert(op.Action, check.Equals, test.action, check.Commentf("method=%s path=%s", test.method, test.path))
+	}
+}
+
+func (s *S) TestServiceManifestConflictingRoutes(c *check.C) {
+	manifest := &ServiceManifest{
+		Operations: []ManifestOperation{
+			{
+				Method: "GET",
+				Path:   "/rules/{ruleId}",
+				Action: "rules.read.a",
+			},
+			{
+				Method: "GET",
+				Path:   "/rules/{name}",
+				Action: "rules.read.b",
+			},
+		},
+	}
+	_, _, err := manifest.compiledMatcher()
+	c.Assert(err, check.ErrorMatches, `invalid manifest route "GET /rules/\{name\}": pattern "GET /rules/\{name\}" \(registered at .*?\) conflicts with pattern "GET /rules/\{ruleId\}" \(registered at .*?\):(?s).*`)
 }
 
 func (s *S) TestRenameServiceTeam(c *check.C) {

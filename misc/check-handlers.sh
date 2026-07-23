@@ -20,8 +20,9 @@ function missing_handlers {
     okhandlers1=$(tsuru-api-docs -search 'permission.Check\(')
     okhandlers2=$(tsuru-api-docs -search 'permission.ContextsForPermission\(')
     okhandlers3=$(tsuru-api-docs -search 'permission.CheckFromPermList\(')
+    okhandlers4=$(tsuru-api-docs -search 'authorizeServiceInstanceProxy\(')
 
-    okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") <(echo "$okhandlers3") | sort | uniq)
+    okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") <(echo "$okhandlers3") <(echo "$okhandlers4") | sort | uniq)
 
     ignored=$(cat <<EOF
 github.com/tsuru/tsuru/api.authScheme

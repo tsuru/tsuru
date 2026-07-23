@@ -448,6 +448,97 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *ProvisionSuite) TestSetAndGetServiceManifest(c *check.C) {
+	srv := service.Service{
+		Name:       "manifest-service",
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+	}
+	err := service.Create(context.TODO(), srv)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "manifest-admin", permTypes.Permission{
+		Scheme:  permission.PermServiceUpdate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	manifest := `{"enabled":true,"strict_actions":true,"operations":[{"method":"POST","path":"/rules/{ruleId}/sync","action":"rules.sync"}]}`
+
+	putRecorder, putRequest := s.makeRequest(http.MethodPut, "/services/manifest-service/manifest", manifest, c)
+	putRequest.Header.Set("Content-Type", "application/json")
+	putRequest.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(putRecorder, putRequest)
+	c.Assert(putRecorder.Code, check.Equals, http.StatusOK)
+
+	getRecorder, getRequest := s.makeRequest(http.MethodGet, "/services/manifest-service/manifest", "", c)
+	getRequest.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(getRecorder, getRequest)
+	c.Assert(getRecorder.Code, check.Equals, http.StatusOK)
+	var gotManifest service.ServiceManifest
+	err = json.Unmarshal(getRecorder.Body.Bytes(), &gotManifest)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotManifest.Enabled, check.Equals, true)
+	c.Assert(gotManifest.StrictActions, check.Equals, true)
+	c.Assert(gotManifest.Operations, check.DeepEquals, []service.ManifestOperation{{
+		Method: http.MethodPost,
+		Path:   "/rules/{ruleId}/sync",
+		Action: "rules.sync",
+	}})
+}
+
+func (s *ProvisionSuite) TestSetServiceManifestConflictWithoutForce(c *check.C) {
+	srv := service.Service{
+		Name:       "manifest-conflict-service",
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+	}
+	err := service.Create(context.TODO(), srv)
+	c.Assert(err, check.IsNil)
+	err = service.UpdateManifest(context.TODO(), srv.Name, &service.ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []service.ManifestOperation{{
+			Method: http.MethodPost,
+			Path:   "/rules/{ruleId}/sync",
+			Action: "rules.sync",
+		}},
+	}, false)
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole(context.TODO(), "manifest-conflict-role", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(context.TODO(), "service-action.manifest-conflict-service.rules.sync")
+	c.Assert(err, check.IsNil)
+	manifest := `{"enabled":true,"strict_actions":true,"operations":[]}`
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "manifest-conflict-admin", permTypes.Permission{
+		Scheme:  permission.PermServiceUpdate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+
+	recorder, request := s.makeRequest(http.MethodPut, "/services/manifest-conflict-service/manifest", manifest, c)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	var conflict struct {
+		Service   string `json:"service"`
+		Conflicts []struct {
+			Action string   `json:"action"`
+			Roles  []string `json:"roles"`
+		} `json:"conflicts"`
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &conflict)
+	c.Assert(err, check.IsNil)
+	c.Assert(conflict.Service, check.Equals, srv.Name)
+	c.Assert(conflict.Conflicts, check.HasLen, 1)
+	c.Assert(conflict.Conflicts[0], check.DeepEquals, struct {
+		Action string   `json:"action"`
+		Roles  []string `json:"roles"`
+	}{
+		Action: "rules.sync",
+		Roles:  []string{"manifest-conflict-role"},
+	})
+}
+
 func (s *ProvisionSuite) TestServiceUpdateWithoutTeamIgnoresOwnerTeams(c *check.C) {
 	srv := service.Service{
 		Name:       "mysqlapi",

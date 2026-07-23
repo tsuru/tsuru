@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
@@ -19,6 +20,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/validation"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -51,9 +53,17 @@ type Service struct {
 	// Encoding defines how modern is the backend
 	// Tsuru started with a form encoding, but some services may support a more modern JSON encoding.
 	Encoding ServiceEncoding `bson:"encoding"`
+	// Manifest defines the provider operations that can be matched for fine-grained authorization.
+	Manifest *ServiceManifest `bson:"manifest,omitempty" json:"manifest,omitempty"`
 }
 
-type BindAppParameters map[string]interface{}
+// ServiceManifest wraps the canonical type from types/service and provides
+// matching behavior for in-package authorization checks.
+type ServiceManifest serviceTypes.ServiceManifest
+
+type ManifestOperation = serviceTypes.ManifestOperation
+
+type BindAppParameters map[string]any
 
 type ProxyOpts struct {
 	Instance  *ServiceInstance
@@ -62,6 +72,88 @@ type ProxyOpts struct {
 	RequestID string
 	Writer    http.ResponseWriter
 	Request   *http.Request
+}
+
+// Match resolves the manifest action for the given method and path.
+func (m *ServiceManifest) Match(method, rawPath string) (string, bool) {
+	op, ok := m.MatchOperation(method, rawPath)
+	if !ok {
+		return "", false
+	}
+	return op.Action, true
+}
+
+// MatchOperation resolves the manifest operation for the given method and path.
+func (m *ServiceManifest) MatchOperation(method, rawPath string) (ManifestOperation, bool) {
+	if m == nil {
+		return ManifestOperation{}, false
+	}
+	matcher, actionByPattern, err := m.compiledMatcher()
+	if err != nil {
+		return ManifestOperation{}, false
+	}
+	req, err := http.NewRequest(strings.ToUpper(strings.TrimSpace(method)), manifestRequestURL(rawPath), nil)
+	if err != nil {
+		return ManifestOperation{}, false
+	}
+	_, pattern := matcher.Handler(req)
+	action, ok := actionByPattern[pattern]
+	if !ok {
+		return ManifestOperation{}, false
+	}
+	for _, op := range m.Operations {
+		if manifestRoutePattern(op) == pattern && op.Action == action {
+			return op, true
+		}
+	}
+	return ManifestOperation{}, false
+}
+
+func (m *ServiceManifest) compiledMatcher() (*http.ServeMux, map[string]string, error) {
+	matcher := http.NewServeMux()
+	actionByPattern := make(map[string]string, len(m.Operations))
+	for _, op := range m.Operations {
+		pattern := manifestRoutePattern(op)
+		err := registerManifestRoute(matcher, pattern)
+		if err != nil {
+			return nil, nil, err
+		}
+		actionByPattern[pattern] = op.Action
+	}
+	return matcher, actionByPattern, nil
+}
+
+func registerManifestRoute(matcher *http.ServeMux, pattern string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("invalid manifest route %q: %v", pattern, r)
+		}
+	}()
+	matcher.Handle(pattern, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	return nil
+}
+
+func manifestRoutePattern(op ManifestOperation) string {
+	method := strings.ToUpper(strings.TrimSpace(op.Method))
+	if method == "" {
+		return manifestPatternPath(op.Path)
+	}
+	return method + " " + manifestPatternPath(op.Path)
+}
+
+func manifestRequestURL(rawPath string) string {
+	return "http://manifest.local" + manifestPatternPath(rawPath)
+}
+
+func manifestPatternPath(rawPath string) string {
+	cleaned := strings.TrimSpace(rawPath)
+	if cleaned == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(cleaned, "/") {
+		cleaned = "/" + cleaned
+	}
+	return cleaned
 }
 
 // TODO: use requestID inside the context
@@ -218,7 +310,8 @@ func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
 	models := []mongo.WriteModel{}
 
 	for _, field := range []string{"owner_teams", "teams"} {
-		models = append(models,
+		models = append(
+			models,
 			mongo.NewUpdateManyModel().
 				SetFilter(mongoBSON.M{field: oldName}).
 				SetUpdate(mongoBSON.M{"$addToSet": mongoBSON.M{field: newName}}),

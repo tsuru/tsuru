@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"fmt"
 	"maps"
 	"strconv"
 	"sync"
@@ -89,6 +90,9 @@ expandedloop:
 		}
 		for _, req := range f.requires {
 			if !newEnv.Has(req) {
+				if newEnv.VerboseLevel() > 0 {
+					fmt.Printf("skipping flow providing %v: missing required env %q\n", f.provides, req)
+				}
 				continue expandedloop
 			}
 		}

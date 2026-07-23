@@ -367,6 +367,72 @@ func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
 	c.Assert(rec.Body.String(), check.Matches, "permission .* not allowed with context of type .*\n")
 }
 
+func createServiceWithDynamicAction(serviceName string, actions ...string) error {
+	servicesCollection, err := storagev2.ServicesCollection()
+	if err != nil {
+		return err
+	}
+	operations := make([]mongoBSON.M, len(actions))
+	for i, action := range actions {
+		operations[i] = mongoBSON.M{"method": "POST", "path": "/sync", "action": action}
+	}
+	_, err = servicesCollection.InsertOne(context.TODO(), mongoBSON.M{
+		"_id":      serviceName,
+		"manifest": mongoBSON.M{"enabled": true, "operations": operations},
+	})
+	return err
+}
+
+func (s *S) TestAddPermissionsToARoleDynamicPermission(c *check.C) {
+	err := createServiceWithDynamicAction("dynamic-add-via-permissions", "rules.sync")
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole(context.TODO(), "test-dynamic-add", "team", "")
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("permission=service-action.dynamic-add-via-permissions")
+	req, err := http.NewRequest(http.MethodPost, "/roles/test-dynamic-add/permissions", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	role, err := permission.FindRole(context.TODO(), "test-dynamic-add")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.DynamicSchemeNames, check.DeepEquals, []string{"service-action.dynamic-add-via-permissions"})
+}
+
+func (s *S) TestAddPermissionsToARoleCannotMixStaticAndDynamicPermissions(c *check.C) {
+	err := createServiceWithDynamicAction("dynamic-add-via-permissions", "rules.sync")
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole(context.TODO(), "test-mixed-add", "team", "")
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("permission=app.update&permission=service-action.dynamic-add-via-permissions")
+	req, err := http.NewRequest(http.MethodPost, "/roles/test-mixed-add/permissions", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(rec.Body.String(), check.Matches, "cannot mix static and dynamic permissions in one request\n")
+	role, err := permission.FindRole(context.TODO(), "test-mixed-add")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.DynamicSchemeNames, check.HasLen, 0)
+	c.Assert(role.SchemeNames, check.HasLen, 0)
+}
+
 func (s *S) TestRemovePermissionsRoleNotFound(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test/permissions/app.update", nil)
@@ -1005,6 +1071,103 @@ func (s *S) TestListPermissions(c *check.C) {
 		Name:     "",
 		Contexts: []string{"global"},
 	})
+}
+
+func (s *S) TestListPermissionsIncludesDynamicPermissions(c *check.C) {
+	svc := service.Service{
+		Name:       "dynamic-permissions-list",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "https://dynamic-permissions-list"},
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := service.Create(context.TODO(), svc)
+	c.Assert(err, check.IsNil)
+	err = service.UpdateManifest(context.TODO(), svc.Name, &service.ServiceManifest{
+		Enabled:       true,
+		StrictActions: true,
+		Operations: []service.ManifestOperation{{
+			Method: http.MethodPost,
+			Path:   "/rules/{ruleId}/sync",
+			Action: "rules.sync",
+		}, {
+			Method: http.MethodGet,
+			Path:   "/rules/{ruleId}",
+			Action: "rules.get",
+		}},
+	}, false)
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodGet, "/permissions", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	var data []permissionSchemeData
+	err = json.Unmarshal(rec.Body.Bytes(), &data)
+	c.Assert(err, check.IsNil)
+	servicePermissionPrefix := "service-action." + svc.Name + "."
+	dynamicPermissions := make([]string, 0, 2)
+	contextsByName := make(map[string][]string)
+	for _, perm := range data {
+		if !strings.HasPrefix(perm.Name, servicePermissionPrefix) {
+			continue
+		}
+		dynamicPermissions = append(dynamicPermissions, perm.Name)
+		contextsByName[perm.Name] = perm.Contexts
+	}
+	c.Assert(dynamicPermissions, check.DeepEquals, []string{
+		servicePermissionPrefix + "rules.get",
+		servicePermissionPrefix + "rules.sync",
+	})
+	actionContexts := append([]string(nil), contextsByName[servicePermissionPrefix+"rules.get"]...)
+	sort.Strings(actionContexts)
+	c.Assert(actionContexts, check.DeepEquals, []string{
+		string(permTypes.CtxGlobal),
+		string(permTypes.CtxService),
+		string(permTypes.CtxServiceInstance),
+		string(permTypes.CtxTeam),
+	})
+}
+
+func (s *S) TestListPermissionsUnauthorized(c *check.C) {
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodGet, "/permissions", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestRemovePermissionsCanRemoveDynamicPermission(c *check.C) {
+	err := createServiceWithDynamicAction("dynamic-remove-via-permissions", "rules.sync")
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole(context.TODO(), "dynamic-remove-role-permissions", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddDynamicPermissions(context.TODO(), "service-action.dynamic-remove-via-permissions")
+	c.Assert(err, check.IsNil)
+
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodDelete, "/roles/dynamic-remove-role-permissions/permissions/service-action.dynamic-remove-via-permissions", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdatePermissionRemove,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	role, err = permission.FindRole(context.TODO(), "dynamic-remove-role-permissions")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.DynamicSchemeNames, check.HasLen, 0)
 }
 
 func (s *S) TestAddDefaultRole(c *check.C) {
