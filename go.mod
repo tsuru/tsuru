@@ -53,7 +53,7 @@ require (
 	k8s.io/api v0.36.0
 	k8s.io/apiextensions-apiserver v0.36.0
 	k8s.io/apimachinery v0.36.0
-	k8s.io/autoscaler/vertical-pod-autoscaler v0.9.2
+	k8s.io/autoscaler/vertical-pod-autoscaler v1.5.1
 	k8s.io/client-go v0.36.0
 	k8s.io/code-generator v0.36.0
 	k8s.io/ingress-gce v1.20.1
