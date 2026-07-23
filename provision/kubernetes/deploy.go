@@ -77,23 +77,23 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 		return nil, err
 	}
 
-	proxy := http.ProxyFromEnvironment
-	if config.Proxy != nil {
-		proxy = config.Proxy
+	// The public spdy.RoundTripperConfig no longer exposes a Dialer, so the
+	// dial timeout/keepalive is set via a custom UpgradeTransport, from which
+	// the underlying roundtripper extracts both the DialContext and TLS config.
+	upgradeTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 10 * time.Second,
+		}).DialContext,
 	}
 
 	upgradeRoundTripper, err := spdy.NewRoundTripperWithConfig(spdy.RoundTripperConfig{
-		TLS:        tlsConfig,
-		Proxier:    proxy,
-		PingPeriod: 5 * time.Second,
+		UpgradeTransport: upgradeTransport,
+		PingPeriod:       5 * time.Second,
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	upgradeRoundTripper.Dialer = &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 10 * time.Second,
 	}
 
 	wrapper, err := rest.HTTPWrappersForConfig(config, upgradeRoundTripper)
