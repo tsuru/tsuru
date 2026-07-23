@@ -617,6 +617,29 @@ func (s *S) TestListPoolsForTeam(c *check.C) {
 	c.Assert(pools, check.HasLen, 1)
 }
 
+func (s *S) TestListPoolsForTeamGlobPoolExpr(c *check.C) {
+	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = AddPool(context.TODO(), AddPoolOptions{Name: "pool2"})
+	c.Assert(err, check.IsNil)
+	err = AddPool(context.TODO(), AddPoolOptions{Name: "other"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(context.TODO(), &PoolConstraint{
+		PoolExpr: "pool*",
+		Field:    ConstraintTypeTeam,
+		Values:   []string{"team1"},
+	})
+	c.Assert(err, check.IsNil)
+	pools, err := ListPossiblePools(context.TODO(), []string{"team1"})
+	c.Assert(err, check.IsNil)
+	names := []string{}
+	for _, p := range pools {
+		names = append(names, p.Name)
+	}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{"pool1", "pool2"})
+}
+
 func (s *S) TestListPossiblePoolsAll(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1", Default: true})
 	c.Assert(err, check.IsNil)

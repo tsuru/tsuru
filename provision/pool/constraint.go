@@ -191,7 +191,7 @@ func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field Pool
 			return nil, err
 		}
 		c, ok := constraints[field]
-		if !ok || c.PoolExpr != p.Name {
+		if !ok {
 			continue
 		}
 		for _, v := range values {
