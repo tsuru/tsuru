@@ -50,14 +50,14 @@ require (
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
-	k8s.io/api v0.36.0
+	k8s.io/api v0.36.1
 	k8s.io/apiextensions-apiserver v0.36.0
-	k8s.io/apimachinery v0.36.0
-	k8s.io/autoscaler/vertical-pod-autoscaler v1.5.1
-	k8s.io/client-go v0.36.0
-	k8s.io/code-generator v0.36.0
+	k8s.io/apimachinery v0.36.1
+	k8s.io/autoscaler/vertical-pod-autoscaler v1.7.0
+	k8s.io/client-go v0.36.1
+	k8s.io/code-generator v0.36.1
 	k8s.io/ingress-gce v1.20.1
-	k8s.io/metrics v0.35.0
+	k8s.io/metrics v0.36.1
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -68,7 +68,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/swag/cmdutils v0.26.0 // indirect
 	github.com/go-openapi/swag/conv v0.26.0 // indirect
@@ -94,8 +94,8 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260523011958-0a33c5d7ca68 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
-	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
-	k8s.io/streaming v0.36.0 // indirect
+	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
+	k8s.io/streaming v0.36.1 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 )
