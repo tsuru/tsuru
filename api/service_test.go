@@ -502,7 +502,7 @@ func (s *ProvisionSuite) TestSetServiceManifestConflictWithoutForce(c *check.C) 
 			Path:   "/rules/{ruleId}/sync",
 			Action: "rules.sync",
 		}},
-	}, false)
+	})
 	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole(context.TODO(), "manifest-conflict-role", "team", "")
 	c.Assert(err, check.IsNil)

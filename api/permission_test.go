@@ -1094,7 +1094,7 @@ func (s *S) TestListPermissionsIncludesDynamicPermissions(c *check.C) {
 			Path:   "/rules/{ruleId}",
 			Action: "rules.get",
 		}},
-	}, false)
+	})
 	c.Assert(err, check.IsNil)
 
 	rec := httptest.NewRecorder()

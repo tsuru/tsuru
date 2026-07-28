@@ -16,7 +16,6 @@ import (
 
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
@@ -57,15 +56,15 @@ func (e *ManifestConflictError) Error() string {
 	return fmt.Sprintf("manifest for service %q would orphan active dynamic grants: %s", e.Service, strings.Join(parts, "; "))
 }
 
-func UpdateManifest(ctx context.Context, serviceName string, manifest *ServiceManifest, force bool) error {
+func UpdateManifest(ctx context.Context, serviceName string, manifest *ServiceManifest) error {
 	svc, err := Get(ctx, serviceName)
 	if err != nil {
 		return err
 	}
-	return svc.IngestManifest(ctx, manifest, force)
+	return svc.IngestManifest(ctx, manifest)
 }
 
-func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest, force bool) error {
+func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest) error {
 	if err := validateManifest(manifest); err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
@@ -74,11 +73,8 @@ func (s *Service) IngestManifest(ctx context.Context, manifest *ServiceManifest,
 	if err != nil {
 		return err
 	}
-	if len(conflicts) > 0 && !force {
-		return &ManifestConflictError{Service: s.Name, Conflicts: conflicts}
-	}
 	if len(conflicts) > 0 {
-		log.Errorf("WARNING: manifest ingest for service %q forced removal of actions: %#v", s.Name, conflicts)
+		return &ManifestConflictError{Service: s.Name, Conflicts: conflicts}
 	}
 	if err := persistManifest(ctx, s.Name, manifest); err != nil {
 		return err

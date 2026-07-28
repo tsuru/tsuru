@@ -30,7 +30,7 @@ func (s *S) TestIngestManifestRegistersAndPersists(c *check.C) {
 			Action: "rules.sync",
 		}},
 	}
-	err = svc.IngestManifest(context.TODO(), manifest, false)
+	err = svc.IngestManifest(context.TODO(), manifest)
 	c.Assert(err, check.IsNil)
 
 	exists, err := permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-register.rules.sync")
@@ -67,7 +67,7 @@ func (s *S) TestIngestManifestRejectsOrphanedDynamicGrants(c *check.C) {
 			Path:   "/rules/{ruleId}/sync",
 			Action: "rules.sync",
 		}},
-	}, false)
+	})
 	c.Assert(err, check.IsNil)
 
 	role, err := permission.NewRole(context.TODO(), "manifest-guarded-role", "team", "")
@@ -83,7 +83,7 @@ func (s *S) TestIngestManifestRejectsOrphanedDynamicGrants(c *check.C) {
 			Path:   "/rules",
 			Action: "rules.list",
 		}},
-	}, false)
+	})
 	c.Assert(err, check.FitsTypeOf, &ManifestConflictError{})
 	conflictErr := err.(*ManifestConflictError)
 	c.Assert(conflictErr.Conflicts, check.DeepEquals, []ManifestGrantConflict{{
@@ -95,53 +95,6 @@ func (s *S) TestIngestManifestRejectsOrphanedDynamicGrants(c *check.C) {
 	c.Assert(getErr, check.IsNil)
 	c.Assert(stored.Manifest.Operations[0].Action, check.Equals, "rules.sync")
 	exists, err := permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-guarded.rules.sync")
-	c.Assert(err, check.IsNil)
-	c.Assert(exists, check.Equals, true)
-}
-
-func (s *S) TestIngestManifestForceRemovesOrphanedDynamicGrants(c *check.C) {
-	svc := Service{
-		Name:       "manifest-ingest-force",
-		Password:   "abcde",
-		Endpoint:   map[string]string{"production": "url"},
-		OwnerTeams: []string{s.team.Name},
-	}
-	err := Create(context.TODO(), svc)
-	c.Assert(err, check.IsNil)
-	err = svc.IngestManifest(context.TODO(), &ServiceManifest{
-		Enabled:       true,
-		StrictActions: true,
-		Operations: []ManifestOperation{{
-			Method: http.MethodPost,
-			Path:   "/rules/{ruleId}/sync",
-			Action: "rules.sync",
-		}},
-	}, false)
-	c.Assert(err, check.IsNil)
-
-	role, err := permission.NewRole(context.TODO(), "manifest-force-role", "team", "")
-	c.Assert(err, check.IsNil)
-	err = role.AddDynamicPermissions(context.TODO(), "service-action.manifest-ingest-force.rules.sync")
-	c.Assert(err, check.IsNil)
-
-	err = svc.IngestManifest(context.TODO(), &ServiceManifest{
-		Enabled:       true,
-		StrictActions: true,
-		Operations: []ManifestOperation{{
-			Method: http.MethodGet,
-			Path:   "/rules",
-			Action: "rules.list",
-		}},
-	}, true)
-	c.Assert(err, check.IsNil)
-
-	stored, getErr := Get(context.TODO(), svc.Name)
-	c.Assert(getErr, check.IsNil)
-	c.Assert(stored.Manifest.Operations[0].Action, check.Equals, "rules.list")
-	exists, err := permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-force.rules.sync")
-	c.Assert(err, check.IsNil)
-	c.Assert(exists, check.Equals, false)
-	exists, err = permission.ExistsDynamic(context.TODO(), "service-action.manifest-ingest-force.rules.list")
 	c.Assert(err, check.IsNil)
 	c.Assert(exists, check.Equals, true)
 }
@@ -162,7 +115,7 @@ func (s *S) TestIngestManifestValidation(c *check.C) {
 			{Method: http.MethodGet, Path: "/rules", Action: "rules.duplicate"},
 			{Method: http.MethodPost, Path: "/rules/{id}", Action: "rules.duplicate"},
 		},
-	}, false)
+	})
 	c.Assert(err, check.ErrorMatches, `duplicate manifest operation action "rules\.duplicate"`)
 }
 

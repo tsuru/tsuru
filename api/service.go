@@ -386,8 +386,6 @@ func setServiceManifest(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	var force bool
-	force, _ = strconv.ParseBool(r.URL.Query().Get("force"))
 	var manifest service.ServiceManifest
 	if err = ParseInput(r, &manifest); err != nil {
 		return err
@@ -404,7 +402,7 @@ func setServiceManifest(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	if err = service.UpdateManifest(ctx, s.Name, &manifest, force); err != nil {
+	if err = service.UpdateManifest(ctx, s.Name, &manifest); err != nil {
 		if conflictErr, ok := err.(*service.ManifestConflictError); ok {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)
