@@ -255,6 +255,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/services/{name}/plans", AuthorizationRequiredHandler(servicePlans))
 	m.Add("1.0", http.MethodGet, "/services/{name}/doc", AuthorizationRequiredHandler(serviceDoc))
 	m.Add("1.0", http.MethodPut, "/services/{name}/doc", AuthorizationRequiredHandler(serviceAddDoc))
+	m.Add("1.31", http.MethodPut, "/services/{service}/manifest", AuthorizationRequiredHandler(setServiceManifest))
+	m.Add("1.31", http.MethodGet, "/services/{service}/manifest", AuthorizationRequiredHandler(getServiceManifest))
 	m.Add("1.0", http.MethodPut, "/services/{service}/team/{team}", AuthorizationRequiredHandler(grantServiceAccess))
 	m.Add("1.0", http.MethodDelete, "/services/{service}/team/{team}", AuthorizationRequiredHandler(revokeServiceAccess))
 

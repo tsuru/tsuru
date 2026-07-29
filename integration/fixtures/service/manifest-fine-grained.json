@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "strict_actions": true,
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/rules/{ruleId}",
+      "action": "rules.view"
+    },
+    {
+      "method": "POST",
+      "path": "/rules/{ruleId}/sync",
+      "action": "rules.sync"
+    }
+  ]
+}

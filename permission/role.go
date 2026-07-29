@@ -6,6 +6,7 @@ package permission
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
 
@@ -17,11 +18,12 @@ import (
 )
 
 type Role struct {
-	Name        string                `bson:"_id" json:"name"`
-	ContextType permTypes.ContextType `json:"context"`
-	Description string
-	SchemeNames []string `json:"scheme_names,omitempty"`
-	Events      []string `json:"events,omitempty"`
+	Name               string                `bson:"_id" json:"name"`
+	ContextType        permTypes.ContextType `json:"context"`
+	Description        string
+	SchemeNames        []string `json:"scheme_names,omitempty"`
+	DynamicSchemeNames []string `bson:"dynamic_scheme_names,omitempty" json:"dynamic_scheme_names,omitempty"`
+	Events             []string `json:"events,omitempty"`
 }
 
 func NewRole(ctx context.Context, name string, permissionCtx string, description string) (Role, error) {
@@ -134,10 +136,8 @@ func (r *Role) hasPermissionWithContext(contextValue permTypes.ContextType) bool
 		if err != nil {
 			continue
 		}
-		for _, sCtx := range scheme.AllowedContexts() {
-			if sCtx == contextValue {
-				return true
-			}
+		if slices.Contains(scheme.AllowedContexts(), contextValue) {
+			return true
 		}
 	}
 	return false
@@ -196,11 +196,8 @@ func (r *Role) AddPermissions(ctx context.Context, permNames ...string) error {
 			return &permTypes.ErrPermissionNotFound{Permission: permName}
 		}
 		var found bool
-		for _, ctxType := range reg.AllowedContexts() {
-			if ctxType == r.ContextType {
-				found = true
-				break
-			}
+		if slices.Contains(reg.AllowedContexts(), r.ContextType) {
+			found = true
 		}
 		if !found {
 			return &permTypes.ErrPermissionNotAllowed{
@@ -242,6 +239,58 @@ func (r *Role) RemovePermissions(ctx context.Context, permNames ...string) error
 	return nil
 }
 
+func (r *Role) AddDynamicPermissions(ctx context.Context, permNames ...string) error {
+	for _, permName := range permNames {
+		scheme, ok := NewDynamic(permName)
+		if !ok {
+			return permTypes.ErrInvalidPermissionName
+		}
+		exists, err := ExistsDynamic(ctx, permName)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return &permTypes.ErrPermissionNotFound{Permission: permName}
+		}
+		if !slices.Contains(scheme.AllowedContexts(), r.ContextType) {
+			return &permTypes.ErrPermissionNotAllowed{
+				Permission:  permName,
+				ContextType: r.ContextType,
+			}
+		}
+	}
+	err := r.updateDynamicSchemeNames(ctx, mongoBSON.M{"$addToSet": mongoBSON.M{"dynamic_scheme_names": mongoBSON.M{"$each": permNames}}})
+	if err != nil {
+		return err
+	}
+	for _, permName := range permNames {
+		if !slices.Contains(r.DynamicSchemeNames, permName) {
+			r.DynamicSchemeNames = append(r.DynamicSchemeNames, permName)
+		}
+	}
+	return nil
+}
+
+func (r *Role) RemoveDynamicPermissions(ctx context.Context, permNames ...string) error {
+	err := r.updateDynamicSchemeNames(ctx, mongoBSON.M{"$pullAll": mongoBSON.M{"dynamic_scheme_names": permNames}})
+	if err != nil {
+		return err
+	}
+	r.DynamicSchemeNames = slices.DeleteFunc(r.DynamicSchemeNames, func(name string) bool {
+		return slices.Contains(permNames, name)
+	})
+	return nil
+}
+
+func (r *Role) updateDynamicSchemeNames(ctx context.Context, update mongoBSON.M) error {
+	collection, err := storagev2.RolesCollection()
+	if err != nil {
+		return err
+	}
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": r.Name}, update)
+	return err
+}
+
 func (r *Role) filterValidSchemes() permTypes.PermissionSchemeList {
 	schemes := make(permTypes.PermissionSchemeList, 0, len(r.SchemeNames))
 	sort.Strings(r.SchemeNames)
@@ -274,6 +323,26 @@ func (r *Role) PermissionsFor(contextValue string) []permTypes.Permission {
 				Value:   contextValue,
 			},
 		}
+	}
+	return permissions
+}
+
+func (r *Role) DynamicPermissionsFor(contextValue string) []permTypes.Permission {
+	schemeNames := append([]string(nil), r.DynamicSchemeNames...)
+	sort.Strings(schemeNames)
+	permissions := make([]permTypes.Permission, 0, len(schemeNames))
+	for _, schemeName := range schemeNames {
+		scheme, ok := NewDynamic(schemeName)
+		if !ok {
+			continue
+		}
+		permissions = append(permissions, permTypes.Permission{
+			Scheme: scheme,
+			Context: permTypes.PermissionContext{
+				CtxType: r.ContextType,
+				Value:   contextValue,
+			},
+		})
 	}
 	return permissions
 }
@@ -325,7 +394,6 @@ func (r *Role) Update(ctx context.Context) error {
 		return err
 	}
 	err = collection.FindOneAndUpdate(ctx, mongoBSON.M{"_id": r.Name}, mongoBSON.M{"$set": mongoBSON.M{"contexttype": r.ContextType, "description": r.Description}}).Err()
-
 	if err != nil {
 		return err
 	}

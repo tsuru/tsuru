@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "strict_actions": true,
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/databases/{databaseId}",
+      "action": "database.read"
+    },
+    {
+      "method": "POST",
+      "path": "/databases/{databaseId}/users",
+      "action": "database.users.create"
+    }
+  ]
+}

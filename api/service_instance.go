@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"reflect"
 	"sort"
 	"strconv"
@@ -32,12 +33,88 @@ import (
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
+type serviceInstanceProxyAuthResult struct {
+	matched   bool
+	action    string
+	eventKind *permTypes.PermissionScheme
+}
+
 func serviceInstanceTarget(name, instance string) eventTypes.Target {
 	return eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
 }
 
 func serviceIntancePermName(serviceName, instanceName string) string {
 	return fmt.Sprintf("%s/%s", serviceName, instanceName)
+}
+
+func normalizeServiceInstanceManifestPath(instance *service.ServiceInstance, requestPath string) string {
+	prefix := fmt.Sprintf("/resources/%s", instance.GetIdentifier())
+	cleanPath := path.Clean("/" + requestPath)
+	switch {
+	case cleanPath == "", cleanPath == "/", cleanPath == prefix:
+		return "/"
+	case strings.HasPrefix(cleanPath, prefix+"/"):
+		return strings.TrimPrefix(cleanPath, prefix)
+	default:
+		return cleanPath
+	}
+}
+
+func authorizeServiceInstanceProxy(ctx stdContext.Context, t auth.Token, svc service.Service, instance *service.ServiceInstance, method, requestPath string) (serviceInstanceProxyAuthResult, error) {
+	ctxs := contextsForServiceInstance(instance, svc.Name)
+	result := serviceInstanceProxyAuthResult{
+		eventKind: permission.PermServiceInstanceUpdateProxy,
+	}
+	if svc.Manifest == nil || !svc.Manifest.Enabled {
+		if !permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy, ctxs...) {
+			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
+		}
+		return result, nil
+	}
+	normalizedPath := normalizeServiceInstanceManifestPath(instance, requestPath)
+	op, matched := svc.Manifest.MatchOperation(method, normalizedPath)
+	if matched {
+		permName := permission.DynamicActionPermissionName(svc.Name, op.Action)
+		kind, ok := permission.NewDynamic(permName)
+		if !ok {
+			return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
+		}
+		result.eventKind = kind
+		dynamicPerms, err := auth.BaseTokenDynamicPermission(ctx, t)
+		if err != nil {
+			return serviceInstanceProxyAuthResult{}, err
+		}
+		if permission.CheckDynamic(dynamicPerms, permName, ctxs...) {
+			result.matched = true
+			result.action = op.Action
+			return result, nil
+		}
+	}
+	allowLegacy := svc.Manifest.LegacyCompat && (matched || !svc.Manifest.StrictActions)
+	allowUnmatchedFallback := !matched && !svc.Manifest.StrictActions && !svc.Manifest.LegacyCompat
+	if allowLegacy || allowUnmatchedFallback {
+		if permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy, ctxs...) {
+			result.matched = matched
+			result.action = op.Action
+			return result, nil
+		}
+	}
+	return serviceInstanceProxyAuthResult{}, permission.ErrUnauthorized
+}
+
+func serviceInstanceProxyEventData(r *http.Request, authResult serviceInstanceProxyAuthResult) []map[string]any {
+	customData := append(event.FormToCustomData(InputFields(r)), map[string]any{
+		"name":  "method",
+		"value": r.Method,
+	})
+	if authResult.matched {
+		customData = append(
+			customData,
+			map[string]any{"name": "action", "value": authResult.action},
+			map[string]any{"name": "operation", "value": authResult.action},
+		)
+	}
+	return customData
 }
 
 // title: service instance create
@@ -77,14 +154,16 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 		instance.TeamOwner = teamOwner
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceCreate,
+	allowed := permission.Check(
+		ctx, t, permission.PermServiceInstanceCreate,
 		permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	if srv.IsRestricted {
-		allowed := permission.Check(ctx, t, permission.PermServiceRead,
+		allowed := permission.Check(
+			ctx, t, permission.PermServiceRead,
 			contextsForService(&srv)...,
 		)
 		if !allowed {
@@ -205,7 +284,8 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	for _, perm := range wantedPerms {
-		allowed := permission.Check(ctx, t, perm,
+		allowed := permission.Check(
+			ctx, t, perm,
 			contextsForServiceInstance(si, serviceName)...,
 		)
 		if !allowed {
@@ -263,7 +343,8 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceDelete,
+	allowed := permission.Check(
+		ctx, t, permission.PermServiceInstanceDelete,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -444,7 +525,8 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceReadStatus,
+	allowed := permission.Check(
+		ctx, t, permission.PermServiceInstanceReadStatus,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -495,7 +577,8 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceRead,
+	allowed := permission.Check(
+		ctx, t, permission.PermServiceInstanceRead,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -587,7 +670,8 @@ func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	if s.IsRestricted {
-		allowed := permission.Check(ctx, t, permission.PermServiceReadDoc,
+		allowed := permission.Check(
+			ctx, t, permission.PermServiceReadDoc,
 			contextsForService(&s)...,
 		)
 		if !allowed {
@@ -637,7 +721,8 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 
 	if s.IsRestricted {
-		allowed := permission.Check(ctx, t, permission.PermServiceReadPlans,
+		allowed := permission.Check(
+			ctx, t, permission.PermServiceReadPlans,
 			contextsForService(&s)...,
 		)
 		if !allowed {
@@ -717,24 +802,23 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy,
-		contextsForServiceInstance(serviceInstance, serviceName)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
+	svc, err := getService(ctx, serviceName)
+	if err != nil {
+		return err
 	}
 	path := r.URL.Query().Get("callback")
+	authResult, err := authorizeServiceInstanceProxy(ctx, t, svc, serviceInstance, r.Method, path)
+	if err != nil {
+		return err
+	}
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
-			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Kind:       authResult.eventKind,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
-			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
-				"name":  "method",
-				"value": r.Method,
-			}),
+			CustomData: serviceInstanceProxyEventData(r, authResult),
 			Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 				contextsForServiceInstance(serviceInstance, serviceName)...),
 		})
@@ -763,11 +847,13 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy,
-		contextsForServiceInstance(serviceInstance, serviceName)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
+	svc, err := getService(ctx, serviceName)
+	if err != nil {
+		return err
+	}
+	authResult, err := authorizeServiceInstanceProxy(ctx, t, svc, serviceInstance, r.Method, queryPath)
+	if err != nil {
+		return err
 	}
 
 	path := "/resources/" + serviceInstance.GetIdentifier() + "/" + queryPath
@@ -776,13 +862,10 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
-			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Kind:       authResult.eventKind,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
-			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
-				"name":  "method",
-				"value": r.Method,
-			}),
+			CustomData: serviceInstanceProxyEventData(r, authResult),
 			Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 				contextsForServiceInstance(serviceInstance, serviceName)...),
 		})
@@ -811,7 +894,8 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateGrant,
+	allowed := permission.Check(
+		ctx, t, permission.PermServiceInstanceUpdateGrant,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -850,7 +934,8 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateRevoke,
+	allowed := permission.Check(
+		ctx, t, permission.PermServiceInstanceUpdateRevoke,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -875,13 +960,15 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 
 func contextsForServiceInstance(si *service.ServiceInstance, serviceName string) []permTypes.PermissionContext {
 	permissionValue := serviceIntancePermName(serviceName, si.Name)
-	return append(permission.Contexts(permTypes.CtxTeam, si.Teams),
+	return append(
+		permission.Contexts(permTypes.CtxTeam, si.Teams),
 		permission.Context(permTypes.CtxServiceInstance, permissionValue),
 	)
 }
 
 func contextsForService(s *service.Service) []permTypes.PermissionContext {
-	return append(permission.Contexts(permTypes.CtxTeam, s.Teams),
+	return append(
+		permission.Contexts(permTypes.CtxTeam, s.Teams),
 		permission.Context(permTypes.CtxService, s.Name),
 	)
 }
