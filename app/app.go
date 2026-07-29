@@ -204,10 +204,7 @@ func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) 
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app processes: %+v", err))
 	}
-	result.Processes = processes
-	if len(app.Processes) > 0 {
-		result.Processes = mergeProcesses(processes, app.Processes)
-	}
+	result.Processes = mergeProcesses(processes, app.Processes)
 
 	q, err := GetQuota(ctx, app)
 	if err != nil {
@@ -288,24 +285,25 @@ func AppInfo(ctx context.Context, app *appTypes.App) (*appTypes.AppInfo, error) 
 }
 
 func mergeProcesses(providerProcesses, appProcesses []appTypes.Process) []appTypes.Process {
-	appByName := make(map[string]appTypes.Process, len(appProcesses))
-	for _, ap := range appProcesses {
-		appByName[ap.Name] = ap
-	}
-
-	mergedProcesses := make([]appTypes.Process, 0, len(providerProcesses))
-
+	processesByName := make(map[string]appTypes.Process, len(providerProcesses)+len(appProcesses))
 	for _, providerProcess := range providerProcesses {
-		mergedProcess := providerProcess
-
-		if ap, ok := appByName[providerProcess.Name]; ok {
-			mergedProcess.Plan = ap.Plan
-			mergedProcess.Metadata = ap.Metadata
-		}
-
-		mergedProcesses = append(mergedProcesses, mergedProcess)
+		processesByName[providerProcess.Name] = providerProcess
+	}
+	for _, appProcess := range appProcesses {
+		mergedProcess := processesByName[appProcess.Name]
+		mergedProcess.Name = appProcess.Name
+		mergedProcess.Plan = appProcess.Plan
+		mergedProcess.Metadata = appProcess.Metadata
+		processesByName[appProcess.Name] = mergedProcess
 	}
 
+	mergedProcesses := make([]appTypes.Process, 0, len(processesByName))
+	for _, process := range processesByName {
+		mergedProcesses = append(mergedProcesses, process)
+	}
+	sort.Slice(mergedProcesses, func(i, j int) bool {
+		return mergedProcesses[i].Name < mergedProcesses[j].Name
+	})
 	return mergedProcesses
 }
 
