@@ -141,7 +141,7 @@ type Provisioner interface {
 	// Units returns information about units by App.
 	Units(context.Context, ...*appTypes.App) ([]provTypes.Unit, error)
 
-	// Processes return the list of processes defined in the app.
+	// Processes returns the list of processes defined in the app.
 	Processes(context.Context, *appTypes.App) ([]appTypes.Process, error)
 
 	// RoutableAddresses returns the addresses used to access an application.

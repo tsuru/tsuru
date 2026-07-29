@@ -373,7 +373,7 @@ func assembleHealthProbe(y *provTypes.TsuruYamlHealthcheck, port int) (*apiv1.Pr
 	return probe, nil
 }
 
-func dissasembleHealthProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlHealthcheck, error) {
+func disassembleHealthProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlHealthcheck, error) {
 	y := &provTypes.TsuruYamlHealthcheck{}
 	if err := y.EnsureDefaults(); err != nil {
 		return nil, err
@@ -383,9 +383,16 @@ func dissasembleHealthProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlHealthcheck
 	y.TimeoutSeconds = int(probe.TimeoutSeconds)
 	if probe.HTTPGet != nil {
 		y.Path = probe.HTTPGet.Path
-		headers := map[string]string{}
+		y.Scheme = strings.ToLower(string(probe.HTTPGet.Scheme))
+		if y.Scheme == "" {
+			y.Scheme = "http"
+		}
+		y.Headers = make(map[string]string, len(probe.HTTPGet.HTTPHeaders))
 		for _, header := range probe.HTTPGet.HTTPHeaders {
-			headers[header.Name] = header.Value
+			y.Headers[header.Name] = header.Value
+		}
+		if len(y.Headers) == 0 {
+			y.Headers = nil
 		}
 	} else if probe.Exec != nil {
 		y.Command = probe.Exec.Command
@@ -433,7 +440,7 @@ func assembleStartupProbe(y *provTypes.TsuruYamlStartupcheck, port int) (*apiv1.
 	return probe, nil
 }
 
-func dissasembleStartupProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlStartupcheck, error) {
+func disassembleStartupProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlStartupcheck, error) {
 	y := &provTypes.TsuruYamlStartupcheck{}
 	if err := y.EnsureDefaults(); err != nil {
 		return nil, err
@@ -443,9 +450,16 @@ func dissasembleStartupProbe(probe *apiv1.Probe) (*provTypes.TsuruYamlStartupche
 	y.TimeoutSeconds = int(probe.TimeoutSeconds)
 	if probe.HTTPGet != nil {
 		y.Path = probe.HTTPGet.Path
-		headers := map[string]string{}
+		y.Scheme = strings.ToLower(string(probe.HTTPGet.Scheme))
+		if y.Scheme == "" {
+			y.Scheme = "http"
+		}
+		y.Headers = make(map[string]string, len(probe.HTTPGet.HTTPHeaders))
 		for _, header := range probe.HTTPGet.HTTPHeaders {
-			headers[header.Name] = header.Value
+			y.Headers[header.Name] = header.Value
+		}
+		if len(y.Headers) == 0 {
+			y.Headers = nil
 		}
 	} else if probe.Exec != nil {
 		y.Command = probe.Exec.Command

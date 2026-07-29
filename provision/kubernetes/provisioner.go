@@ -914,34 +914,49 @@ func (p *kubernetesProvisioner) Processes(ctx context.Context, a *appTypes.App) 
 	if err != nil {
 		return nil, err
 	}
+	return processesFromDeployments(groupedDeploys)
+}
 
-	deploymentsByname := map[string]deploymentInfo{}
+func processesFromDeployments(groupedDeploys groupedDeploymentsAll) ([]appTypes.Process, error) {
+	deploymentsByName := map[string]deploymentInfo{}
 	for _, versionDeploys := range groupedDeploys.versioned {
 		for _, deploy := range versionDeploys {
 			if !deploy.isBase {
 				continue
 			}
-			currentDeploy, found := deploymentsByname[deploy.process]
+			currentDeploy, found := deploymentsByName[deploy.process]
 			if !found {
-				deploymentsByname[deploy.process] = deploy
+				deploymentsByName[deploy.process] = deploy
 				continue
 			}
 			if currentDeploy.version > deploy.version {
 				continue
 			}
-			deploymentsByname[deploy.process] = deploy
+			deploymentsByName[deploy.process] = deploy
 		}
 	}
 
-	processes := make([]appTypes.Process, 0)
-	for _, deploy := range deploymentsByname {
+	processNames := make([]string, 0, len(deploymentsByName))
+	for processName := range deploymentsByName {
+		processNames = append(processNames, processName)
+	}
+	sort.Strings(processNames)
+
+	processes := make([]appTypes.Process, 0, len(deploymentsByName))
+	for _, processName := range processNames {
+		deploy := deploymentsByName[processName]
+		if len(deploy.dep.Spec.Template.Spec.Containers) == 0 {
+			return nil, fmt.Errorf("deployment %q has no containers", deploy.dep.Name)
+		}
 		container := deploy.dep.Spec.Template.Spec.Containers[0]
 		readinessProbe := container.ReadinessProbe
 		livenessProbe := container.LivenessProbe
 		startupProbe := container.StartupProbe
 		var healthcheck *provTypes.TsuruYamlHealthcheck
-		if readinessProbe != nil {
-			healthcheck, err = dissasembleHealthProbe(readinessProbe)
+		healthProbe := readinessProbe
+		if healthProbe != nil {
+			var err error
+			healthcheck, err = disassembleHealthProbe(healthProbe)
 			if err != nil {
 				return nil, err
 			}
@@ -951,7 +966,8 @@ func (p *kubernetesProvisioner) Processes(ctx context.Context, a *appTypes.App) 
 		}
 		var startupcheck *provTypes.TsuruYamlStartupcheck
 		if startupProbe != nil {
-			startupcheck, err = dissasembleStartupProbe(startupProbe)
+			var err error
+			startupcheck, err = disassembleStartupProbe(startupProbe)
 			if err != nil {
 				return nil, err
 			}
