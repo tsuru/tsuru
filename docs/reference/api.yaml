@@ -333,6 +333,71 @@ paths:
       security:
       - Bearer: []
 
+  /1.31/services/{service}/manifest:
+    parameters:
+    - name: service
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: Service name.
+    get:
+      operationId: ServiceManifestGet
+      description: Get the service manifest
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Stored manifest
+          schema:
+            $ref: "#/definitions/ServiceManifest"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - service
+      security:
+      - Bearer: []
+    put:
+      operationId: ServiceManifestSet
+      description: Set the service manifest
+      consumes:
+      - application/json
+      parameters:
+      - name: manifest
+        required: true
+        in: body
+        schema:
+          $ref: "#/definitions/ServiceManifest"
+      responses:
+        "200":
+          description: Manifest applied
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Manifest would orphan dynamic grants
+          schema:
+            $ref: "#/definitions/ServiceManifestConflict"
+      tags:
+      - service
+      security:
+      - Bearer: []
+
   /1.0/services/instances:
     get:
       operationId: InstancesList
@@ -5026,6 +5091,54 @@ definitions:
         enum:
         - form
         - json
+  ServiceManifest:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+      strict_actions:
+        type: boolean
+      legacy_compat:
+        type: boolean
+      operations:
+        type: array
+        items:
+          $ref: "#/definitions/ServiceManifestOperation"
+  ServiceManifestOperation:
+    type: object
+    properties:
+      method:
+        type: string
+        enum:
+        - DELETE
+        - GET
+        - HEAD
+        - OPTIONS
+        - PATCH
+        - POST
+        - PUT
+      path:
+        type: string
+      action:
+        type: string
+  ServiceManifestConflict:
+    type: object
+    properties:
+      service:
+        type: string
+      conflicts:
+        type: array
+        items:
+          $ref: "#/definitions/ServiceManifestGrantConflict"
+  ServiceManifestGrantConflict:
+    type: object
+    properties:
+      action:
+        type: string
+      roles:
+        type: array
+        items:
+          type: string
   ServiceInfo:
     type: object
     properties:
