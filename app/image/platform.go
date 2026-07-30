@@ -55,7 +55,7 @@ func (s *platformImageService) NewImage(ctx context.Context, reg imageTypes.Imag
 func (s *platformImageService) CurrentImage(ctx context.Context, reg imageTypes.ImageRegistry, platformName string) (string, error) {
 	img, err := s.storage.FindByName(ctx, platformName)
 	if err != nil {
-		log.Errorf("Couldn't find images for platform %q, fallback to default image name. Error: %s", platformName, err)
+		log.Debugf("Couldn't find images for platform %q, fallback to default image name. Error: %s", platformName, err)
 		imageNew, err := platformBasicImageName(reg, platformName)
 		if err != nil {
 			return "", err

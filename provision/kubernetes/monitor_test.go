@@ -103,3 +103,12 @@ func (s *S) TestLeaderElectionRenewal(_ *check.C) {
 	require.NotNil(s.t, lease2.Spec.RenewTime)
 	require.True(s.t, lease2.Spec.RenewTime.Time.After(initialRenewTime), "lease should have been renewed")
 }
+
+func (s *S) TestStartJobInformerDisabledIsNotAnError(_ *check.C) {
+	clusterController, err := getClusterController(s.p, s.clusterClient)
+	require.NoError(s.t, err)
+	enabled, err := clusterController.cluster.EnableJobEventCreation()
+	require.NoError(s.t, err)
+	require.False(s.t, enabled, "job event creation should be disabled in the test cluster")
+	require.NoError(s.t, clusterController.startJobInformer())
+}
