@@ -41,6 +41,7 @@ func (createRootUserCmd) Run(c *cmd.Context) error {
 			return err
 		}
 		fmt.Fprintln(c.Stdout, "Root user successfully updated.")
+		return nil
 	}
 	var confirm, password string
 	if scheme == nativeSchemeName {
