@@ -676,6 +676,7 @@ func (s *S) TestRunServerWithPanic(c *check.C) {
 	RegisterHandler("/panic", "GET", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("ahoy")
 	}))
+	defer resetHandlers()
 	request, err := http.NewRequest("GET", "/panic", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
