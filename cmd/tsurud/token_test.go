@@ -41,3 +41,25 @@ func (s *S) TestCreateRootUserCmdRun(c *check.C) {
 	c.Assert(perms[0].Scheme, check.Equals, permission.PermUser)
 	c.Assert(perms[1].Scheme, check.Equals, permission.PermAll)
 }
+
+func (s *S) TestCreateRootUserCmdRunNonUserSchemeNewUser(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"my@user.com"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  strings.NewReader(""),
+	}
+	command := &tsurudCommand{Command: createRootUserCmd{}}
+	command.Flags().Parse(true, []string{"--config", "testdata/tsuru-oidc.conf"})
+	err := command.Run(&context)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "Root user successfully created.\n")
+	u, err := auth.GetUserByEmail(stdContext.TODO(), "my@user.com")
+	c.Assert(err, check.IsNil)
+	perms, err := u.Permissions(stdContext.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.HasLen, 2)
+	c.Assert(perms[0].Scheme, check.Equals, permission.PermUser)
+	c.Assert(perms[1].Scheme, check.Equals, permission.PermAll)
+}
