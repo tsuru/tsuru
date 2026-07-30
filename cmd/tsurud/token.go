@@ -69,6 +69,7 @@ func (createRootUserCmd) Run(c *cmd.Context) error {
 			return err
 		}
 	} else {
+		user = &auth.User{Email: email}
 		err = user.Create(ctx)
 		if err != nil {
 			return err
