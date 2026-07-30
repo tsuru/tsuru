@@ -5,9 +5,12 @@
 package image
 
 import (
+	"bytes"
 	"context"
+	"strings"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 	imageTypes "github.com/tsuru/tsuru/types/app/image"
 	check "gopkg.in/check.v1"
 )
@@ -317,4 +320,22 @@ func (s *S) TestPlatformFindImage(c *check.C) {
 	image, err = service.FindImage(context.TODO(), "", platformName, imageName)
 	c.Assert(err, check.NotNil)
 	c.Assert(image, check.Equals, "")
+}
+
+func (s *S) TestPlatformCurrentImageNotFoundLogsDebugNotError(c *check.C) {
+	var buf bytes.Buffer
+	log.SetLogger(log.NewWriterLogger(&buf, true))
+	defer log.SetLogger(nil)
+	service := &platformImageService{
+		storage: &imageTypes.MockPlatformImageStorage{
+			OnFindByName: func(n string) (*imageTypes.PlatformImage, error) {
+				return nil, imageTypes.ErrPlatformImageNotFound
+			},
+		},
+	}
+	img, err := service.CurrentImage(context.TODO(), "", "myplatform")
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, "tsuru/myplatform:latest")
+	c.Assert(strings.Contains(buf.String(), "ERROR"), check.Equals, false)
+	c.Assert(strings.Contains(buf.String(), "DEBUG"), check.Equals, true)
 }

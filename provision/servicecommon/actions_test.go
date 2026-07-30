@@ -5,9 +5,11 @@
 package servicecommon
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -16,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -782,4 +785,24 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		m.lastLabels = nil
 		m.lastReplicas = nil
 	}
+}
+
+func (s *S) TestRunServicePipelineOldVersionNotFoundLogsDebugNotError(c *check.C) {
+	var buf bytes.Buffer
+	log.SetLogger(log.NewWriterLogger(&buf, true))
+	defer log.SetLogger(nil)
+	m := &recordManager{}
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	newVersion := newVersion(c, fakeApp, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python web1",
+		},
+	})
+	err := RunServicePipeline(context.TODO(), m, 0, provision.DeployArgs{
+		App:     fakeApp,
+		Version: newVersion,
+	}, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.Contains(buf.String(), "unable to find version"), check.Equals, true)
+	c.Assert(strings.Contains(buf.String(), "ERROR"), check.Equals, false)
 }

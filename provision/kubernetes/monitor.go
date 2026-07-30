@@ -138,7 +138,8 @@ func (c *clusterController) isLeader() bool {
 
 func (c *clusterController) startJobInformer() error {
 	if enable, _ := c.cluster.EnableJobEventCreation(); !enable {
-		return errors.New("job event creation is not enabled")
+		log.Debugf("job event creation is not enabled, skipping job informer")
+		return nil
 	}
 	eventsInformer, err := c.getEventInformerWait(false)
 	if err != nil {

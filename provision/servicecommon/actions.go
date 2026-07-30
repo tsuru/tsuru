@@ -80,7 +80,7 @@ func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionN
 		if !appTypes.IsInvalidVersionError(err) {
 			return errors.WithStack(err)
 		}
-		log.Errorf("unable to find version %d for app %q: %v", oldVersionNumber, args.App.Name, err)
+		log.Debugf("unable to find version %d for app %q: %v", oldVersionNumber, args.App.Name, err)
 	}
 	newProcesses, err := args.Version.Processes()
 	if err != nil {
