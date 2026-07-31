@@ -29,8 +29,11 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func toInt32Ptr(i int32) *int32 {
@@ -342,6 +345,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string][]string{
@@ -480,6 +484,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -653,6 +658,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -836,6 +842,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -1036,6 +1043,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string][]string{
@@ -1147,6 +1155,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string][]string{
@@ -1262,6 +1271,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -1391,6 +1401,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string][]string{
@@ -1446,6 +1457,7 @@ func (s *S) TestProvisionerKEDAAutoScaleWhenAppStopAppStart(c *check.C) {
 }
 
 func (s *S) TestProvisionerKEDAAutoScaleWhenBevaher(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string][]string{
@@ -1771,6 +1783,7 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 }
 
 func (s *S) TestEnsureHPAKEDAPausedReplicasWhenAppStopped(c *check.C) {
+	s.createKEDACRD(c)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string][]string{
@@ -1984,4 +1997,92 @@ func findHPAByProcess(hpas []autoscalingv2.HorizontalPodAutoscaler, processName 
 		}
 	}
 	return nil
+}
+
+func (s *S) createKEDACRD(c *check.C) {
+	kedaCRD := &extensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "scaledobjects.keda.sh"},
+	}
+	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), kedaCRD, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+}
+
+// simulateKEDANotInstalled makes every ScaledObject API call fail the way a
+// real cluster without KEDA fails: the CRD is absent from the apiextensions
+// clientset (default) and the API server answers requests for the resource
+// with a NotFound error.
+func (s *S) simulateKEDANotInstalled() {
+	s.client.KEDAClientForConfig.PrependReactor("*", "scaledobjects", func(action ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, k8sErrors.NewNotFound(schema.GroupResource{Group: "keda.sh", Resource: "scaledobjects"}, "")
+	})
+}
+
+func (s *S) TestProvisionerGetAutoScaleWithoutKEDAInstalled(c *check.C) {
+	s.simulateKEDANotInstalled()
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	require.NoError(s.t, err)
+	wait()
+
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
+		MinUnits:   1,
+		MaxUnits:   2,
+		AverageCPU: "500m",
+	})
+	require.NoError(s.t, err)
+
+	specs, err := s.p.GetAutoScale(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, specs, 1)
+	require.Equal(s.t, "web", specs[0].Process)
+}
+
+func (s *S) TestProvisionerDeleteAllAutoScaleWithoutKEDAInstalled(c *check.C) {
+	s.simulateKEDANotInstalled()
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	require.NoError(s.t, err)
+	wait()
+
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
+		MinUnits:   1,
+		MaxUnits:   2,
+		AverageCPU: "500m",
+	})
+	require.NoError(s.t, err)
+
+	err = s.p.deleteAllAutoScale(context.TODO(), a)
+	require.NoError(s.t, err)
+}
+
+func (s *S) TestProvisionerSetScheduleAutoScaleWithoutKEDAInstalled(c *check.C) {
+	s.simulateKEDANotInstalled()
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	require.NoError(s.t, err)
+	wait()
+
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
+		MinUnits:   1,
+		MaxUnits:   2,
+		AverageCPU: "500m",
+		Schedules: []provTypes.AutoScaleSchedule{
+			{MinReplicas: 2, Start: "0 6 * * *", End: "0 18 * * *", Timezone: "UTC"},
+		},
+	})
+	require.Error(s.t, err)
+	require.ErrorContains(s.t, err, "KEDA is not installed")
+	require.ErrorContains(s.t, err, "scaledobjects.keda.sh")
 }
