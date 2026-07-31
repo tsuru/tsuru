@@ -32,7 +32,8 @@ import (
 )
 
 const (
-	vpaCRDName = "verticalpodautoscalers.autoscaling.k8s.io"
+	vpaCRDName  = "verticalpodautoscalers.autoscaling.k8s.io"
+	kedaCRDName = "scaledobjects.keda.sh"
 )
 
 var errNoDeploy = errors.New("no routable version found for app, at least one deploy is required before configuring autoscale")
@@ -127,11 +128,6 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.Ap
 		return nil, err
 	}
 
-	kedaClient, err := KEDAClientForConfig(client.restConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -161,6 +157,20 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a *appTypes.Ap
 		if scaledObjectName == "" {
 			specs = append(specs, hpaToSpec(hpa))
 		}
+	}
+
+	// KEDA is optional: without its CRDs there are no ScaledObjects to list.
+	hasKEDA, err := kedaCRDExists(ctx, client)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if !hasKEDA {
+		return specs, nil
+	}
+
+	kedaClient, err := KEDAClientForConfig(client.restConfig)
+	if err != nil {
+		return nil, err
 	}
 
 	scaledObjects, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String()})
@@ -367,6 +377,15 @@ func (p *kubernetesProvisioner) swapAutoScale(ctx context.Context, a *appTypes.A
 }
 
 func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string, scaledObjectName string) error {
+	// KEDA is optional: without its CRDs there is nothing to delete.
+	hasKEDA, err := kedaCRDExists(ctx, client)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if !hasKEDA {
+		return nil
+	}
+
 	kedaClient, err := KEDAClientForConfig(client.restConfig)
 	if err != nil {
 		return err
@@ -428,6 +447,14 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, s
 	hpaName := hpaNameForApp(a, depInfo.process)
 
 	if len(spec.Schedules) > 0 || len(spec.Prometheus) > 0 {
+		hasKEDA, err := kedaCRDExists(ctx, client)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if !hasKEDA {
+			return errors.Errorf("cannot configure schedule/prometheus autoscale: KEDA is not installed in the cluster (missing CRD %s)", kedaCRDName)
+		}
+
 		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels, preserveVersions)
 		if err != nil {
 			return errors.WithStack(err)
@@ -780,6 +807,10 @@ func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a *appT
 
 func vpaCRDExists(ctx context.Context, client *ClusterClient) (bool, error) {
 	return crdExists(ctx, client, vpaCRDName)
+}
+
+func kedaCRDExists(ctx context.Context, client *ClusterClient) (bool, error) {
+	return crdExists(ctx, client, kedaCRDName)
 }
 
 func ensureAutoScale(ctx context.Context, client *ClusterClient, a *appTypes.App, process string) error {
