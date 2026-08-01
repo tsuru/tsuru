@@ -2,11 +2,7 @@
 
 # Vulnerabilities to ignore (no fix available yet).
 # Current as of 2026-07-08. Remove entries from this list once fixed versions are available.
-IGNORED_VULNS=(
-  "GO-2026-5064"
-  "GO-2026-5338"
-  "GO-2026-5622"
-)
+IGNORED_VULNS=()
 
 set +e
 output=$(govulncheck ./... 2>/dev/null)
