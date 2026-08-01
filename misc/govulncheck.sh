@@ -3,11 +3,6 @@
 # Vulnerabilities to ignore (no fix available yet).
 # Current as of 2026-07-08. Remove entries from this list once fixed versions are available.
 IGNORED_VULNS=(
-  "GO-2026-4887"
-  "GO-2026-4883"
-  "GO-2026-5617"
-  "GO-2026-5668"
-  "GO-2026-5746"
   "GO-2026-5064"
   "GO-2026-5338"
   "GO-2026-5622"
