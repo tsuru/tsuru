@@ -6,7 +6,7 @@ require (
 	github.com/adhocore/gronx v1.6.6
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
-	github.com/docker/cli v23.0.3+incompatible
+	github.com/docker/cli v29.2.0+incompatible
 	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
 	github.com/fsnotify/fsnotify v1.10.0
@@ -65,7 +65,6 @@ require (
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
