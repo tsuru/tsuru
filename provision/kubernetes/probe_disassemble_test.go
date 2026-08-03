@@ -141,7 +141,7 @@ func TestProcessesFromDeployments(t *testing.T) {
 		},
 		2: {
 			{dep: deployment("web-v2", apiv1.Container{ReadinessProbe: webProbe, LivenessProbe: webProbe, StartupProbe: startupProbe}), process: "web", version: 2, isBase: true},
-			{dep: deployment("worker-v2", apiv1.Container{LivenessProbe: workerProbe}), process: "worker", version: 2, isBase: true},
+			{dep: deployment("worker-v2", apiv1.Container{ReadinessProbe: workerProbe, LivenessProbe: workerProbe}), process: "worker", version: 2, isBase: true},
 			{dep: deployment("ignored-v2", apiv1.Container{ReadinessProbe: webProbe}), process: "ignored", version: 2, isBase: false},
 			{dep: deployment("scheduler-v2", apiv1.Container{}), process: "scheduler", version: 2, isBase: true},
 		},
@@ -182,6 +182,27 @@ func TestProcessesFromDeployments(t *testing.T) {
 			},
 		},
 	}, result)
+}
+
+func TestProcessesFromDeploymentsIgnoresLivenessProbeWithoutReadinessProbe(t *testing.T) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-v1"},
+		Spec: appsv1.DeploymentSpec{Template: apiv1.PodTemplateSpec{
+			Spec: apiv1.PodSpec{Containers: []apiv1.Container{{
+				LivenessProbe: &apiv1.Probe{
+					ProbeHandler: apiv1.ProbeHandler{HTTPGet: &apiv1.HTTPGetAction{Path: "/health"}},
+				},
+			}},
+			}}},
+	}
+	grouped := groupedDeploymentsAll{versioned: map[int][]deploymentInfo{
+		1: {{dep: deployment, process: "web", version: 1, isBase: true}},
+	}}
+
+	result, err := processesFromDeployments(grouped)
+
+	require.NoError(t, err)
+	require.Equal(t, []appTypes.Process{{Name: "web"}}, result)
 }
 
 func TestProcessesFromDeploymentsWithoutContainers(t *testing.T) {

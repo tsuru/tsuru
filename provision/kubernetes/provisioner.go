@@ -953,16 +953,13 @@ func processesFromDeployments(groupedDeploys groupedDeploymentsAll) ([]appTypes.
 		livenessProbe := container.LivenessProbe
 		startupProbe := container.StartupProbe
 		var healthcheck *provTypes.TsuruYamlHealthcheck
-		healthProbe := readinessProbe
-		if healthProbe != nil {
+		if readinessProbe != nil {
 			var err error
-			healthcheck, err = disassembleHealthProbe(healthProbe)
+			healthcheck, err = disassembleHealthProbe(readinessProbe)
 			if err != nil {
 				return nil, err
 			}
-		}
-		if livenessProbe != nil {
-			healthcheck.ForceRestart = true
+			healthcheck.ForceRestart = livenessProbe != nil
 		}
 		var startupcheck *provTypes.TsuruYamlStartupcheck
 		if startupProbe != nil {
