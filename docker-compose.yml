@@ -51,7 +51,7 @@ services:
   tsuru-api:
     container_name: tsuru-api
     build: ./
-    image: tsuru/api:dev
+    image: tsuru/api:edge
     ports:
     - 8080:8080
     volumes:

@@ -905,6 +905,79 @@ func (p *kubernetesProvisioner) podsForApps(ctx context.Context, client *Cluster
 	return podCopies, nil
 }
 
+func (p *kubernetesProvisioner) Processes(ctx context.Context, a *appTypes.App) ([]appTypes.Process, error) {
+	client, err := clusterForPool(ctx, a.Pool)
+	if err != nil {
+		return nil, err
+	}
+	groupedDeploys, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return nil, err
+	}
+	return processesFromDeployments(groupedDeploys)
+}
+
+func processesFromDeployments(groupedDeploys groupedDeploymentsAll) ([]appTypes.Process, error) {
+	deploymentsByName := map[string]deploymentInfo{}
+	for _, versionDeploys := range groupedDeploys.versioned {
+		for _, deploy := range versionDeploys {
+			if !deploy.isBase {
+				continue
+			}
+			currentDeploy, found := deploymentsByName[deploy.process]
+			if !found {
+				deploymentsByName[deploy.process] = deploy
+				continue
+			}
+			if currentDeploy.version > deploy.version {
+				continue
+			}
+			deploymentsByName[deploy.process] = deploy
+		}
+	}
+
+	processNames := make([]string, 0, len(deploymentsByName))
+	for processName := range deploymentsByName {
+		processNames = append(processNames, processName)
+	}
+	sort.Strings(processNames)
+
+	processes := make([]appTypes.Process, 0, len(deploymentsByName))
+	for _, processName := range processNames {
+		deploy := deploymentsByName[processName]
+		if len(deploy.dep.Spec.Template.Spec.Containers) == 0 {
+			return nil, fmt.Errorf("deployment %q has no containers", deploy.dep.Name)
+		}
+		container := deploy.dep.Spec.Template.Spec.Containers[0]
+		readinessProbe := container.ReadinessProbe
+		livenessProbe := container.LivenessProbe
+		startupProbe := container.StartupProbe
+		var healthcheck *provTypes.TsuruYamlHealthcheck
+		if readinessProbe != nil {
+			var err error
+			healthcheck, err = disassembleHealthProbe(readinessProbe)
+			if err != nil {
+				return nil, err
+			}
+			healthcheck.ForceRestart = livenessProbe != nil
+		}
+		var startupcheck *provTypes.TsuruYamlStartupcheck
+		if startupProbe != nil {
+			var err error
+			startupcheck, err = disassembleStartupProbe(startupProbe)
+			if err != nil {
+				return nil, err
+			}
+		}
+		processes = append(processes, appTypes.Process{
+			Name:         deploy.process,
+			Healthcheck:  healthcheck,
+			Startupcheck: startupcheck,
+		})
+	}
+	return processes, nil
+}
+
 func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a *appTypes.App) ([]appTypes.RoutableAddresses, error) {
 	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {

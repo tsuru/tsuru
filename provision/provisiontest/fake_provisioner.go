@@ -517,6 +517,16 @@ func (p *FakeProvisioner) Units(ctx context.Context, apps ...*appTypes.App) ([]p
 	return allUnits, nil
 }
 
+// TODO: check if this is properly implemented
+func (p *FakeProvisioner) Processes(ctx context.Context, app *appTypes.App) ([]appTypes.Process, error) {
+	if err := p.getError("Processes"); err != nil {
+		return nil, err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	return app.Processes, nil
+}
+
 func (p *FakeProvisioner) UnitsMetrics(ctx context.Context, a *appTypes.App) ([]provTypes.UnitMetric, error) {
 	if err := p.getError("UnitsMetrics"); err != nil {
 		return nil, err
