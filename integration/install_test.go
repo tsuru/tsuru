@@ -59,6 +59,7 @@ var (
 		multiversionRollbackOverrideTest(),
 		multiversionRoutableStopStartTest(),
 		swapAutoScaleTest(),
+		uploadFileTest(),
 	}
 )
 
