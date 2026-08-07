@@ -13,6 +13,28 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+func (s *S) TestNormalizeTeamName(c *check.C) {
+	tests := map[string]string{
+		"john.doe":  "john-doe",
+		"John_Doe":  "john_doe",
+		"user+tag":  "user-tag",
+		"123user":   "u-123user",
+		"user.":     "user",
+		"plain":     "plain",
+		"UPPERCASE": "uppercase",
+	}
+	for input, expected := range tests {
+		normalized := NormalizeTeamName(input)
+		c.Check(normalized, check.Equals, expected, check.Commentf("input: %s", input))
+		c.Check(teamNameRegexp.MatchString(normalized), check.Equals, true, check.Commentf("input: %s", input))
+	}
+
+	long := "very.long.name.that.goes.on.and.on.and.on.and.on.forever.and.ever.and.ever"
+	normalized := NormalizeTeamName(long)
+	c.Check(len(normalized) <= 63, check.Equals, true)
+	c.Check(teamNameRegexp.MatchString(normalized), check.Equals, true)
+}
+
 func (s *S) TestTeamServiceCreate(c *check.C) {
 	teamName := "pos"
 	tags := []string{"tag1", "tag1 ", "tag2"}

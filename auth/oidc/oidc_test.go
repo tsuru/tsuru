@@ -20,6 +20,9 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db/storagev2"
+	"github.com/tsuru/tsuru/servicemanager"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
 
@@ -49,7 +52,11 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("auth:oidc:jwks-url", s.fakeJWKSServer.URL)
 	config.Set("auth:user-registration", true)
 
-	err := s.scheme.lazyInitialize(context.Background())
+	var err error
+	servicemanager.Team, err = auth.TeamService()
+	c.Assert(err, check.IsNil)
+
+	err = s.scheme.lazyInitialize(context.Background())
 	c.Check(err, check.IsNil)
 }
 
@@ -228,6 +235,133 @@ func (s *AuthSuite) TestLoginWithDisabledUser(c *check.C) {
 	tsuruToken, err := s.scheme.Auth(context.TODO(), tokenString)
 	c.Assert(err, check.Equals, auth.ErrUserDisabled)
 	c.Assert(tsuruToken, check.IsNil)
+}
+
+func (s *AuthSuite) loginNewUser(c *check.C, kid, userEmail string) {
+	privateRSAKey, err := s.generateNewPrivateRSAKey(kid)
+	c.Assert(err, check.IsNil)
+
+	user := &auth.User{Email: userEmail}
+	user.Delete(context.TODO()) // remove from previous crashed tests
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"email": userEmail,
+	})
+	token.Header["kid"] = kid
+	tokenString, err := token.SignedString(privateRSAKey)
+	c.Assert(err, check.IsNil)
+
+	tsuruToken, err := s.scheme.Auth(context.TODO(), tokenString)
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruToken.GetUserName(), check.Equals, userEmail)
+}
+
+func (s *AuthSuite) TestLoginRegistrationAutoCreatesPersonalTeam(c *check.C) {
+	s.scheme.autoCreatePersonalTeam = true
+	defer func() {
+		s.scheme.autoCreatePersonalTeam = false
+	}()
+
+	servicemanager.Team.Remove(context.TODO(), "joao-silva") // remove from previous crashed tests
+
+	s.loginNewUser(c, "rsa-personal-team", "joao.silva@company.com")
+
+	team, err := servicemanager.Team.FindByName(context.TODO(), "joao-silva")
+	c.Assert(err, check.IsNil)
+	c.Assert(team.CreatingUser, check.Equals, "joao.silva@company.com")
+	c.Assert(team.Tags, check.DeepEquals, []string{"personal"})
+}
+
+func (s *AuthSuite) TestLoginRegistrationPersonalTeamNameCollision(c *check.C) {
+	s.scheme.autoCreatePersonalTeam = true
+	defer func() {
+		s.scheme.autoCreatePersonalTeam = false
+	}()
+
+	servicemanager.Team.Remove(context.TODO(), "maria")
+	servicemanager.Team.Remove(context.TODO(), "maria-company-com")
+
+	err := servicemanager.Team.Create(context.TODO(), "maria", nil, &authTypes.User{Email: "someone.else@company.com"})
+	c.Assert(err, check.IsNil)
+
+	s.loginNewUser(c, "rsa-personal-team-collision", "maria@company.com")
+
+	team, err := servicemanager.Team.FindByName(context.TODO(), "maria-company-com")
+	c.Assert(err, check.IsNil)
+	c.Assert(team.CreatingUser, check.Equals, "maria@company.com")
+
+	original, err := servicemanager.Team.FindByName(context.TODO(), "maria")
+	c.Assert(err, check.IsNil)
+	c.Assert(original.CreatingUser, check.Equals, "someone.else@company.com")
+}
+
+func (s *AuthSuite) TestLoginRegistrationNoPersonalTeamByDefault(c *check.C) {
+	servicemanager.Team.Remove(context.TODO(), "pedro-souza")
+
+	s.loginNewUser(c, "rsa-no-personal-team", "pedro.souza@company.com")
+
+	_, err := servicemanager.Team.FindByName(context.TODO(), "pedro-souza")
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
+}
+
+func (s *AuthSuite) TestLoginExistingUserDoesNotCreatePersonalTeam(c *check.C) {
+	s.scheme.autoCreatePersonalTeam = true
+	defer func() {
+		s.scheme.autoCreatePersonalTeam = false
+	}()
+
+	userEmail := "ana.lima@company.com"
+	servicemanager.Team.Remove(context.TODO(), "ana-lima")
+
+	user := &auth.User{Email: userEmail}
+	user.Delete(context.TODO())
+	err := user.Create(context.TODO())
+	c.Assert(err, check.IsNil)
+	defer user.Delete(context.TODO())
+
+	kid := "rsa-existing-user-no-team"
+	privateRSAKey, err := s.generateNewPrivateRSAKey(kid)
+	c.Assert(err, check.IsNil)
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"email": userEmail,
+	})
+	token.Header["kid"] = kid
+	tokenString, err := token.SignedString(privateRSAKey)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.scheme.Auth(context.TODO(), tokenString)
+	c.Assert(err, check.IsNil)
+
+	_, err = servicemanager.Team.FindByName(context.TODO(), "ana-lima")
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
+}
+
+func (s *AuthSuite) TestLoadConfigAutoCreatePersonalTeam(c *check.C) {
+	config.Set("auth:oidc:auto-create-personal-team", true)
+	defer config.Unset("auth:oidc:auto-create-personal-team")
+
+	scheme := &oidcScheme{}
+	err := scheme.lazyInitialize(context.Background())
+	c.Assert(err, check.IsNil)
+	c.Assert(scheme.autoCreatePersonalTeam, check.Equals, true)
+}
+
+func (s *AuthSuite) TestPersonalTeamName(c *check.C) {
+	tests := map[string]string{
+		"guilherme.brezende@quintoandar.com.br": "guilherme-brezende",
+		"bar@company.com":                       "bar",
+		"John_Doe@company.com":                  "john_doe",
+		"user+tag@company.com":                  "user-tag",
+		"123user@company.com":                   "u-123user",
+	}
+	for email, expected := range tests {
+		c.Check(personalTeamName(email), check.Equals, expected, check.Commentf("email: %s", email))
+	}
+
+	longEmail := "very.long.email.address.that.goes.on.and.on.and.on.and.on.forever.and.ever@company.com"
+	name := personalTeamName(longEmail)
+	c.Check(len(name) <= 63, check.Equals, true)
+	c.Check(name, check.Matches, `^[a-z][a-z0-9_\-]{1,62}$`)
 }
 
 func (s *AuthSuite) generateNewPrivateRSAKey(kid string) (*rsa.PrivateKey, error) {

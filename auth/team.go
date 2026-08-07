@@ -26,7 +26,25 @@ import (
 //
 //	Keys have a minimum length of 1 character and a maximum length of 63 characters, and cannot be empty. Values can be empty, and have a maximum length of 63 characters.
 //	Keys and values can contain only lowercase letters, numeric characters, underscores, and dashes. All characters must use UTF-8 encoding, and international characters are allowed. Keys must start with a lowercase letter or international character.
-var teamNameRegexp = regexp.MustCompile(`^[a-z][a-z0-9_\-]{1,62}$`)
+var (
+	teamNameRegexp       = regexp.MustCompile(`^[a-z][a-z0-9_\-]{1,62}$`)
+	invalidTeamNameChars = regexp.MustCompile(`[^a-z0-9_-]`)
+)
+
+// NormalizeTeamName transforms an arbitrary string into one that satisfies
+// teamNameRegexp: lowercased, invalid characters replaced by dashes, prefixed
+// with "u-" when not starting with a letter, capped at 63 characters and
+// stripped of trailing separators.
+func NormalizeTeamName(s string) string {
+	s = invalidTeamNameChars.ReplaceAllString(strings.ToLower(s), "-")
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		s = "u-" + s
+	}
+	if len(s) > 63 {
+		s = s[:63]
+	}
+	return strings.TrimRight(s, "-_")
+}
 
 type teamService struct {
 	storage authTypes.TeamStorage
