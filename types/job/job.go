@@ -55,6 +55,7 @@ type JobSpec struct {
 	ActiveDeadlineSeconds *int64                    `json:"activeDeadlineSeconds,omitempty"`
 	BackoffLimit          *int32                    `json:"backoffLimit,omitempty"`
 	Schedule              string                    `json:"schedule"`
+	TimeZone              *string                   `json:"timeZone,omitempty"`
 	Manual                bool                      `json:"manual"`
 	Container             ContainerInfo             `json:"container"`
 	ServiceEnvs           []bindTypes.ServiceEnvVar `json:"-"`
