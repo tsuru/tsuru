@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/containerd/remotes/docker/auth"
+	"github.com/containerd/containerd/v2/core/remotes/docker/auth"
 	dockerConfig "github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	dockerConfigTypes "github.com/docker/cli/cli/config/types"
