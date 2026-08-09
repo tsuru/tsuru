@@ -27,6 +27,7 @@ func init() {
 		AuthGroupStorage:       &authGroupStorage{},
 		PoolStorage:            &PoolStorage{},
 		VolumeStorage:          &volumeStorage{},
+		JobStorage:             &JobStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }
