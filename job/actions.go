@@ -11,12 +11,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 var provisionJob = action.Action{
@@ -153,22 +151,15 @@ var insertJob = action.Action{
 }
 
 func insertJobDB(ctx context.Context, job *jobTypes.Job) error {
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return err
 	}
-	_, err = servicemanager.Job.GetByName(ctx, job.Name)
-	if err == jobTypes.ErrJobNotFound {
-		_, err = collection.InsertOne(ctx, job)
-		return err
-	} else if err == nil {
-		return jobTypes.ErrJobAlreadyExists
-	}
-	return err
+	return st.Insert(ctx, *job)
 }
 
 func updateJobDB(ctx context.Context, job *jobTypes.Job) error {
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return err
 	}
@@ -181,9 +172,7 @@ func updateJobDB(ctx context.Context, job *jobTypes.Job) error {
 		return nil
 	}
 
-	_, err = collection.ReplaceOne(ctx, mongoBSON.M{"name": job.Name}, job)
-
-	return err
+	return st.Update(ctx, *job)
 }
 
 var reserveTeamCronjob = action.Action{

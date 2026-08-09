@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
@@ -18,21 +17,19 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/streamfmt"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	mongoBSON "go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type jobService struct{}
@@ -65,6 +62,17 @@ func JobService() (jobTypes.JobService, error) {
 	return &jobService{}, nil
 }
 
+func jobStorage() (jobTypes.JobStorage, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dbDriver.JobStorage, nil
+}
+
 func (*jobService) KillUnit(ctx context.Context, job *jobTypes.Job, unit string, force bool) error {
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
@@ -76,33 +84,20 @@ func (*jobService) KillUnit(ctx context.Context, job *jobTypes.Job, unit string,
 // GetByName queries the database to find a job identified by the given
 // name.
 func (*jobService) GetByName(ctx context.Context, name string) (*jobTypes.Job, error) {
-	var job jobTypes.Job
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return nil, err
 	}
-	err = collection.FindOne(ctx, mongoBSON.M{"name": name}).Decode(&job)
-	if err == mongo.ErrNoDocuments {
-		return nil, jobTypes.ErrJobNotFound
-	}
-	return &job, err
+	return st.FindByName(ctx, name)
 }
 
 func (*jobService) RemoveJob(ctx context.Context, job *jobTypes.Job) error {
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return err
 	}
-	result, err := collection.DeleteOne(ctx, mongoBSON.M{"name": job.Name})
-	if err == mongo.ErrNoDocuments {
-		return jobTypes.ErrJobNotFound
-	}
-	if err != nil {
+	if err = st.Delete(ctx, job.Name); err != nil {
 		return err
-	}
-
-	if result.DeletedCount == 0 {
-		return jobTypes.ErrJobNotFound
 	}
 
 	servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: job.TeamOwner}, -1)
@@ -361,17 +356,11 @@ func (*jobService) AddServiceEnv(ctx context.Context, job *jobTypes.Job, addArgs
 	}
 	job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs, addArgs.Envs...)
 
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return err
 	}
-
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": job.Name}, mongoBSON.M{"$set": mongoBSON.M{"spec.serviceenvs": job.Spec.ServiceEnvs}})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return st.UpdateServiceEnvs(ctx, job.Name, job.Spec.ServiceEnvs)
 }
 
 func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, removeArgs jobTypes.RemoveInstanceArgs) error {
@@ -393,16 +382,11 @@ func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, remo
 		streamfmt.FprintlnSectionf(removeArgs.Writer, "Unsetting %d environment variables", toUnset)
 	}
 
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return err
 	}
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"name": job.Name}, mongoBSON.M{"$set": mongoBSON.M{"spec.serviceenvs": job.Spec.ServiceEnvs}})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return st.UpdateServiceEnvs(ctx, job.Name, job.Spec.ServiceEnvs)
 }
 
 func (*jobService) UpdateJobProv(ctx context.Context, job *jobTypes.Job) error {
@@ -419,74 +403,12 @@ func (*jobService) Trigger(ctx context.Context, job *jobTypes.Job) error {
 	return action.NewPipeline([]*action.Action{&triggerCron}...).Execute(ctx, job)
 }
 
-func processTags(tags []string) []string {
-	if tags == nil {
-		return nil
-	}
-	processedTags := []string{}
-	usedTags := make(map[string]bool)
-	for _, tag := range tags {
-		tag = strings.TrimSpace(tag)
-		if len(tag) > 0 && !usedTags[tag] {
-			processedTags = append(processedTags, tag)
-			usedTags[tag] = true
-		}
-	}
-	return processedTags
-}
-
-func filterQuery(f *jobTypes.Filter) mongoBSON.M {
-	if f == nil {
-		return mongoBSON.M{}
-	}
-	query := mongoBSON.M{}
-	if f.Extra != nil {
-		var orBlock []mongoBSON.M
-		for field, values := range f.Extra {
-			orBlock = append(orBlock, mongoBSON.M{
-				field: mongoBSON.M{"$in": values},
-			})
-		}
-		query["$or"] = orBlock
-	}
-	if f.Name != "" {
-		query["name"] = mongoBSON.M{"$regex": f.Name}
-	}
-	if f.TeamOwner != "" {
-		query["teamowner"] = f.TeamOwner
-	}
-	if f.UserOwner != "" {
-		query["owner"] = f.UserOwner
-	}
-	if f.Pool != "" {
-		query["pool"] = f.Pool
-	}
-	if len(f.Pools) > 0 {
-		query["pool"] = mongoBSON.M{"$in": f.Pools}
-	}
-	tags := processTags(f.Tags)
-	if len(tags) > 0 {
-		query["tags"] = mongoBSON.M{"$all": tags}
-	}
-	return query
-}
-
 func (*jobService) List(ctx context.Context, filter *jobTypes.Filter) ([]jobTypes.Job, error) {
-	jobs := []jobTypes.Job{}
-	query := filterQuery(filter)
-	collection, err := storagev2.JobsCollection()
+	st, err := jobStorage()
 	if err != nil {
 		return nil, err
 	}
-	cursor, err := collection.Find(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	err = cursor.All(ctx, &jobs)
-	if err != nil {
-		return nil, err
-	}
-	return jobs, nil
+	return st.ListByFilter(ctx, filter)
 }
 
 func (*jobService) GetEnvs(ctx context.Context, job *jobTypes.Job) map[string]bindTypes.EnvVar {
