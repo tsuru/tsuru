@@ -20,6 +20,7 @@ import (
 
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 var (
@@ -495,14 +496,10 @@ func testApps() ExecFlow {
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
 
-		if env.Get("case") == "multi-health" {
-			res := T("app", "info", "-a", appName, "--json").Run(env)
-			c.Assert(res, ResultOk)
-
-			appInfo := new(appTypes.AppInfo)
-			err := json.NewDecoder(&res.Stdout).Decode(appInfo)
-			c.Assert(err, check.IsNil)
-
+		switch env.Get("case") {
+		case "multi-health":
+			appInfo := getRawAppInfo(c, appName, env)
+			assertAppTsuruHealthcheckConfigs(c, appInfo, false)
 			c.Assert(appInfo.InternalAddresses, check.HasLen, 2)
 			c.Assert("multi-health-ipool-kubernetes-iapp-web.default.svc.cluster.local", check.Equals, appInfo.InternalAddresses[0].Domain)
 			c.Assert("multi-health-ipool-kubernetes-iapp-web-secondary.default.svc.cluster.local", check.Equals, appInfo.InternalAddresses[1].Domain)
@@ -513,6 +510,27 @@ func testApps() ExecFlow {
 				c.Assert(internalAddress.Protocol, check.Equals, "TCP")
 				c.Assert(internalAddress.Port, check.Equals, int32(80))
 			}
+		case "multi-startup":
+			appInfo := getRawAppInfo(c, appName, env)
+			assertAppTsuruHealthcheckConfigs(c, appInfo, true)
+
+			res = T("app", "stop", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+
+			ok = retry(3*time.Minute, func() bool {
+				_, stopped := checkAppStopped(c, appName, env)
+				return stopped
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app not stopped after 3 minutes: %v", res))
+			assertAppTsuruHealthcheckConfigs(c, getRawAppInfo(c, appName, env), true)
+
+			res = T("app", "start", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			ok = retry(5*time.Minute, func() bool {
+				_, ready := checkAppReady(c, appName, env)
+				return ready
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after restart: %v", res))
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
@@ -521,6 +539,55 @@ func testApps() ExecFlow {
 		c.Check(res, ResultOk)
 	}
 	return flow
+}
+
+func getRawAppInfo(c *check.C, appName string, env *Environment) *appTypes.AppInfo {
+	// Keep wire-contract assertions independent from the installed client's AppInfo schema.
+	if env.Get("apitoken") == "" {
+		res := T("token", "show").Run(env)
+		c.Assert(res, ResultOk)
+		env.Set("apitoken", parseAPIToken(c, res.Stdout.String()))
+	}
+
+	res := NewCommand(
+		"curl",
+		"-sSf",
+		fmt.Sprintf("{{.targetaddr}}/1.0/apps/%s", appName),
+		"-H",
+		"'Authorization: Bearer {{.apitoken}}'",
+	).Run(env)
+	c.Assert(res, ResultOk)
+
+	appInfo := new(appTypes.AppInfo)
+	err := json.NewDecoder(&res.Stdout).Decode(appInfo)
+	c.Assert(err, check.IsNil)
+	return appInfo
+}
+
+func assertAppTsuruHealthcheckConfigs(c *check.C, appInfo *appTypes.AppInfo, withStartupcheck bool) {
+	healthcheck := func() *provTypes.TsuruYamlHealthcheck {
+		return &provTypes.TsuruYamlHealthcheck{
+			Path:            "/",
+			Scheme:          "http",
+			AllowedFailures: 3,
+			IntervalSeconds: 10,
+			TimeoutSeconds:  60,
+		}
+	}
+	expected := []appTypes.Process{
+		{Name: "web", Healthcheck: healthcheck()},
+		{Name: "web-secondary", Healthcheck: healthcheck()},
+	}
+	if withStartupcheck {
+		expected[1].Startupcheck = &provTypes.TsuruYamlStartupcheck{
+			Path:            "/startup",
+			Scheme:          "http",
+			AllowedFailures: 5,
+			IntervalSeconds: 15,
+			TimeoutSeconds:  5,
+		}
+	}
+	c.Assert(appInfo.Processes, check.DeepEquals, expected)
 }
 
 func serviceImageSetup() ExecFlow {
