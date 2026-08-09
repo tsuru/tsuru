@@ -14,6 +14,19 @@ services:
     - datadb:/data/db
     restart: unless-stopped
 
+  postgres:
+    container_name: postgres
+    image: postgres:16
+    environment:
+    - POSTGRES_USER=tsuru
+    - POSTGRES_PASSWORD=tsuru
+    - POSTGRES_DB=tsuru
+    ports:
+    - ${TSURU_POSTGRES_PORT:-5432}:5432
+    volumes:
+    - datapg:/var/lib/postgresql/data
+    restart: unless-stopped
+
   registry:
     container_name: registry
     image: registry:2
@@ -65,3 +78,4 @@ services:
 
 volumes:
   datadb:
+  datapg:
