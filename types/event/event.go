@@ -16,9 +16,11 @@ import (
 )
 
 type EventData struct {
-	ID              primitive.ObjectID `json:"-" bson:"_id"`
-	UniqueID        primitive.ObjectID
-	Lock            *Target `bson:"lock,omitempty"`
+	ID       primitive.ObjectID `json:"-" bson:"_id"`
+	UniqueID primitive.ObjectID
+	Lock     *Target `bson:"lock,omitempty"`
+	// Locks introduces a multi-lock pattern, in the future may the deprecate lock field
+	Locks           []Target `bson:"locks,omitempty"`
 	StartTime       time.Time
 	EndTime         time.Time          `bson:",omitempty"`
 	ExpireAt        time.Time          `bson:",omitempty"`
