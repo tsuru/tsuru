@@ -130,7 +130,11 @@ main() {
   install_tsuru_stack
   install_kedacore
 
-  sleep 30
+  # Both releases are installed with --wait, so everything should already be
+  # ready here. This is a cheap backstop for objects the charts do not gate on,
+  # and it fails with the name of the offending pod instead of surfacing later
+  # as a connection refused from inside a test.
+  ${KUBECTL} -n ${NAMESPACE} wait --for=condition=Ready pod --all --timeout=10m
 
   local_tsuru_api_port=8080
   DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
