@@ -71,7 +71,7 @@ install_tsuru_stack() {
     --set tsuru-api.image.pullPolicy=Never \
     --set tsuru-api.service.type=ClusterIP \
     --set tsuru-api.tsuruConfig.debug=true \
-    --timeout 5m \
+    --wait --timeout 10m \
     tsuru tsuru/tsuru-stack
 }
 
@@ -80,7 +80,8 @@ install_kedacore() {
 
   ${HELM} repo add --force-update kedacore https://kedacore.github.io/charts
 
-  ${HELM} install keda kedacore/keda --namespace tsuru-system --version 2.11.1
+  ${HELM} install keda kedacore/keda --namespace tsuru-system --version 2.11.1 \
+    --wait --timeout 5m
 }
 
 build_tsuru_api_container_image() {
@@ -129,7 +130,11 @@ main() {
   install_tsuru_stack
   install_kedacore
 
-  sleep 30
+  # Both releases are installed with --wait, so everything should already be
+  # ready here. This is a cheap backstop for objects the charts do not gate on,
+  # and it fails with the name of the offending pod instead of surfacing later
+  # as a connection refused from inside a test.
+  ${KUBECTL} -n ${NAMESPACE} wait --for=condition=Ready pod --all --timeout=10m
 
   local_tsuru_api_port=8080
   DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
