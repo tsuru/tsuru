@@ -9,6 +9,9 @@ PLATFORMS_DIR = /tmp/platforms
 TSR_SRC       = ./cmd/tsurud
 GIT_TAG_VER   := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "$${TSURU_BUILD_VERSION:-dev}")
 
+# Keep in sync with the golangci-lint-action version in .github/workflows/ci.yaml.
+GOLANGCI_LINT_VERSION ?= v2.11.4
+
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
 else
@@ -36,9 +39,8 @@ lint: metalint yamllint
 	misc/check-contributors.sh
 
 metalint:
-	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.45.2
-	echo "$$(go list ./... | grep -v /vendor/)" | sed 's|github.com/tsuru/tsuru/|./|' | xargs -t -n 4 \
-		time golangci-lint run -c ./.golangci.yml
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	golangci-lint run --timeout=10m ./...
 
 yamlfmt: ## Format your code with yamlfmt
 ifeq (, $(shell which yamlfmt))
