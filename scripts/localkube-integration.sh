@@ -71,7 +71,7 @@ install_tsuru_stack() {
     --set tsuru-api.image.pullPolicy=Never \
     --set tsuru-api.service.type=ClusterIP \
     --set tsuru-api.tsuruConfig.debug=true \
-    --timeout 5m \
+    --wait --timeout 10m \
     tsuru tsuru/tsuru-stack
 }
 
@@ -80,7 +80,8 @@ install_kedacore() {
 
   ${HELM} repo add --force-update kedacore https://kedacore.github.io/charts
 
-  ${HELM} install keda kedacore/keda --namespace tsuru-system --version 2.11.1
+  ${HELM} install keda kedacore/keda --namespace tsuru-system --version 2.11.1 \
+    --wait --timeout 5m
 }
 
 build_tsuru_api_container_image() {
