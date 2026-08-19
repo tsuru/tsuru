@@ -33,7 +33,9 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -602,6 +604,88 @@ func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *AuthSuite) TestTeamInfoReturnsAppInfoWithoutEnvironments(c *check.C) {
+	ctx := context.TODO()
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	teamApp := &appTypes.App{
+		Name:      "my-app",
+		TeamOwner: teamName,
+		Teams:     []string{teamName},
+		Pool:      "test1",
+		CName:     []string{"my-app.example.com"},
+		Env: map[string]bindTypes.EnvVar{
+			"SECRET": {Name: "SECRET", Value: "regular-secret"},
+		},
+		ServiceEnvs: []bindTypes.ServiceEnvVar{{
+			EnvVar:      bindTypes.EnvVar{Name: "DATABASE_URL", Value: "service-secret"},
+			ServiceName: "database",
+		}},
+	}
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+	_, err = appsCollection.InsertOne(ctx, teamApp)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	var result struct {
+		Apps []map[string]interface{} `json:"apps"`
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Apps, check.HasLen, 1)
+	c.Assert(result.Apps[0]["name"], check.Equals, teamApp.Name)
+	c.Assert(result.Apps[0]["cname"], check.DeepEquals, []interface{}{teamApp.CName[0]})
+	_, hasUnits := result.Apps[0]["units"]
+	c.Assert(hasUnits, check.Equals, true)
+	_, hasRouters := result.Apps[0]["routers"]
+	c.Assert(hasRouters, check.Equals, true)
+	_, hasEnv := result.Apps[0]["Env"]
+	c.Assert(hasEnv, check.Equals, false)
+	_, hasServiceEnvs := result.Apps[0]["ServiceEnvs"]
+	c.Assert(hasServiceEnvs, check.Equals, false)
+	c.Assert(recorder.Body.String(), check.Not(check.Matches), ".*regular-secret.*")
+	c.Assert(recorder.Body.String(), check.Not(check.Matches), ".*service-secret.*")
+}
+
+func (s *AuthSuite) TestTeamInfoReturnsAppInfoError(c *check.C) {
+	ctx := context.TODO()
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	appsCollection, err := storagev2.AppsCollection()
+	c.Assert(err, check.IsNil)
+	_, err = appsCollection.InsertOne(ctx, &appTypes.App{
+		Name:      "my-app",
+		TeamOwner: teamName,
+		Teams:     []string{teamName},
+		Pool:      "test1",
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("apps:dashboard-url:template", "{{")
+	defer config.Unset("apps:dashboard-url:template")
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 }
 
 func (s *AuthSuite) TestTeamInfoReturnsUsers(c *check.C) {
