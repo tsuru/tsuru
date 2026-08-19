@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -526,6 +527,13 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	appsInfo := make([]*appTypes.AppInfo, len(apps))
+	for i, teamApp := range apps {
+		appsInfo[i], err = app.AppInfo(ctx, teamApp)
+		if err != nil {
+			return err
+		}
+	}
 	pools, err := pool.ListPoolsForTeam(ctx, team.Name)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -566,7 +574,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		"tags":  team.Tags,
 		"users": includedUsers,
 		"pools": pools,
-		"apps":  apps,
+		"apps":  appsInfo,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(result)
