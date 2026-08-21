@@ -2,6 +2,11 @@
 
 set -e
 
+# sort(1) output below is consumed by comm(1), which requires both inputs to
+# share a collation order. Locales such as en_US.UTF-8 make comm reject the
+# input with "file 1 is not in sorted order".
+export LC_ALL=C
+
 function check_go {
     set +e
     version=$(go version | grep -o 'go1.5')
