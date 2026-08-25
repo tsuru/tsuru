@@ -40,7 +40,7 @@ lint: metalint yamllint
 
 metalint:
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	golangci-lint run --timeout=10m ./...
+	$(GOBIN)/golangci-lint run --timeout=10m ./...
 
 yamlfmt: ## Format your code with yamlfmt
 ifeq (, $(shell which yamlfmt))
