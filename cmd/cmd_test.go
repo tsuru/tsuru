@@ -55,6 +55,12 @@ func (s *S) TestRegister(c *check.C) {
 	c.Assert(badCall, check.PanicMatches, "command already registered: foo")
 }
 
+func (s *S) TestRegisterCommandByName(c *check.C) {
+	globalManager.RegisterCommandByName("foobar", &TestCommand{})
+	badCall := func() { globalManager.RegisterCommandByName("foobar", &TestCommand{}) }
+	c.Assert(badCall, check.PanicMatches, "command already registered: foobar")
+}
+
 func (s *S) TestRegisterDeprecated(c *check.C) {
 	originalCmd := &TestCommand{}
 	globalManager.RegisterDeprecated(originalCmd, "bar")
@@ -106,6 +112,7 @@ func (s *S) TestRegisterTopicMultiple(c *check.C) {
 
 type TopicCommand struct {
 	name     string
+	alias    string
 	executed bool
 	args     []string
 }
@@ -113,6 +120,7 @@ type TopicCommand struct {
 func (c *TopicCommand) Info() *Info {
 	return &Info{
 		Name:  c.name,
+		Alias: c.alias,
 		Desc:  "desc " + c.name,
 		Usage: "usage",
 	}
@@ -170,10 +178,10 @@ Use glb help <commandname> to get more information about a command.
 
 func (s *S) TestNormalizedCommandsExec(c *check.C) {
 	cmds := map[string]*TopicCommand{
-		"foo":             {name: "foo"},
-		"foo-bar":         {name: "foo-bar"},
-		"foo-bar-zzz":     {name: "foo-bar-zzz"},
-		"foo-bar-zzz-a-b": {name: "foo-bar-zzz-a-b"},
+		"foo":             {name: "foo", alias: "fooalias"},
+		"foo-bar":         {name: "foo-bar", alias: "fooalias-bar"},
+		"foo-bar-zzz":     {name: "foo-bar-zzz", alias: "fooalias-bar-zzz"},
+		"foo-bar-zzz-a-b": {name: "foo-bar-zzz-a-b", alias: "fooalias-bar-zzz-a-b"},
 	}
 	for _, v := range cmds {
 		globalManager.Register(v)
@@ -200,6 +208,23 @@ func (s *S) TestNormalizedCommandsExec(c *check.C) {
 		{args: []string{"foo-bar-zzz-a-b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
 		{args: []string{"foo", "bar", "zzz", "a", "b"}, expected: "foo-bar-zzz-a-b"},
 		{args: []string{"foo", "bar", "zzz", "a", "b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
+		{args: []string{"foalias"}, expected: ""},
+		{args: []string{"fooalias"}, expected: "foo"},
+		{args: []string{"fooalias", "ba"}, expected: "foo", expectedArgs: []string{"ba"}},
+		{args: []string{"fooalias-bar"}, expected: "foo-bar"},
+		{args: []string{"fooalias-bar", "zz"}, expected: "foo-bar", expectedArgs: []string{"zz"}},
+		{args: []string{"fooalias", "bar"}, expected: "foo-bar"},
+		{args: []string{"fooalias", "bar", "zz"}, expected: "foo-bar", expectedArgs: []string{"zz"}},
+		{args: []string{"fooalias-bar-zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias-bar-zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias-bar", "zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias", "bar-zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias", "bar", "zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias", "bar", "zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias-bar-zzz-a-b"}, expected: "foo-bar-zzz-a-b"},
+		{args: []string{"fooalias-bar-zzz-a-b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias", "bar", "zzz", "a", "b"}, expected: "foo-bar-zzz-a-b"},
+		{args: []string{"fooalias", "bar", "zzz", "a", "b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
 	}
 	for i, tt := range tests {
 		globalManager.Run(tt.args)
