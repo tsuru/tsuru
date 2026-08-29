@@ -134,7 +134,7 @@ func nonPersistentVolume(v *volumeTypes.Volume, opts *volumeOptions) (apiv1.Volu
 			},
 		}
 	} else {
-		data, err := json.Marshal(map[string]interface{}{
+		data, err := json.Marshal(map[string]any{
 			opts.Plugin: v.Opts,
 		})
 		if err != nil {
@@ -243,7 +243,7 @@ func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Vol
 	if opts.Plugin != "" {
 		pvSpec := apiv1.PersistentVolumeSpec{}
 		var data []byte
-		data, err = json.Marshal(map[string]interface{}{
+		data, err = json.Marshal(map[string]any{
 			opts.Plugin: v.Opts,
 		})
 		if err != nil {

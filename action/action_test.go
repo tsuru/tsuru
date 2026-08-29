@@ -31,7 +31,7 @@ func (s *S) TestSuccessAndParameters(c *check.C) {
 	actions := []*Action{
 		{
 			Forward: func(ctx FWContext) (Result, error) {
-				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello"})
+				c.Assert(ctx.Params, check.DeepEquals, []any{"hello"})
 
 				currentSpan := trace.SpanFromContext(ctx.Context)
 				c.Assert(currentSpan, check.Not(check.IsNil))
@@ -53,7 +53,7 @@ func (s *S) TestRollback(c *check.C) {
 				return "ok", nil
 			},
 			Backward: func(ctx BWContext) {
-				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
+				c.Assert(ctx.Params, check.DeepEquals, []any{"hello", "world"})
 				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
 
 				currentSpan := trace.SpanFromContext(ctx.Context)
@@ -82,7 +82,7 @@ func (s *S) TestRollbackOnPanic(c *check.C) {
 				return "ok", nil
 			},
 			Backward: func(ctx BWContext) {
-				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
+				c.Assert(ctx.Params, check.DeepEquals, []any{"hello", "world"})
 				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
 				backwardCalled = true
 			},

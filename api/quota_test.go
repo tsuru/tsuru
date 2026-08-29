@@ -163,7 +163,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: user.Email},
 		Owner:  s.token.GetUserName(),
 		Kind:   "user.update.quota",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":email", "value": user.Email},
 			{"name": "limit", "value": "40"},
 		},
@@ -212,7 +212,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 			Target: eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: user.Email},
 			Owner:  s.token.GetUserName(),
 			Kind:   "user.update.quota",
-			StartCustomData: []map[string]interface{}{
+			StartCustomData: []map[string]any{
 				{"name": ":email", "value": user.Email},
 				{"name": "limit", "value": value},
 			},
@@ -253,7 +253,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: user.Email},
 		Owner:  s.token.GetUserName(),
 		Kind:   "user.update.quota",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":email", "value": user.Email},
 			{"name": "limit", "value": "3"},
 		},
@@ -347,7 +347,7 @@ func (s *QuotaSuite) TestChangeTeamQuota(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "team.update.quota",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": team.Name},
 			{"name": "limit", "value": "40"},
 		},
@@ -390,7 +390,7 @@ func (s *QuotaSuite) TestChangeTeamQuotaInvalidLimitValue(c *check.C) {
 			Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 			Owner:  s.token.GetUserName(),
 			Kind:   "team.update.quota",
-			StartCustomData: []map[string]interface{}{
+			StartCustomData: []map[string]any{
 				{"name": ":name", "value": team.Name},
 				{"name": "limit", "value": value},
 			},
@@ -427,7 +427,7 @@ func (s *QuotaSuite) TestChangeTeamQuotaLimitLowerThanAllocated(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "team.update.quota",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": team.Name},
 			{"name": "limit", "value": "4"},
 		},
@@ -556,7 +556,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.quota",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "limit", "value": "40"},
 		},
@@ -616,7 +616,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 			Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: app.Name},
 			Owner:  s.token.GetUserName(),
 			Kind:   "app.admin.quota",
-			StartCustomData: []map[string]interface{}{
+			StartCustomData: []map[string]any{
 				{"name": ":app", "value": app.Name},
 				{"name": "limit", "value": value},
 			},
@@ -666,7 +666,7 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.quota",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "limit", "value": "3"},
 		},

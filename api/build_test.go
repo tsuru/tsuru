@@ -178,7 +178,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.build",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   12,
@@ -190,7 +190,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 			"build":      true,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuruteam/app-otherapp:mytag",
 		},
 	}, eventtest.HasEvent)
@@ -231,7 +231,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.build",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -243,7 +243,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 			"build":      true,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuruteam/app-otherapp:mytag",
 		},
 	}, eventtest.HasEvent)

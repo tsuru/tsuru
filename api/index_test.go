@@ -32,7 +32,7 @@ func (IndexSuite) TestIndex(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var expected bytes.Buffer
-	indexTemplate.Execute(&expected, map[string]interface{}{
+	indexTemplate.Execute(&expected, map[string]any{
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
@@ -48,7 +48,7 @@ func (IndexSuite) TestIndexNoRepoManager(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var expected bytes.Buffer
-	indexTemplate.Execute(&expected, map[string]interface{}{
+	indexTemplate.Execute(&expected, map[string]any{
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
@@ -65,7 +65,7 @@ func (IndexSuite) TestIndexNoUserCreation(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var expected bytes.Buffer
-	indexTemplate.Execute(&expected, map[string]interface{}{
+	indexTemplate.Execute(&expected, map[string]any{
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  false,
 		"nativeLogin": true,
@@ -82,7 +82,7 @@ func (IndexSuite) TestIndexNoAuthScheme(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var expected bytes.Buffer
-	indexTemplate.Execute(&expected, map[string]interface{}{
+	indexTemplate.Execute(&expected, map[string]any{
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
@@ -99,7 +99,7 @@ func (IndexSuite) TestIndexOAuth(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var expected bytes.Buffer
-	indexTemplate.Execute(&expected, map[string]interface{}{
+	indexTemplate.Execute(&expected, map[string]any{
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": false,
@@ -118,7 +118,7 @@ func (IndexSuite) TestIndexCustomTemplate(c *check.C) {
 	c.Check(recorder.Code, check.Equals, http.StatusOK)
 	index := template.Must(template.ParseFiles("testdata/index.html"))
 	var expected bytes.Buffer
-	index.Execute(&expected, map[string]interface{}{
+	index.Execute(&expected, map[string]any{
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,

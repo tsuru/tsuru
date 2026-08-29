@@ -41,7 +41,7 @@ func (s *S) TestRoutersAdd(c *check.C) {
 	c.Assert(created, check.DeepEquals, routerTypes.DynamicRouter{
 		Name:   "r1",
 		Type:   "t1",
-		Config: map[string]interface{}{"a": "b"},
+		Config: map[string]any{"a": "b"},
 	})
 }
 
@@ -62,7 +62,7 @@ func (s *S) TestRoutersUpdate(c *check.C) {
 	c.Assert(updated, check.DeepEquals, routerTypes.DynamicRouter{
 		Name:   "r1",
 		Type:   "t1",
-		Config: map[string]interface{}{"a": "b"},
+		Config: map[string]any{"a": "b"},
 	})
 }
 
@@ -98,7 +98,7 @@ func (s *S) TestRoutersList(c *check.C) {
 	dr := routerTypes.DynamicRouter{
 		Name:   "dr1",
 		Type:   "foo",
-		Config: map[string]interface{}{"a": "b"},
+		Config: map[string]any{"a": "b"},
 	}
 	s.mockService.DynamicRouter.OnList = func() ([]routerTypes.DynamicRouter, error) {
 		return []routerTypes.DynamicRouter{dr}, nil
@@ -117,11 +117,11 @@ func (s *S) TestRoutersList(c *check.C) {
 	defer router.Unregister("bar")
 	recorder := httptest.NewRecorder()
 	expected := []routerTypes.PlanRouter{
-		{Name: "dr1", Type: "foo", Dynamic: true, Config: map[string]interface{}{"a": "b"}, Info: map[string]string{}},
+		{Name: "dr1", Type: "foo", Dynamic: true, Config: map[string]any{"a": "b"}, Info: map[string]string{}},
 		{Name: "fake", Type: "fake", Default: true, Info: map[string]string{}},
 		{Name: "fake-tls", Type: "fake-tls", Info: map[string]string{}},
 		{Name: "router1", Type: "foo", Info: map[string]string{}},
-		{Name: "router2", Type: "bar", Config: map[string]interface{}{"mycfg": "1"}, Info: map[string]string{}},
+		{Name: "router2", Type: "bar", Config: map[string]any{"mycfg": "1"}, Info: map[string]string{}},
 	}
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)
@@ -203,7 +203,7 @@ func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.RemovePool(context.TODO(), s.Pool)
 	c.Assert(err, check.IsNil)
-	router1 := routerTypes.DynamicRouter{Name: "router-1", Type: "api", Config: map[string]interface{}{"key1": "value1", "key2": "value2"}}
+	router1 := routerTypes.DynamicRouter{Name: "router-1", Type: "api", Config: map[string]any{"key1": "value1", "key2": "value2"}}
 	router2 := routerTypes.DynamicRouter{Name: "router-2", Type: "api"}
 	router.Register("api", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
 	defer router.Unregister("api")

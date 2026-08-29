@@ -11,7 +11,7 @@ import (
 )
 
 var funcMap = template.FuncMap{
-	"getConfig": func(v string) interface{} {
+	"getConfig": func(v string) any {
 		result, _ := config.Get(v)
 		return result
 	},

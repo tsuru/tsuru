@@ -147,7 +147,7 @@ type BackendPrefix struct {
 }
 
 type EnsureBackendOpts struct {
-	Opts        map[string]interface{} `json:"opts"`
+	Opts        map[string]any         `json:"opts"`
 	CNames      []string               `json:"cnames"`
 	Team        string                 `json:"team,omitempty"`
 	Tags        []string               `json:"tags,omitempty"`
@@ -236,9 +236,9 @@ func List(ctx context.Context) ([]router.PlanRouter, error) {
 
 func listConfigRouters() ([]router.PlanRouter, error) {
 	routerConfig, err := config.Get("routers")
-	var routers map[interface{}]interface{}
+	var routers map[any]any
 	if err == nil {
-		routers, _ = routerConfig.(map[interface{}]interface{})
+		routers, _ = routerConfig.(map[any]any)
 	}
 	routersList := make([]router.PlanRouter, 0, len(routers))
 	var keys []string
@@ -255,18 +255,18 @@ func listConfigRouters() ([]router.PlanRouter, error) {
 
 func legacyConfigToPlanRouter(name string) router.PlanRouter {
 	routerConfig, err := config.Get("routers")
-	var routers map[interface{}]interface{}
+	var routers map[any]any
 	if err == nil {
-		routers, _ = routerConfig.(map[interface{}]interface{})
+		routers, _ = routerConfig.(map[any]any)
 	}
 	var routerType string
 	var defaultFlag bool
 	var readinessGates []string
-	routerProperties, _ := routers[name].(map[interface{}]interface{})
+	routerProperties, _ := routers[name].(map[any]any)
 	if routerProperties != nil {
 		routerType, _ = routerProperties["type"].(string)
 		defaultFlag, _ = routerProperties["default"].(bool)
-		readinessGatesRaw, ok := routerProperties["readinessGates"].([]interface{})
+		readinessGatesRaw, ok := routerProperties["readinessGates"].([]any)
 		if ok {
 			for _, readinessGate := range readinessGatesRaw {
 				readinessGates = append(readinessGates, fmt.Sprint(readinessGate))
@@ -276,10 +276,10 @@ func legacyConfigToPlanRouter(name string) router.PlanRouter {
 	if routerType == "" {
 		routerType = name
 	}
-	var config map[string]interface{}
+	var config map[string]any
 	if routerProperties != nil {
 		configRaw := internalConfig.ConvertEntries(routerProperties)
-		config, _ = configRaw.(map[string]interface{})
+		config, _ = configRaw.(map[string]any)
 		delete(config, "type")
 		delete(config, "default")
 		delete(config, "readinessGates")

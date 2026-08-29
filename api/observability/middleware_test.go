@@ -93,15 +93,15 @@ func (s *S) TestMiddlewareJSON(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	err = json.NewDecoder(&out).Decode(&m)
 	c.Assert(err, check.IsNil)
 
 	timePart := time.Now().Format(time.RFC3339Nano)[:16]
 	c.Assert(m["time"], check.Matches, timePart+".*")
-	c.Assert(m["request"], check.DeepEquals, map[string]interface{}{"method": "PUT", "path": "/my/path", "scheme": "http", "userAgent": "ardata 1.1", "sourceIP": "10.1.1.1"})
+	c.Assert(m["request"], check.DeepEquals, map[string]any{"method": "PUT", "path": "/my/path", "scheme": "http", "userAgent": "ardata 1.1", "sourceIP": "10.1.1.1"})
 
-	response := m["response"].(map[string]interface{})
+	response := m["response"].(map[string]any)
 	c.Assert(response["statusCode"], check.Equals, float64(200))
 	c.Assert(response["durationMS"], check.Matches, `1\d{2}\.\d+`)
 }

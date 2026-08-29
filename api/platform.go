@@ -244,7 +244,7 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"platform": platform,
 		"images":   images,
 	}

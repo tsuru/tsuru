@@ -26,7 +26,7 @@ func (s *VolumeSuite) Test_SaveGetDelete(c *check.C) {
 		},
 		Plan: volume.VolumePlan{
 			Name: "plan1",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"opt1": "value1",
 			},
 		},
@@ -55,7 +55,7 @@ func (s *VolumeSuite) Test_ListByFilter(c *check.C) {
 			},
 			Plan: volume.VolumePlan{
 				Name: "plan1",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"opt1": "value1",
 				},
 			},
@@ -69,7 +69,7 @@ func (s *VolumeSuite) Test_ListByFilter(c *check.C) {
 			},
 			Plan: volume.VolumePlan{
 				Name: "plan1",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"opt1": "value1",
 				},
 			},
@@ -84,7 +84,7 @@ func (s *VolumeSuite) Test_ListByFilter(c *check.C) {
 			},
 			Plan: volume.VolumePlan{
 				Name: "plan1",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"opt1": "value1",
 				},
 			},
@@ -195,7 +195,7 @@ func (s *VolumeSuite) Test_RenameTeam(c *check.C) {
 		},
 		Plan: volume.VolumePlan{
 			Name: "plan1",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"opt1": "value1",
 			},
 		},

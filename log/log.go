@@ -22,11 +22,11 @@ import (
 
 type Logger interface {
 	Error(string)
-	Errorf(string, ...interface{})
+	Errorf(string, ...any)
 	Fatal(string)
-	Fatalf(string, ...interface{})
+	Fatalf(string, ...any)
 	Debug(string)
-	Debugf(string, ...interface{})
+	Debugf(string, ...any)
 	GetStdLogger() *log.Logger
 }
 
@@ -87,7 +87,7 @@ type withStack interface {
 
 // Errorf writes the formatted string to the Target
 // logger.
-func (t *Target) Errorf(format string, v ...interface{}) {
+func (t *Target) Errorf(format string, v ...any) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
@@ -112,7 +112,7 @@ func (t *Target) Fatal(v string) {
 
 // Fatalf writes the formatted string to the Target
 // logger.
-func (t *Target) Fatalf(format string, v ...interface{}) {
+func (t *Target) Fatalf(format string, v ...any) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
@@ -132,7 +132,7 @@ func (t *Target) Debug(v string) {
 
 // Debugf writes the formatted string to the Target
 // logger.
-func (t *Target) Debugf(format string, v ...interface{}) {
+func (t *Target) Debugf(format string, v ...any) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
@@ -159,7 +159,7 @@ func Error(v error) {
 }
 
 // Errorf is a wrapper for DefaultTarget.Errorf.
-func Errorf(format string, v ...interface{}) {
+func Errorf(format string, v ...any) {
 	DefaultTarget.Errorf(format, v...)
 }
 
@@ -169,7 +169,7 @@ func Fatal(v string) {
 }
 
 // Fatalf is a wrapper for DefaultTarget.Errorf.
-func Fatalf(format string, v ...interface{}) {
+func Fatalf(format string, v ...any) {
 	DefaultTarget.Fatalf(format, v...)
 }
 
@@ -179,7 +179,7 @@ func Debug(v string) {
 }
 
 // Debugf is a wrapper for DefaultTarget.Debugf.
-func Debugf(format string, v ...interface{}) {
+func Debugf(format string, v ...any) {
 	DefaultTarget.Debugf(format, v...)
 }
 

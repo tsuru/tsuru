@@ -23,9 +23,9 @@ type EventDesc struct {
 	ExtraTargets    []eventTypes.ExtraTarget
 	Kind            string
 	Owner           string
-	StartCustomData interface{}
-	EndCustomData   interface{}
-	OtherCustomData interface{}
+	StartCustomData any
+	EndCustomData   any
+	OtherCustomData any
 	LogMatches      []string
 	ErrorMatches    string
 	IsEmpty         bool
@@ -37,16 +37,16 @@ func (hasEventChecker) Info() *check.CheckerInfo {
 	return &check.CheckerInfo{Name: "HasEvent", Params: []string{"event desc"}}
 }
 
-func queryPartCustom(query map[string]interface{}, name string, value interface{}) {
+func queryPartCustom(query map[string]any, name string, value any) {
 	if value == nil {
 		return
 	}
 	switch data := value.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		for k, v := range data {
 			query[name+"."+k] = v
 		}
-	case []map[string]interface{}:
+	case []map[string]any:
 		queryPart := []mongoBSON.M{}
 		for _, el := range data {
 			queryPart = append(queryPart, mongoBSON.M{
@@ -57,7 +57,7 @@ func queryPartCustom(query map[string]interface{}, name string, value interface{
 	}
 }
 
-func (hasEventChecker) Check(params []interface{}, names []string) (bool, string) {
+func (hasEventChecker) Check(params []any, names []string) (bool, string) {
 	ctx := context.TODO()
 	var evt EventDesc
 	switch params[0].(type) {
@@ -136,7 +136,7 @@ func debugEvts(evts []*event.Event) string {
 	var msgs []string
 	for i := range evts {
 		evt := evts[i]
-		var sData, oData, eData interface{}
+		var sData, oData, eData any
 		evt.StartData(&sData)
 		evt.OtherData(&oData)
 		evt.EndData(&eData)
@@ -154,7 +154,7 @@ type evtEqualsChecker struct {
 	check.CheckerInfo
 }
 
-func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, string) {
+func (evtEqualsChecker) Check(params []any, names []string) (bool, string) {
 	evts := make([][]*event.Event, len(params))
 	for i := range evts {
 		switch e := params[i].(type) {
@@ -178,7 +178,7 @@ func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, strin
 			e.LockUpdateTime = time.Time{}
 		}
 	}
-	return check.DeepEquals.Check([]interface{}{evts[0], evts[1]}, names)
+	return check.DeepEquals.Check([]any{evts[0], evts[1]}, names)
 }
 
 var EvtEquals check.Checker = &evtEqualsChecker{

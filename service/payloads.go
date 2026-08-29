@@ -116,7 +116,7 @@ func (r *unbindAppPayload) Form() url.Values {
 	return params
 }
 
-func addParameters(dst url.Values, params map[string]interface{}) {
+func addParameters(dst url.Values, params map[string]any) {
 	if params == nil || dst == nil {
 		return
 	}

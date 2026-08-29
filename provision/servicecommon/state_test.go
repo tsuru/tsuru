@@ -15,8 +15,8 @@ import (
 func (s *S) TestChangeAppState(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	latestVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	latestVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":    "python web1",
 			"worker": "python worker1",
 		},
@@ -62,8 +62,8 @@ func (s *S) TestChangeUnits(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	fakeApp.Deploys = 1
-	latestVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	latestVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":    "python web1",
 			"worker": "python worker1",
 		},
@@ -93,8 +93,8 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	fakeApp.Deploys = 1
-	latestVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	latestVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web": "python web1",
 		},
 	})

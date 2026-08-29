@@ -54,7 +54,7 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "pool1"},
 			{"name": "default", "value": "true"},
 		},
@@ -79,7 +79,7 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "pool1"},
 		},
 		ErrorMatches: `Pool already exists\.`,
@@ -118,7 +118,7 @@ func (s *S) TestAddPool(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "pool1"},
 		},
 	}, eventtest.HasEvent)
@@ -126,7 +126,7 @@ func (s *S) TestAddPool(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool2"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "pool2"},
 			{"name": "public", "value": "true"},
 		},
@@ -160,7 +160,7 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "pool1"},
 		},
 	}, eventtest.HasEvent)
@@ -262,7 +262,7 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.add",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "pool1"},
 			{"name": "team", "value": s.team.Name},
 		},
@@ -358,7 +358,7 @@ func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "pool1"},
 			{"name": "team", "value": "ateam"},
 		},
@@ -614,7 +614,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "pool1"},
 			{"name": "public", "value": "true"},
 		},
@@ -754,7 +754,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "*"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.constraints.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "PoolExpr", "value": "*"},
 			{"name": "Field", "value": "router"},
 			{"name": "Values.0", "value": "routerA"},
@@ -792,7 +792,7 @@ func (s *S) TestPoolConstraintSetAppend(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "*"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.constraints.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "PoolExpr", "value": "*"},
 			{"name": "Field", "value": "router"},
 			{"name": "Values.0", "value": "routerB"},

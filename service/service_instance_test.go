@@ -202,7 +202,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 		setBoundEnvsAction = oldSetBoundEnvsAction
 	}()
 	var calls []string
-	var params []interface{}
+	var params []any
 	bindAppDBAction = &action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
 			calls = append(calls, "bindAppDBAction")
@@ -232,7 +232,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 		"bindAppDBAction", "bindAppEndpointAction",
 		"setBoundEnvsAction",
 	}
-	expectedParams := []interface{}{&bindAppPipelineArgs{
+	expectedParams := []any{&bindAppPipelineArgs{
 		app:             a,
 		serviceInstance: &si,
 		writer:          &buf,
@@ -259,7 +259,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1", "app2"},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -272,7 +272,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		Apps:        []string{"app1"},
 		Jobs:        []string{},
 		Teams:       []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
@@ -300,7 +300,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{"job1", "job2"},
 		Apps:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -313,7 +313,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 		Jobs:        []string{"job1"},
 		Apps:        []string{},
 		Teams:       []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &sInstance2)
 	c.Assert(err, check.IsNil)
@@ -335,7 +335,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesNoFilters(c *chec
 		Tags:        []string{"tag1"},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	sInstance2 := ServiceInstance{
 		Name:        "s9sql",
@@ -344,7 +344,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesNoFilters(c *chec
 		Tags:        []string{"tag2"},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
@@ -370,7 +370,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByTeams(
 		Tags:        []string{},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	sInstance2 := ServiceInstance{
 		Name:        "s9sql",
@@ -379,7 +379,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByTeams(
 		Tags:        []string{},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -403,7 +403,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByNames(
 		Tags:        []string{},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	sInstance2 := ServiceInstance{
 		Name:        "s9sql",
@@ -412,7 +412,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByNames(
 		Tags:        []string{},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -436,7 +436,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByTags(c
 		Teams:       []string{"team1"},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	sInstance2 := ServiceInstance{
 		Name:        "s9sql",
@@ -445,7 +445,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByTags(c
 		Teams:       []string{"team1"},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -469,7 +469,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByMultip
 		Tags:        []string{"tag1"},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	sInstance2 := ServiceInstance{
 		Name:        "s9sql",
@@ -478,7 +478,7 @@ func (s *InstanceSuite) TestGetServicesInstancesByTeamsAndNamesFilteringByMultip
 		Tags:        []string{"tag1", "tag3"},
 		Apps:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	}
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
@@ -644,17 +644,17 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(info)
 	c.Assert(err, check.IsNil)
-	var result map[string]interface{}
+	var result map[string]any
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
 		"Apps":        nil,
 		"Jobs":        nil,
 		"ServiceName": "mysql",
-		"Info":        map[string]interface{}{"key": "value"},
+		"Info":        map[string]any{"key": "value"},
 		"TeamOwner":   "",
 		"Pool":        "",
 	}
@@ -672,10 +672,10 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(info)
 	c.Assert(err, check.IsNil)
-	var result map[string]interface{}
+	var result map[string]any
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -700,10 +700,10 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *che
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(info)
 	c.Assert(err, check.IsNil)
-	var result map[string]interface{}
+	var result map[string]any
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"Name":        "ql",
 		"PlanName":    "",
 		"Teams":       nil,
@@ -1328,7 +1328,7 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 	serviceInstanceCollection, err := storagev2.ServiceInstancesCollection()
 	c.Assert(err, check.IsNil)
 
-	serviceInstanceCollection.InsertMany(context.TODO(), []interface{}{
+	serviceInstanceCollection.InsertMany(context.TODO(), []any{
 		ServiceInstance{Name: "mongo-1", ServiceName: "mongodb", Teams: []string{s.team.Name}},
 		ServiceInstance{Name: "mongo-2", ServiceName: "mongodb", Teams: []string{s.team.Name}},
 		ServiceInstance{Name: "mongo-3", ServiceName: "mongodb", Teams: []string{s.team.Name}},
@@ -1827,9 +1827,9 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 
 func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 	sInstances := []any{
-		ServiceInstance{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team2", "team3"}, TeamOwner: "team1", Parameters: map[string]interface{}{}},
-		ServiceInstance{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team2", Parameters: map[string]interface{}{}},
-		ServiceInstance{Name: "si3", ServiceName: "mysql", Teams: []string{"team2", "team3"}, TeamOwner: "team3", Parameters: map[string]interface{}{}},
+		ServiceInstance{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team2", "team3"}, TeamOwner: "team1", Parameters: map[string]any{}},
+		ServiceInstance{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team2", Parameters: map[string]any{}},
+		ServiceInstance{Name: "si3", ServiceName: "mysql", Teams: []string{"team2", "team3"}, TeamOwner: "team3", Parameters: map[string]any{}},
 	}
 
 	serviceInstancesCollection, err := storagev2.ServiceInstancesCollection()
@@ -1852,9 +1852,9 @@ func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	c.Assert(dbInstances, check.DeepEquals, []ServiceInstance{
-		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]any{}},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]any{}},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]any{}},
 	})
 }
 

@@ -278,7 +278,7 @@ func (s *volumeService) validate(ctx context.Context, v *volumeTypes.Volume) err
 		return errors.WithStack(err)
 	}
 
-	planOpts, ok := internalConfig.ConvertEntries(data).(map[string]interface{})
+	planOpts, ok := internalConfig.ConvertEntries(data).(map[string]any)
 	if !ok {
 		return errors.Errorf("invalid type for plan opts %T", planOpts)
 	}
@@ -324,11 +324,11 @@ func isProvisioned(ctx context.Context, v *volumeTypes.Volume) (bool, error) {
 	return isProv, nil
 }
 
-func asMapStringInterface(val interface{}) map[string]interface{} {
+func asMapStringInterface(val any) map[string]any {
 	if val == nil {
 		return nil
 	}
-	if mapVal, ok := val.(map[string]interface{}); ok {
+	if mapVal, ok := val.(map[string]any); ok {
 		return mapVal
 	}
 	return nil

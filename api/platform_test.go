@@ -101,7 +101,7 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "test"},
 			{"name": "dockerfile", "value": dockerfileURL},
 		},
@@ -199,7 +199,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": platformName},
 		},
 	}, eventtest.HasEvent)
@@ -233,7 +233,7 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": platformName},
 			{"name": "disabled", "value": "true"},
 		},
@@ -270,7 +270,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": platformName},
 			{"name": "disabled", "value": "true"},
 		},
@@ -327,7 +327,7 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": name},
 		},
 	}, eventtest.HasEvent)
@@ -479,7 +479,7 @@ func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": name},
 		},
 	}, eventtest.HasEvent)

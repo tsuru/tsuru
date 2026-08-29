@@ -39,7 +39,7 @@ func (l *fileLogger) Error(o string) {
 	l.logger.Printf(errorPrefix, o)
 }
 
-func (l *fileLogger) Errorf(format string, o ...interface{}) {
+func (l *fileLogger) Errorf(format string, o ...any) {
 	l.Error(fmt.Sprintf(format, o...))
 }
 
@@ -48,7 +48,7 @@ func (l *fileLogger) Fatal(o string) {
 	os.Exit(1)
 }
 
-func (l *fileLogger) Fatalf(format string, o ...interface{}) {
+func (l *fileLogger) Fatalf(format string, o ...any) {
 	l.Fatal(fmt.Sprintf(format, o...))
 }
 
@@ -58,7 +58,7 @@ func (l *fileLogger) Debug(o string) {
 	}
 }
 
-func (l *fileLogger) Debugf(format string, o ...interface{}) {
+func (l *fileLogger) Debugf(format string, o ...any) {
 	l.Debug(fmt.Sprintf(format, o...))
 }
 

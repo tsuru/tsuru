@@ -64,8 +64,8 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 		App: &a,
 	})
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"healthcheck": map[string]interface{}{
+	customData := map[string]any{
+		"healthcheck": map[string]any{
 			"path":          "/healthcheck",
 			"status":        http.StatusFound,
 			"use_in_router": true,

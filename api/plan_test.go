@@ -39,14 +39,14 @@ func (s *S) TestPlanAdd(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "xyz"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
 			{"name": "cpumilli", "value": "2000"},
 		},
 	}, eventtest.HasEvent)
 
-	fill := map[string]interface{}{}
+	fill := map[string]any{}
 	c.Assert(json.NewDecoder(recorder.Body).Decode(&fill), check.IsNil)
 }
 
@@ -71,7 +71,7 @@ func (s *S) TestPlanAddJSON(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "xyz"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
-		StartCustomData: []interface{}{
+		StartCustomData: []any{
 			mongoBSON.M{"name": ":mux-path-template", "value": "/plans"},
 			mongoBSON.M{"name": "memory", "value": "9.223372036854776e+18"},
 			mongoBSON.M{"name": "cpumilli", "value": "2000"},
@@ -79,7 +79,7 @@ func (s *S) TestPlanAddJSON(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 
-	fill := map[string]interface{}{}
+	fill := map[string]any{}
 	c.Assert(json.NewDecoder(recorder.Body).Decode(&fill), check.IsNil)
 }
 
@@ -162,7 +162,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "xyz"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
 			{"name": "cpumilli", "value": "300"},
@@ -219,7 +219,7 @@ func (s *S) TestPlanRemove(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "plan1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":planname", "value": "plan1"},
 		},
 	}, eventtest.HasEvent)

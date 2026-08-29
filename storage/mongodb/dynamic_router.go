@@ -17,8 +17,8 @@ import (
 type dynamicRouter struct {
 	Name           string `bson:"_id"`
 	Type           string
-	ReadinessGates []string               `bson:",omitempty"`
-	Config         map[string]interface{} `bson:",omitempty"`
+	ReadinessGates []string       `bson:",omitempty"`
+	Config         map[string]any `bson:",omitempty"`
 }
 
 type dynamicRouterStorage struct{}

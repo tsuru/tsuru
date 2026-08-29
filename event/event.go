@@ -214,7 +214,7 @@ type Opts struct {
 	Owner         auth.Token
 	RawOwner      eventTypes.Owner
 	RemoteAddr    string
-	CustomData    interface{}
+	CustomData    any
 	DisableLock   bool
 	Cancelable    bool
 	Allowed       eventTypes.AllowedPermission
@@ -643,7 +643,7 @@ func NewInternal(ctx context.Context, opts *Opts) (*Event, error) {
 	return newEvt(ctx, opts)
 }
 
-func makeBSONRaw(in interface{}) (mongoBSON.RawValue, error) {
+func makeBSONRaw(in any) (mongoBSON.RawValue, error) {
 	if in == nil {
 		return mongoBSON.RawValue{}, nil
 	}
@@ -915,7 +915,7 @@ func checkLocked(ctx context.Context, evt *Event, disableLock bool) error {
 	return ErrEventLocked{Event: &existing}
 }
 
-func (e *Event) RawInsert(ctx context.Context, start, other, end interface{}) error {
+func (e *Event) RawInsert(ctx context.Context, start, other, end any) error {
 	var err error
 	e.StartCustomData, err = makeBSONRaw(start)
 	if err != nil {
@@ -948,7 +948,7 @@ func (e *Event) Done(ctx context.Context, evtErr error) error {
 	return e.done(ctx, evtErr, nil, false)
 }
 
-func (e *Event) DoneCustomData(ctx context.Context, evtErr error, customData interface{}) error {
+func (e *Event) DoneCustomData(ctx context.Context, evtErr error, customData any) error {
 	return e.done(ctx, evtErr, customData, false)
 }
 
@@ -960,7 +960,7 @@ func (e *Event) GetLogWriter() io.Writer {
 	return e.logWriter
 }
 
-func (e *Event) SetOtherCustomData(ctx context.Context, data interface{}) error {
+func (e *Event) SetOtherCustomData(ctx context.Context, data any) error {
 	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return err
@@ -986,7 +986,7 @@ func (e *Event) SetCancelable(ctx context.Context, cancelable bool) error {
 	return err
 }
 
-func (e *Event) Logf(format string, params ...interface{}) {
+func (e *Event) Logf(format string, params ...any) {
 	log.Debugf(fmt.Sprintf("%s(%s)[%s] %s", e.Target.Type, e.Target.Value, e.Kind, format), params...)
 	format += "\n"
 	fmt.Fprintf(e, format, params...)
@@ -1098,28 +1098,28 @@ func (e *Event) AckCancel(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (e *Event) StartData(value interface{}) error {
+func (e *Event) StartData(value any) error {
 	if e.StartCustomData.Type == 0 {
 		return nil
 	}
 	return e.StartCustomData.Unmarshal(value)
 }
 
-func (e *Event) EndData(value interface{}) error {
+func (e *Event) EndData(value any) error {
 	if e.EndCustomData.Type == 0 {
 		return nil
 	}
 	return e.EndCustomData.Unmarshal(value)
 }
 
-func (e *Event) OtherData(value interface{}) error {
+func (e *Event) OtherData(value any) error {
 	if e.OtherCustomData.Type == 0 {
 		return nil
 	}
 	return e.OtherCustomData.Unmarshal(value)
 }
 
-func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, abort bool) (err error) {
+func (e *Event) done(ctx context.Context, evtErr error, customData any, abort bool) (err error) {
 	ctx = context.WithoutCancel(ctx)
 	// Done will be usually called in a defer block ignoring errors. This is
 	// why we log error messages here.
@@ -1239,7 +1239,7 @@ func (e *Event) OwnerEmail() string {
 
 }
 
-func checkIsExpired(ctx context.Context, collection *mongo.Collection, lock interface{}) bool {
+func checkIsExpired(ctx context.Context, collection *mongo.Collection, lock any) bool {
 	var existingEvt Event
 
 	err := collection.FindOne(ctx, mongoBSON.M{"lock": lock}).Decode(&existingEvt.EventData)
@@ -1255,14 +1255,14 @@ func checkIsExpired(ctx context.Context, collection *mongo.Collection, lock inte
 	return false
 }
 
-func FormToCustomData(form url.Values) []map[string]interface{} {
-	ret := make([]map[string]interface{}, 0, len(form))
+func FormToCustomData(form url.Values) []map[string]any {
+	ret := make([]map[string]any, 0, len(form))
 	for k, v := range form {
-		var val interface{} = v
+		var val any = v
 		if len(v) == 1 {
 			val = v[0]
 		}
-		ret = append(ret, map[string]interface{}{"name": k, "value": val})
+		ret = append(ret, map[string]any{"name": k, "value": val})
 	}
 	return ret
 }

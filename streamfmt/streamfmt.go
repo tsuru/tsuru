@@ -34,49 +34,49 @@ func Error(text string) string {
 
 // Formatted versions
 
-func Sectionf(format string, a ...interface{}) string {
+func Sectionf(format string, a ...any) string {
 	return SectionPrefix + fmt.Sprintf(format, a...) + SectionSuffix
 }
 
-func Actionf(format string, a ...interface{}) string {
+func Actionf(format string, a ...any) string {
 	return ActionPrefix + fmt.Sprintf(format, a...)
 }
 
-func Errorf(format string, a ...interface{}) string {
+func Errorf(format string, a ...any) string {
 	return ErrorPrefix + strings.ToUpper(fmt.Sprintf(format, a...)) + ErrorSuffix
 }
 
 // io.Writer versions
 
-func FprintSectionf(w io.Writer, format string, a ...interface{}) {
+func FprintSectionf(w io.Writer, format string, a ...any) {
 	fmt.Fprint(w, Sectionf(format, a...))
 }
 
-func FprintActionf(w io.Writer, format string, a ...interface{}) {
+func FprintActionf(w io.Writer, format string, a ...any) {
 	fmt.Fprint(w, Actionf(format, a...))
 }
 
-func FprintErrorf(w io.Writer, format string, a ...interface{}) {
+func FprintErrorf(w io.Writer, format string, a ...any) {
 	fmt.Fprint(w, Errorf(format, a...))
 }
 
 // io.Writer versions with newline
 
-func FprintlnSectionf(w io.Writer, format string, a ...interface{}) {
+func FprintlnSectionf(w io.Writer, format string, a ...any) {
 	if w == nil {
 		return
 	}
 	fmt.Fprintln(w, Sectionf(format, a...))
 }
 
-func FprintlnActionf(w io.Writer, format string, a ...interface{}) {
+func FprintlnActionf(w io.Writer, format string, a ...any) {
 	if w == nil {
 		return
 	}
 	fmt.Fprintln(w, Actionf(format, a...))
 }
 
-func FprintlnErrorf(w io.Writer, format string, a ...interface{}) {
+func FprintlnErrorf(w io.Writer, format string, a ...any) {
 	if w == nil {
 		return
 	}

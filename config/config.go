@@ -13,15 +13,15 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func ConvertEntries(initial interface{}) interface{} {
+func ConvertEntries(initial any) any {
 	switch initialType := initial.(type) {
-	case []interface{}:
+	case []any:
 		for i := range initialType {
 			initialType[i] = ConvertEntries(initialType[i])
 		}
 		return initialType
-	case map[interface{}]interface{}:
-		output := make(map[string]interface{}, len(initialType))
+	case map[any]any:
+		output := make(map[string]any, len(initialType))
 		for k, v := range initialType {
 			output[fmt.Sprintf("%v", k)] = ConvertEntries(v)
 		}
@@ -31,27 +31,27 @@ func ConvertEntries(initial interface{}) interface{} {
 	}
 }
 
-func UnconvertEntries(initial interface{}) interface{} {
+func UnconvertEntries(initial any) any {
 	switch initialType := initial.(type) {
-	case []interface{}:
+	case []any:
 		for i := range initialType {
 			initialType[i] = UnconvertEntries(initialType[i])
 		}
 		return initialType
 	case primitive.A:
-		output := make([]interface{}, len(initialType))
+		output := make([]any, len(initialType))
 		for k, v := range initialType {
 			output[k] = UnconvertEntries(v)
 		}
 		return output
 	case primitive.M:
-		output := make(map[interface{}]interface{}, len(initialType))
+		output := make(map[any]any, len(initialType))
 		for k, v := range initialType {
 			output[k] = UnconvertEntries(v)
 		}
 		return output
-	case map[string]interface{}:
-		output := make(map[interface{}]interface{}, len(initialType))
+	case map[string]any:
+		output := make(map[any]any, len(initialType))
 		for k, v := range initialType {
 			output[k] = UnconvertEntries(v)
 		}
@@ -61,7 +61,7 @@ func UnconvertEntries(initial interface{}) interface{} {
 	}
 }
 
-func UnmarshalConfig(key string, result interface{}) error {
+func UnmarshalConfig(key string, result any) error {
 	data, err := config.Get(key)
 	if err != nil {
 		return errors.WithStack(err)

@@ -679,8 +679,8 @@ func changeUnits(ctx context.Context, a *appTypes.App, units int, processName st
 }
 
 func replicasPatch(replicas int) (types.PatchType, []byte, error) {
-	patch, err := json.Marshal([]interface{}{
-		map[string]interface{}{
+	patch, err := json.Marshal([]any{
+		map[string]any{
 			"op":    "replace",
 			"path":  "/spec/replicas",
 			"value": replicas,

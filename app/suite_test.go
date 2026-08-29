@@ -55,7 +55,7 @@ func (c *greaterChecker) Info() *check.CheckerInfo {
 	return &check.CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
 }
 
-func (c *greaterChecker) Check(params []interface{}, names []string) (bool, string) {
+func (c *greaterChecker) Check(params []any, names []string) (bool, string) {
 	if len(params) != 2 {
 		return false, "you should pass two values to compare"
 	}

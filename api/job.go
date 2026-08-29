@@ -177,7 +177,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"status": "success",
 	}
 	jsonMsg, err := json.Marshal(msg)
@@ -314,7 +314,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Kind:       permission.PermJobUnitKill,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
-		CustomData: []map[string]interface{}{
+		CustomData: []map[string]any{
 			{
 				"unit":  unitName,
 				"force": force,
@@ -538,7 +538,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"status":  "success",
 		"jobName": j.Name,
 	}

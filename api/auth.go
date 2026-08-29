@@ -489,9 +489,9 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	var result []map[string]interface{}
+	var result []map[string]any
 	for name, permissions := range permsMap {
-		result = append(result, map[string]interface{}{
+		result = append(result, map[string]any{
 			"name":        name,
 			"tags":        teamsMap[name].Tags,
 			"permissions": permissions,
@@ -569,7 +569,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
-	result := map[string]interface{}{
+	result := map[string]any{
 		"name":  team.Name,
 		"tags":  team.Tags,
 		"users": includedUsers,

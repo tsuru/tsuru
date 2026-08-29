@@ -70,22 +70,22 @@ type AppVersions struct {
 }
 
 type AppVersionInfo struct {
-	Version          int                    `json:"version"`
-	Description      string                 `json:"description"`
-	BuildImage       string                 `json:"buildImage"`
-	DeployImage      string                 `json:"deployImage"`
-	CustomBuildTag   string                 `json:"customBuildTag"`
-	CustomData       map[string]interface{} `json:"customData"`
-	Processes        map[string][]string    `json:"processes"`
-	ExposedPorts     []string               `json:"exposedPorts"`
-	EventID          string                 `json:"eventID"`
-	CreatedAt        time.Time              `json:"createdAt"`
-	UpdatedAt        time.Time              `json:"updatedAt"`
-	DisabledReason   string                 `json:"disabledReason"`
-	Disabled         bool                   `json:"disabled"`
-	DeploySuccessful bool                   `json:"deploySuccessful"`
-	MarkedToRemoval  bool                   `json:"markedToRemoval"`
-	PastUnits        map[string]int         `json:"pastUnits"`
+	Version          int                 `json:"version"`
+	Description      string              `json:"description"`
+	BuildImage       string              `json:"buildImage"`
+	DeployImage      string              `json:"deployImage"`
+	CustomBuildTag   string              `json:"customBuildTag"`
+	CustomData       map[string]any      `json:"customData"`
+	Processes        map[string][]string `json:"processes"`
+	ExposedPorts     []string            `json:"exposedPorts"`
+	EventID          string              `json:"eventID"`
+	CreatedAt        time.Time           `json:"createdAt"`
+	UpdatedAt        time.Time           `json:"updatedAt"`
+	DisabledReason   string              `json:"disabledReason"`
+	Disabled         bool                `json:"disabled"`
+	DeploySuccessful bool                `json:"deploySuccessful"`
+	MarkedToRemoval  bool                `json:"markedToRemoval"`
+	PastUnits        map[string]int      `json:"pastUnits"`
 }
 
 type NewVersionArgs struct {

@@ -513,7 +513,7 @@ func (c *endpointClient) issueRequest(ctx context.Context, path, method string, 
 	return resp, err
 }
 
-func (c *endpointClient) jsonFromResponse(resp *http.Response, v interface{}) error {
+func (c *endpointClient) jsonFromResponse(resp *http.Response, v any) error {
 	err := json.NewDecoder(resp.Body).Decode(v)
 	if err != nil {
 		log.Errorf("Got error while parsing service json: %s", err)

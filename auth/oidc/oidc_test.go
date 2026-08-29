@@ -176,7 +176,7 @@ func (s *AuthSuite) TestLoginWithMissingEmail(c *check.C) {
 }
 
 func (s *AuthSuite) TestLoginWithClaimValidation(c *check.C) {
-	s.scheme.validClaims = map[string]interface{}{
+	s.scheme.validClaims = map[string]any{
 		"azp": "my-azp",
 	}
 	defer func() {

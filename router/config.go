@@ -15,7 +15,7 @@ type ConfigGetter interface {
 	GetInt(string) (int, error)
 	GetFloat(string) (float64, error)
 	GetBool(string) (bool, error)
-	Get(string) (interface{}, error)
+	Get(string) (any, error)
 	Hash() (string, error)
 }
 
@@ -35,9 +35,9 @@ func (g *delegateConfigGetter) Hash() (string, error) {
 
 var ConfigGetterFromData = configGetterFromData
 
-func configGetterFromData(data map[string]interface{}) ConfigGetter {
+func configGetterFromData(data map[string]any) ConfigGetter {
 	cfg := config.Configuration{}
-	unconverted, _ := internalConfig.UnconvertEntries(data).(map[interface{}]interface{})
+	unconverted, _ := internalConfig.UnconvertEntries(data).(map[any]any)
 	cfg.Store(unconverted)
 	return &delegateConfigGetter{Configuration: &cfg}
 }
@@ -45,7 +45,7 @@ func configGetterFromData(data map[string]interface{}) ConfigGetter {
 func ConfigGetterFromPrefix(prefix string) ConfigGetter {
 	data, _ := config.Get(prefix)
 	cfg := config.Configuration{}
-	unconverted, _ := data.(map[interface{}]interface{})
+	unconverted, _ := data.(map[any]any)
 	cfg.Store(unconverted)
 	return &delegateConfigGetter{Configuration: &cfg}
 }

@@ -22,7 +22,7 @@ func index(w http.ResponseWriter, r *http.Request) error {
 	host, _ := config.GetString("host")
 	userCreate, _ := config.GetBool("auth:user-registration")
 	scheme, _ := config.GetString("auth:scheme")
-	data := map[string]interface{}{
+	data := map[string]any{
 		"tsuruTarget": host,
 		"userCreate":  userCreate,
 		"nativeLogin": scheme == "" || scheme == "native",

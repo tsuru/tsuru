@@ -28,16 +28,16 @@ func TestDynamicSuites(t *testing.T) {
 	prefixGetter := ConfigGetterFromPrefix("mine")
 	check.Suite(&ConfigSuite{getter: prefixGetter})
 
-	routerConfig := map[string]interface{}{
+	routerConfig := map[string]any{
 		"str":       "str",
 		"str-int":   "1",
 		"str-float": "1.1",
 		"int":       1,
 		"float":     1.1,
 		"bool":      true,
-		"complex": map[string]interface{}{
+		"complex": map[string]any{
 			"a": "b",
-			"c": map[string]interface{}{
+			"c": map[string]any{
 				"d": 1,
 			},
 		},
@@ -102,9 +102,9 @@ func (s *ConfigSuite) TestGetBool(c *check.C) {
 func (s *ConfigSuite) TestGet(c *check.C) {
 	v, err := s.getter.Get("complex")
 	c.Assert(err, check.IsNil)
-	c.Check(v, check.DeepEquals, map[interface{}]interface{}{
+	c.Check(v, check.DeepEquals, map[any]any{
 		"a": "b",
-		"c": map[interface{}]interface{}{
+		"c": map[any]any{
 			"d": 1,
 		},
 	})
@@ -115,7 +115,7 @@ func (s *ConfigSuite) TestGet(c *check.C) {
 
 	v, err = s.getter.Get("complex:c")
 	c.Assert(err, check.IsNil)
-	c.Check(v, check.DeepEquals, map[interface{}]interface{}{
+	c.Check(v, check.DeepEquals, map[any]any{
 		"d": 1,
 	})
 

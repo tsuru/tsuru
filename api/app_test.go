@@ -744,7 +744,7 @@ func (s *S) TestDelete(c *check.C) {
 		Target: appTarget(myApp.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": myApp.Name},
 		},
 	}, eventtest.HasEvent)
@@ -780,7 +780,7 @@ func (s *S) TestDeleteVersion(c *check.C) {
 		Target: appTarget(myApp.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": myApp.Name},
 			{"name": ":version", "value": "2"},
 			{"name": ":mux-path-template", "value": "/apps/{app}/versions/{version}"},
@@ -841,7 +841,7 @@ func (s *S) TestAppInfo(c *check.C) {
 	expectedApp := appTypes.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(ctx, &expectedApp, s.user)
 	c.Assert(err, check.IsNil)
-	var myApp map[string]interface{}
+	var myApp map[string]any
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -944,7 +944,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
 		},
@@ -993,7 +993,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
 		},
@@ -1037,7 +1037,7 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
@@ -1098,7 +1098,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
 			{"name": "teamOwner", "value": t1.Name},
@@ -1143,7 +1143,7 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
 		},
@@ -1192,7 +1192,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
 			{"name": "plan", "value": "myplan"},
@@ -1237,7 +1237,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
 			{"name": "description", "value": "my app description"},
@@ -1281,7 +1281,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 		Target: appTarget("someapp"),
 		Kind:   "app.create",
 		Owner:  token.GetUserName(),
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "someapp"},
 			{"name": "platform", "value": "zend"},
 			{"name": "tag", "value": []string{"tag1", "tag2"}},
@@ -1365,7 +1365,7 @@ func (s *S) TestCreateAppWithMetadata(c *check.C) {
 		Target: appTarget("someapp"),
 		Kind:   "app.create",
 		Owner:  token.GetUserName(),
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "someapp"},
 			{"name": "platform", "value": "zend"},
 		},
@@ -1414,7 +1414,7 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": appName},
 			{"name": "platform", "value": platName},
 			{"name": "pool", "value": "mypool1"},
@@ -1554,7 +1554,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "someapp"},
 			{"name": "platform", "value": "zend"},
 		},
@@ -1584,7 +1584,7 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 		Target: appTarget("123myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "123myapp"},
 			{"name": "platform", "value": "zend"},
 		},
@@ -1671,7 +1671,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		Target: appTarget("someapp"),
 		Owner:  u.Email,
 		Kind:   "app.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "someapp"},
 			{"name": "platform", "value": p.Name},
 		},
@@ -1730,7 +1730,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "description", "value": "my app description"},
 		},
@@ -1769,7 +1769,7 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "platform", "value": "heimerdinger"},
 		},
@@ -1813,7 +1813,7 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "platform", "value": "myplatform:v1"},
 		},
@@ -1852,7 +1852,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "tag", "value": []string{"tag1", "tag2", "tag3"}},
 			{"name": "tags.0", "value": "tag0"},
@@ -1950,7 +1950,7 @@ func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
@@ -1995,7 +1995,7 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
@@ -2076,7 +2076,7 @@ func (s *S) TestUpdateAppWithCustomPlanByProcess(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "processes.0.name", "value": "web"},
 			{"name": "processes.0.plan", "value": "c1m1"},
@@ -2137,7 +2137,7 @@ func (s *S) TestUpdateAppWithResetPlanByProcess(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "processes.0.name", "value": "web"},
 			{"name": "processes.0.plan", "value": "$default"},
@@ -2493,7 +2493,7 @@ func (s *S) TestAddUnits(c *check.C) {
 		Target:          appTarget("armorandsword"),
 		Owner:           s.token.GetUserName(),
 		Kind:            "app.update.unit.add",
-		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
+		StartCustomData: []map[string]any{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
 	}, eventtest.HasEvent)
 	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
 }
@@ -2526,7 +2526,7 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 		Target:          appTarget("armorandsword"),
 		Owner:           s.token.GetUserName(),
 		Kind:            "app.update.unit.add",
-		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
+		StartCustomData: []map[string]any{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
 	}, eventtest.HasEvent)
 	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
 }
@@ -2611,7 +2611,7 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 		Target:          appTarget("armorandsword"),
 		Owner:           s.token.GetUserName(),
 		Kind:            "app.update.unit.add",
-		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": ""}, {"name": ":app", "value": "armorandsword"}},
+		StartCustomData: []map[string]any{{"name": "units", "value": "3"}, {"name": "process", "value": ""}, {"name": ":app", "value": "armorandsword"}},
 	}, eventtest.HasEvent)
 }
 
@@ -2654,7 +2654,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 		Target:          appTarget("armorandsword"),
 		Owner:           s.token.GetUserName(),
 		Kind:            "app.update.unit.add",
-		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
+		StartCustomData: []map[string]any{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
 		ErrorMatches:    `Quota exceeded. Available: 2, Requested: 3.`,
 	}, eventtest.HasEvent)
 }
@@ -2688,7 +2688,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		Target: appTarget("velha"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.unit.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "units", "value": "2"},
 			{"name": "process", "value": "web"},
 			{"name": ":app", "value": "velha"},
@@ -2771,7 +2771,7 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 		Target: appTarget("velha"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.unit.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "units", "value": "2"},
 			{"name": "process", "value": ""},
 			{"name": ":app", "value": "velha"},
@@ -2825,7 +2825,7 @@ func (s *S) TestAddTeamToTheApp(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.grant",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":team", "value": s.team.Name},
 			{"name": ":app", "value": a.Name},
 		},
@@ -2897,7 +2897,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.grant",
 		ErrorMatches: "team already have access to this app",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":team", "value": s.team.Name},
 			{"name": ":app", "value": a.Name},
 		},
@@ -2926,7 +2926,7 @@ func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.revoke",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":team", "value": s.team.Name},
 			{"name": ":app", "value": a.Name},
 		},
@@ -3021,7 +3021,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.revoke",
 		ErrorMatches: "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":team", "value": s.team.Name},
 			{"name": ":app", "value": a.Name},
 		},
@@ -3059,7 +3059,7 @@ func (s *S) TestRunOnce(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.run",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "command", "value": "ls"},
 			{"name": "once", "value": "true"},
 			{"name": ":app", "value": a.Name},
@@ -3097,7 +3097,7 @@ func (s *S) TestRun(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.run",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "command", "value": "ls"},
 			{"name": ":app", "value": a.Name},
 		},
@@ -3131,7 +3131,7 @@ func (s *S) TestRunIsolated(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.run",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "command", "value": "ls"},
 			{"name": "isolated", "value": "true"},
 			{"name": ":app", "value": a.Name},
@@ -3161,7 +3161,7 @@ func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.run",
 		ErrorMatches: "something went wrong",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "command", "value": "ls"},
 			{"name": ":app", "value": a.Name},
 		},
@@ -3330,13 +3330,13 @@ func (s *S) TestGetEnv(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := []map[string]interface{}{{
+	expected := []map[string]any{{
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
 		"public": true,
 		"alias":  "",
 	}}
-	result := []map[string]interface{}{}
+	result := []map[string]any{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
@@ -3364,11 +3364,11 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
-	expected := []map[string]interface{}{
+	expected := []map[string]any{
 		{"name": "DATABASE_HOST", "value": "localhost", "public": true, "alias": ""},
 		{"name": "DATABASE_USER", "value": "root", "public": true, "alias": ""},
 	}
-	var got []map[string]interface{}
+	var got []map[string]any
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, expected)
@@ -3464,7 +3464,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "localhost"},
@@ -3517,7 +3517,7 @@ func (s *S) TestSetEnvPublicAndPrivate(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "*****"},
@@ -3588,7 +3588,7 @@ func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "*****"},
@@ -3650,7 +3650,7 @@ func (s *S) TestSetEnvCanPruneAllVariables(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "NoRestart", "value": ""},
 			{"name": "Private", "value": ""},
@@ -3740,7 +3740,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Alias", "value": "MY_DB_HOST"},
@@ -3786,7 +3786,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "*****"},
@@ -3823,7 +3823,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "*****"},
@@ -3861,7 +3861,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "*****"},
@@ -3907,7 +3907,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "localhost"},
@@ -4011,7 +4011,7 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "localhost"},
@@ -4198,7 +4198,7 @@ func (s *S) TestUnsetEnv(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.unset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "env", "value": "DATABASE_HOST"},
 			{"name": "noRestart", "value": "false"},
@@ -4242,7 +4242,7 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.unset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "env", "value": "DATABASE_HOST"},
 			{"name": "noRestart", "value": "true"},
@@ -4288,7 +4288,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.env.unset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "env", "value": []string{"DATABASE_HOST", "DATABASE_USER"}},
 			{"name": "noRestart", "value": "false"},
@@ -4403,8 +4403,8 @@ func (s *S) TestAddCName(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.cname.add",
-		StartCustomData: []map[string]interface{}{
-			{"name": "cname", "value": []interface{}{"leper.secretcompany.com", "blog.tsuru.com"}},
+		StartCustomData: []map[string]any{
+			{"name": "cname", "value": []any{"leper.secretcompany.com", "blog.tsuru.com"}},
 			{"name": ":app", "value": "leper"},
 		},
 	}, eventtest.HasEvent)
@@ -4430,7 +4430,7 @@ func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.cname.add",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "cname", "value": "*.leper.secretcompany.com"},
 			{"name": ":app", "value": "leper"},
 		},
@@ -4456,7 +4456,7 @@ func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.cname.add",
 		ErrorMatches: "Invalid cname",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "cname", "value": "_leper.secretcompany.com"},
 			{"name": ":app", "value": "leper"},
 		},
@@ -4480,7 +4480,7 @@ func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsEmpty(c *check.C) {
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.cname.add",
 		ErrorMatches: "Invalid cname",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "cname", "value": ""},
 			{"name": ":app", "value": "leper"},
 		},
@@ -4559,7 +4559,7 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 		Target: appTarget(app.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.cname.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "cname", "value": "foo.bar.com"},
 			{"name": ":app", "value": "leper"},
 		},
@@ -4593,8 +4593,8 @@ func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
 		Target: appTarget(app.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.cname.remove",
-		StartCustomData: []map[string]interface{}{
-			{"name": "cname", "value": []interface{}{"foo.bar.com", "bar.com"}},
+		StartCustomData: []map[string]any{
+			{"name": "cname", "value": []any{"foo.bar.com", "bar.com"}},
 			{"name": ":app", "value": "leper"},
 		},
 	}, eventtest.HasEvent)
@@ -5074,7 +5074,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.bind",
 		ErrorMatches: errRegex,
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -5148,7 +5148,7 @@ func (s *S) TestBindHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.bind",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -5213,7 +5213,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.bind",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -5470,7 +5470,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.bind",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance2.Name},
 			{"name": ":service", "value": instance2.ServiceName},
@@ -5570,7 +5570,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.unbind",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -5667,7 +5667,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.unbind",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -5766,7 +5766,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update.unbind",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -6033,7 +6033,7 @@ func (s *S) TestRestartHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.restart",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
@@ -6072,7 +6072,7 @@ func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.restart",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "process", "value": "web"},
 		},
@@ -6241,7 +6241,7 @@ func (s *S) TestStartHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.start",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "process", "value": "web"},
 		},
@@ -6274,7 +6274,7 @@ func (s *S) TestStopHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.stop",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "process", "value": "web"},
 		},
@@ -6303,7 +6303,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.routes",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "dry", "value": "true"},
 			{"name": ":app", "value": a.Name},
 		},
@@ -6330,7 +6330,7 @@ func (s *S) TestSetCertificate(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.certificate.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "cname", "value": "app.io"},
 			{"name": "certificate", "value": testCert},
@@ -6413,7 +6413,7 @@ func (s *S) TestUnsetCertificate(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.update.certificate.unset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "cname", "value": "app.io"},
 		},
@@ -6573,7 +6573,7 @@ func (s *S) TestSetCertIssuer(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "certissuer.set",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "cname", "value": "app.io"},
 			{"name": "issuer", "value": "letsencrypt"},
@@ -6614,7 +6614,7 @@ func (s *S) TestUnsetCertIssuer(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "certissuer.unset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "cname", "value": "app.io"},
 		},
@@ -6651,10 +6651,10 @@ func (s *S) TestUnsetCertIssuerInvalidCName(c *check.C) {
 
 type fakeEncoder struct {
 	done chan struct{}
-	msg  interface{}
+	msg  any
 }
 
-func (e *fakeEncoder) Encode(msg interface{}) error {
+func (e *fakeEncoder) Encode(msg any) error {
 	e.msg = msg
 	close(e.done)
 	return nil

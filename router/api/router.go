@@ -320,8 +320,8 @@ func (r *apiRouter) GetBackendStatus(ctx context.Context, app *appTypes.App) (ro
 	return rsp, nil
 }
 
-func addDefaultOpts(app *appTypes.App, opts map[string]interface{}) map[string]interface{} {
-	mergedOpts := make(map[string]interface{})
+func addDefaultOpts(app *appTypes.App, opts map[string]any) map[string]any {
+	mergedOpts := make(map[string]any)
 	for k, v := range opts {
 		mergedOpts[k] = v
 	}
@@ -367,14 +367,14 @@ func headersFromConfig(config router.ConfigGetter) (http.Header, error) {
 	headers, _ := config.Get("headers")
 	headerResult := make(http.Header)
 	if headers != nil {
-		h, ok := headers.(map[interface{}]interface{})
+		h, ok := headers.(map[any]any)
 		if !ok {
 			return nil, errors.Errorf("invalid header configuration: %v", headers)
 		}
 
 		for k, v := range h {
 			_, isStr := v.(string)
-			_, isSlice := v.([]interface{})
+			_, isSlice := v.([]any)
 			if !isStr && !isSlice {
 				return nil, errors.Errorf("invalid header configuration at key: %s. Expected string or array of strings got %v", k, v)
 			}

@@ -64,13 +64,13 @@ func TestSectionf(t *testing.T) {
 	tests := []struct {
 		name     string
 		format   string
-		args     []interface{}
+		args     []any
 		expected string
 	}{
 		{
 			name:     "with args",
 			format:   "Deploying app %s to pool %s",
-			args:     []interface{}{"myapp", "prod"},
+			args:     []any{"myapp", "prod"},
 			expected: "---- Deploying app myapp to pool prod ----",
 		},
 		{
@@ -82,7 +82,7 @@ func TestSectionf(t *testing.T) {
 		{
 			name:     "with number",
 			format:   "Version %d",
-			args:     []interface{}{42},
+			args:     []any{42},
 			expected: "---- Version 42 ----",
 		},
 	}
@@ -97,13 +97,13 @@ func TestActionf(t *testing.T) {
 	tests := []struct {
 		name     string
 		format   string
-		args     []interface{}
+		args     []any
 		expected string
 	}{
 		{
 			name:     "with args",
 			format:   "Step %d of %d",
-			args:     []interface{}{1, 5},
+			args:     []any{1, 5},
 			expected: " ---> Step 1 of 5",
 		},
 		{
@@ -124,13 +124,13 @@ func TestErrorf(t *testing.T) {
 	tests := []struct {
 		name     string
 		format   string
-		args     []interface{}
+		args     []any
 		expected string
 	}{
 		{
 			name:     "with args",
 			format:   "failed to deploy %s: %s",
-			args:     []interface{}{"myapp", "timeout"},
+			args:     []any{"myapp", "timeout"},
 			expected: "**** FAILED TO DEPLOY MYAPP: TIMEOUT ****",
 		},
 		{
