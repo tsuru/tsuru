@@ -64,8 +64,8 @@ type oidcScheme struct {
 
 func personalTeamName(email string) string {
 	name := email
-	if idx := strings.Index(email, "@"); idx >= 0 {
-		name = email[:idx]
+	if before, _, ok := strings.Cut(email, "@"); ok {
+		name = before
 	}
 	return auth.NormalizeTeamName(name)
 }

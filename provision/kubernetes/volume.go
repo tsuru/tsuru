@@ -111,7 +111,7 @@ func nonPersistentVolume(v *volumeTypes.Volume, opts *volumeOptions) (apiv1.Volu
 			Team:   v.TeamOwner,
 		})
 		var accessModes []apiv1.PersistentVolumeAccessMode
-		for _, am := range strings.Split(opts.AccessModes, ",") {
+		for am := range strings.SplitSeq(opts.AccessModes, ",") {
 			accessModes = append(accessModes, apiv1.PersistentVolumeAccessMode(am))
 		}
 		volumeSrc = apiv1.VolumeSource{
@@ -235,7 +235,7 @@ func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Vol
 		apiv1.ResourceStorage: opts.Capacity,
 	}
 	var accessModes []apiv1.PersistentVolumeAccessMode
-	for _, am := range strings.Split(opts.AccessModes, ",") {
+	for am := range strings.SplitSeq(opts.AccessModes, ",") {
 		accessModes = append(accessModes, apiv1.PersistentVolumeAccessMode(am))
 	}
 	var volName string

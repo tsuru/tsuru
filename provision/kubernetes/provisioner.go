@@ -1308,11 +1308,11 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 		}
 		return "", err
 	}
-	var out string
+	var out strings.Builder
 	for _, c := range clusters {
-		out += fmt.Sprintf("Kubernetes provisioner on cluster %q - %s\n", c.Name, c.restConfig.Host)
+		out.WriteString(fmt.Sprintf("Kubernetes provisioner on cluster %q - %s\n", c.Name, c.restConfig.Host))
 	}
-	return out, nil
+	return out.String(), nil
 }
 
 func (p *kubernetesProvisioner) DeleteVolume(ctx context.Context, volumeName, pool string) error {

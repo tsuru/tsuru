@@ -248,20 +248,20 @@ func (s *S) TestSimpleJsonMessageFormatterWithTS(c *check.C) {
 	buf := bytes.Buffer{}
 	ts := time.Unix(0, 0).Format(time.RFC3339)
 	streamWriter := NewStreamWriter(&buf, nil)
-	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "my\nmsg\n", "timestamp": "%s"}`, ts)))
-	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "other", "timestamp": "%s"}`, ts)))
-	streamWriter.Write([]byte(fmt.Sprintf(`{"message": " msg\n", "timestamp": "%s"}`, ts)))
-	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "more", "timestamp": "%s"}`, ts)))
-	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "\nmsgs", "timestamp": "%s"}`, ts)))
+	streamWriter.Write(fmt.Appendf(nil, `{"message": "my\nmsg\n", "timestamp": "%s"}`, ts))
+	streamWriter.Write(fmt.Appendf(nil, `{"message": "other", "timestamp": "%s"}`, ts))
+	streamWriter.Write(fmt.Appendf(nil, `{"message": " msg\n", "timestamp": "%s"}`, ts))
+	streamWriter.Write(fmt.Appendf(nil, `{"message": "more", "timestamp": "%s"}`, ts))
+	streamWriter.Write(fmt.Appendf(nil, `{"message": "\nmsgs", "timestamp": "%s"}`, ts))
 	c.Assert(buf.String(), check.Matches, ".+: my\n.+: msg\n.+: other msg\n.+: more\n.+: msgs")
 
 	buf = bytes.Buffer{}
 	streamWriterNoTs := NewStreamWriter(&buf, &SimpleJsonMessageFormatter{NoTimestamp: true})
-	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "my\nmsg\n", "timestamp": "%s"}`, ts)))
-	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "other", "timestamp": "%s"}`, ts)))
-	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": " msg\n", "timestamp": "%s"}`, ts)))
-	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "more", "timestamp": "%s"}`, ts)))
-	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "\nmsgs", "timestamp": "%s"}`, ts)))
+	streamWriterNoTs.Write(fmt.Appendf(nil, `{"message": "my\nmsg\n", "timestamp": "%s"}`, ts))
+	streamWriterNoTs.Write(fmt.Appendf(nil, `{"message": "other", "timestamp": "%s"}`, ts))
+	streamWriterNoTs.Write(fmt.Appendf(nil, `{"message": " msg\n", "timestamp": "%s"}`, ts))
+	streamWriterNoTs.Write(fmt.Appendf(nil, `{"message": "more", "timestamp": "%s"}`, ts))
+	streamWriterNoTs.Write(fmt.Appendf(nil, `{"message": "\nmsgs", "timestamp": "%s"}`, ts))
 	c.Assert(buf.String(), check.Matches, "my\nmsg\nother msg\nmore\nmsgs")
 }
 
@@ -305,7 +305,7 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 	buf := bytes.Buffer{}
 	encoder := json.NewEncoder(&buf)
 	writer := SimpleJsonMessageEncoderWriter{Encoder: encoder}
-	for _, l := range bytes.Split([]byte(mockPullOutput), []byte("\n")) {
+	for l := range bytes.SplitSeq([]byte(mockPullOutput), []byte("\n")) {
 		writer.Write(l)
 	}
 	parts := bytes.Split(buf.Bytes(), []byte("\n"))
@@ -353,7 +353,7 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJsonInTerminal(c *check.C) {
 	writer := SimpleJsonMessageEncoderWriter{Encoder: encoder, now: func() time.Time {
 		return time.Time{}
 	}}
-	for _, l := range bytes.Split([]byte(mockPullOutput), []byte("\n")) {
+	for l := range bytes.SplitSeq([]byte(mockPullOutput), []byte("\n")) {
 		writer.Write(l)
 	}
 	parts := bytes.Split(buf.Bytes(), []byte("\n"))

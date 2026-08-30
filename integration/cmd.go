@@ -120,15 +120,17 @@ func (e *Environment) Clone() *Environment {
 func (e *Environment) String() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	ret := fmt.Sprintln("Env vars:")
+	var ret strings.Builder
+	ret.WriteString(fmt.Sprintln("Env vars:"))
 	for k, v := range e.data {
-		ret += fmt.Sprintf("  %s: %#v\n", k, v)
+		ret.WriteString(fmt.Sprintf("  %s: %#v\n", k, v))
 	}
-	ret += fmt.Sprintln("Local vars:")
+	ret.WriteString(fmt.Sprintln("Local vars:"))
 	for k, v := range e.local {
-		ret += fmt.Sprintf("  %s: %#v\n", k, v)
+		ret.WriteString(fmt.Sprintf("  %s: %#v\n", k, v))
 	}
-	return ret[:len(ret)-1]
+	s := ret.String()
+	return s[:len(s)-1]
 }
 
 func (e *Environment) flatData() map[string]string {

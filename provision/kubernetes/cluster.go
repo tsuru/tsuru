@@ -461,8 +461,8 @@ func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 	if nsLabelsConf == "" {
 		return labels, nil
 	}
-	labelsRaw := strings.Split(nsLabelsConf, ",")
-	for _, l := range labelsRaw {
+	labelsRaw := strings.SplitSeq(nsLabelsConf, ",")
+	for l := range labelsRaw {
 		parts := strings.Split(l, "=")
 		if len(parts) != 2 {
 			continue

@@ -109,8 +109,8 @@ func (m fakeMailAddress) Email() string {
 
 func (m fakeMailAddress) Hostname() string {
 	s := string(m)
-	if p := strings.Index(s, "@"); p > -1 {
-		return s[p+1:]
+	if _, after, ok := strings.Cut(s, "@"); ok {
+		return after
 	}
 	return ""
 }

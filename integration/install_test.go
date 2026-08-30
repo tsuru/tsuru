@@ -376,8 +376,8 @@ func appVersions() ExecFlow {
 				// Check that all pods are running and not being deleted
 				res := K("get", "pods", "-l", fmt.Sprintf("tsuru.io/app-name=%s", appName), "-o", `"jsonpath={range .items[*]}{.status.phase},{.metadata.deletionTimestamp}{'\\n'}{end}"`).Run(env)
 				c.Assert(res, ResultOk)
-				podStatuses := strings.Split(strings.TrimSpace(res.Stdout.String()), "\n")
-				for _, status := range podStatuses {
+				podStatuses := strings.SplitSeq(strings.TrimSpace(res.Stdout.String()), "\n")
+				for status := range podStatuses {
 					if status == "" {
 						continue
 					}
