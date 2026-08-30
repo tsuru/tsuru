@@ -63,7 +63,7 @@ func (s *S) TestAddRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "test"},
 			{"name": "context", "value": "global"},
 		},
@@ -151,7 +151,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "test"},
 		},
 	}, eventtest.HasEvent)
@@ -301,7 +301,7 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.permission.add",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "permission", "value": []string{"app.update", "app.deploy"}},
 		},
 	}, eventtest.HasEvent)
@@ -474,7 +474,7 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.permission.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "test"},
 			{"name": ":permission", "value": "app.update"},
 		},
@@ -512,7 +512,7 @@ func (s *S) TestAssignRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "email", "value": emptyToken.GetUserName()},
 			{"name": "context", "value": "myteam"},
 		},
@@ -905,7 +905,7 @@ func (s *S) TestRoleAssignValidateCtxRouterFound(c *check.C) {
 	dr := routerTypes.DynamicRouter{
 		Name:   routerName,
 		Type:   "fake",
-		Config: map[string]interface{}{"a": "b"},
+		Config: map[string]any{"a": "b"},
 	}
 	s.mockService.DynamicRouter.OnGet = func(name string) (*routerTypes.DynamicRouter, error) {
 		return &dr, nil
@@ -1008,7 +1008,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":email", "value": otherToken.GetUserName()},
 			{"name": "context", "value": "myteam"},
 		},
@@ -1203,7 +1203,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "team-create", "value": []string{"r1", "r2"}},
 			{"name": "user-create", "value": "r3"},
 		},
@@ -1212,7 +1212,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r2"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "team-create", "value": []string{"r1", "r2"}},
 			{"name": "user-create", "value": "r3"},
 		},
@@ -1221,7 +1221,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r3"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "team-create", "value": []string{"r1", "r2"}},
 			{"name": "user-create", "value": "r3"},
 		},
@@ -1287,7 +1287,7 @@ func (s *S) TestRemoveDefaultRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "team-create", "value": "r1"},
 		},
 	}, eventtest.HasEvent)
@@ -1317,7 +1317,7 @@ func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "r1"},
 			{"name": "newName", "value": "r2"},
 			{"name": "contextType", "value": "team"},
@@ -1409,7 +1409,7 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "r1"},
 			{"name": "newName", "value": ""},
 			{"name": "contextType", "value": "team"},
@@ -1460,7 +1460,7 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "token_id", "value": teamToken.TokenID},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "newrole"},
@@ -1493,7 +1493,7 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "token_id", "value": teamToken.TokenID},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "rolenotfound"},
@@ -1583,7 +1583,7 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":token_id", "value": teamToken.TokenID},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "newrole"},
@@ -1624,7 +1624,7 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":token_id", "value": teamToken.TokenID},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "rolenotfound"},
@@ -1701,7 +1701,7 @@ func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "group_name", "value": "g1"},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "newrole"},
@@ -1730,7 +1730,7 @@ func (s *S) TestAssignRoleToAuthGroupRoleNotFound(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "group_name", "value": "g1"},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "rolenotfound"},
@@ -1792,7 +1792,7 @@ func (s *S) TestDissociateRoleFromAuthGroup(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":group_name", "value": "g1"},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "newrole"},
@@ -1839,7 +1839,7 @@ func (s *S) TestDissociateRoleFromAuthGroupRoleNotFound(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":group_name", "value": "g1"},
 			{"name": "context", "value": "myapp"},
 			{"name": ":name", "value": "rolenotfound"},

@@ -1656,10 +1656,10 @@ func (s *S) TestEventInfo(c *check.C) {
 	c.Assert(evtInfo.OtherCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
 
 	c.Assert(evtInfo.CustomData, check.DeepEquals, eventTypes.EventInfoCustomData{
-		Start: map[string]interface{}{
+		Start: map[string]any{
 			"a": "value",
 		},
-		End: map[string]interface{}{
+		End: map[string]any{
 			"a": "other",
 		},
 	})

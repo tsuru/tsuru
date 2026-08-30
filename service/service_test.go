@@ -502,39 +502,39 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 				Teams:       []string{"t1", "t2"},
 				Apps:        []string{"app1", "app2"},
 				Jobs:        []string{"job1"},
-				Parameters:  map[string]interface{}{"parameter": "val"},
+				Parameters:  map[string]any{"parameter": "val"},
 			},
 		}},
 	}
 	data, err := json.Marshal(&sm)
 	c.Assert(err, check.IsNil)
-	expected := make([]map[string]interface{}, 2)
-	expected[0] = map[string]interface{}{
+	expected := make([]map[string]any, 2)
+	expected[0] = map[string]any{
 		"service":           "mysql",
 		"instances":         nil,
 		"plans":             nil,
 		"service_instances": nil,
 	}
-	expected[1] = map[string]interface{}{
+	expected[1] = map[string]any{
 		"service":   "mongo",
 		"instances": nil,
 		"plans":     nil,
-		"service_instances": []interface{}{map[string]interface{}{
+		"service_instances": []any{map[string]any{
 			"name":         "my instance",
-			"tags":         []interface{}{"my tag"},
+			"tags":         []any{"my tag"},
 			"team_owner":   "t1",
-			"teams":        []interface{}{"t1", "t2"},
-			"apps":         []interface{}{"app1", "app2"},
-			"jobs":         []interface{}{"job1"},
+			"teams":        []any{"t1", "t2"},
+			"apps":         []any{"app1", "app2"},
+			"jobs":         []any{"job1"},
 			"plan_name":    "",
 			"service_name": "mysql",
 			"description":  "",
-			"parameters": map[string]interface{}{
+			"parameters": map[string]any{
 				"parameter": "val",
 			},
 		}},
 	}
-	result := make([]map[string]interface{}, 2)
+	result := make([]map[string]any, 2)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)

@@ -1805,12 +1805,12 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"srv1": []interface{}{
-			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"srv1": []any{
+			map[string]any{"instance_name": "myinstance", "envs": map[string]any{
 				"DATABASE_HOST": "localhost",
 				"DATABASE_PORT": "3306",
 				"DATABASE_USER": "root",
@@ -1866,12 +1866,12 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"srv1": []interface{}{
-			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"srv1": []any{
+			map[string]any{"instance_name": "myinstance", "envs": map[string]any{
 				"ZMQ_PEER": "8.8.8.8",
 			}},
 		},
@@ -1904,12 +1904,12 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"myservice": []interface{}{
-			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"myservice": []any{
+			map[string]any{"instance_name": "myinstance", "envs": map[string]any{
 				"DATABASE_HOST": "localhost",
 			}},
 		},
@@ -1944,12 +1944,12 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"myservice": []interface{}{
-			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"myservice": []any{
+			map[string]any{"instance_name": "myinstance", "envs": map[string]any{
 				"DATABASE_HOST": "localhost",
 			}},
 		},
@@ -1992,20 +1992,20 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"mysql": []interface{}{
-			map[string]interface{}{"instance_name": "instance1", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"mysql": []any{
+			map[string]any{"instance_name": "instance1", "envs": map[string]any{
 				"DATABASE_HOST": "host1",
 			}},
-			map[string]interface{}{"instance_name": "instance2", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "instance2", "envs": map[string]any{
 				"DATABASE_HOST": "host2",
 			}},
 		},
-		"mongodb": []interface{}{
-			map[string]interface{}{"instance_name": "instance3", "envs": map[string]interface{}{
+		"mongodb": []any{
+			map[string]any{"instance_name": "instance3", "envs": map[string]any{
 				"DATABASE_HOST": "host3",
 			}},
 		},
@@ -2043,15 +2043,15 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 		ManagedBy: "mysql/instance2",
 		Public:    false,
 	})
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"mysql": []interface{}{
-			map[string]interface{}{"instance_name": "instance1", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"mysql": []any{
+			map[string]any{"instance_name": "instance1", "envs": map[string]any{
 				"DATABASE_HOST": "host1",
 			}},
-			map[string]interface{}{"instance_name": "instance2", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "instance2", "envs": map[string]any{
 				"DATABASE_HOST": "host2",
 			}},
 		},
@@ -2071,9 +2071,9 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	})
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"mysql": []interface{}{
-			map[string]interface{}{"instance_name": "instance1", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"mysql": []any{
+			map[string]any{"instance_name": "instance1", "envs": map[string]any{
 				"DATABASE_HOST": "host1",
 			}},
 		},
@@ -2099,10 +2099,10 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := provision.EnvsForApp(a)
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{})
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
@@ -2131,21 +2131,21 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	allEnvs := provision.EnvsForApp(a)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"mysql": []interface{}{
-			map[string]interface{}{"instance_name": "mydb", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"mysql": []any{
+			map[string]any{"instance_name": "mydb", "envs": map[string]any{
 				"DATABASE_NAME": "mydb",
 			}},
-			map[string]interface{}{"instance_name": "yourdb", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "yourdb", "envs": map[string]any{
 				"DATABASE_NAME": "yourdb",
 			}},
-			map[string]interface{}{"instance_name": "herdb", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "herdb", "envs": map[string]any{
 				"DATABASE_NAME": "herdb",
 			}},
-			map[string]interface{}{"instance_name": "ourdb", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "ourdb", "envs": map[string]any{
 				"DATABASE_NAME": "ourdb",
 			}},
 		},
@@ -2175,12 +2175,12 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := provision.EnvsForApp(a)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"mysql": []interface{}{
-			map[string]interface{}{"instance_name": "mydb", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"mysql": []any{
+			map[string]any{"instance_name": "mydb", "envs": map[string]any{
 				"DATABASE_NAME": "mydb",
 			}},
 		},
@@ -2210,12 +2210,12 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := provision.EnvsForApp(a)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"mysql": []interface{}{
-			map[string]interface{}{"instance_name": "mydb", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"mysql": []any{
+			map[string]any{"instance_name": "mydb", "envs": map[string]any{
 				"DATABASE_NAME": "mydb",
 			}},
 		},
@@ -2248,10 +2248,10 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := provision.EnvsForApp(a)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 	c.Assert(s.provisioner.RestartsByVersion(a, ""), check.Equals, 1)
@@ -2278,10 +2278,10 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := provision.EnvsForApp(a)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
@@ -2578,18 +2578,18 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 
-	unitAddress := map[string]interface{}{}
+	unitAddress := map[string]any{}
 	rawAddress, err := json.Marshal(units[0].Address)
 	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(rawAddress, &unitAddress)
 	c.Assert(err, check.IsNil)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"name":     "name",
 		"platform": "Framework",
-		"teams":    []interface{}{"myteam"},
-		"units": []interface{}{
-			map[string]interface{}{
+		"teams":    []any{"myteam"},
+		"units": []any{
+			map[string]any{
 				"Address":      unitAddress,
 				"Addresses":    nil,
 				"AppName":      "name",
@@ -2608,16 +2608,16 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"StatusReason": "",
 				"Type":         "Framework", "Version": 0},
 		},
-		"unitsMetrics": []interface{}{
-			map[string]interface{}{
+		"unitsMetrics": []any{
+			map[string]any{
 				"ID":     "name-0",
 				"CPU":    "10m",
 				"Memory": "100Mi",
 			},
 		},
 		"ip": "name.fakerouter.com",
-		"internalAddresses": []interface{}{
-			map[string]interface{}{
+		"internalAddresses": []any{
+			map[string]any{
 				"Domain":     "name-web.fake-cluster.local",
 				"Protocol":   "TCP",
 				"Port":       float64(80),
@@ -2625,7 +2625,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"Process":    "web",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs.fake-cluster.local",
 				"Protocol":   "UDP",
 				"Port":       float64(12201),
@@ -2633,7 +2633,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"Process":    "logs",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs-v2.fake-cluster.local",
 				"Protocol":   "UDP",
 				"Port":       float64(12201),
@@ -2641,7 +2641,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"Process":    "logs",
 				"Version":    "2",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-web-v2.fake-cluster.local",
 				"Protocol":   "TCP",
 				"Port":       float64(80),
@@ -2651,37 +2651,37 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			},
 		},
 		"provisioner": "fake",
-		"cname":       []interface{}{"name.mycompany.com"},
+		"cname":       []any{"name.mycompany.com"},
 		"owner":       s.user.Email,
 		"deploys":     float64(7),
 		"pool":        "test",
 		"description": "description",
 		"teamowner":   "myteam",
-		"plan": map[string]interface{}{
+		"plan": map[string]any{
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
 		},
 		"router":     "fake",
-		"routeropts": map[string]interface{}{"opt1": "val1"},
-		"routers": []interface{}{
-			map[string]interface{}{
+		"routeropts": map[string]any{"opt1": "val1"},
+		"routers": []any{
+			map[string]any{
 				"name":      "fake",
 				"address":   "name.fakerouter.com",
-				"addresses": []interface{}{"name.fakerouter.com"},
+				"addresses": []any{"name.fakerouter.com"},
 				"type":      "fake",
-				"opts":      map[string]interface{}{"opt1": "val1"},
+				"opts":      map[string]any{"opt1": "val1"},
 				"status":    "ready",
 			},
 		},
-		"tags": []interface{}{"tag a", "tag b"},
-		"metadata": map[string]interface{}{
+		"tags": []any{"tag a", "tag b"},
+		"metadata": map[string]any{
 			"annotations": nil,
 			"labels":      nil,
 		},
-		"volumeBinds": []interface{}{
-			map[string]interface{}{
-				"ID": map[string]interface{}{
+		"volumeBinds": []any{
+			map[string]any{
+				"ID": map[string]any{
 					"App":        "name",
 					"MountPoint": "/mnt",
 					"Volume":     "test-volume",
@@ -2689,18 +2689,18 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"ReadOnly": true,
 			},
 		},
-		"quota": map[string]interface{}{
+		"quota": map[string]any{
 			"inuse": float64(0),
 			"limit": float64(-1),
 		},
-		"serviceInstanceBinds": []interface{}{},
+		"serviceInstanceBinds": []any{},
 		"dashboardURL":         "http://mydashboard.com/pools/test/apps/name",
 	}
 	appInfo, err := AppInfo(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, tsuruTest.JSONEquals, expected)
@@ -2736,14 +2736,14 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"name":     "name",
 		"platform": "Framework",
-		"teams":    []interface{}{"team1"},
-		"units":    []interface{}{},
+		"teams":    []any{"team1"},
+		"units":    []any{},
 		"ip":       "name.fakerouter.com",
-		"internalAddresses": []interface{}{
-			map[string]interface{}{
+		"internalAddresses": []any{
+			map[string]any{
 				"Domain":     "name-web.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -2751,7 +2751,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 				"Protocol":   "TCP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -2759,7 +2759,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs-v2.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -2767,7 +2767,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "2",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-web-v2.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -2777,58 +2777,58 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 			},
 		},
 		"provisioner": "fake",
-		"cname":       []interface{}{"name.mycompany.com"},
+		"cname":       []any{"name.mycompany.com"},
 		"owner":       "appOwner",
 		"deploys":     float64(7),
 		"pool":        "test",
 		"description": "description",
 		"teamowner":   "myteam",
-		"plan": map[string]interface{}{
+		"plan": map[string]any{
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"annotations": nil,
 			"labels":      nil,
 		},
 		"router":     "fake",
-		"routeropts": map[string]interface{}{"opt1": "val1"},
-		"routers": []interface{}{
-			map[string]interface{}{
+		"routeropts": map[string]any{"opt1": "val1"},
+		"routers": []any{
+			map[string]any{
 				"name":    "fake",
 				"address": "name.fakerouter.com",
-				"addresses": []interface{}{
+				"addresses": []any{
 					"name.fakerouter.com",
 				},
 				"type":   "fake",
-				"opts":   map[string]interface{}{"opt1": "val1"},
+				"opts":   map[string]any{"opt1": "val1"},
 				"status": "ready",
 			},
 		},
-		"tags": []interface{}{"tag a", "tag b"},
-		"autoscale": []interface{}{
-			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "version": float64(0), "behavior": map[string]interface{}{}},
+		"tags": []any{"tag a", "tag b"},
+		"autoscale": []any{
+			map[string]any{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "version": float64(0), "behavior": map[string]any{}},
 		},
-		"autoscaleRecommendation": []interface{}{
-			map[string]interface{}{
+		"autoscaleRecommendation": []any{
+			map[string]any{
 				"process": "p1",
-				"recommendations": []interface{}{
-					map[string]interface{}{"type": "target", "cpu": "100m", "memory": "100MiB"},
+				"recommendations": []any{
+					map[string]any{"type": "target", "cpu": "100m", "memory": "100MiB"},
 				},
 			},
 		},
-		"quota": map[string]interface{}{
+		"quota": map[string]any{
 			"inuse": float64(0),
 			"limit": float64(-1),
 		},
-		"serviceInstanceBinds": []interface{}{},
+		"serviceInstanceBinds": []any{},
 	}
 	appInfo, err := AppInfo(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
@@ -2842,11 +2842,11 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	}
 	err := routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"name":        "name",
 		"platform":    "",
 		"teams":       nil,
-		"units":       []interface{}{},
+		"units":       []any{},
 		"ip":          "name.fakerouter.com",
 		"cname":       nil,
 		"owner":       "",
@@ -2854,37 +2854,37 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"pool":        "",
 		"description": "",
 		"teamowner":   "",
-		"plan": map[string]interface{}{
+		"plan": map[string]any{
 			"name":     "",
 			"memory":   float64(0),
 			"cpumilli": float64(0),
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"annotations": nil,
 			"labels":      nil,
 		},
 		"router":     "fake",
-		"routeropts": map[string]interface{}{},
-		"routers": []interface{}{
-			map[string]interface{}{
+		"routeropts": map[string]any{},
+		"routers": []any{
+			map[string]any{
 				"name":    "fake",
 				"address": "name.fakerouter.com",
-				"addresses": []interface{}{
+				"addresses": []any{
 					"name.fakerouter.com",
 				},
 				"type":   "fake",
-				"opts":   map[string]interface{}{},
+				"opts":   map[string]any{},
 				"status": "ready",
 			},
 		},
 		"tags":        nil,
 		"provisioner": "fake",
-		"quota": map[string]interface{}{
+		"quota": map[string]any{
 			"inuse": float64(0),
 			"limit": float64(-1),
 		},
-		"internalAddresses": []interface{}{
-			map[string]interface{}{
+		"internalAddresses": []any{
+			map[string]any{
 				"Domain":     "name-web.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -2892,7 +2892,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 				"Protocol":   "TCP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -2900,7 +2900,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs-v2.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -2908,7 +2908,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "2",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-web-v2.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -2917,13 +2917,13 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 				"Version":    "2",
 			},
 		},
-		"serviceInstanceBinds": []interface{}{},
+		"serviceInstanceBinds": []any{},
 	}
 	appInfo, err := AppInfo(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result["error"], check.Matches, `(?s)unable to list app units: my err.*`)
@@ -2953,50 +2953,50 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 	}
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"name":        "name",
 		"platform":    "Framework:v1",
-		"teams":       []interface{}{"team1"},
-		"units":       []interface{}{},
+		"teams":       []any{"team1"},
+		"units":       []any{},
 		"ip":          "name.fakerouter.com",
-		"cname":       []interface{}{"name.mycompany.com"},
+		"cname":       []any{"name.mycompany.com"},
 		"owner":       "appOwner",
 		"deploys":     float64(7),
 		"pool":        "test",
 		"description": "description",
 		"teamowner":   "myteam",
-		"plan": map[string]interface{}{
+		"plan": map[string]any{
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"annotations": nil,
-			"labels":      []interface{}{map[string]interface{}{"name": "label", "value": "value"}},
+			"labels":      []any{map[string]any{"name": "label", "value": "value"}},
 		},
 		"router":     "fake",
-		"routeropts": map[string]interface{}{"opt1": "val1"},
-		"routers": []interface{}{
-			map[string]interface{}{
+		"routeropts": map[string]any{"opt1": "val1"},
+		"routers": []any{
+			map[string]any{
 				"name":    "fake",
 				"address": "name.fakerouter.com",
-				"addresses": []interface{}{
+				"addresses": []any{
 					"name.fakerouter.com",
 				},
 				"type":   "fake",
-				"opts":   map[string]interface{}{"opt1": "val1"},
+				"opts":   map[string]any{"opt1": "val1"},
 				"status": "ready",
 			},
 		},
-		"tags":        []interface{}{"tag a", "tag b"},
+		"tags":        []any{"tag a", "tag b"},
 		"provisioner": "fake",
-		"quota": map[string]interface{}{
+		"quota": map[string]any{
 			"inuse": float64(0),
 			"limit": float64(-1),
 		},
-		"serviceInstanceBinds": []interface{}{},
-		"internalAddresses": []interface{}{
-			map[string]interface{}{
+		"serviceInstanceBinds": []any{},
+		"internalAddresses": []any{
+			map[string]any{
 				"Domain":     "name-web.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -3004,7 +3004,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 				"Protocol":   "TCP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -3012,7 +3012,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-logs-v2.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -3020,7 +3020,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "2",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "name-web-v2.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -3034,7 +3034,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
@@ -3066,53 +3066,53 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]interface{}{
+	c.Assert(result, check.DeepEquals, map[string]any{
 		"name":        "my-awesome-app",
 		"platform":    "awesome-platform:v1",
-		"teams":       []interface{}{"team-one"},
-		"units":       []interface{}{},
+		"teams":       []any{"team-one"},
+		"units":       []any{},
 		"ip":          "my-awesome-app.fakerouter.com",
-		"cname":       []interface{}{"my-awesome-app.mycompany.com"},
+		"cname":       []any{"my-awesome-app.mycompany.com"},
 		"owner":       "admin@example.com",
 		"deploys":     float64(1),
 		"pool":        "my-pool",
 		"description": "Awesome description about my-awesome-app",
 		"teamowner":   "team-one",
-		"plan": map[string]interface{}{
+		"plan": map[string]any{
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"annotations": nil,
 			"labels":      nil,
 		},
 		"router":     "fake",
-		"routeropts": map[string]interface{}{"opt1": "val1"},
-		"routers": []interface{}{
-			map[string]interface{}{
+		"routeropts": map[string]any{"opt1": "val1"},
+		"routers": []any{
+			map[string]any{
 				"name":    "fake",
 				"address": "my-awesome-app.fakerouter.com",
-				"addresses": []interface{}{
+				"addresses": []any{
 					"my-awesome-app.fakerouter.com",
 				},
 				"type":   "fake",
-				"opts":   map[string]interface{}{"opt1": "val1"},
+				"opts":   map[string]any{"opt1": "val1"},
 				"status": "ready",
 			},
 		},
 		"tags":        nil,
 		"provisioner": "fake",
-		"quota": map[string]interface{}{
+		"quota": map[string]any{
 			"inuse": float64(100),
 			"limit": float64(777),
 		},
-		"serviceInstanceBinds": []interface{}{},
-		"internalAddresses": []interface{}{
-			map[string]interface{}{
+		"serviceInstanceBinds": []any{},
+		"internalAddresses": []any{
+			map[string]any{
 				"Domain":     "my-awesome-app-web.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -3120,7 +3120,7 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 				"Protocol":   "TCP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "my-awesome-app-logs.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -3128,7 +3128,7 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "my-awesome-app-logs-v2.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -3136,7 +3136,7 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "2",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "my-awesome-app-web-v2.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -3220,57 +3220,57 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]interface{}{
+	c.Assert(result, check.DeepEquals, map[string]any{
 		"name":        "my-awesome-app",
 		"platform":    "awesome-platform:v1",
-		"teams":       []interface{}{"team-one"},
-		"units":       []interface{}{},
+		"teams":       []any{"team-one"},
+		"units":       []any{},
 		"ip":          "my-awesome-app.fakerouter.com",
-		"cname":       []interface{}{"my-awesome-app.mycompany.com"},
+		"cname":       []any{"my-awesome-app.mycompany.com"},
 		"owner":       "admin@example.com",
 		"deploys":     float64(1),
 		"pool":        "my-pool",
 		"description": "Awesome description about my-awesome-app",
 		"teamowner":   "team-one",
-		"plan": map[string]interface{}{
+		"plan": map[string]any{
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"annotations": nil,
 			"labels":      nil,
 		},
 		"router":     "fake",
-		"routeropts": map[string]interface{}{"opt1": "val1"},
-		"routers": []interface{}{
-			map[string]interface{}{
+		"routeropts": map[string]any{"opt1": "val1"},
+		"routers": []any{
+			map[string]any{
 				"name":    "fake",
 				"address": "my-awesome-app.fakerouter.com",
-				"addresses": []interface{}{
+				"addresses": []any{
 					"my-awesome-app.fakerouter.com",
 				},
 				"type":   "fake",
-				"opts":   map[string]interface{}{"opt1": "val1"},
+				"opts":   map[string]any{"opt1": "val1"},
 				"status": "ready",
 			},
 		},
 		"tags":        nil,
 		"provisioner": "fake",
-		"quota": map[string]interface{}{
+		"quota": map[string]any{
 			"inuse": float64(0),
 			"limit": float64(-1),
 		},
-		"serviceInstanceBinds": []interface{}{
-			map[string]interface{}{"service": "service-1", "instance": "service-1-1", "plan": ""},
-			map[string]interface{}{"service": "service-1", "instance": "service-1-2", "plan": "some-example"},
-			map[string]interface{}{"service": "service-2", "instance": "service-2-1", "plan": "another-plan"},
+		"serviceInstanceBinds": []any{
+			map[string]any{"service": "service-1", "instance": "service-1-1", "plan": ""},
+			map[string]any{"service": "service-1", "instance": "service-1-2", "plan": "some-example"},
+			map[string]any{"service": "service-2", "instance": "service-2-1", "plan": "another-plan"},
 		},
-		"internalAddresses": []interface{}{
-			map[string]interface{}{
+		"internalAddresses": []any{
+			map[string]any{
 				"Domain":     "my-awesome-app-web.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -3278,7 +3278,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 				"Protocol":   "TCP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "my-awesome-app-logs.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -3286,7 +3286,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "my-awesome-app-logs-v2.fake-cluster.local",
 				"Port":       float64(12201),
 				"TargetPort": float64(12201),
@@ -3294,7 +3294,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 				"Protocol":   "UDP",
 				"Version":    "2",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Domain":     "my-awesome-app-web-v2.fake-cluster.local",
 				"Port":       float64(80),
 				"TargetPort": float64(8080),
@@ -3572,15 +3572,15 @@ func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 	delete(env, "TSURU_APPNAME")
 	delete(env, "TSURU_APPDIR")
 	c.Assert(env, check.DeepEquals, expected)
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err := json.Unmarshal([]byte(serviceEnvsRaw.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"srv1": []interface{}{
-			map[string]interface{}{"instance_name": "inst1", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"srv1": []any{
+			map[string]any{"instance_name": "inst1", "envs": map[string]any{
 				"DB_HOST": "host1",
 			}},
-			map[string]interface{}{"instance_name": "inst2", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "inst2", "envs": map[string]any{
 				"DB_HOST": "host2",
 			}},
 		},

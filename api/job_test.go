@@ -1792,7 +1792,7 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":job", "value": job.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -1887,7 +1887,7 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":job", "value": job.Name},
 			{"name": ":instance", "value": instance.Name},
 			{"name": ":service", "value": instance.ServiceName},
@@ -2427,13 +2427,13 @@ func (s *S) TestGetOneJobEnv(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	expected := []map[string]interface{}{{
+	expected := []map[string]any{{
 		"name":   "MY_ENV",
 		"value":  "my-value",
 		"public": true,
 		"alias":  "",
 	}}
-	result := []map[string]interface{}{}
+	result := []map[string]any{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
@@ -2484,11 +2484,11 @@ func (s *S) TestGetMultipleJobEnvs(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
 
-	expected := []map[string]interface{}{
+	expected := []map[string]any{
 		{"name": "MY_ENV", "value": "my-value", "public": true, "alias": ""},
 		{"name": "THEIR_ENV", "value": "their-value", "public": true, "alias": ""},
 	}
-	var got []map[string]interface{}
+	var got []map[string]any
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, expected)
@@ -2602,7 +2602,7 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 		Target: jobTarget(j.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": j.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "localhost"},
@@ -2675,7 +2675,7 @@ func (s *S) TestSetJobEnvPrivateEnvironmentVariableInTheJob(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": job.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_PASSWORD"},
 			{"name": "Envs.0.Value", "value": "*****"},
@@ -2745,7 +2745,7 @@ func (s *S) TestSetJobEnvSetMultipleEnvironmentVariablesInTheJob(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": job.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "localhost"},
@@ -2825,7 +2825,7 @@ func (s *S) TestSetJobEnvNotToChangeValueOfServiceVariables(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": job.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
 			{"name": "Envs.0.Value", "value": "newhost"},
@@ -3083,7 +3083,7 @@ func (s *S) TestUnsetJobEnv(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": job.Name},
 			{"name": "env", "value": "DATABASE_HOST"},
 		},
@@ -3147,7 +3147,7 @@ func (s *S) TestUnsetJobEnvRemovesMultipleEnvironmentVariables(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": job.Name},
 			{"name": "env", "value": []string{"DATABASE_HOST", "DATABASE_USER"}},
 		},
@@ -3207,7 +3207,7 @@ func (s *S) TestUnsetJobEnvRemovesPrivateVariables(c *check.C) {
 		Target: jobTarget(job.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "job.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": job.Name},
 			{"name": "env", "value": "DATABASE_PASSWORD"},
 		},

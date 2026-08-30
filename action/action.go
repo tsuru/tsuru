@@ -19,7 +19,7 @@ import (
 
 // Result is the value returned by Forward. It is used in the call of the next
 // action, and also when rolling back the actions.
-type Result interface{}
+type Result any
 
 // Forward is the function called by the pipeline executor in the forward
 // phase.  It receives a FWContext instance, that contains the list of
@@ -43,7 +43,7 @@ type FWContext struct {
 	Previous Result
 
 	// List of parameters given to the executor.
-	Params []interface{}
+	Params []any
 }
 
 // BWContext is the context used in calls to Backward functions (backward
@@ -54,7 +54,7 @@ type BWContext struct {
 	FWResult Result
 
 	// List of parameters given to the executor.
-	Params []interface{}
+	Params []any
 }
 
 // Action defines actions that should be . It is composed of two functions:
@@ -139,7 +139,7 @@ func (p *Pipeline) Result() Result {
 //
 // After rolling back all completed actions, it returns the original error
 // returned by the action that failed.
-func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err error) {
+func (p *Pipeline) Execute(ctx context.Context, params ...any) (err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -196,7 +196,7 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 	return nil
 }
 
-func (p *Pipeline) rollback(ctx context.Context, index int, params []interface{}) {
+func (p *Pipeline) rollback(ctx context.Context, index int, params []any) {
 	tracer := otel.Tracer("tsuru/action")
 	bwCtx := BWContext{Params: params}
 	for i := index; i >= 0; i-- {

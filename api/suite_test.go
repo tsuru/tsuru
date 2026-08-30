@@ -64,7 +64,7 @@ func (c *hasAccessToChecker) Info() *check.CheckerInfo {
 	return &check.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
 }
 
-func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
+func (c *hasAccessToChecker) Check(params []any, names []string) (bool, string) {
 	if len(params) != 2 {
 		return false, "you must provide two parameters"
 	}

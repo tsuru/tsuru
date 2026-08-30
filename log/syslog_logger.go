@@ -34,7 +34,7 @@ func (l *syslogLogger) Error(o string) {
 	l.w.Err(o)
 }
 
-func (l *syslogLogger) Errorf(format string, o ...interface{}) {
+func (l *syslogLogger) Errorf(format string, o ...any) {
 	l.w.Err(fmt.Sprintf(format, o...))
 }
 
@@ -43,7 +43,7 @@ func (l *syslogLogger) Fatal(o string) {
 	os.Exit(1)
 }
 
-func (l *syslogLogger) Fatalf(format string, o ...interface{}) {
+func (l *syslogLogger) Fatalf(format string, o ...any) {
 	l.Fatal(fmt.Sprintf(format, o...))
 }
 
@@ -53,7 +53,7 @@ func (l *syslogLogger) Debug(o string) {
 	}
 }
 
-func (l *syslogLogger) Debugf(format string, o ...interface{}) {
+func (l *syslogLogger) Debugf(format string, o ...any) {
 	l.Debug(fmt.Sprintf(format, o...))
 }
 

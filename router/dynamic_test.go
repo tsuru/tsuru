@@ -59,7 +59,7 @@ func (s *S) TestDynamicRouterServiceUpdate(c *check.C) {
 	err = svc.Create(ctx, router.DynamicRouter{
 		Name: "mine",
 		Type: "myrouter",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": "b",
 			"c": "d",
 			"e": "f",
@@ -68,7 +68,7 @@ func (s *S) TestDynamicRouterServiceUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = svc.Update(ctx, router.DynamicRouter{
 		Name: "mine",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": nil,
 			"c": "999",
 			"z": "x",
@@ -80,7 +80,7 @@ func (s *S) TestDynamicRouterServiceUpdate(c *check.C) {
 	c.Assert(dbDR, check.DeepEquals, &router.DynamicRouter{
 		Name: "mine",
 		Type: "myrouter",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"c": "999",
 			"z": "x",
 			"e": "f",

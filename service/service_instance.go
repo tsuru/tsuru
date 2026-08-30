@@ -49,16 +49,16 @@ var (
 )
 
 type ServiceInstance struct {
-	Name        string                 `json:"name"`
-	ServiceName string                 `bson:"service_name" json:"service_name"`
-	PlanName    string                 `bson:"plan_name" json:"plan_name"`
-	Apps        []string               `json:"apps"`
-	Jobs        []string               `json:"jobs"`
-	Teams       []string               `json:"teams"`
-	TeamOwner   string                 `json:"team_owner"`
-	Description string                 `json:"description"`
-	Tags        []string               `json:"tags"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+	Name        string         `json:"name"`
+	ServiceName string         `bson:"service_name" json:"service_name"`
+	PlanName    string         `bson:"plan_name" json:"plan_name"`
+	Apps        []string       `json:"apps"`
+	Jobs        []string       `json:"jobs"`
+	Teams       []string       `json:"teams"`
+	TeamOwner   string         `json:"team_owner"`
+	Description string         `json:"description"`
+	Tags        []string       `json:"tags"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
 	// Pool is the pool name which the Service Instance should run into.
 	// This field is mandatory iff the parent Service is running in
 	// multi-cluster mode (see Service.IsMultiCluster field)
@@ -332,7 +332,7 @@ func (si *ServiceInstance) Revoke(ctx context.Context, teamName string) error {
 	return si.updateData(ctx, mongoBSON.M{"$pull": mongoBSON.M{"teams": team.Name}})
 }
 
-func genericServiceInstancesFilter(services interface{}, teams []string) mongoBSON.M {
+func genericServiceInstancesFilter(services any, teams []string) mongoBSON.M {
 	query := mongoBSON.M{}
 	if len(teams) != 0 {
 		query["teams"] = mongoBSON.M{"$in": teams}

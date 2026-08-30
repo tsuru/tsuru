@@ -142,7 +142,7 @@ func (s *S) TestEnsureBackend(c *check.C) {
 	routerV2 := s.testRouter
 	app := appTypes.App{Name: "myapp", Pool: "mypool", Teams: []string{"team01", "team02"}, TeamOwner: "team03"}
 	err := routerV2.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{
-		Opts: map[string]interface{}{
+		Opts: map[string]any{
 			"myinfo.io/test": "test",
 		},
 		Tags: []string{"tag1", "tag2"},
@@ -167,11 +167,11 @@ func (s *S) TestEnsureBackend(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["myapp"].tags, check.DeepEquals, []string{"tag1", "tag2"})
-	c.Assert(s.apiRouter.backends["myapp"].opts, check.DeepEquals, map[string]interface{}{
+	c.Assert(s.apiRouter.backends["myapp"].opts, check.DeepEquals, map[string]any{
 		"myinfo.io/test":         "test",
 		"tsuru.io/app-pool":      "mypool",
 		"tsuru.io/app-teamowner": "team03",
-		"tsuru.io/app-teams":     []interface{}{"team01", "team02"},
+		"tsuru.io/app-teams":     []any{"team01", "team02"},
 	})
 	c.Assert(s.apiRouter.backends["myapp"].prefixAddrs, check.DeepEquals, map[string]routesReq{
 		"": {
@@ -232,7 +232,7 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 		}
 	})
 	os.Setenv("ROUTER_ENV_HEADER_OPT", "XYZ")
-	config.Set("routers:apirouter:headers", map[interface{}]interface{}{"X-CUSTOM": "HI", "X-CUSTOM-ENV": "$ROUTER_ENV_HEADER_OPT"})
+	config.Set("routers:apirouter:headers", map[any]any{"X-CUSTOM": "HI", "X-CUSTOM-ENV": "$ROUTER_ENV_HEADER_OPT"})
 	defer config.Unset("router:apirouter:headers")
 	defer os.Unsetenv("ROUTER_ENV_HEADER_OPT")
 	r, err := createRouter("apirouter", router.ConfigGetterFromPrefix("routers:apirouter"))
@@ -254,8 +254,8 @@ func (s *S) TestCreateDuplicatedCustomHeaders(c *check.C) {
 		}
 	})
 	os.Setenv("ROUTER_ENV_HEADER_OPT", "XYZ")
-	config.Set("routers:apirouter:headers", map[interface{}]interface{}{
-		"X-CUSTOM-ENV": []interface{}{
+	config.Set("routers:apirouter:headers", map[any]any{
+		"X-CUSTOM-ENV": []any{
 			"$ROUTER_ENV_HEADER_OPT",
 			"ABC",
 		},
@@ -314,7 +314,7 @@ type backend struct {
 	swapWith    string
 	cnameOnly   bool
 	healthcheck routerTypes.HealthcheckData
-	opts        map[string]interface{}
+	opts        map[string]any
 	prefixAddrs map[string]routesReq
 }
 
@@ -364,7 +364,7 @@ func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	var req map[string]interface{}
+	var req map[string]any
 	json.NewDecoder(r.Body).Decode(&req)
 	f.backends[name] = &backend{opts: req, addr: name + ".apirouter.com"}
 }
@@ -414,7 +414,7 @@ func (f *fakeRouterAPI) updateBackend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	var req map[string]interface{}
+	var req map[string]any
 	json.NewDecoder(r.Body).Decode(&req)
 	backend.opts = req
 }

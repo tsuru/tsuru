@@ -24,7 +24,7 @@ func (s *PoolSuite) TestFindAll(c *check.C) {
 	collection, err := storagev2.PoolCollection()
 	c.Assert(err, check.IsNil)
 
-	_, err = collection.InsertMany(context.TODO(), []interface{}{
+	_, err = collection.InsertMany(context.TODO(), []any{
 		mongoBSON.M{"_id": "pool-A", "provisioner": "docker", "default": true},
 		mongoBSON.M{"_id": "pool-B", "provisioner": "kubernetes"},
 	},
@@ -41,7 +41,7 @@ func (s *PoolSuite) TestFindAll(c *check.C) {
 func (s *PoolSuite) TestFindByName(c *check.C) {
 	collection, err := storagev2.PoolCollection()
 	c.Assert(err, check.IsNil)
-	_, err = collection.InsertMany(context.TODO(), []interface{}{
+	_, err = collection.InsertMany(context.TODO(), []any{
 		mongoBSON.M{"_id": "pool-A", "provisioner": "docker", "default": true},
 		mongoBSON.M{"_id": "pool-B", "provisioner": "kubernetes"},
 	})

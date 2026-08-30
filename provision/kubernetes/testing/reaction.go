@@ -623,7 +623,7 @@ func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace str
 	return nil
 }
 
-func shortMD5ForObject(i interface{}) string {
+func shortMD5ForObject(i any) string {
 	b, _ := json.Marshal(i)
 	m := md5.Sum(b)
 

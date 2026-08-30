@@ -115,11 +115,11 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.Plan = s.mockPlanService
 }
 
-func asMapStringInterface(val interface{}) map[string]interface{} {
+func asMapStringInterface(val any) map[string]any {
 	if val == nil {
 		return nil
 	}
-	if mapVal, ok := val.(map[string]interface{}); ok {
+	if mapVal, ok := val.(map[string]any); ok {
 		return mapVal
 	}
 	return nil

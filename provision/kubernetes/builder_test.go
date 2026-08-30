@@ -20,7 +20,7 @@ func newEmptyVersion(c *check.C, app *appTypes.App) appTypes.AppVersion {
 	return version
 }
 
-func newVersion(c *check.C, app *appTypes.App, processes map[string][]string, customData ...map[string]interface{}) appTypes.AppVersion {
+func newVersion(c *check.C, app *appTypes.App, processes map[string][]string, customData ...map[string]any) appTypes.AppVersion {
 	version := newEmptyVersion(c, app)
 	err := version.CommitBuildImage()
 	c.Assert(err, check.IsNil)
@@ -38,14 +38,14 @@ func newVersion(c *check.C, app *appTypes.App, processes map[string][]string, cu
 	return version
 }
 
-func newCommittedVersion(c *check.C, app *appTypes.App, processes map[string][]string, customData ...map[string]interface{}) appTypes.AppVersion {
+func newCommittedVersion(c *check.C, app *appTypes.App, processes map[string][]string, customData ...map[string]any) appTypes.AppVersion {
 	version := newVersion(c, app, processes, customData...)
 	err := version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	return version
 }
 
-func newSuccessfulVersion(c *check.C, app *appTypes.App, processes map[string][]string, customData ...map[string]interface{}) appTypes.AppVersion {
+func newSuccessfulVersion(c *check.C, app *appTypes.App, processes map[string][]string, customData ...map[string]any) appTypes.AppVersion {
 	version := newCommittedVersion(c, app, processes, customData...)
 	err := version.CommitSuccessful()
 	c.Assert(err, check.IsNil)

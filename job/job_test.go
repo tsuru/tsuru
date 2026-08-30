@@ -1189,15 +1189,15 @@ func (s *S) TestJobEnvsWithServiceEnvConflict(c *check.C) {
 	delete(env, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(env, check.DeepEquals, expected)
 
-	var serviceEnvVal map[string]interface{}
+	var serviceEnvVal map[string]any
 	err := json.Unmarshal([]byte(serviceEnvsRaw.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
-		"my-service": []interface{}{
-			map[string]interface{}{"instance_name": "my-instance-1", "envs": map[string]interface{}{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]any{
+		"my-service": []any{
+			map[string]any{"instance_name": "my-instance-1", "envs": map[string]any{
 				"DB_HOST": "fake.host1",
 			}},
-			map[string]interface{}{"instance_name": "my-instance-2", "envs": map[string]interface{}{
+			map[string]any{"instance_name": "my-instance-2", "envs": map[string]any{
 				"DB_HOST": "fake.host2",
 			}},
 		},

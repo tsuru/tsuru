@@ -241,7 +241,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistentEphemeral(_ *check.C) {
 		Opts: map[string]string{
 			"capacity": "10Gi",
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"storage-class": "my-storage-class",
 		}},
 		Pool:      "test-default",
@@ -515,7 +515,7 @@ func (s *S) TestDeleteVolume(_ *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"storage-class": "myown",
 		}},
 		Pool:      "test-default",
@@ -559,7 +559,7 @@ func (s *S) TestVolumeExists(_ *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"storage-class": "mystorage-class",
 		}},
 		Pool:      "test-default",

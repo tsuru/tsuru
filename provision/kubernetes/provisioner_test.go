@@ -1304,12 +1304,12 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 	processes := map[string][]string{
 		"web": {"run", "mycmd", "web"},
 	}
-	customData := map[string]interface{}{
-		"kubernetes": map[string]interface{}{
-			"groups": map[string]interface{}{
-				"pod1": map[string]interface{}{
-					"web": map[string]interface{}{
-						"ports": []interface{}{},
+	customData := map[string]any{
+		"kubernetes": map[string]any{
+			"groups": map[string]any{
+				"pod1": map[string]any{
+					"web": map[string]any{
+						"ports": []any{},
 					},
 				},
 			},
@@ -1339,30 +1339,30 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	processes := map[string][]string{
 		"web": {"run mycmd arg1"},
 	}
-	customData := map[string]interface{}{
-		"kubernetes": map[string]interface{}{
-			"groups": map[string]interface{}{
-				"pod1": map[string]interface{}{
-					"web": map[string]interface{}{
-						"ports": []interface{}{
-							map[string]interface{}{
+	customData := map[string]any{
+		"kubernetes": map[string]any{
+			"groups": map[string]any{
+				"pod1": map[string]any{
+					"web": map[string]any{
+						"ports": []any{
+							map[string]any{
 								"name": "my-port",
 								"port": 9000,
 							},
-							map[string]interface{}{
+							map[string]any{
 								"protocol":    "tcp",
 								"target_port": 8080,
 							},
 						},
 					},
 				},
-				"pod2": map[string]interface{}{
-					"proc2": map[string]interface{}{},
+				"pod2": map[string]any{
+					"proc2": map[string]any{},
 				},
-				"pod3": map[string]interface{}{
-					"proc3": map[string]interface{}{
-						"ports": []interface{}{
-							map[string]interface{}{
+				"pod3": map[string]any{
+					"proc3": map[string]any{
+						"ports": []any{
+							map[string]any{
 								"protocol":    "udp",
 								"port":        9000,
 								"target_port": 9001,
@@ -2156,7 +2156,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"plugin": "emptyDir",
 		}},
 		Pool:      "test-default",
@@ -2224,7 +2224,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"storage-class": "my-storageclass",
 		}},
 		Pool:      "test-default",
@@ -2277,7 +2277,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"storage-class": "mystorage-class",
 		}},
 		Pool:      a.Pool,
@@ -2360,7 +2360,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"storage-class": "myclass",
 		}},
 		Pool:      a.Pool,
@@ -2467,7 +2467,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		"proc5": {"python", "worker.py"},
 		"proc6": {"python", "proc6.py"},
 	},
-		map[string]interface{}{
+		map[string]any{
 			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
 				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{

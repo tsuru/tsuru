@@ -172,7 +172,7 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 		Target: serviceTarget("some-service"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "team", "value": "tsuruteam"},
 			{"name": "username", "value": "test"},
 			{"name": "endpoint", "value": "someservice.com"},
@@ -213,7 +213,7 @@ func (s *ProvisionSuite) TestServiceCreateMultipleEndpoints(c *check.C) {
 		Target: serviceTarget("some-service"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "team", "value": "tsuruteam"},
 			{"name": "username", "value": "test"},
 			{"name": "endpoints.cluster1", "value": "cluster1.com"},
@@ -441,7 +441,7 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 		Target: serviceTarget("mysqlapi"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "username", "value": "mysqltest"},
 			{"name": "endpoint", "value": "mysqlapi.com"},
 		},
@@ -571,7 +571,7 @@ func (s *ProvisionSuite) TestServiceUpdateWithoutTeamIgnoresOwnerTeams(c *check.
 		Target: serviceTarget("mysqlapi"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "username", "value": "mysqltest"},
 			{"name": "endpoint", "value": "mysqlapi.com"},
 		},
@@ -675,7 +675,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 		Target: serviceTarget("mysql"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "mysql"},
 		},
 	}, eventtest.HasEvent)
@@ -864,7 +864,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 		Target: serviceTarget("foo"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":service", "value": "foo"},
 			{"name": "callback", "value": "/mypath"},
 			{"name": "method", "value": http.MethodPost},
@@ -925,7 +925,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 		Target: serviceTarget("foo"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":service", "value": "foo"},
 			{"name": "callback", "value": "/mypath"},
 			{"name": "method", "value": http.MethodPost},
@@ -1044,7 +1044,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 		Target: serviceTarget("my-service"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update.grant-access",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":service", "value": "my-service"},
 			{"name": ":team", "value": t.Name},
 		},
@@ -1126,7 +1126,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 		Target: serviceTarget("my-service"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update.revoke-access",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":service", "value": "my-service"},
 			{"name": ":team", "value": s.team.Name},
 		},
@@ -1250,7 +1250,7 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 		Target: serviceTarget("some-service"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update.doc",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": "some-service"},
 			{"name": "doc", "value": "doc"},
 		},

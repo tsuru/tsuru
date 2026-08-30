@@ -13,7 +13,7 @@ import (
 type baseMatcher struct {
 	name   string
 	params []string
-	check  func(result *Result, params []interface{}) (bool, string)
+	check  func(result *Result, params []any) (bool, string)
 }
 
 func (m *baseMatcher) Info() *check.CheckerInfo {
@@ -23,7 +23,7 @@ func (m *baseMatcher) Info() *check.CheckerInfo {
 	}
 }
 
-func (m *baseMatcher) Check(params []interface{}, names []string) (bool, string) {
+func (m *baseMatcher) Check(params []any, names []string) (bool, string) {
 	result, ok := params[0].(*Result)
 	if !ok {
 		return false, fmt.Sprintf("first param must be a *Result, got %T", params[0])
@@ -37,7 +37,7 @@ var ResultOk = &baseMatcher{
 	check:  checkOk,
 }
 
-func checkOk(result *Result, params []interface{}) (bool, string) {
+func checkOk(result *Result, params []any) (bool, string) {
 	if result.Error != nil || result.ExitCode != 0 {
 		return false, fmt.Sprintf("result error: %v", result)
 	}
@@ -50,7 +50,7 @@ func checkOk(result *Result, params []interface{}) (bool, string) {
 var ResultMatches = &baseMatcher{
 	name:   "ResultMatches",
 	params: []string{"result", "expected"},
-	check: func(result *Result, params []interface{}) (bool, string) {
+	check: func(result *Result, params []any) (bool, string) {
 		expected, ok := params[1].(Expected)
 		if !ok {
 			return false, fmt.Sprintf("second param must be a Expected, got %T", params[0])

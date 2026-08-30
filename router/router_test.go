@@ -132,7 +132,7 @@ func (s *S) TestGetDynamicRouter(c *check.C) {
 	err := servicemanager.DynamicRouter.Create(context.TODO(), router.DynamicRouter{
 		Name: "inst2",
 		Type: "myrouter",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"cfg1": "v2",
 		},
 	})
@@ -143,14 +143,14 @@ func (s *S) TestGetDynamicRouter(c *check.C) {
 	c.Assert(planRouter1, check.DeepEquals, router.PlanRouter{
 		Name:   "inst1",
 		Type:   "myrouter",
-		Config: map[string]interface{}{"cfg1": "v1"},
+		Config: map[string]any{"cfg1": "v1"},
 	})
 	_, planRouter2, err := GetWithPlanRouter(context.TODO(), "inst2")
 	c.Assert(err, check.IsNil)
 	c.Assert(planRouter2, check.DeepEquals, router.PlanRouter{
 		Name:    "inst2",
 		Type:    "myrouter",
-		Config:  map[string]interface{}{"cfg1": "v2"},
+		Config:  map[string]any{"cfg1": "v2"},
 		Dynamic: true,
 	})
 
@@ -226,16 +226,16 @@ func (s *S) TestListIncludesDynamic(c *check.C) {
 	err := servicemanager.DynamicRouter.Create(context.TODO(), router.DynamicRouter{
 		Name: "router-dyn",
 		Type: "myrouter",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"mycfg": "zzz",
 		},
 	})
 	c.Assert(err, check.IsNil)
 
 	expected := []router.PlanRouter{
-		{Name: "router-dyn", Type: "myrouter", Dynamic: true, Config: map[string]interface{}{"mycfg": "zzz"}},
+		{Name: "router-dyn", Type: "myrouter", Dynamic: true, Config: map[string]any{"mycfg": "zzz"}},
 		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar", Config: map[string]interface{}{"cfg1": "aaa"}},
+		{Name: "router2", Type: "bar", Config: map[string]any{"cfg1": "aaa"}},
 	}
 	routers, err := List(context.TODO())
 	c.Assert(err, check.IsNil)

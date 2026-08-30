@@ -98,7 +98,7 @@ func (s *S) TestTeamTokenCreate(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "token_id", "value": "t1"},
 			{"name": "description", "value": "desc"},
 			{"name": "expires_in", "value": "60"},
@@ -135,7 +135,7 @@ func (s *S) TestTeamTokenCreateAutomaticTeam(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "token_id", "value": "t1"},
 			{"name": "description", "value": "desc"},
 			{"name": "expires_in", "value": "60"},
@@ -185,7 +185,7 @@ func (s *S) TestTeamTokenDelete(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":token_id", "value": "id1"},
 		},
 	}, eventtest.HasEvent)
@@ -233,7 +233,7 @@ func (s *S) TestTeamTokenUpdate(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":token_id", "value": "id1"},
 			{"name": "regenerate", "value": "true"},
 		},

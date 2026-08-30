@@ -186,7 +186,7 @@ func (s *ServiceInstanceSuite) TearDownSuite(c *check.C) {
 	storagev2.ClearAllCollections(nil)
 }
 
-func makeRequestToCreateServiceInstance(params map[string]interface{}, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+func makeRequestToCreateServiceInstance(params map[string]any, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	values := url.Values{}
 	url := fmt.Sprintf("/services/%s/instances", params["service_name"])
 	delete(params, "service_name")
@@ -235,7 +235,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -257,7 +257,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 		Apps:        []string{},
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 }
 
@@ -266,7 +266,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -286,7 +286,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 		Apps:        []string{},
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 }
 
@@ -301,7 +301,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.user.AddRole(stdContext.TODO(), role.Name, p.Context.Value)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"token":        "bearer " + s.token.GetValue(),
@@ -313,7 +313,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceInvalidName(c *check.C) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "1brainsql",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -326,7 +326,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceInvalidName(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -344,7 +344,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -364,7 +364,7 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 		Apps:        []string{},
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 }
 
@@ -393,7 +393,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithInvalidPoolConstraint(c *ch
 		s.mockService.Pool.OnServices = nil
 	}()
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql-multicluster",
 		"owner":        s.team.Name,
@@ -416,7 +416,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnsErrorWhenUserCann
 	}
 	err := service.Create(stdContext.TODO(), se)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysqlrestricted",
 		"owner":        s.team.Name,
@@ -428,7 +428,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnsErrorWhenUserCann
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfServiceIsNotRestricted(c *check.C) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -447,13 +447,13 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 		Apps:        []string{},
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "brainsql"},
 			{"name": ":service", "value": "mysql"},
 			{"name": "owner", "value": s.team.Name},
@@ -471,7 +471,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceNoPermission(c *check.C)
 	}
 	err := service.Create(stdContext.TODO(), srvc)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysqlnoperms",
 		"token":        token.GetValue(),
@@ -482,7 +482,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceNoPermission(c *check.C)
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnsErrorWhenServiceDoesntExists(c *check.C) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "notfound",
 		"owner":        s.team.Name,
@@ -505,7 +505,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnErrorIfTheServiceA
 	}
 	err := service.Create(stdContext.TODO(), srvc)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysqlerror",
 		"owner":        s.team.Name,
@@ -519,7 +519,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnErrorIfTheServiceA
 		Owner:        s.token.GetUserName(),
 		Kind:         "service-instance.create",
 		ErrorMatches: `.*Failed to create the instance brainsql.*`,
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": "brainsql"},
 			{"name": ":service", "value": "mysqlerror"},
 			{"name": "owner", "value": s.team.Name},
@@ -532,7 +532,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -555,7 +555,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 		Apps:        []string{},
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 }
 
@@ -564,7 +564,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -586,7 +586,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 		Apps:        []string{},
 		Jobs:        []string{},
 		Tags:        []string{"tag a", "tag b"},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 }
 
@@ -606,7 +606,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTagsAndTagValidator(
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"name":         "brainsql",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -620,7 +620,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTagsAndTagValidator(
 	c.Assert(recorder.Body.String(), check.Equals, "invalid tag\n")
 }
 
-func makeRequestToUpdateServiceInstance(params map[string]interface{}, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+func makeRequestToUpdateServiceInstance(params map[string]any, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	var body bytes.Buffer
 	err := json.NewEncoder(&body).Encode(params)
 	c.Assert(err, check.IsNil)
@@ -646,12 +646,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "changed",
 		"plan":        "",
 		"teamowner":   s.team.Name,
 		"tags":        []string{},
-		"parameters":  map[string]interface{}{},
+		"parameters":  map[string]any{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateDescription,
@@ -671,13 +671,13 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Apps:        si.Apps,
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
 		Kind:   "service-instance.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "description", "value": "changed"},
 		},
 	}, eventtest.HasEvent)
@@ -696,12 +696,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
 	t := authTypes.Team{Name: "changed"}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "",
 		"plan":        "",
 		"teamowner":   t.Name,
 		"tags":        []string{},
-		"parameters":  map[string]interface{}{},
+		"parameters":  map[string]any{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTeamowner,
@@ -720,13 +720,13 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		Apps:        si.Apps,
 		Jobs:        []string{},
 		Tags:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
 		Kind:   "service-instance.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "teamowner", "value": t.Name},
 		},
 	}, eventtest.HasEvent)
@@ -745,12 +745,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "",
 		"plan":        "",
 		"teamowner":   s.team.Name,
 		"tag":         []string{"tag b", "tag c"},
-		"parameters":  map[string]interface{}{},
+		"parameters":  map[string]any{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
@@ -769,13 +769,13 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		Apps:        si.Apps,
 		Jobs:        []string{},
 		Tags:        []string{"tag b", "tag c"},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
 		Kind:   "service-instance.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "tag", "value": []string{"tag b", "tag c"}},
 		},
 	}, eventtest.HasEvent)
@@ -805,12 +805,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTagsAndTagValidator(
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "",
 		"plan":        "",
 		"teamowner":   s.team.Name,
 		"tag":         []string{"tag b", "tag c"},
-		"parameters":  map[string]interface{}{},
+		"parameters":  map[string]any{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
@@ -835,12 +835,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "",
 		"teamowner":   s.team.Name,
 		"plan":        "",
 		"tag":         []string{},
-		"parameters":  map[string]interface{}{},
+		"parameters":  map[string]any{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
@@ -859,7 +859,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		Apps:        si.Apps,
 		Tags:        []string{},
 		Jobs:        []string{},
-		Parameters:  map[string]interface{}{},
+		Parameters:  map[string]any{},
 	})
 }
 
@@ -868,7 +868,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceDoesNotExist(c *check.C)
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "changed",
 	}
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
@@ -892,7 +892,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "changed",
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser")
@@ -915,12 +915,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "",
 		"teamowner":   s.team.Name,
 		"plan":        "newplan",
 		"tags":        []string{},
-		"parameters":  map[string]interface{}{},
+		"parameters":  map[string]any{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permTypes.Permission{
 		Scheme:  permission.PermServiceInstanceUpdatePlan,
@@ -936,7 +936,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
 		Kind:   "service-instance.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "plan", "value": "newplan"},
 		},
 	}, eventtest.HasEvent)
@@ -952,7 +952,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutChanges(c *check.
 		TeamOwner:   s.team.Name,
 		PlanName:    "large",
 		Tags:        []string{"A", "B"},
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -961,12 +961,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutChanges(c *check.
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "Awesome description about brainsql",
 		"teamowner":   s.team.Name,
 		"plan":        "large",
 		"tags":        []string{"A", "B"},
-		"parameters": map[string]interface{}{
+		"parameters": map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -984,7 +984,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
 		PlanName:    "large",
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage":       "hdd",
 			"old-parameter": "old-value",
 		},
@@ -993,12 +993,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "",
 		"plan":        "large",
 		"teamowner":   s.team.Name,
 		"tags":        []string{},
-		"parameters": map[string]interface{}{
+		"parameters": map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -1017,7 +1017,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 		Jobs:        []string{},
 		Tags:        []string{},
 		PlanName:    "large",
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -1031,7 +1031,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
 		PlanName:    "large",
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -1040,12 +1040,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 	c.Assert(err, check.IsNil)
 	_, err = serviceInstancesCollection.InsertOne(stdContext.TODO(), si)
 	c.Assert(err, check.IsNil)
-	params := map[string]interface{}{
+	params := map[string]any{
 		"description": "changed",
 		"plan":        "large",
 		"teamowner":   s.team.Name,
 		"tags":        []string{},
-		"parameters": map[string]interface{}{
+		"parameters": map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -1068,7 +1068,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 		Jobs:        []string{},
 		Tags:        []string{},
 		PlanName:    "large",
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage":  "ssd",
 			"replicas": "5",
 		},
@@ -1124,7 +1124,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":service", "value": "foo"},
 			{"name": ":instance", "value": "foo-instance"},
 		},
@@ -1576,7 +1576,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				Parameters:  map[string]interface{}(nil),
+				Parameters:  map[string]any(nil),
 			},
 		}},
 		{Service: "redis", Instances: []string{}, Plans: []string(nil)},
@@ -1871,7 +1871,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		Pool:        "my-pool",
 		Description: "desc",
 		Tags:        []string{"tag 1"},
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage-type": "ssd",
 		},
 	}
@@ -1904,7 +1904,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		PlanDescription: "no space left for you",
 		Description:     si.Description,
 		Tags:            []string{"tag 1"},
-		Parameters:      map[string]interface{}{"storage-type": "ssd"},
+		Parameters:      map[string]any{"storage-type": "ssd"},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1941,7 +1941,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoWithRemovedPlan(c *check.C
 		Pool:        "my-pool",
 		Description: "desc",
 		Tags:        []string{"tag 1"},
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"storage-type": "ssd",
 		},
 	}
@@ -1973,7 +1973,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoWithRemovedPlan(c *check.C
 		PlanName:    "plan1",
 		Description: si.Description,
 		Tags:        []string{"tag 1"},
-		Parameters:  map[string]interface{}{"storage-type": "ssd"},
+		Parameters:  map[string]any{"storage-type": "ssd"},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -2020,7 +2020,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoForJob(c *check.C) {
 		PlanDescription: "",
 		Description:     si.Description,
 		Tags:            []string{"tag 1", "tag 2"},
-		Parameters:      map[string]interface{}{},
+		Parameters:      map[string]any{},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -2067,7 +2067,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoNoPlanAndNoCustomInfo(c *c
 		PlanDescription: "",
 		Description:     si.Description,
 		Tags:            []string{"tag 1", "tag 2"},
-		Parameters:      map[string]interface{}{},
+		Parameters:      map[string]any{},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -2689,7 +2689,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "callback", "value": "/resources/foo-instance/mypath"},
 			{"name": "method", "value": "POST"},
 			{"name": "my", "value": "awesome"},
@@ -2743,7 +2743,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2Post(c *check.C) {
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":instance", "value": "foo-instance"},
 			{"name": ":mux-path-template", "value": "/services/{service}/resources/{instance}/{path:.*}"},
 			{"name": ":path", "value": "mypath"},
@@ -2801,7 +2801,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostRawBody(c *check.C) {
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "callback", "value": "/resources/foo-instance/mypath"},
 			{"name": "method", "value": "POST"},
 		},
@@ -2853,7 +2853,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostJSON(c *check.C) {
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "callback", "value": "/resources/foo-instance/mypath"},
 			{"name": "method", "value": "POST"},
 			{"name": "my", "value": "awesome"},
@@ -2942,7 +2942,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyOnlyPath(c *check.C) {
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "callback", "value": "/mypath"},
 			{"name": "method", "value": "POST"},
 		},
@@ -2979,7 +2979,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyForbiddenPath(c *check.C)
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "callback", "value": "/"},
 			{"name": "method", "value": "POST"},
 		},
@@ -3012,7 +3012,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 		Target: serviceInstanceTarget("go", "si-test"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.grant",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":team", "value": "test"},
 		},
 	}, eventtest.HasEvent)
@@ -3030,7 +3030,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 		Target: serviceInstanceTarget("go", "si-test"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.revoke",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":team", "value": "test"},
 		},
 	}, eventtest.HasEvent)

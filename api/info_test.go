@@ -21,10 +21,10 @@ func (s *S) TestInfo(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"version": Version,
 	}
-	var info map[string]interface{}
+	var info map[string]any
 	err = json.Unmarshal(recorder.Body.Bytes(), &info)
 	c.Assert(err, check.IsNil)
 	c.Assert(info, check.DeepEquals, expected)

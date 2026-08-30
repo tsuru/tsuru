@@ -254,7 +254,7 @@ func InputValues(r *http.Request, field string) ([]string, bool) {
 		if len(data) == 0 {
 			break
 		}
-		var dst map[string]interface{}
+		var dst map[string]any
 		err = json.Unmarshal(data, &dst)
 		if err != nil {
 			break
@@ -266,7 +266,7 @@ func InputValues(r *http.Request, field string) ([]string, bool) {
 		if _, isSet := r.Form[field]; !isSet {
 			r.Form[field] = nil
 		}
-		if asSlice, ok := val.([]interface{}); ok {
+		if asSlice, ok := val.([]any); ok {
 			for _, v := range asSlice {
 				r.Form[field] = append(r.Form[field], fmt.Sprint(v))
 			}
@@ -298,7 +298,7 @@ func InputFields(r *http.Request, exclude ...string) url.Values {
 		if len(data) == 0 {
 			return nil
 		}
-		var dst map[string]interface{}
+		var dst map[string]any
 		err = json.Unmarshal(data, &dst)
 		if err != nil {
 			return nil
@@ -324,7 +324,7 @@ func InputFields(r *http.Request, exclude ...string) url.Values {
 	return ret
 }
 
-func ParseJSON(r *http.Request, dst interface{}) error {
+func ParseJSON(r *http.Request, dst any) error {
 	data, err := context.GetBody(r)
 	if err != nil {
 		return err
@@ -343,7 +343,7 @@ func ParseJSON(r *http.Request, dst interface{}) error {
 	return nil
 }
 
-func ParseInput(r *http.Request, dst interface{}) error {
+func ParseInput(r *http.Request, dst any) error {
 	contentType := getContentType(r)
 	switch contentType {
 	case "application/json":

@@ -55,7 +55,7 @@ func init() {
 type oidcScheme struct {
 	jwksURL                string
 	cache                  *jwk.Cache
-	validClaims            map[string]interface{}
+	validClaims            map[string]any
 	initialized            sync.Once
 	registrationEnabled    bool
 	groupsInClaims         bool
@@ -216,7 +216,7 @@ func (s *oidcScheme) lazyInitialize(ctx context.Context) error {
 		s.groupsInClaims, _ = config.GetBool("auth:oidc:groups-in-claims")
 		s.autoCreatePersonalTeam, _ = config.GetBool("auth:oidc:auto-create-personal-team")
 
-		s.validClaims = map[string]interface{}{}
+		s.validClaims = map[string]any{}
 		internalConfig.UnmarshalConfig("auth:oidc:valid-claims", &s.validClaims)
 
 		var refreshIntervalErr error
@@ -242,7 +242,7 @@ func (s *oidcScheme) lazyInitialize(ctx context.Context) error {
 }
 
 func (s *oidcScheme) jwtGetKey(ctx context.Context) jwt.Keyfunc {
-	return func(token *jwt.Token) (interface{}, error) {
+	return func(token *jwt.Token) (any, error) {
 		var err error
 
 		jwkKeySet, err := s.cache.Get(ctx, s.jwksURL)

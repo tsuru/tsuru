@@ -22,7 +22,7 @@ var (
 
 type VolumePlan struct {
 	Name string
-	Opts map[string]interface{}
+	Opts map[string]any
 }
 
 type VolumeBindID struct {
@@ -46,7 +46,7 @@ type Volume struct {
 	Opts      map[string]string `bson:",omitempty"`
 }
 
-func (v *Volume) UnmarshalPlan(result interface{}) error {
+func (v *Volume) UnmarshalPlan(result any) error {
 	jsonData, err := json.Marshal(v.Plan.Opts)
 	if err != nil {
 		return errors.WithStack(err)

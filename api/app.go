@@ -488,7 +488,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 		return err
 	}
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"status": "success",
 	}
 	addrs, err := app.GetAddresses(ctx, a)
@@ -820,7 +820,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Kind:       permission.PermAppUpdateUnitKill,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
-		CustomData: []map[string]interface{}{
+		CustomData: []map[string]any{
 			{
 				"unit":  unitName,
 				"force": force,
@@ -1432,7 +1432,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 type msgEncoder interface {
-	Encode(interface{}) error
+	Encode(any) error
 }
 
 func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatcher, encoder msgEncoder) error {

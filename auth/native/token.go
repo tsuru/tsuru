@@ -141,7 +141,7 @@ func removeOldTokens(ctx context.Context, userEmail string) error {
 	if diff < 1 {
 		return nil
 	}
-	var tokens []map[string]interface{}
+	var tokens []map[string]any
 
 	opts := options.Find().SetSort(mongoBSON.M{"creation": 1}).SetLimit(int64(diff)).SetProjection(mongoBSON.M{"_id": 1})
 	cursor, err := collection.Find(ctx, mongoBSON.M{"useremail": userEmail}, opts)
@@ -152,7 +152,7 @@ func removeOldTokens(ctx context.Context, userEmail string) error {
 	if err != nil {
 		return nil
 	}
-	ids := make([]interface{}, 0, len(tokens))
+	ids := make([]any, 0, len(tokens))
 	for _, token := range tokens {
 		ids = append(ids, token["_id"])
 	}

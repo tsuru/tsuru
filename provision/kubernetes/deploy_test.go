@@ -850,7 +850,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 		map[string][]string{
 			"p1": {"cmd1"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
 				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 					"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -907,7 +907,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	version = newCommittedVersion(c, a, map[string][]string{
 		"p1": {"cmd1"},
 	},
-		map[string]interface{}{
+		map[string]any{
 			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
 				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 					"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -1215,7 +1215,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				"web": {"cm1"},
 				"p2":  {"cmd2"},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"healthcheck": tt.hc,
 			},
 		)
@@ -1301,7 +1301,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 			"web": {"cm1"},
 			"p2":  {"cmd2"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"healthcheck": hc,
 		},
 	)
@@ -1386,7 +1386,7 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 			"web": {"cm1"},
 			"p2":  {"cmd2"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"healthcheck": hc,
 		},
 	)
@@ -1471,7 +1471,7 @@ func (s *S) TestEnsureBackendConfigWithMissingSlash(c *check.C) {
 			"web": {"cm1"},
 			"p2":  {"cmd2"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"healthcheck": hc,
 		},
 	)
@@ -1539,7 +1539,7 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 			"web": {"cm1"},
 			"p2":  {"cmd2"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"healthcheck": hc,
 		},
 	)
@@ -1636,7 +1636,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 			"web": {"proc1"},
 			"p2":  {"proc2"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"hooks": provTypes.TsuruYamlHooks{
 				Restart: provTypes.TsuruYamlRestartHooks{
 					Before: []string{"before cmd1", "before cmd2"},
@@ -1771,7 +1771,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 			"web": {"proc1"},
 			"p2":  {"proc2"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
 				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -1896,7 +1896,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 		map[string][]string{
 			"web": {"proc1"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
 				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -1939,7 +1939,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 		map[string][]string{
 			"web": {"proc1"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"kubernetes": provTypes.TsuruYamlKubernetesConfig{
 				Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 					"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -3363,7 +3363,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]any{
 			"plugin": "nfs",
 		}},
 		Pool:      "test-default",
@@ -3604,7 +3604,7 @@ func (s *S) TestServiceManagerDeployServiceProcessHealthcheckTimeoutExceeded(c *
 		map[string][]string{
 			"p1": {"cmd1"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"processes": []provTypes.TsuruYamlProcess{
 				{
 					Name: "p1",
@@ -4477,12 +4477,12 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 
 func (s *S) TestGetImagePullSecrets(c *check.C) {
 	tests := []struct {
-		config      map[string]interface{}
+		config      map[string]any
 		images      []string
 		expectedRef []apiv1.LocalObjectReference
 	}{
 		{
-			config: map[string]interface{}{
+			config: map[string]any{
 				"docker:registry":               "myreg1.com",
 				"docker:registry-auth:username": "user",
 				"docker:registry-auth:password": "pass",
@@ -4493,7 +4493,7 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			},
 		},
 		{
-			config: map[string]interface{}{
+			config: map[string]any{
 				"docker:registry":               "myreg1.com",
 				"docker:registry-auth:username": "user",
 				"docker:registry-auth:password": "pass",
@@ -4502,7 +4502,7 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			expectedRef: nil,
 		},
 		{
-			config: map[string]interface{}{
+			config: map[string]any{
 				"docker:registry":               "myreg1.com",
 				"docker:registry-auth:username": "user",
 				"docker:registry-auth:password": "pass",
@@ -4513,21 +4513,21 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			},
 		},
 		{
-			config: map[string]interface{}{
+			config: map[string]any{
 				"docker:registry": "myreg1.com",
 			},
 			images:      []string{"myreg1.com/tsuru/go"},
 			expectedRef: nil,
 		},
 		{
-			config: map[string]interface{}{
+			config: map[string]any{
 				"docker:registry": "",
 			},
 			images:      []string{"tsuru/go"},
 			expectedRef: nil,
 		},
 		{
-			config: map[string]interface{}{
+			config: map[string]any{
 				"docker:registry":               "",
 				"docker:registry-auth:username": "user",
 				"docker:registry-auth:password": "pass",

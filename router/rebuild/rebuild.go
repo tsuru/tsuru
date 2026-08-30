@@ -84,7 +84,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		return errHc
 	}
 	opts := router.EnsureBackendOpts{
-		Opts:        map[string]interface{}{},
+		Opts:        map[string]any{},
 		Prefixes:    []router.BackendPrefix{},
 		Team:        o.App.TeamOwner,
 		CertIssuers: o.App.CertIssuers,

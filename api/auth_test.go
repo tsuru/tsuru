@@ -369,7 +369,7 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 		Target: teamTarget(teamName),
 		Owner:  s.token.GetUserName(),
 		Kind:   "team.create",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "name", "value": teamName},
 			{"name": "tag", "value": []string{"tag1", "tag2"}},
 		},
@@ -423,7 +423,7 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 		Target: teamTarget(teamName),
 		Owner:  s.token.GetUserName(),
 		Kind:   "team.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":name", "value": teamName},
 		},
 	}, eventtest.HasEvent)
@@ -505,12 +505,12 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var m []map[string]interface{}
+	var m []map[string]any
 	err = json.Unmarshal(recorder.Body.Bytes(), &m)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.HasLen, 1)
 	c.Assert(m[0]["name"], check.Equals, s.team.Name)
-	c.Assert(m[0]["permissions"], check.DeepEquals, []interface{}{
+	c.Assert(m[0]["permissions"], check.DeepEquals, []any{
 		"app.create",
 	})
 }
@@ -532,12 +532,12 @@ func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var m []map[string]interface{}
+	var m []map[string]any
 	err = json.Unmarshal(recorder.Body.Bytes(), &m)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.HasLen, 1)
 	c.Assert(m[0]["name"], check.Equals, s.team.Name)
-	c.Assert(m[0]["permissions"], check.DeepEquals, []interface{}{
+	c.Assert(m[0]["permissions"], check.DeepEquals, []any{
 		"app",
 	})
 }
@@ -552,7 +552,7 @@ func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var m []map[string]interface{}
+	var m []map[string]any
 	err = json.Unmarshal(recorder.Body.Bytes(), &m)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.HasLen, 2)
@@ -641,13 +641,13 @@ func (s *AuthSuite) TestTeamInfoReturnsAppInfoWithoutEnvironments(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
 	var result struct {
-		Apps []map[string]interface{} `json:"apps"`
+		Apps []map[string]any `json:"apps"`
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Apps, check.HasLen, 1)
 	c.Assert(result.Apps[0]["name"], check.Equals, teamApp.Name)
-	c.Assert(result.Apps[0]["cname"], check.DeepEquals, []interface{}{teamApp.CName[0]})
+	c.Assert(result.Apps[0]["cname"], check.DeepEquals, []any{teamApp.CName[0]})
 	_, hasUnits := result.Apps[0]["units"]
 	c.Assert(hasUnits, check.Equals, true)
 	_, hasRouters := result.Apps[0]["routers"]
@@ -779,7 +779,7 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 		Target: userTarget(u.Email),
 		Owner:  token.GetUserName(),
 		Kind:   "user.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "user", "value": u.Email},
 		},
 	}, eventtest.HasEvent)
@@ -806,7 +806,7 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 		Target: userTarget(u.Email),
 		Owner:  s.token.GetUserName(),
 		Kind:   "user.delete",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "user", "value": u.Email},
 		},
 	}, eventtest.HasEvent)
@@ -927,7 +927,7 @@ func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = resetPassword(recorder, request)
 	c.Assert(err, check.IsNil)
-	var m map[string]interface{}
+	var m map[string]any
 	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": s.user.Email}).Decode(&m)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(time.Second, func() bool {
@@ -943,7 +943,7 @@ func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
 		Target: userTarget(s.token.GetUserName()),
 		Owner:  s.token.GetUserName(),
 		Kind:   "user.update.reset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":email", "value": s.token.GetUserName()},
 		},
 	}, eventtest.HasEvent)
@@ -982,7 +982,7 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 	oldPassword := user.Password
 	err = nativeScheme.StartPasswordReset(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
-	var t map[string]interface{}
+	var t map[string]any
 	err = passwordTokensCollection.FindOne(context.TODO(), mongoBSON.M{"useremail": user.Email}).Decode(&t)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/users/%s/password?:email=%s&token=%s", user.Email, user.Email, t["_id"])
@@ -997,7 +997,7 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 		Target: userTarget(user.Email),
 		Owner:  user.Email,
 		Kind:   "user.update.reset",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":email", "value": user.Email},
 			{"name": "token", "value": t["_id"]},
 		},
@@ -1045,11 +1045,11 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	err = json.NewDecoder(recorder.Body).Decode(&parsed)
 	c.Assert(err, check.IsNil)
 	c.Assert(parsed["name"], check.Equals, "test")
-	c.Assert(parsed["data"], check.DeepEquals, map[string]interface{}{"authorizeUrl": "http://foo/bar"})
+	c.Assert(parsed["data"], check.DeepEquals, map[string]any{"authorizeUrl": "http://foo/bar"})
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
@@ -1115,7 +1115,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 		Target: userTarget("leto@arrakis.com"),
 		Owner:  token.GetUserName(),
 		Kind:   "apikey.update",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "user", "value": "leto@arrakis.com"},
 		},
 	}, eventtest.HasEvent)

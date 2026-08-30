@@ -240,7 +240,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Plan        string
 		TeamOwner   string
 		Tags        []string
-		Parameters  map[string]interface{}
+		Parameters  map[string]any
 	}{}
 	err = ParseInput(r, &updateData)
 	if err != nil {
@@ -553,7 +553,7 @@ type serviceInstanceInfo struct {
 	Cluster         string
 	CustomInfo      map[string]string
 	Tags            []string
-	Parameters      map[string]interface{}
+	Parameters      map[string]any
 }
 
 // title: service instance info

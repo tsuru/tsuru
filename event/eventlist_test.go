@@ -69,7 +69,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 		c.Assert(err, check.IsNil)
 		allEvts = append(allEvts, evt)
 	}
-	var checkFilters = func(f *event.Filter, expected interface{}) {
+	var checkFilters = func(f *event.Filter, expected any) {
 		evts, err := event.List(context.TODO(), f)
 		c.Assert(err, check.IsNil)
 		c.Assert(evts, eventtest.EvtEquals, expected, check.Commentf("Diff:\n%s", strings.Join(pretty.Diff(evts, expected), "\n")))

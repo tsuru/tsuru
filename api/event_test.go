@@ -735,7 +735,7 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeEventBlock, Value: blocks[0].ID.Hex()},
 		Owner:  token.GetUserName(),
 		Kind:   "event-block.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": "ID", "value": blocks[0].ID.Hex()},
 		},
 	}, eventtest.HasEvent)

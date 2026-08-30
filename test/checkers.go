@@ -15,7 +15,7 @@ func (*jsonEquals) Info() *check.CheckerInfo {
 
 }
 
-func (*jsonEquals) Check(params []interface{}, names []string) (result bool, error string) {
+func (*jsonEquals) Check(params []any, names []string) (result bool, error string) {
 	data0, err := json.Marshal(params[0])
 	if err != nil {
 		return false, err.Error()

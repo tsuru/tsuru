@@ -62,16 +62,16 @@ func (s *mongoDBSpan) Finish() {
 }
 
 // LogKV is a compatibility method for old logging API
-func (s *mongoDBSpan) LogKV(keyvals ...interface{}) {
+func (s *mongoDBSpan) LogKV(keyvals ...any) {
 	// OpenTelemetry doesn't have direct equivalent, ignoring
 }
 
-func (s *mongoDBSpan) SetQueryStatement(query interface{}) {
+func (s *mongoDBSpan) SetQueryStatement(query any) {
 	value, _ := json.Marshal(query)
 	s.SetAttributes(attribute.String("db.statement", string(value)))
 }
 
-func (s *mongoDBSpan) SetMongoID(id interface{}) {
+func (s *mongoDBSpan) SetMongoID(id any) {
 	s.SetQueryStatement(mongoBSON.M{"_id": id})
 }
 

@@ -45,7 +45,7 @@ type tsuruYamlKubernetesProcessPortConfig struct {
 	TargetPort int    `json:"target_port,omitempty" bson:"target_port,omitempty"`
 }
 
-func unmarshalYamlData(data map[string]interface{}) (provTypes.TsuruYamlData, error) {
+func unmarshalYamlData(data map[string]any) (provTypes.TsuruYamlData, error) {
 	if data == nil {
 		return provTypes.TsuruYamlData{}, nil
 	}
@@ -91,7 +91,7 @@ func unmarshalYamlData(data map[string]interface{}) (provTypes.TsuruYamlData, er
 	return result, nil
 }
 
-func marshalCustomData(data map[string]interface{}) (map[string]interface{}, error) {
+func marshalCustomData(data map[string]any) (map[string]any, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
@@ -105,7 +105,7 @@ func marshalCustomData(data map[string]interface{}) (map[string]interface{}, err
 		return nil, err
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for k, v := range data {
 		if v != nil {
 			result[k] = v
@@ -141,10 +141,10 @@ func marshalCustomData(data map[string]interface{}) (map[string]interface{}, err
 	return result, nil
 }
 
-func processesFromCustomData(customData map[string]interface{}) (map[string][]string, error) {
+func processesFromCustomData(customData map[string]any) (map[string][]string, error) {
 	var processes map[string][]string
 	if data, ok := customData["processes"]; ok {
-		procs := data.(map[string]interface{})
+		procs := data.(map[string]any)
 		processes = make(map[string][]string, len(procs))
 		for name, command := range procs {
 			switch cmdType := command.(type) {
@@ -152,7 +152,7 @@ func processesFromCustomData(customData map[string]interface{}) (map[string][]st
 				processes[name] = []string{cmdType}
 			case []string:
 				processes[name] = cmdType
-			case []interface{}:
+			case []any:
 				for _, v := range cmdType {
 					if vStr, ok := v.(string); ok {
 						processes[name] = append(processes[name], vStr)

@@ -39,7 +39,7 @@ func (s *S) TestVolumeList(c *check.C) {
 			TeamOwner: s.team.Name,
 			Plan: volumeTypes.VolumePlan{
 				Name: "nfs",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"plugin":       "nfs",
 					"capacity":     "20Gi",
 					"access-modes": "ReadWriteMany",
@@ -65,7 +65,7 @@ func (s *S) TestVolumeList(c *check.C) {
 		TeamOwner: s.team.Name,
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"plugin":       "nfs",
 				"capacity":     "20Gi",
 				"access-modes": "ReadWriteMany",
@@ -176,7 +176,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 			},
 			Plan: volumeTypes.VolumePlan{
 				Name: "nfs",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"plugin":       "nfs",
 					"capacity":     "20Gi",
 					"access-modes": "ReadWriteMany",
@@ -218,7 +218,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 		},
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"plugin":       "nfs",
 				"capacity":     "20Gi",
 				"access-modes": "ReadWriteMany",
@@ -255,7 +255,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
 		v1.Plan = volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"access-modes": "ReadWriteMany",
 				"capacity":     "20Gi",
 				"plugin":       "nfs",
@@ -299,7 +299,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 		TeamOwner: s.team.Name,
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"access-modes": "ReadWriteMany",
 				"capacity":     "20Gi",
 				"plugin":       "nfs",
@@ -358,7 +358,7 @@ func (s *S) TestVolumeCreate(c *check.C) {
 				Opts:      map[string]string{"a": "b"},
 				Plan: volumeTypes.VolumePlan{
 					Name: "nfs",
-					Opts: map[string]interface{}{
+					Opts: map[string]any{
 						"plugin": "nfs",
 					},
 				},
@@ -385,7 +385,7 @@ func (s *S) TestVolumeCreate(c *check.C) {
 		Opts:      map[string]string{"a": "b"},
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"plugin": "nfs",
 			},
 		},
@@ -462,7 +462,7 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 				Opts:      map[string]string{"a": "c"},
 				Plan: volumeTypes.VolumePlan{
 					Name: "nfs",
-					Opts: map[string]interface{}{
+					Opts: map[string]any{
 						"plugin": "nfs",
 					},
 				},
@@ -478,7 +478,7 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 		Opts:      map[string]string{"a": "c"},
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"plugin": "nfs",
 			},
 		},
@@ -515,11 +515,11 @@ func (s *S) TestVolumePlanList(c *check.C) {
 	s.mockService.VolumeService.OnListPlans = func(ctx context.Context) (map[string][]volumeTypes.VolumePlan, error) {
 		return map[string][]volumeTypes.VolumePlan{
 			"fake": {
-				{Name: "nfs1", Opts: map[string]interface{}{"plugin": "nfs"}},
-				{Name: "other", Opts: map[string]interface{}{"storage-class": "ebs"}},
+				{Name: "nfs1", Opts: map[string]any{"plugin": "nfs"}},
+				{Name: "other", Opts: map[string]any{"storage-class": "ebs"}},
 			},
 			"otherprov": {
-				{Name: "nfs1", Opts: map[string]interface{}{"opts": "-t=nfs"}},
+				{Name: "nfs1", Opts: map[string]any{"opts": "-t=nfs"}},
 			},
 		}, nil
 	}
@@ -539,11 +539,11 @@ func (s *S) TestVolumePlanList(c *check.C) {
 	}
 	c.Assert(result, check.DeepEquals, map[string][]volumeTypes.VolumePlan{
 		"fake": {
-			{Name: "nfs1", Opts: map[string]interface{}{"plugin": "nfs"}},
-			{Name: "other", Opts: map[string]interface{}{"storage-class": "ebs"}},
+			{Name: "nfs1", Opts: map[string]any{"plugin": "nfs"}},
+			{Name: "other", Opts: map[string]any{"storage-class": "ebs"}},
 		},
 		"otherprov": {
-			{Name: "nfs1", Opts: map[string]interface{}{"opts": "-t=nfs"}},
+			{Name: "nfs1", Opts: map[string]any{"opts": "-t=nfs"}},
 		},
 	})
 }
@@ -600,7 +600,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 			},
 			Plan: volumeTypes.VolumePlan{
 				Name: "nfs",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"plugin": "nfs",
 				},
 			},
@@ -660,7 +660,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 		},
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"plugin": "nfs",
 			},
 		},
@@ -758,7 +758,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 			},
 			Plan: volumeTypes.VolumePlan{
 				Name: "nfs",
-				Opts: map[string]interface{}{
+				Opts: map[string]any{
 					"plugin": "nfs",
 				},
 			},
@@ -814,7 +814,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 		},
 		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
-			Opts: map[string]interface{}{
+			Opts: map[string]any{
 				"plugin": "nfs",
 			},
 		},

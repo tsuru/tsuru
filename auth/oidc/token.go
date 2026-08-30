@@ -40,7 +40,7 @@ func (f *extendedClaims) UnmarshalJSON(b []byte) error {
 		f.Email = email
 	}
 
-	if groups, ok := claims["groups"].([]interface{}); ok {
+	if groups, ok := claims["groups"].([]any); ok {
 
 		f.Groups = make([]string, len(groups))
 

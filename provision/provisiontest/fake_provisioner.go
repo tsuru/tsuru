@@ -165,7 +165,7 @@ func (p *FakeProvisioner) Stops(app *appTypes.App, process string) int {
 	return p.apps[app.Name].stops[process]
 }
 
-func (p *FakeProvisioner) CustomData(app *appTypes.App) map[string]interface{} {
+func (p *FakeProvisioner) CustomData(app *appTypes.App) map[string]any {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	return p.apps[app.Name].lastData
@@ -776,7 +776,7 @@ type provisionedApp struct {
 	starts    map[string]int
 	stops     map[string]int
 	unitLen   int
-	lastData  map[string]interface{}
+	lastData  map[string]any
 	image     string
 	mockAddrs []appTypes.RoutableAddresses
 

@@ -270,7 +270,7 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Kind:       permission.PermEventBlockRemove,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
-		CustomData: []map[string]interface{}{
+		CustomData: []map[string]any{
 			{"name": "ID", "value": objID.Hex()},
 		},
 		Allowed: event.Allowed(permission.PermEventBlockReadEvents),

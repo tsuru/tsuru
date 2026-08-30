@@ -190,7 +190,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -202,7 +202,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -238,7 +238,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   12,
@@ -250,7 +250,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -294,7 +294,7 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -306,7 +306,7 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -340,7 +340,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -352,7 +352,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`Builder deploy called`},
@@ -394,7 +394,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   12,
@@ -406,7 +406,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -450,7 +450,7 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   33 << 20,
@@ -462,7 +462,7 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -497,7 +497,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -509,7 +509,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -543,7 +543,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -556,7 +556,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 			"rollback":   false,
 			"message":    "and when he falleth",
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -607,7 +607,7 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -619,7 +619,7 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
@@ -1129,7 +1129,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -1141,7 +1141,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 			"build":      false,
 			"rollback":   true,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": testBaseImage,
 		},
 	}, eventtest.HasEvent)
@@ -1171,7 +1171,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -1183,7 +1183,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 			"build":      false,
 			"rollback":   true,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-otherapp:v1",
 		},
 		LogMatches: []string{`Builder deploy called`},
@@ -1316,7 +1316,7 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   0,
@@ -1328,7 +1328,7 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 			"build":      false,
 			"rollback":   false,
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 	}, eventtest.HasEvent)
@@ -1532,7 +1532,7 @@ func (s *DeploySuite) TestJobDeployHandler(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: job.Name},
 		Owner:  user.Email,
 		Kind:   "job.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"dockerfile": "",
 			"jobname":    job.Name,
 			"filesize":   0,
@@ -1541,7 +1541,7 @@ func (s *DeploySuite) TestJobDeployHandler(c *check.C) {
 			"image":      "127.0.0.1:5000/tsuru/somejob",
 			"message":    "",
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/job-" + job.Name + ":latest",
 		},
 		LogMatches: []string{`.*Deploy finished with success`},
@@ -1601,7 +1601,7 @@ func (s *DeploySuite) TestJobDeployWithDockerfile(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: job.Name},
 		Owner:  user.Email,
 		Kind:   "job.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"dockerfile": "FROM busybox",
 			"jobname":    job.Name,
 			"filesize":   0,
@@ -1610,7 +1610,7 @@ func (s *DeploySuite) TestJobDeployWithDockerfile(c *check.C) {
 			"image":      "",
 			"message":    "",
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "tsuru/job-" + job.Name + ":latest",
 		},
 		LogMatches: []string{`.*Deploy finished with success`},
@@ -1771,7 +1771,7 @@ func (s *DeploySuite) TestJobDeployFailed(c *check.C) {
 		Target: eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: job.Name},
 		Owner:  user.Email,
 		Kind:   "job.deploy",
-		StartCustomData: map[string]interface{}{
+		StartCustomData: map[string]any{
 			"dockerfile": "",
 			"jobname":    job.Name,
 			"filesize":   0,
@@ -1780,7 +1780,7 @@ func (s *DeploySuite) TestJobDeployFailed(c *check.C) {
 			"image":      "127.0.0.1:5000/tsuru/somejob",
 			"message":    "",
 		},
-		EndCustomData: map[string]interface{}{
+		EndCustomData: map[string]any{
 			"image": "",
 		},
 		LogMatches:   []string{`.*Tsuru failed to deploy job myjob\n`},

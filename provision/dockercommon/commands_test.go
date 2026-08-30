@@ -48,7 +48,7 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemock.SetMockService(&s.mockService)
 }
 
-func newVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+func newVersion(c *check.C, app *appTypes.App, customData map[string]any) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -63,8 +63,8 @@ func newVersion(c *check.C, app *appTypes.App, customData map[string]interface{}
 }
 
 func (s *S) TestRunLeanContainersCmd(c *check.C) {
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
+	customData := map[string]any{
+		"processes": map[string]any{
 			"web": "python web.py",
 		},
 	}
@@ -80,13 +80,13 @@ func (s *S) TestRunLeanContainersCmd(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
-	customData := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"restart": map[string]interface{}{
+	customData := map[string]any{
+		"hooks": map[string]any{
+			"restart": map[string]any{
 				"before": []string{"cmd1", "cmd2"},
 			},
 		},
-		"processes": map[string]interface{}{
+		"processes": map[string]any{
 			"web": "python web.py",
 		},
 	}
@@ -102,8 +102,8 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
+	customData := map[string]any{
+		"processes": map[string]any{
 			"web": "python web.py",
 		},
 	}
@@ -119,8 +119,8 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
+	customData := map[string]any{
+		"processes": map[string]any{
 			"web":    "python web.py",
 			"worker": "python worker.py",
 		},
@@ -139,8 +139,8 @@ func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
+	customData := map[string]any{
+		"processes": map[string]any{
 			"web": "python web.py",
 		},
 	}
@@ -170,8 +170,8 @@ func (s *S) TestRunLeanContainersCmdNoImageMetadata(c *check.C) {
 }
 
 func (s *S) TestLeanContainerCmdsManyCmds(c *check.C) {
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
+	customData := map[string]any{
+		"processes": map[string]any{
 			"web": []string{"python", "web.py"},
 		},
 	}

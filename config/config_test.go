@@ -22,20 +22,20 @@ func Test(t *testing.T) {
 
 func (s *S) TestConvertEntries(c *check.C) {
 	tests := []struct {
-		input    interface{}
-		expected interface{}
+		input    any
+		expected any
 	}{
 		{
-			input:    map[interface{}]interface{}{"": ""},
-			expected: map[string]interface{}{"": ""},
+			input:    map[any]any{"": ""},
+			expected: map[string]any{"": ""},
 		},
 		{
-			input:    []interface{}{map[interface{}]interface{}{"": ""}},
-			expected: []interface{}{map[string]interface{}{"": ""}},
+			input:    []any{map[any]any{"": ""}},
+			expected: []any{map[string]any{"": ""}},
 		},
 		{
-			input:    []interface{}{map[interface{}]interface{}{"": []interface{}{map[interface{}]interface{}{"a": 1}}}},
-			expected: []interface{}{map[string]interface{}{"": []interface{}{map[string]interface{}{"a": 1}}}},
+			input:    []any{map[any]any{"": []any{map[any]any{"a": 1}}}},
+			expected: []any{map[string]any{"": []any{map[string]any{"a": 1}}}},
 		},
 	}
 	for _, tt := range tests {
@@ -45,32 +45,32 @@ func (s *S) TestConvertEntries(c *check.C) {
 
 func (s *S) TestUnconvertEntries(c *check.C) {
 	tests := []struct {
-		input    interface{}
-		expected interface{}
+		input    any
+		expected any
 	}{
 		{
-			input: map[string]interface{}{
+			input: map[string]any{
 				"headers": primitive.A{
 					"test1=a",
 					"test2=b",
 				},
 			},
-			expected: map[interface{}]interface{}{
-				"headers": []interface{}{
+			expected: map[any]any{
+				"headers": []any{
 					"test1=a",
 					"test2=b",
 				},
 			},
 		},
 		{
-			input: map[string]interface{}{
+			input: map[string]any{
 				"headers": primitive.M{
 					"test1": "a",
 					"test2": "b",
 				},
 			},
-			expected: map[interface{}]interface{}{
-				"headers": map[interface{}]interface{}{
+			expected: map[any]any{
+				"headers": map[any]any{
 					"test1": "a",
 					"test2": "b",
 				},

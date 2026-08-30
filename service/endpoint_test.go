@@ -115,9 +115,9 @@ func (s *S) TestEndpointCreate(c *check.C) {
 		TeamOwner:   "theteam",
 		Description: "xyz",
 		Tags:        []string{"tag 1", "tag 2"},
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"p1": "v1",
-			"p2": map[string]interface{}{
+			"p2": map[string]any{
 				"complex1": "complexvalue1",
 			},
 		},
@@ -160,9 +160,9 @@ func (s *S) TestEndpointCreateJSON(c *check.C) {
 		TeamOwner:   "theteam",
 		Description: "xyz",
 		Tags:        []string{"tag 1", "tag 2"},
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"p1": "v1",
-			"p2": map[string]interface{}{
+			"p2": map[string]any{
 				"complex1": "complexvalue1",
 			},
 		},
@@ -203,7 +203,7 @@ func (s *S) TestEndpointUpdateJSON(c *check.C) {
 		Description: "my service",
 		Tags:        []string{"tag1", "tag2"},
 		PlanName:    "small",
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"p1": "v1",
 		},
 	}
@@ -269,7 +269,7 @@ func (s *S) TestEndpointBindAppJSON(c *check.C) {
 	a := provisiontest.NewFakeAppWithPool("her-app", "python", "her-pool", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde", encoding: ServiceEncodingJSON}
 	evt := createEvt(c)
-	bindParams := map[string]interface{}{"p1": "v1"}
+	bindParams := map[string]any{"p1": "v1"}
 	_, err := client.BindApp(context.TODO(), &instance, a, bindParams, evt, "")
 	h.Lock()
 	defer h.Unlock()
@@ -498,9 +498,9 @@ func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
 		Description: "my service",
 		Tags:        []string{"tag1", "tag2"},
 		PlanName:    "small",
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"p1": "v1",
-			"p2": map[string]interface{}{
+			"p2": map[string]any{
 				"complex1": "complexvalue1",
 			},
 		},
@@ -698,9 +698,9 @@ func (s *S) TestBindAppWithParams(c *check.C) {
 	}
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	bindParams := map[string]interface{}{
+	bindParams := map[string]any{
 		"p1": "v1",
-		"p2": map[string]interface{}{
+		"p2": map[string]any{
 			"complex1": "complexvalue1",
 		},
 	}

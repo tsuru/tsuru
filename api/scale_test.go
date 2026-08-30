@@ -105,7 +105,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update.unit.autoscale.add",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "averageCPU", "value": "600m"},
 			{"name": "process", "value": "p1"},
@@ -149,7 +149,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update.unit.autoscale.remove",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "process", "value": "p1"},
 		},
@@ -202,7 +202,7 @@ func (s *S) TestAddAutoScaleDown(c *check.C) {
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
 		Kind:   "app.update.unit.autoscale.add",
-		StartCustomData: []map[string]interface{}{
+		StartCustomData: []map[string]any{
 			{"name": ":app", "value": a.Name},
 			{"name": "averageCPU", "value": "600m"},
 			{"name": "process", "value": "p1"},

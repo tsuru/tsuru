@@ -20,9 +20,9 @@ func (s *DynamicRouterSuite) TestSave(c *check.C) {
 	dr := router.DynamicRouter{
 		Name: "my-router",
 		Type: "my-type",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": "b",
-			"c": map[string]interface{}{
+			"c": map[string]any{
 				"d": "e",
 			},
 		},
@@ -47,9 +47,9 @@ func (s *DynamicRouterSuite) TestList(c *check.C) {
 	dr1 := router.DynamicRouter{
 		Name: "my-router1",
 		Type: "my-type",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": "b",
-			"c": map[string]interface{}{
+			"c": map[string]any{
 				"d": "e",
 			},
 		},
@@ -57,9 +57,9 @@ func (s *DynamicRouterSuite) TestList(c *check.C) {
 	dr2 := router.DynamicRouter{
 		Name: "my-router2",
 		Type: "my-type",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": "b",
-			"c": map[string]interface{}{
+			"c": map[string]any{
 				"d": "e",
 			},
 		},
@@ -77,9 +77,9 @@ func (s *DynamicRouterSuite) TestR(c *check.C) {
 	dr1 := router.DynamicRouter{
 		Name: "my-router1",
 		Type: "my-type",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": "b",
-			"c": map[string]interface{}{
+			"c": map[string]any{
 				"d": "e",
 			},
 		},
@@ -87,9 +87,9 @@ func (s *DynamicRouterSuite) TestR(c *check.C) {
 	dr2 := router.DynamicRouter{
 		Name: "my-router2",
 		Type: "my-type",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"a": "b",
-			"c": map[string]interface{}{
+			"c": map[string]any{
 				"d": "e",
 			},
 		},

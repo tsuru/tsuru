@@ -34,7 +34,7 @@ type MultiTestHandler struct {
 	Method             []string
 	URL                []string
 	Content            string
-	ConditionalContent map[string]interface{}
+	ConditionalContent map[string]any
 	Header             []http.Header
 	RspCode            int
 	RspHeader          http.Header

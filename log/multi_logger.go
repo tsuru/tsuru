@@ -36,19 +36,19 @@ func (m *multiLogger) Fatal(message string) {
 	os.Exit(1)
 }
 
-func (m *multiLogger) Debugf(format string, v ...interface{}) {
+func (m *multiLogger) Debugf(format string, v ...any) {
 	for _, logger := range m.loggers {
 		logger.Debugf(format, v...)
 	}
 }
 
-func (m *multiLogger) Errorf(format string, v ...interface{}) {
+func (m *multiLogger) Errorf(format string, v ...any) {
 	for _, logger := range m.loggers {
 		logger.Errorf(format, v...)
 	}
 }
 
-func (m *multiLogger) Fatalf(format string, v ...interface{}) {
+func (m *multiLogger) Fatalf(format string, v ...any) {
 	for _, logger := range m.loggers {
 		logger.Errorf(format, v...)
 	}

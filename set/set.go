@@ -85,7 +85,7 @@ func FromSlice(l []string) Set {
 	return s
 }
 
-func FromMap(m interface{}) Set {
+func FromMap(m any) Set {
 	s := Set{}
 	v := reflect.ValueOf(m)
 	if v.Kind() != reflect.Map {

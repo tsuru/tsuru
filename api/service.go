@@ -308,7 +308,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 			Kind:       permission.PermServiceUpdateProxy,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
-			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]any{
 				"name":  "method",
 				"value": r.Method,
 			}),
@@ -345,7 +345,7 @@ func serviceAuthenticatedResourcesProxy(w http.ResponseWriter, r *http.Request, 
 			Kind:       permission.PermServiceUpdateProxy,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
-			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]any{
 				"name":  "method",
 				"value": r.Method,
 			}),

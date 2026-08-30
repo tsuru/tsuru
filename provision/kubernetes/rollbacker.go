@@ -162,13 +162,13 @@ func equalIgnoreHash(template1, template2 *corev1.PodTemplateSpec) bool {
 // previous version. If the returned error is nil the patch is valid.
 func getDeploymentPatch(podTemplate *corev1.PodTemplateSpec, annotations map[string]string) (types.PatchType, []byte, error) {
 	// Create a patch of the Deployment that replaces spec.template
-	patch, err := json.Marshal([]interface{}{
-		map[string]interface{}{
+	patch, err := json.Marshal([]any{
+		map[string]any{
 			"op":    "replace",
 			"path":  "/spec/template",
 			"value": podTemplate,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"op":    "replace",
 			"path":  "/metadata/annotations",
 			"value": annotations,

@@ -94,13 +94,13 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 	bsonDataBlockedPoolCluster, err := makeBSONRaw([]mongoBSON.M{{"name": "pool", "value": "pool1"}, {"name": "cluster", "value": "c1"}})
 	c.Assert(err, check.IsNil)
 
-	bsonDataBlockedPool, err := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool2"}, {"name": "cluster", "value": "c2"}})
+	bsonDataBlockedPool, err := makeBSONRaw([]map[string]any{{"name": "pool", "value": "pool2"}, {"name": "cluster", "value": "c2"}})
 	c.Assert(err, check.IsNil)
 
-	bsonDataAllowedPool, err := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}})
+	bsonDataAllowedPool, err := makeBSONRaw([]map[string]any{{"name": "pool", "value": "pool1"}})
 	c.Assert(err, check.IsNil)
 
-	bsonDataUnhandledFields, err := makeBSONRaw([]map[string]interface{}{{"foo": "bar"}})
+	bsonDataUnhandledFields, err := makeBSONRaw([]map[string]any{{"foo": "bar"}})
 	c.Assert(err, check.IsNil)
 
 	tt := []struct {

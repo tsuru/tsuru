@@ -159,7 +159,7 @@ func (m *recordManager) RemoveService(ctx context.Context, a *appTypes.App, proc
 	return nil
 }
 
-func newVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+func newVersion(c *check.C, app *appTypes.App, customData map[string]any) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -175,7 +175,7 @@ func newVersion(c *check.C, app *appTypes.App, customData map[string]interface{}
 	return version
 }
 
-func newSuccessfulVersion(c *check.C, app *appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+func newSuccessfulVersion(c *check.C, app *appTypes.App, customData map[string]any) appTypes.AppVersion {
 	version := newVersion(c, app, customData)
 	err := version.CommitSuccessful()
 	c.Assert(err, check.IsNil)
@@ -185,14 +185,14 @@ func newSuccessfulVersion(c *check.C, app *appTypes.App, customData map[string]i
 func (s *S) TestRunServicePipeline(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
 	})
-	newVersion := newVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	newVersion := newVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web2",
 			"worker2": "python worker2",
 		},
@@ -229,14 +229,14 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
 	})
-	newVersion := newVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	newVersion := newVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web2",
 			"worker2": "python worker2",
 		},
@@ -270,8 +270,8 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	version := newVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	version := newVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
@@ -316,7 +316,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	processes, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	processes, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}})
 	newLabelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
@@ -343,7 +343,7 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	processes, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	processes, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}, "worker2": {}})
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
@@ -391,7 +391,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	_, err = updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	_, err = updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.Equals, expectedError)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -429,7 +429,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	_, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	_, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.Equals, expectedError)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -476,7 +476,7 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 	}
 	updateServices.Backward(action.BWContext{
 		FWResult: result,
-		Params:   []interface{}{args},
+		Params:   []any{args},
 	})
 	sort.Slice(m.calls, func(i, j int) bool {
 		return m.calls[0].action < m.calls[1].action
@@ -494,7 +494,7 @@ func (s *S) TestUpdateImageInDBForward(c *check.C) {
 		app:        fakeApp,
 		newVersion: newVersion,
 	}
-	_, err := updateImageInDB.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	_, err := updateImageInDB.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(newVersion.VersionInfo().DeploySuccessful, check.Equals, true)
 }
@@ -502,8 +502,8 @@ func (s *S) TestUpdateImageInDBForward(c *check.C) {
 func (s *S) TestRemoveOldServicesForward(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
@@ -517,7 +517,7 @@ func (s *S) TestRemoveOldServicesForward(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	_, err := removeOldServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	_, err := removeOldServices.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "remove", app: fakeApp, processName: "worker1", versionNumber: oldVersion.Version()},
@@ -556,8 +556,8 @@ func (s *S) TestRemoveOldServicesWithAutoscaleCleanup(c *check.C) {
 	c.Assert(autoscales[0].Process, check.Equals, "worker1")
 
 	m := &recordManager{}
-	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
@@ -572,7 +572,7 @@ func (s *S) TestRemoveOldServicesWithAutoscaleCleanup(c *check.C) {
 		oldVersionNumber: oldVersion.Version(),
 	}
 
-	_, err = removeOldServices.Forward(action.FWContext{Context: ctx, Params: []interface{}{args}})
+	_, err = removeOldServices.Forward(action.FWContext{Context: ctx, Params: []any{args}})
 	c.Assert(err, check.IsNil)
 
 	autoscales, err = autoscaleProv.GetAutoScale(ctx, fakeApp)
@@ -622,8 +622,8 @@ func (s *S) TestRemoveOldServicesWithMultipleAutoscales(c *check.C) {
 	c.Assert(autoscales, check.HasLen, 2)
 
 	m := &recordManager{}
-	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
@@ -639,7 +639,7 @@ func (s *S) TestRemoveOldServicesWithMultipleAutoscales(c *check.C) {
 	}
 
 	// Remove worker1 process (keep web)
-	_, err = removeOldServices.Forward(action.FWContext{Context: ctx, Params: []interface{}{args}})
+	_, err = removeOldServices.Forward(action.FWContext{Context: ctx, Params: []any{args}})
 	c.Assert(err, check.IsNil)
 
 	autoscales, err = autoscaleProv.GetAutoScale(ctx, fakeApp)
@@ -656,8 +656,8 @@ func (s *S) TestRemoveOldServicesWithMultipleAutoscales(c *check.C) {
 func (s *S) TestRemoveOldServicesWithNonAutoscaleProvisioner(c *check.C) {
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	oldVersion := newSuccessfulVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web":     "python web1",
 			"worker1": "python worker1",
 		},
@@ -673,7 +673,7 @@ func (s *S) TestRemoveOldServicesWithNonAutoscaleProvisioner(c *check.C) {
 	}
 
 	// Should not crash even though provisioner doesn't support autoscaling
-	_, err := removeOldServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
+	_, err := removeOldServices.Forward(action.FWContext{Context: context.TODO(), Params: []any{args}})
 	c.Assert(err, check.IsNil)
 
 	c.Assert(m.calls, check.HasLen, 2)
@@ -684,8 +684,8 @@ func (s *S) TestRemoveOldServicesWithNonAutoscaleProvisioner(c *check.C) {
 func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 	m := &recordManager{}
 	a := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	newVersion := newVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
+	newVersion := newVersion(c, a, map[string]any{
+		"processes": map[string]any{
 			"p1": "cm1",
 		},
 	})
@@ -793,8 +793,8 @@ func (s *S) TestRunServicePipelineOldVersionNotFoundLogsDebugNotError(c *check.C
 	defer log.SetLogger(nil)
 	m := &recordManager{}
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	newVersion := newVersion(c, fakeApp, map[string]interface{}{
-		"processes": map[string]interface{}{
+	newVersion := newVersion(c, fakeApp, map[string]any{
+		"processes": map[string]any{
 			"web": "python web1",
 		},
 	})

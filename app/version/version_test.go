@@ -78,7 +78,7 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		expectedYamlData  provTypes.TsuruYamlData
 		expectedProcesses map[string][]string
 		expectedPorts     []string
-		expectedRaw       map[string]interface{}
+		expectedRaw       map[string]any
 	}{
 		{
 			name:              "empty is okay",
@@ -108,9 +108,9 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		{
 			name: "processes priority over procfile",
 			addData: appTypes.AddVersionDataArgs{
-				CustomData: map[string]interface{}{
+				CustomData: map[string]any{
 					"procfile": "worker9: ignored",
-					"processes": map[string]interface{}{
+					"processes": map[string]any{
 						"worker1": "python myapp.py",
 						"worker2": "someworker",
 					},
@@ -125,7 +125,7 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		{
 			name: "procfile used as fallback",
 			addData: appTypes.AddVersionDataArgs{
-				CustomData: map[string]interface{}{
+				CustomData: map[string]any{
 					"procfile": "worker1: python myapp.py\nworker2: someworker",
 				},
 			},
@@ -138,8 +138,8 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		{
 			name: "processes with mixed list and string",
 			addData: appTypes.AddVersionDataArgs{
-				CustomData: map[string]interface{}{
-					"processes": map[string]interface{}{
+				CustomData: map[string]any{
+					"processes": map[string]any{
 						"worker1": "python myapp.py",
 						"worker2": []string{"worker", "arg", "arg2"},
 					},
@@ -154,11 +154,11 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		{
 			name: "saves unknown fields for future use",
 			addData: appTypes.AddVersionDataArgs{
-				CustomData: map[string]interface{}{
+				CustomData: map[string]any{
 					"myfield": "myvalue",
 				},
 			},
-			expectedRaw: map[string]interface{}{
+			expectedRaw: map[string]any{
 				"myfield":      "myvalue",
 				"healthcheck":  nil,
 				"startupcheck": nil,
@@ -170,32 +170,32 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 		{
 			name: "parse and recover hooks and complex kubernetes",
 			addData: appTypes.AddVersionDataArgs{
-				CustomData: map[string]interface{}{
-					"hooks": map[string]interface{}{
+				CustomData: map[string]any{
+					"hooks": map[string]any{
 						"build": []string{"script1", "script2"},
 					},
-					"healthcheck": map[string]interface{}{
+					"healthcheck": map[string]any{
 						"path": "/status",
 					},
-					"startupcheck": map[string]interface{}{
+					"startupcheck": map[string]any{
 						"path": "/startup",
 					},
-					"kubernetes": map[string]interface{}{
-						"groups": map[string]interface{}{
-							"pod1": map[string]interface{}{
-								"proc1": map[string]interface{}{
-									"ports": []map[string]interface{}{
+					"kubernetes": map[string]any{
+						"groups": map[string]any{
+							"pod1": map[string]any{
+								"proc1": map[string]any{
+									"ports": []map[string]any{
 										{"port": 8888},
 									},
 								},
-								"proc2": map[string]interface{}{
-									"ports": []map[string]interface{}{
+								"proc2": map[string]any{
+									"ports": []map[string]any{
 										{"port": 8889},
 										{"target_port": 5000},
 									},
 								},
-								"proc.proc3": map[string]interface{}{
-									"ports": []map[string]interface{}{
+								"proc.proc3": map[string]any{
+									"ports": []map[string]any{
 										{"port": 9000},
 										{"target_port": 5001},
 									},

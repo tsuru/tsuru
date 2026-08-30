@@ -44,7 +44,7 @@ func (s *S) TestNotifyCreateServiceInstanceForward(c *check.C) {
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{srv, &instance, evt, ""},
+		Params: []any{srv, &instance, evt, ""},
 	}
 	r, err := notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -66,16 +66,16 @@ func (s *S) TestNotifyCreateServiceInstanceForwardInvalidParams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{"", "", ""}}
+	ctx := action.FWContext{Params: []any{"", "", ""}}
 	_, err = notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "First parameter must be a Service.")
-	ctx = action.FWContext{Params: []interface{}{srv, "", ""}}
+	ctx = action.FWContext{Params: []any{srv, "", ""}}
 	_, err = notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Second parameter must be a *ServiceInstance.")
 	instance := ServiceInstance{Name: "mysql"}
-	ctx = action.FWContext{Params: []interface{}{srv, &instance, 1}}
+	ctx = action.FWContext{Params: []any{srv, &instance, 1}}
 	_, err = notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Third parameter must be an event.")
@@ -95,7 +95,7 @@ func (s *S) TestNotifyCreateServiceInstanceBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
-	ctx := action.BWContext{Params: []interface{}{srv, &instance, evt, "test"}}
+	ctx := action.BWContext{Params: []any{srv, &instance, evt, "test"}}
 	notifyCreateServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 }
@@ -112,10 +112,10 @@ func (s *S) TestNotifyCreateServiceInstanceBackwardParams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
-	ctx := action.BWContext{Params: []interface{}{srv, ""}}
+	ctx := action.BWContext{Params: []any{srv, ""}}
 	notifyCreateServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(0))
-	ctx = action.BWContext{Params: []interface{}{"", ""}}
+	ctx = action.BWContext{Params: []any{"", ""}}
 	notifyCreateServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(0))
 }
@@ -132,7 +132,7 @@ func (s *S) TestCreateServiceInstanceForward(c *check.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "mysql"}
 	ctx := action.FWContext{
-		Params: []interface{}{srv, &instance},
+		Params: []any{srv, &instance},
 	}
 	_, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -145,7 +145,7 @@ func (s *S) TestCreateServiceInstanceForward(c *check.C) {
 }
 
 func (s *S) TestCreateServiceInstanceForwardParams(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"", ""}}
+	ctx := action.FWContext{Params: []any{"", ""}}
 	_, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Second parameter must be a *ServiceInstance.")
@@ -159,7 +159,7 @@ func (s *S) TestCreateServiceInstanceBackward(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
-		Params: []interface{}{srv, &instance},
+		Params: []any{srv, &instance},
 	}
 	createServiceInstance.Backward(ctx)
 	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
@@ -173,7 +173,7 @@ func (s *S) TestCreateServiceInstanceBackwardParams(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &instance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
-		Params: []interface{}{"", ""},
+		Params: []any{"", ""},
 	}
 	createServiceInstance.Backward(ctx)
 	err = serviceInstancesCollection.FindOne(context.TODO(), mongoBSON.M{"name": instance.Name}).Decode(&instance)
@@ -197,7 +197,7 @@ func (s *S) TestUpdateServiceInstanceForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	updatedInstance := ServiceInstance{Description: "new description", Tags: []string{"tag-a", "tag-b"}, TeamOwner: "new-owner"}
 	ctx := action.FWContext{
-		Params: []interface{}{srv, instance, updatedInstance},
+		Params: []any{srv, instance, updatedInstance},
 	}
 	_, err = updateServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -211,11 +211,11 @@ func (s *S) TestUpdateServiceInstanceForward(c *check.C) {
 }
 
 func (s *S) TestUpdateServiceInstanceForwardParams(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"", ""}}
+	ctx := action.FWContext{Params: []any{"", ""}}
 	_, err := updateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Second parameter must be a ServiceInstance.")
-	ctx = action.FWContext{Params: []interface{}{"", ServiceInstance{}, ""}}
+	ctx = action.FWContext{Params: []any{"", ServiceInstance{}, ""}}
 	_, err = updateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Third parameter must be a ServiceInstance.")
@@ -230,7 +230,7 @@ func (s *S) TestUpdateServiceInstanceBackward(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &updatedInstance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
-		Params: []interface{}{srv, instance, updatedInstance},
+		Params: []any{srv, instance, updatedInstance},
 	}
 	updateServiceInstance.Backward(ctx)
 	var si ServiceInstance
@@ -248,7 +248,7 @@ func (s *S) TestUpdateServiceInstanceBackwardParams(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &updatedInstance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
-		Params: []interface{}{"", "", ""},
+		Params: []any{"", "", ""},
 	}
 	updateServiceInstance.Backward(ctx)
 	var si ServiceInstance
@@ -280,7 +280,7 @@ func (s *S) TestNotifyUpdateServiceInstanceForward(c *check.C) {
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{srv, &instance, evt, ""},
+		Params: []any{srv, &instance, evt, ""},
 	}
 	r, err := notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -300,20 +300,20 @@ func (s *S) TestNotifyUpdateServiceInstanceForwardParams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = servicesCollection.InsertOne(context.TODO(), &srv)
 	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{""}}
+	ctx := action.FWContext{Params: []any{""}}
 	_, err = notifyUpdateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "First parameter must be a Service.")
-	ctx = action.FWContext{Params: []interface{}{srv, "", ""}}
+	ctx = action.FWContext{Params: []any{srv, "", ""}}
 	_, err = notifyUpdateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Second parameter must be a ServiceInstance.")
-	ctx = action.FWContext{Params: []interface{}{srv, ServiceInstance{}, "", nil}}
+	ctx = action.FWContext{Params: []any{srv, ServiceInstance{}, "", nil}}
 	_, err = notifyUpdateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Third parameter must be an event.")
 	evt := createEvt(c)
-	ctx = action.FWContext{Params: []interface{}{srv, ServiceInstance{}, "", evt, nil}}
+	ctx = action.FWContext{Params: []any{srv, ServiceInstance{}, "", evt, nil}}
 	_, err = notifyUpdateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "RequestID should be a string.")
@@ -328,7 +328,7 @@ func (s *S) TestBindAppDBActionForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -344,7 +344,7 @@ func (s *S) TestBindAppDBActionForwardInvalidParam(c *check.C) {
 	_, err = serviceInstancesCollection.InsertOne(context.TODO(), &si)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{
-		Params: []interface{}{"wrong parameter"},
+		Params: []any{"wrong parameter"},
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.Not(check.IsNil))
@@ -360,7 +360,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -377,7 +377,7 @@ func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	ctx := action.BWContext{
-		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	bindAppDBAction.Backward(ctx)
 	c.Assert(err, check.IsNil)
@@ -406,7 +406,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	envs, err := bindAppEndpointAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -438,7 +438,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	bwCtx := action.BWContext{
-		Params:   []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params:   []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 		FWResult: nil,
 	}
 	bindAppEndpointAction.Backward(bwCtx)
@@ -454,7 +454,7 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params:   []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params:   []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
 	}
 	result, err := setBoundEnvsAction.Forward(ctx)
@@ -471,7 +471,7 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 }
 
 func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"something"}}
+	ctx := action.FWContext{Params: []any{"something"}}
 	_, err := setBoundEnvsAction.Forward(ctx)
 	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 }
@@ -489,7 +489,7 @@ func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	ctx := action.BWContext{
-		Params:   []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params:   []any{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 		FWResult: nil,
 	}
 	setBoundEnvsAction.Backward(ctx)
@@ -517,7 +517,7 @@ func (s *S) TestUnbindAppDBForward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = unbindAppDB.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
@@ -545,7 +545,7 @@ func (s *S) TestUnbindAppDBBackward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.BWContext{Params: []interface{}{&args}}
+	ctx := action.BWContext{Params: []any{&args}}
 	unbindAppDB.Backward(ctx)
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
@@ -578,7 +578,7 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = unbindAppEndpoint.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(reqs, check.HasLen, 1)
@@ -612,7 +612,7 @@ func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = unbindAppEndpoint.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(reqs, check.HasLen, 1)
@@ -646,7 +646,7 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.BWContext{Params: []interface{}{&args}}
+	ctx := action.BWContext{Params: []any{&args}}
 	unbindAppEndpoint.Backward(ctx)
 	c.Assert(reqs, check.HasLen, 1)
 	c.Assert(reqs[0].Method, check.Equals, "POST")
@@ -681,7 +681,7 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = removeBoundEnvs.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	envs := a.ServiceEnvs
@@ -699,7 +699,7 @@ func (s *S) TestBindJobDBActionForwardInvalidParam(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	ctx := action.FWContext{
-		Params: []interface{}{"wrong parameter"},
+		Params: []any{"wrong parameter"},
 	}
 	_, err = bindJobDBAction.Forward(ctx)
 	c.Assert(err, check.Not(check.IsNil))
@@ -718,7 +718,7 @@ func (s *S) TestBindJobDBActionJobAlreadyBound(c *check.C) {
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Params: []any{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
 	}
 	_, err = bindJobDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -739,7 +739,7 @@ func (s *S) TestBindJobDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 
 	evt := createEvt(c)
 	ctx := action.BWContext{
-		Params: []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Params: []any{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
 	}
 	bindJobDBAction.Backward(ctx)
 
@@ -776,7 +776,7 @@ func (s *S) TestBindJobEndpointActionForwardReturnsEnvVars(c *check.C) {
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Params: []any{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
 	}
 	envs, err := bindJobEndpointAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -816,7 +816,7 @@ func (s *S) TestBindJobEndpointActionBackward(c *check.C) {
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	evt := createEvt(c)
 	bwCtx := action.BWContext{
-		Params:   []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Params:   []any{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
 		FWResult: nil,
 	}
 	bindJobEndpointAction.Backward(bwCtx)
@@ -831,7 +831,7 @@ func (s *S) TestSetJobBoundEnvsActionForward(c *check.C) {
 	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params:   []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Params:   []any{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
 		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
 	}
 	result, err := setJobBoundEnvsAction.Forward(ctx)
@@ -847,7 +847,7 @@ func (s *S) TestSetJobBoundEnvsActionForward(c *check.C) {
 }
 
 func (s *S) TestSetJobBoundEnvsActionForwardWrongParameter(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"something"}}
+	ctx := action.FWContext{Params: []any{"something"}}
 	_, err := setJobBoundEnvsAction.Forward(ctx)
 	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 }
@@ -872,7 +872,7 @@ func (s *S) TestSetJobBoundEnvsActionBackward(c *check.C) {
 
 	evt := createEvt(c)
 	ctx := action.BWContext{
-		Params:   []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Params:   []any{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
 		FWResult: nil,
 	}
 	setJobBoundEnvsAction.Backward(ctx)
@@ -909,7 +909,7 @@ func (s *S) TestUnbindJobDBForward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = unbindJobDB.Forward(ctx)
 	c.Assert(err, check.IsNil)
 
@@ -946,7 +946,7 @@ func (s *S) TestUnbindJobDBBackward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.BWContext{Params: []interface{}{&args}}
+	ctx := action.BWContext{Params: []any{&args}}
 	unbindJobDB.Backward(ctx)
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
@@ -986,7 +986,7 @@ func (s *S) TestUnbindJobEndpointForward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = unbindJobEndpoint.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(reqs, check.HasLen, 1)
@@ -1031,7 +1031,7 @@ func (s *S) TestUnbindJobEndpointForwardNotFound(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = unbindJobEndpoint.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(reqs, check.HasLen, 1)
@@ -1076,7 +1076,7 @@ func (s *S) TestUnbindJobEndpointBackward(c *check.C) {
 		serviceInstance: &si,
 		writer:          buf,
 	}
-	ctx := action.BWContext{Params: []interface{}{&args}}
+	ctx := action.BWContext{Params: []any{&args}}
 	unbindJobEndpoint.Backward(ctx)
 	c.Assert(reqs, check.HasLen, 1)
 	c.Assert(reqs[0].Method, check.Equals, "PUT")
@@ -1120,7 +1120,7 @@ func (s *S) TestRemoveJobBoundEnvsForward(c *check.C) {
 		job:             job,
 		serviceInstance: &si,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = removeJobBoundEnvs.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(rmCalled, check.Equals, true)
@@ -1152,7 +1152,7 @@ func (s *S) TestReloadJobProvisionerForwardForCronJob(c *check.C) {
 		job:             job,
 		serviceInstance: &si,
 	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
+	ctx := action.FWContext{Params: []any{&args}}
 	_, err = reloadJobProvisioner.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(reloadCalled, check.Equals, true)
