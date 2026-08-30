@@ -6,6 +6,7 @@ run:
 linters:
   enable:
   - misspell
+  - modernize
   disable:
   - errcheck
   - staticcheck #TODO: consider removing this and fix issues
