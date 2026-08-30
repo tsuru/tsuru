@@ -346,7 +346,7 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 
 	now := time.Now()
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		evt := event.Event{}
 		evt.UniqueID = primitive.NewObjectID()
 		evt.ID = evt.UniqueID
@@ -613,7 +613,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 
 	nGoroutines := 10
 	wg := sync.WaitGroup{}
-	for i := 0; i < nGoroutines; i++ {
+	for range nGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

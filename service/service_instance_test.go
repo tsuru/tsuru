@@ -1742,7 +1742,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var apps []*appTypes.App
 	var expectedNames []string
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		name := fmt.Sprintf("myapp-%02d", i)
 		expectedNames = append(expectedNames, name)
 		apps = append(apps, provisiontest.NewFakeApp(name, "static", 2))
@@ -1795,7 +1795,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var apps []*appTypes.App
 	evt := createEvt(c)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		name := fmt.Sprintf("myapp-%02d", i)
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)

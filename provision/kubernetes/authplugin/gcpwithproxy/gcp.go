@@ -20,6 +20,7 @@ package gcpwithproxy
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -221,9 +222,7 @@ func (t *cachedTokenSource) update(tok *oauth2.Token) map[string]string {
 	t.accessToken = tok.AccessToken
 	t.expiry = tok.Expiry
 	ret := map[string]string{}
-	for k, v := range t.cache {
-		ret[k] = v
-	}
+	maps.Copy(ret, t.cache)
 	ret["access-token"] = t.accessToken
 	ret["expiry"] = t.expiry.Format(time.RFC3339Nano)
 	return ret
@@ -234,9 +233,7 @@ func (t *cachedTokenSource) baseCache() map[string]string {
 	t.lk.Lock()
 	defer t.lk.Unlock()
 	ret := map[string]string{}
-	for k, v := range t.cache {
-		ret[k] = v
-	}
+	maps.Copy(ret, t.cache)
 	delete(ret, "access-token")
 	delete(ret, "expiry")
 	return ret

@@ -131,7 +131,7 @@ func (s *S) TestLogWriterAsyncCopySlice(c *check.C) {
 	defer appsCollection.DeleteOne(context.TODO(), mongoBSON.M{"name": a.Name})
 	writer := LogWriter{AppName: a.Name}
 	writer.Async()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		data := []byte("ble")
 		_, err = writer.Write(data)
 		data[0] = 'X'
@@ -148,7 +148,7 @@ func (s *S) TestLogWriterAsyncCopySlice(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		c.Assert(logs[i].Message, check.Equals, "ble")
 		c.Assert(logs[i].Source, check.Equals, "tsuru")
 	}
@@ -162,13 +162,13 @@ func (s *S) TestLogWriterAsyncCloseWritingStress(c *check.C) {
 	_, err = appsCollection.InsertOne(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	writeFn := func(writer *LogWriter) {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			data := []byte("ble")
 			_, err := writer.Write(data)
 			c.Assert(err, check.IsNil)
 		}
 	}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		writer := LogWriter{AppName: a.Name}
 		writer.Async()
 		go writeFn(&writer)

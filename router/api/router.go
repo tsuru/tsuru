@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -322,9 +323,7 @@ func (r *apiRouter) GetBackendStatus(ctx context.Context, app *appTypes.App) (ro
 
 func addDefaultOpts(app *appTypes.App, opts map[string]any) map[string]any {
 	mergedOpts := make(map[string]any)
-	for k, v := range opts {
-		mergedOpts[k] = v
-	}
+	maps.Copy(mergedOpts, opts)
 	prefix := "tsuru.io/"
 	mergedOpts[prefix+"app-pool"] = app.Pool
 	mergedOpts[prefix+"app-teamowner"] = app.TeamOwner

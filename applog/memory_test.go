@@ -20,7 +20,7 @@ var (
 
 func (s *S) Test_MemoryLogService_AddWrapsOnLimit(c *check.C) {
 	svc := memoryLogService{}
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		err := svc.Add("myapp", bigMessage, "tsuru", fmt.Sprintf("unit-%d", i))
 		c.Assert(err, check.IsNil)
 	}

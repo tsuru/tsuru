@@ -93,9 +93,9 @@ func (c *context) prepare() error {
 func allCombinations(n int) [][]int {
 	var result [][]int
 	combCount := 1 << uint(n)
-	for i := 0; i < combCount; i++ {
+	for i := range combCount {
 		var item []int
-		for j := 0; j < n; j++ {
+		for j := range n {
 			if i&(1<<uint(j)) != 0 {
 				item = append(item, j)
 			}

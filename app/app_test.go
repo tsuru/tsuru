@@ -2440,7 +2440,7 @@ func (s *S) TestLastLogs(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		servicemanager.LogService.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
@@ -2465,7 +2465,7 @@ func (s *S) TestLastLogsInvertFilters(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		servicemanager.LogService.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}

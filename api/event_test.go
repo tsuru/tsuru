@@ -119,7 +119,7 @@ func (s *EventSuite) insertEvents(target string, kinds []*permTypes.PermissionSc
 		kinds = []*permTypes.PermissionScheme{permission.PermAppDeploy}
 	}
 	evts := make([]*event.Event, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		name := fmt.Sprintf("app-%d", i)
 		opts := &event.Opts{
 			Target:     eventTypes.Target{Type: t, Value: name},

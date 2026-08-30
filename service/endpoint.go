@@ -10,9 +10,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -389,10 +391,8 @@ func (c *endpointClient) Plans(ctx context.Context, pool, requestID string) ([]P
 		validationErr := &validationError{}
 		err = c.jsonFromResponse(resp, &validationErr)
 		if err == nil {
-			for _, param := range validationErr.MissingParams {
-				if param == "cluster" {
-					return nil, ErrMissingPool
-				}
+			if slices.Contains(validationErr.MissingParams, "cluster") {
+				return nil, ErrMissingPool
 			}
 		}
 	}
@@ -432,9 +432,7 @@ func (c *endpointClient) Proxy(ctx context.Context, opts *ProxyOpts) error {
 	if err != nil {
 		return err
 	}
-	for k, v := range header {
-		opts.Request.Header[k] = v
-	}
+	maps.Copy(opts.Request.Header, header)
 	director := func(req *http.Request) {
 		req.Header = opts.Request.Header
 		req.SetBasicAuth(c.username, c.password)

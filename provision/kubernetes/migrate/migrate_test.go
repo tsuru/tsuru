@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -130,10 +131,8 @@ func (s *S) TestMigrateAppsCRDs(c *check.C) {
 		if prov != s.cluster.Provisioner {
 			return nil, provision.ErrNoCluster
 		}
-		for _, p := range s.cluster.Pools {
-			if pool == p {
-				return s.cluster, nil
-			}
+		if slices.Contains(s.cluster.Pools, pool) {
+			return s.cluster, nil
 		}
 		return nil, provision.ErrNoCluster
 	}

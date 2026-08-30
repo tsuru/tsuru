@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -863,9 +864,7 @@ func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
 	if ls.Labels == nil {
 		ls.Labels = make(map[string]string)
 	}
-	for k, v := range meta.Annotations {
-		ls.Labels[k] = v
-	}
+	maps.Copy(ls.Labels, meta.Annotations)
 	return ls
 }
 
@@ -960,7 +959,7 @@ func execCommand(ctx context.Context, opts execOpts) error {
 func streamWithContextWithRetry(ctx context.Context, exec remotecommand.Executor, opts remotecommand.StreamOptions) error {
 	var err error
 	maxRetry := 30
-	for i := 0; i < maxRetry; i++ {
+	for range maxRetry {
 		err = exec.StreamWithContext(ctx, opts)
 		if err == nil {
 			return nil

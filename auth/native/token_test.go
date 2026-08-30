@@ -151,7 +151,7 @@ func (s *S) TestRemoveOld(c *check.C) {
 	user := "removeme@tsuru.io"
 	defer tokensCollection.DeleteMany(ctx, mongoBSON.M{"useremail": user})
 	initial := time.Now().Add(-48 * time.Hour)
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		token := Token{
 			Token:     fmt.Sprintf("blastoise-%d", i),
 			Expires:   100 * 24 * time.Hour,

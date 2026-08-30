@@ -622,8 +622,7 @@ func getJSONFieldNames(v any) map[string]struct{} {
 	}
 
 	fields := map[string]struct{}{}
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	for field := range t.Fields() {
 		jsonTag := field.Tag.Get("json")
 
 		if jsonTag == "" || jsonTag == "-" {

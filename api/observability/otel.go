@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"go.opentelemetry.io/otel"
@@ -147,12 +148,7 @@ func (s *tsuruSampler) Description() string {
 }
 
 func isWriteOperationDenied(operation string) bool {
-	for _, deniedOp := range writeOperationsDenyList {
-		if deniedOp == operation {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(writeOperationsDenyList, operation)
 }
 
 // b3Propagator provides B3 propagation

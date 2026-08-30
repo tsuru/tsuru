@@ -29,9 +29,9 @@ func (s *S) TestIncrement(c *check.C) {
 	var wg sync.WaitGroup
 	var ct Counter
 	wg.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
-			for i := 0; i < n; i++ {
+			for range n {
 				ct.Increment()
 			}
 			wg.Done()
@@ -48,9 +48,9 @@ func (s *S) TestDecrement(c *check.C) {
 	var wg sync.WaitGroup
 	ct := NewCounter(int64(n * n))
 	wg.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
-			for i := 0; i < n; i++ {
+			for range n {
 				ct.Decrement()
 			}
 			wg.Done()

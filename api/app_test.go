@@ -4813,7 +4813,7 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	a := appTypes.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permTypes.Permission{
@@ -4837,7 +4837,7 @@ func (s *S) TestAppLogAllowNegativeLines(c *check.C) {
 	a := appTypes.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permTypes.Permission{
@@ -4861,7 +4861,7 @@ func (s *S) TestAppLogExplicitZeroLines(c *check.C) {
 	a := appTypes.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permTypes.Permission{
@@ -4968,7 +4968,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLatestEntries(c *check.C) {
 	a := appTypes.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		err = servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "unit")
 		c.Assert(err, check.IsNil)
 	}

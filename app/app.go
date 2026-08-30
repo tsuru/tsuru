@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1215,10 +1216,8 @@ func validateTeamOwner(ctx context.Context, app *appTypes.App, p *pool.Pool) err
 		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
-	for _, team := range poolTeams {
-		if team == app.TeamOwner {
-			return nil
-		}
+	if slices.Contains(poolTeams, app.TeamOwner) {
+		return nil
 	}
 	msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, p.Name)
 	return &tsuruErrors.ValidationError{Message: msg}
@@ -2074,12 +2073,7 @@ func AddRouter(ctx context.Context, app *appTypes.App, appRouter appTypes.AppRou
 }
 
 func cnameInSet(cname string, cnames []string) bool {
-	for _, v := range cnames {
-		if v == cname {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(cnames, cname)
 }
 
 func UpdateRouter(ctx context.Context, app *appTypes.App, appRouter appTypes.AppRouter) error {
@@ -2304,13 +2298,7 @@ func validateNameForCert(ctx context.Context, app *appTypes.App, name string) er
 	if err != nil {
 		return err
 	}
-	hasName := false
-	for _, n := range append(addrs, app.CName...) {
-		if n == name {
-			hasName = true
-			break
-		}
-	}
+	hasName := slices.Contains(append(addrs, app.CName...), name)
 	if !hasName {
 		return errors.New("invalid name")
 	}

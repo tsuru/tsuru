@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -1171,13 +1172,7 @@ func validateApiEnvVars(envs []apiTypes.Env) error {
 }
 
 func isInternalEnv(envKey string) bool {
-	for _, internalEnv := range internalEnvs() {
-		if internalEnv == envKey {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(internalEnvs(), envKey)
 }
 
 func internalEnvs() []string {

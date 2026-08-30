@@ -7,6 +7,7 @@ package volume
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -238,10 +239,8 @@ func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume v
 		return err
 	}
 
-	for _, vplan := range vPlans {
-		if volume.Plan.Name == vplan {
-			return nil
-		}
+	if slices.Contains(vPlans, volume.Plan.Name) {
+		return nil
 	}
 
 	return volumeTypes.ErrVolumePlanNotFound

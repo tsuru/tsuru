@@ -31,7 +31,7 @@ func (s *S) TestSafeResponseRecorderWriteIsSafe(c *check.C) {
 	defer runtime.GOMAXPROCS(originalMaxProcs)
 	recorder := NewSafeResponseRecorder()
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		wg.Add(1)
 		go func() {
 			recorder.Write([]byte("test\n"))

@@ -5,6 +5,7 @@
 package permission
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -72,11 +73,8 @@ func (r *registry) PermissionsWithContextType(ctxType permTypes.ContextType) per
 	perms := r.Permissions()
 	var ret []*permTypes.PermissionScheme
 	for _, p := range perms {
-		for _, ctx := range p.AllowedContexts() {
-			if ctx == ctxType {
-				ret = append(ret, p)
-				break
-			}
+		if slices.Contains(p.AllowedContexts(), ctxType) {
+			ret = append(ret, p)
 		}
 	}
 	return ret

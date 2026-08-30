@@ -1586,7 +1586,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	}
 	expectedNames := []string{}
 	nUsers := 100
-	for i := 0; i < nUsers; i++ {
+	for i := range nUsers {
 		email := fmt.Sprintf("user-%d", i)
 		expectedNames = append(expectedNames, email+"@groundcontrol.com")
 		_, t := permissiontest.CustomUserWithPermission(c, nativeScheme, email, perm)

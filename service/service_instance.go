@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -637,10 +638,5 @@ func validateMultiCluster(ctx context.Context, s *Service, si ServiceInstance) e
 }
 
 func hasString(slice []string, element string) bool {
-	for _, e := range slice {
-		if e == element {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, element)
 }

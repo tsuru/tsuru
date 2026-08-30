@@ -6,6 +6,7 @@ package volume
 
 import (
 	"context"
+	"slices"
 )
 
 var _ VolumeStorage = &MockVolumeStorage{}
@@ -154,11 +155,5 @@ func (m *MockVolumeStorage) RenameTeam(ctx context.Context, oldTeam, newTeam str
 }
 
 func filterMatch(values []string, currentValue string) bool {
-	for _, v := range values {
-		if v == currentValue {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(values, currentValue)
 }

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -178,7 +179,7 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 	}
 
 	maxTries := 5
-	for attemptNum := 0; attemptNum < maxTries; attemptNum++ {
+	for range maxTries {
 		for _, scheme := range []string{"https", "http"} {
 			resp, err := r.attemptRequest(ctx, method, path, headers, scheme)
 
@@ -291,9 +292,7 @@ func (r *dockerRegistry) fillAuthCredentials(req *http.Request) {
 		req.Header.Set("Authorization", "Bearer "+r.token)
 		return
 	}
-	for k, v := range r.authHeaders {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, r.authHeaders)
 }
 
 func (r *dockerRegistry) checkTokenIsValidForRenew() bool {

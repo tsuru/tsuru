@@ -143,7 +143,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	wsURL := fmt.Sprintf("ws://%s/logs", testServerURL.Host)
 	wg := sync.WaitGroup{}
 	nConcurrency := 100
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -188,7 +188,7 @@ loop:
 func (s *S) BenchmarkScanLogs(c *check.C) {
 	c.StopTimer()
 	var apps []appTypes.App
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		a := appTypes.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
 		apps = append(apps, a)
 		err := app.CreateApp(context.TODO(), &a, s.user)

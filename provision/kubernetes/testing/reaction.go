@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -563,9 +564,7 @@ func (s *KubeMock) deployWithPodReaction(c *check.C, dep *appsv1.Deployment, spe
 		},
 	}
 
-	for k, v := range dep.Annotations {
-		rs.Annotations[k] = v
-	}
+	maps.Copy(rs.Annotations, dep.Annotations)
 	rs.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] = fmt.Sprintf("%d", revision)
 	rs.OwnerReferences = []metav1.OwnerReference{
 		*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),

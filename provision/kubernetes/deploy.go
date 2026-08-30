@@ -1731,9 +1731,7 @@ type svcCreateData struct {
 }
 
 func syncAnnotationMap(toAdd map[string]string, metadata map[string]string) {
-	for key, value := range toAdd {
-		metadata[key] = value
-	}
+	maps.Copy(metadata, toAdd)
 }
 
 func syncServiceAnnotations(app *appTypes.App, svcData *svcCreateData) {
@@ -1887,9 +1885,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a *appTypes.App, pr
 			if svcData.annotations == nil {
 				svcData.annotations = addAllServicesAnnotations
 			}
-			for k, v := range addAllServicesAnnotations {
-				svcData.annotations[k] = v
-			}
+			maps.Copy(svcData.annotations, addAllServicesAnnotations)
 		}
 
 		syncServiceAnnotations(a, &svcData)
