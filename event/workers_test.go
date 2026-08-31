@@ -65,7 +65,7 @@ func (s *S) TestUpdaterRemoveEventStress(c *check.C) {
 	}()
 	wg := sync.WaitGroup{}
 	nGoroutines := 100
-	for i := 0; i < nGoroutines; i++ {
+	for i := range nGoroutines {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

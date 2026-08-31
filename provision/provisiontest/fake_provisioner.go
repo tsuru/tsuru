@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -422,7 +423,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app *appTypes.App, n uint, process stri
 	if version != nil {
 		versionNum = version.Version()
 	}
-	for i := uint(0); i < n; i++ {
+	for range n {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		var hostAddr string
 		if nodeAddr != "" {
@@ -737,12 +738,7 @@ func (p *FakeProvisioner) WatchLogs(ctx context.Context, obj *logTypes.LogabbleO
 }
 
 func stringInArray(value string, array []string) bool {
-	for _, str := range array {
-		if str == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(array, value)
 }
 
 type PipelineFakeProvisioner struct {

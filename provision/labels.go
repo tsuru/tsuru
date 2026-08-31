@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
@@ -73,12 +74,8 @@ func (s *LabelSet) DeepCopy() *LabelSet {
 	newLabels := &LabelSet{Prefix: s.Prefix}
 	newLabels.Labels = make(map[string]string)
 	newLabels.RawLabels = make(map[string]string)
-	for k, v := range s.Labels {
-		newLabels.Labels[k] = v
-	}
-	for k, v := range s.RawLabels {
-		newLabels.RawLabels[k] = v
-	}
+	maps.Copy(newLabels.Labels, s.Labels)
+	maps.Copy(newLabels.RawLabels, s.RawLabels)
 	return newLabels
 }
 
@@ -90,12 +87,8 @@ func (s *LabelSet) Merge(override *LabelSet) *LabelSet {
 	if override == nil {
 		return l
 	}
-	for k, v := range override.Labels {
-		l.Labels[k] = v
-	}
-	for k, v := range override.RawLabels {
-		l.RawLabels[k] = v
-	}
+	maps.Copy(l.Labels, override.Labels)
+	maps.Copy(l.RawLabels, override.RawLabels)
 	if override.Prefix != "" {
 		l.Prefix = override.Prefix
 	}
@@ -104,9 +97,7 @@ func (s *LabelSet) Merge(override *LabelSet) *LabelSet {
 
 func (s *LabelSet) ToLabels() map[string]string {
 	result := withPrefix(s.Labels, s.Prefix)
-	for k, v := range s.RawLabels {
-		result[k] = v
-	}
+	maps.Copy(result, s.RawLabels)
 	return result
 }
 
@@ -256,9 +247,7 @@ func filterByPrefix(labels, raw map[string]string, prefix string, withPrefix boo
 		}
 	}
 	if !withPrefix {
-		for k, v := range raw {
-			result[k] = v
-		}
+		maps.Copy(result, raw)
 	}
 	return result
 }
@@ -569,9 +558,7 @@ type NodeLabelsOpts struct {
 
 func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 	labels := map[string]string{}
-	for k, v := range opts.CustomLabels {
-		labels[k] = v
-	}
+	maps.Copy(labels, opts.CustomLabels)
 	for _, r := range []string{LabelNodePool, labelNodeAddr} {
 		delete(labels, r)
 		delete(labels, opts.Prefix+r)

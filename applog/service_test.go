@@ -103,7 +103,7 @@ func (s *ServiceSuite) Test_LogService_AddWithListeners(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_List(c *check.C) {
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
@@ -118,7 +118,7 @@ func (s *ServiceSuite) Test_LogService_List(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_ListNegativeLimit(c *check.C) {
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
 	}
 	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: -1, Name: "myapp"})
@@ -127,7 +127,7 @@ func (s *ServiceSuite) Test_LogService_ListNegativeLimit(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_ListZeroLimit(c *check.C) {
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
 	}
 	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 0, Name: "myapp"})
@@ -136,7 +136,7 @@ func (s *ServiceSuite) Test_LogService_ListZeroLimit(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_ListAll(c *check.C) {
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
@@ -144,14 +144,14 @@ func (s *ServiceSuite) Test_LogService_ListAll(c *check.C) {
 	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 1000, Name: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 15)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		c.Check(logs[i].Message, check.Equals, strconv.Itoa(i))
 		c.Check(logs[i].Source, check.Equals, "tsuru")
 	}
 }
 
 func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
@@ -169,7 +169,7 @@ func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
@@ -420,7 +420,7 @@ func (s *ServiceSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_AddListConcurrent(c *check.C) {
 	wg := sync.WaitGroup{}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -428,7 +428,7 @@ func (s *ServiceSuite) Test_LogService_AddListConcurrent(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}()
 	}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

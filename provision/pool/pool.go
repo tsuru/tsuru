@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -517,10 +518,8 @@ func AddTeamsToPool(ctx context.Context, poolName string, teams []string) error 
 	if teamConstraint.AllowsAll() || pool.Default {
 		return ErrPublicDefaultPoolCantHaveTeams
 	}
-	for _, newTeam := range teams {
-		if teamConstraint.check(newTeam) {
-			return errors.New("Team already exists in pool.")
-		}
+	if slices.ContainsFunc(teams, teamConstraint.check) {
+		return errors.New("Team already exists in pool.")
 	}
 	return appendPoolConstraint(ctx, poolName, ConstraintTypeTeam, teams...)
 }
@@ -641,12 +640,7 @@ func ValidatePoolService(ctx context.Context, pool string, services []string) er
 }
 
 func contains(arr []string, c string) bool {
-	for _, item := range arr {
-		if item == c {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(arr, c)
 }
 
 func GetDefaultPool(ctx context.Context) (*Pool, error) {

@@ -334,7 +334,7 @@ func (s *S) TestCleanupPods(_ *check.C) {
 	}, metav1.CreateOptions{})
 	require.NoError(s.t, err)
 	controllerKind := appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		labels := map[string]string{"a": "x"}
 		if i == 2 {
 			labels["a"] = "y"

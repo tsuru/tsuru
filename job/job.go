@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -662,10 +663,8 @@ func validateTeamOwner(ctx context.Context, job *jobTypes.Job, p *pool.Pool) err
 		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
-	for _, team := range poolTeams {
-		if team == job.TeamOwner {
-			return nil
-		}
+	if slices.Contains(poolTeams, job.TeamOwner) {
+		return nil
 	}
 	msg := fmt.Sprintf("Job team owner %q has no access to pool %q", job.TeamOwner, p.Name)
 	return &tsuruErrors.ValidationError{Message: msg}

@@ -312,7 +312,7 @@ func (s *S) TestNewLockExtraTargetRace(c *check.C) {
 	defer runtime.GOMAXPROCS(originalMaxProcs)
 	wg := sync.WaitGroup{}
 	var countOK int32
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -1338,7 +1338,7 @@ func (s *S) TestNewLockRetryRace(c *check.C) {
 	defer runtime.GOMAXPROCS(originalMaxProcs)
 	wg := sync.WaitGroup{}
 	var countOK int32
-	for i := 0; i < 150; i++ {
+	for range 150 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

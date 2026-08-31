@@ -35,7 +35,7 @@ func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token
 
 func selectAvailablePort() (string, error) {
 	var err error
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		port := strconv.Itoa(rand.Intn(20000) + 8000)
 		var conn net.Listener
 		conn, err = net.Listen("tcp", "localhost:"+port)
@@ -49,7 +49,7 @@ func selectAvailablePort() (string, error) {
 
 func waitForServer(addr string) error {
 	var err error
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		_, err = net.DialTimeout("tcp", addr, 1*time.Second)
 		if err == nil {
 			return nil

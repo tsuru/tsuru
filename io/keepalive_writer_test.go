@@ -112,11 +112,11 @@ func (s *S) TestKeepAliveWriterRace(c *check.C) {
 	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "...")
 	nWrites := 10
 	wg := sync.WaitGroup{}
-	for n := 0; n < 2; n++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for i := 0; i < nWrites; i++ {
+			for range nWrites {
 				count, err := w.Write([]byte("xxx"))
 				c.Check(err, check.IsNil)
 				c.Check(count, check.Equals, 3)

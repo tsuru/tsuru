@@ -7,6 +7,7 @@ package pool
 import (
 	"context"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -72,10 +73,8 @@ func (c *PoolConstraint) checkExact(v string) bool {
 	if c == nil {
 		return false
 	}
-	for _, r := range c.Values {
-		if r == v {
-			return !c.Blacklist
-		}
+	if slices.Contains(c.Values, v) {
+		return !c.Blacklist
 	}
 	return c.Blacklist
 }
@@ -146,12 +145,7 @@ func AppendPoolConstraint(ctx context.Context, c *PoolConstraint) error {
 }
 
 func validateConstraintType(c PoolConstraintType) bool {
-	for _, v := range validConstraintTypes {
-		if c == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validConstraintTypes, c)
 }
 
 func appendPoolConstraint(ctx context.Context, poolExpr string, field PoolConstraintType, values ...string) error {

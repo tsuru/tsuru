@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/url"
 	"strings"
@@ -379,9 +380,7 @@ func (f *Filter) toQuery() (mongoBSON.M, error) {
 		query["error"] = mongoBSON.M{"$ne": ""}
 	}
 	if f.Raw != nil {
-		for k, v := range f.Raw {
-			query[k] = v
-		}
+		maps.Copy(query, f.Raw)
 	}
 	return query, nil
 }

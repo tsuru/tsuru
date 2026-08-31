@@ -5,6 +5,7 @@
 package router
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -34,9 +35,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 func (s *S) SetUpTest(c *check.C) {
 	s.routers = make(map[string]routerFactory)
-	for k, v := range routers {
-		s.routers[k] = v
-	}
+	maps.Copy(s.routers, routers)
 	storagev2.ClearAllCollections(nil)
 }
 

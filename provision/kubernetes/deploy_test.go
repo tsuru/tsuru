@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -3546,9 +3547,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		dep.Status.UnavailableReplicas = 2
 		dep.Status.ObservedGeneration = 12
 		labelsCp := make(map[string]string, len(dep.Labels))
-		for k, v := range dep.Spec.Template.Labels {
-			labelsCp[k] = v
-		}
+		maps.Copy(labelsCp, dep.Spec.Template.Labels)
 		return false, nil, nil
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {

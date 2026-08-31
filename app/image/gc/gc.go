@@ -6,6 +6,7 @@ package gc
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -596,10 +597,5 @@ func (p priorizedAppVersions) Less(i, j int) bool {
 }
 
 func intIn(n int, slice []int) bool {
-	for _, sliceN := range slice {
-		if sliceN == n {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, n)
 }

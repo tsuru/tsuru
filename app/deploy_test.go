@@ -74,7 +74,7 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 	c.Assert(err, check.IsNil)
 	origins := []string{"git", "", "app-deploy"}
 	expected := []DeployData{insert[2], insert[1], insert[0]}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		c.Assert(deploys[i].App, check.Equals, expected[i].App)
 		c.Assert(deploys[i].Commit, check.Equals, expected[i].Commit)
 		c.Assert(deploys[i].Error, check.Equals, expected[i].Error)
@@ -101,7 +101,7 @@ func (s *S) TestListAppDeploys(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(deploys, check.HasLen, 2)
 	expected := []DeployData{insert[1], insert[0]}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		c.Assert(deploys[i].App, check.Equals, expected[i].App)
 		c.Assert(deploys[i].Commit, check.Equals, expected[i].Commit)
 		c.Assert(deploys[i].Error, check.Equals, expected[i].Error)
@@ -133,7 +133,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 	c.Assert(deploys, check.HasLen, 2)
 	normalizeTS(deploys)
 	normalizeTS(expected)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		expected[i].ID = deploys[i].ID
 	}
 	c.Assert(deploys, check.DeepEquals, expected)

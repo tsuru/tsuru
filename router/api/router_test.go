@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -608,11 +609,8 @@ func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var hasCname bool
-	for _, c := range backend.cnames {
-		if c == cname {
-			hasCname = true
-			break
-		}
+	if slices.Contains(backend.cnames, cname) {
+		hasCname = true
 	}
 	if hasCname {
 		w.WriteHeader(http.StatusConflict)

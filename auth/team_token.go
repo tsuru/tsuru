@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -169,10 +170,8 @@ func (s *teamTokenService) AddRole(ctx context.Context, tokenID string, roleName
 		ContextValue: contextValue,
 	}
 
-	for _, currentRole := range token.Roles {
-		if currentRole == newRoleInstance {
-			return nil
-		}
+	if slices.Contains(token.Roles, newRoleInstance) {
+		return nil
 	}
 
 	token.Roles = append(token.Roles, newRoleInstance)

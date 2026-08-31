@@ -38,7 +38,6 @@ func mockServers(count int, hook func(i int, w http.ResponseWriter, r *http.Requ
 	instanceTracker := &mockInstanceService{}
 	srvs := make([]*httptest.Server, count)
 	for i := range srvs {
-		i := i
 		ts := time.Now().Add(time.Duration(i) * time.Second)
 		response := []appTypes.Applog{
 			{Message: fmt.Sprintf("msg%d", i), Date: ts},

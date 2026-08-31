@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -447,12 +448,7 @@ func builderDeploy(ctx context.Context, opts *DeployOptions, evt *event.Event) (
 
 func ValidateOrigin(origin string) bool {
 	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image", "rebuild"}
-	for _, ol := range originList {
-		if ol == origin {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(originList, origin)
 }
 
 func incrementDeploy(ctx context.Context, app *appTypes.App) error {

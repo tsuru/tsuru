@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -781,13 +782,7 @@ var checkCertIssuerPoolConstraints = action.Action{
 			return nil, err
 		}
 
-		issuerMatchValues := false
-		for _, value := range certIssuerConstraint.Values {
-			if value == issuer {
-				issuerMatchValues = true
-				break
-			}
-		}
+		issuerMatchValues := slices.Contains(certIssuerConstraint.Values, issuer)
 		if certIssuerConstraint.Blacklist {
 			if issuerMatchValues {
 				return nil, fmt.Errorf("%w. not allowed values: %s", ErrCertIssuerNotAllowedByPoolConstraints, strings.Join(certIssuerConstraint.Values, ", "))

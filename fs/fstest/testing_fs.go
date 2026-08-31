@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -96,10 +97,7 @@ func (f *FakeFile) Write(p []byte) (n int, err error) {
 	n = len(p)
 	cur := atomic.LoadInt64(&f.current)
 	currentSize := len(f.content)
-	end := int(cur) + n
-	if end > currentSize {
-		end = currentSize
-	}
+	end := min(int(cur)+n, currentSize)
 	diff := cur - int64(currentSize)
 	if diff > 0 {
 		f.content += strings.Repeat("\x00", int(diff)) + string(p)
@@ -149,12 +147,7 @@ type RecordingFs struct {
 func (r *RecordingFs) HasAction(action string) bool {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()
-	for _, a := range r.actions {
-		if action == a {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.actions, action)
 }
 
 func (r *RecordingFs) open(name string, read bool) (fs.File, error) {
