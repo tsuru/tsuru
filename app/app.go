@@ -1253,7 +1253,7 @@ func Run(ctx context.Context, app *appTypes.App, cmd string, w io.Writer, args p
 	logWriter := LogWriter{AppName: app.Name, Source: "app-run"}
 	logWriter.Async()
 	defer logWriter.Close()
-	logWriter.Write([]byte(fmt.Sprintf("running '%s'", cmd)))
+	logWriter.Write(fmt.Appendf(nil, "running '%s'", cmd))
 	return run(ctx, app, cmd, io.MultiWriter(w, &logWriter), args)
 }
 

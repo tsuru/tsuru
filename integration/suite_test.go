@@ -66,8 +66,8 @@ type resultTable struct {
 }
 
 func (r *resultTable) parse() {
-	lines := strings.Split(r.raw, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(r.raw, "\n")
+	for line := range lines {
 		if len(line) == 0 || line[0] != '|' {
 			continue
 		}

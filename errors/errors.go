@@ -88,11 +88,12 @@ func (m *MultiError) Error() string {
 	if m.Len() == 1 {
 		return fmt.Sprintf("%+v", m.errors[0])
 	}
-	msg := fmt.Sprintf("multiple errors reported (%d):\n", len(m.errors))
+	var msg strings.Builder
+	msg.WriteString(fmt.Sprintf("multiple errors reported (%d):\n", len(m.errors)))
 	for i, err := range m.errors {
-		msg += fmt.Sprintf("error #%d: %+v\n", i, err)
+		msg.WriteString(fmt.Sprintf("error #%d: %+v\n", i, err))
 	}
-	return msg
+	return msg.String()
 }
 
 func (m *MultiError) Format(s fmt.State, verb rune) {
