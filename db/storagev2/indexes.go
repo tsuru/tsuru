@@ -244,11 +244,30 @@ func EnsureIndexesCreated(db *mongo.Database) error {
 
 		collection := db.Collection(collectionName)
 
-		_, err := collection.Indexes().CreateMany(context.TODO(), index.Indexes)
+		_, err := collection.Indexes().CreateMany(context.TODO(), copyIndexModels(index.Indexes))
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// copyIndexModels returns a copy of models whose IndexOptions are safe for the
+// driver to mutate.
+//
+// CreateMany fills in a generated index name on any IndexModel that does not
+// carry one, writing it back into the IndexOptions it was given. Those options
+// come from the package-level EnsureIndexes, so two goroutines calling
+// EnsureIndexesCreated concurrently race on that shared state.
+func copyIndexModels(models []mongo.IndexModel) []mongo.IndexModel {
+	out := make([]mongo.IndexModel, len(models))
+	for i, model := range models {
+		if model.Options != nil {
+			opts := *model.Options
+			model.Options = &opts
+		}
+		out[i] = model
+	}
+	return out
 }
