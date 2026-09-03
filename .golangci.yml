@@ -3,6 +3,9 @@ version: "2"
 run:
   tests: true
 
+issues:
+  new-from-merge-base: origin/main
+
 linters:
   enable:
   - misspell
