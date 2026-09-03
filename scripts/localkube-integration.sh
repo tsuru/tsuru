@@ -26,6 +26,19 @@ function onerror() {
   ${KUBECTL} logs -n ${NAMESPACE} deploy/tsuru-api || true
   echo
   ${KUBECTL} get pods -A -o wide
+  while read -r pod_namespace pod_name pod_phase pod_ready; do
+    if [[ "${pod_phase}" == "Succeeded" ]] ||
+      [[ "${pod_phase}" == "Running" && "${pod_ready}" == "True" ]]; then
+      continue
+    fi
+
+    echo
+    echo "POD DESCRIPTION: ${pod_namespace}/${pod_name}"
+    ${KUBECTL} describe pod -n "${pod_namespace}" "${pod_name}" || true
+  done < <(
+    ${KUBECTL} get pods -A --no-headers \
+      -o 'custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,PHASE:.status.phase,READY:.status.conditions[?(@.type=="Ready")].status'
+  )
   echo
   ${KUBECTL} get services -A -o wide
   [[ -n ${tsuru_api_port_forward_pid} ]] && kill ${tsuru_api_port_forward_pid}
