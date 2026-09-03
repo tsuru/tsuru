@@ -100,7 +100,6 @@ func ProvisionerClustersCollection() (*mongo.Collection, error) {
 	}
 
 	return db.Collection("provisioner_clusters", options.Collection().SetBSONOptions(&options.BSONOptions{
-		NilMapAsEmpty:   false,
 		NilSliceAsEmpty: false,
 	})), nil
 }
