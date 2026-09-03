@@ -6,7 +6,12 @@ package mongodb
 
 import (
 	"context"
+	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/storage/storagetest"
 	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
@@ -19,15 +24,17 @@ var _ = check.Suite(&storagetest.ClusterSuite{
 	SuiteHooks:     &mongodbBaseTest{},
 })
 
-type clusterSuite struct {
-	storagetest.SuiteHooks
-}
+func TestUpsertClusterWithExecConfigPreservesValidPluginPolicy(t *testing.T) {
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=150")
+	config.Set("database:name", "tsuru_storage_mongodb_test_cluster_internal")
+	storagev2.Reset()
+	require.NoError(t, storagev2.ClearAllCollections(nil))
+	t.Cleanup(func() {
+		err := storagev2.ClearAllCollections(nil)
+		storagev2.Reset()
+		require.NoError(t, err)
+	})
 
-var _ = check.Suite(&clusterSuite{
-	SuiteHooks: &mongodbBaseTest{name: "cluster-internal"},
-})
-
-func (s *clusterSuite) TestUpsertClusterWithExecConfigPreservesValidPluginPolicy(c *check.C) {
 	storage := &clusterStorage{}
 	cluster := provision.Cluster{
 		Name: "clustername",
@@ -43,11 +50,13 @@ func (s *clusterSuite) TestUpsertClusterWithExecConfigPreservesValidPluginPolicy
 	}
 
 	err := storage.Upsert(context.Background(), cluster)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
 
 	storedCluster, err := storage.FindByName(context.Background(), cluster.Name)
-	c.Assert(err, check.IsNil)
+	require.NoError(t, err)
+	require.NotNil(t, storedCluster.KubeConfig)
+	require.NotNil(t, storedCluster.KubeConfig.AuthInfo.Exec)
 
 	err = authexec.ValidatePluginPolicy(storedCluster.KubeConfig.AuthInfo.Exec.PluginPolicy)
-	c.Assert(err, check.IsNil)
+	assert.NoError(t, err)
 }

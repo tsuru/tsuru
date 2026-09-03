@@ -248,7 +248,7 @@ func jobList() ExecFlow {
 
 func checkJobCompletedSuccessfully(c *check.C, jobName string, env *Environment) {
 	jobInfo := new(jobTypes.JobInfo)
-	ok := retry(5*time.Minute, func() bool {
+	ok := retry(3*time.Minute, func() bool {
 		res := T("job", "info", jobName, "--json").Run(env)
 		c.Assert(res, ResultOk)
 		err := json.NewDecoder(&res.Stdout).Decode(jobInfo)
