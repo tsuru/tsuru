@@ -86,16 +86,12 @@ jobs:
         go-version: "1.26.6"
     - uses: actions/checkout@v4
       with:
-        # modernize is gated with --new-from-merge-base below, which needs the
-        # merge base to be present in the local clone.
-        fetch-depth: 0
+        fetch-depth: 0 # new-from-merge-base in .golangci.yml needs the history
     - run: make yamllint
     - uses: golangci/golangci-lint-action@v8
       with:
         version: v2.11.4
-        # Existing code is grandfathered: only lines touched by the PR are
-        # reported. Drop --new-from-merge-base once the tree is clean.
-        args: --timeout=10m --new-from-merge-base=origin/main
+        args: --timeout=10m
       env:
         GOROOT: ""
   govulncheck:
