@@ -565,12 +565,21 @@ func (c *ClusterClient) DisablePlatformBuild() bool {
 
 func (c *ClusterClient) configForContext(context, key string) string {
 	if v, ok := c.CustomData[context+":"+key]; ok {
+		if key == "registry-insecure" {
+			fmt.Println(v, ok)
+		}
 		return v
 	}
 	if v, ok := c.CustomData[key]; ok {
+		if key == "registry-insecure" {
+			fmt.Println(v, ok)
+		}
 		return v
 	}
 	data, err := config.GetString("clusters:defaults:" + key)
+	if key == "registry-insecure" {
+		fmt.Println(data, err, key)
+	}
 	if err != nil {
 		return ""
 	}
