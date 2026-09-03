@@ -6,6 +6,7 @@ package storagev2
 
 import (
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func AppsCollection() (*mongo.Collection, error) {
@@ -93,7 +94,15 @@ func DynamicRoutersCollection() (*mongo.Collection, error) {
 }
 
 func ProvisionerClustersCollection() (*mongo.Collection, error) {
-	return Collection("provisioner_clusters")
+	db, err := database()
+	if err != nil {
+		return nil, err
+	}
+
+	return db.Collection("provisioner_clusters", options.Collection().SetBSONOptions(&options.BSONOptions{
+		NilMapAsEmpty:   false,
+		NilSliceAsEmpty: false,
+	})), nil
 }
 
 func AuthGroupsCollection() (*mongo.Collection, error) {
