@@ -46,6 +46,9 @@ jobs:
       uses: medyagh/setup-minikube@master
       with:
         kubernetes-version: "v${{ matrix.k8s_version }}"
+        container-runtime: docker
+        insecure-registry: "10.96.0.0/12"
+        minikube-version: 1.38.1
     - uses: azure/setup-helm@v1
       with:
         version: v3.14.3

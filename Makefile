@@ -112,12 +112,11 @@ run-tsurud-token: $(TSR_BIN)
 validate-api-spec: install-swagger
 	$(SWAGGER) validate ./docs/reference/api.yaml
 
-test-ci-integration:
+test-ci-integration: clone_platforms
 	if [ -z "$$INTEGRATION_KUBECONFIG" ]; then \
 		echo "INTEGRATION_KUBECONFIG is not set"; \
 		exit 1; \
 	fi
-	git clone https://github.com/tsuru/platforms /tmp/platforms
 	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=4 \
 	TSURU_INTEGRATION_platforms="python,go" \
@@ -138,7 +137,6 @@ local.test-ci-integration: clone_platforms
 		echo "INTEGRATION_KUBECONFIG is not set"; \
 		exit 1; \
 	fi
-	#git clone https://github.com/tsuru/platforms /tmp/platforms
 	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=1 \
 	TSURU_INTEGRATION_platforms="python,go" \
@@ -168,6 +166,10 @@ generate-test-certs:
 # Docker binary. If you are using podman, you can change this to podman when
 # running make commands. Example: make local DOCKER=podman
 DOCKER ?= docker
+
+# Docker Compose command. Prefer the standalone binary when it is installed,
+# otherwise use the Compose plugin provided by the Docker binary.
+DOCKER_COMPOSE ?= $(shell command -v docker-compose >/dev/null 2>&1 && echo docker-compose || echo "$(DOCKER) compose")
 
 # Kubernetes version used with minikube
 K8S_VERSION = v1.32.0
@@ -230,7 +232,7 @@ endif
 local.setup: local.cluster
 	@echo "Setting up local tsuru development environment..."
 	@$(LOCAL_DEV) render-templates $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
-	@$(DOCKER) compose --profile tsurud-api up -d
+	@$(DOCKER_COMPOSE) --profile tsurud-api up -d
 	@$(LOCAL_DEV) setup-tsuru-user $(TSURU_ROOT_USER) $(TSURU_ROOT_PASS)
 	@$(LOCAL_DEV) setup-tsuru-target $(TSURU_HOST_IP) $(TSURU_HOST_PORT)
 	@$(LOCAL_DEV) setup-tsuru-cluster $(TSURU_HOST_IP)
@@ -250,7 +252,7 @@ local.prerun:
 # Start the local development environment for tsuru.
 local.run: local.prerun local.cluster
 	@echo "Starting local tsuru development environment..."
-	$(DOCKER) compose up -d
+	$(DOCKER_COMPOSE) up -d
 	go build -o $(TSR_BIN) $(TSR_SRC)
 	$(TSR_BIN) api -c "./etc/tsurud.conf"
 
@@ -258,7 +260,7 @@ local.run: local.prerun local.cluster
 # Stop the local development environment for tsuru.
 local.stop:
 	@echo "Stopping local tsuru development environment..."
-	@$(DOCKER) compose --profile tsurud-api down
+	@$(DOCKER_COMPOSE) --profile tsurud-api down
 	@minikube stop
 	@$(LOCAL_DEV) cleanup-loopback $(TSURU_HOST_IP)
 
@@ -266,7 +268,7 @@ local.stop:
 # Clear the local development environment for tsuru.
 local.cleanup: local.stop
 	@echo "Clearing local tsuru development environment..."
-	@$(DOCKER) compose down --volumes --rmi all
+	@$(DOCKER_COMPOSE) down --volumes --rmi all
 	@minikube delete
 	@find ./etc ! -name '*.template' ! -name 'tsuru.conf' -mindepth 1 | \
 		xargs -I{} echo rm {}
@@ -293,4 +295,4 @@ generate-grpc:
 		types/tag/service.proto
 
 connect-db:
-	@$(DOCKER) compose exec mongo bash -c 'mongosh "mongodb://mongo:27017'
+	@$(DOCKER_COMPOSE) exec mongo bash -c 'mongosh "mongodb://mongo:27017'
