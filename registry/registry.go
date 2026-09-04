@@ -67,6 +67,9 @@ func RemoveImage(ctx context.Context, imageName string) error {
 	if registry == "" {
 		return errors.New("invalid empty registry")
 	}
+	if region, ok := isECRRegistry(registry); ok {
+		return removeECRImage(ctx, region, image, tag)
+	}
 	r := &dockerRegistry{registry: registry}
 	err := r.registryAuth(ctx, imageName)
 	if err != nil {
