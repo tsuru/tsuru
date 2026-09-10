@@ -6,7 +6,7 @@ require (
 	github.com/adhocore/gronx v1.6.6
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
-	github.com/containerd/containerd/v2 v2.3.3
+	github.com/containerd/containerd/v2 v2.3.5
 	github.com/docker/cli v29.2.0+incompatible
 	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
@@ -51,11 +51,11 @@ require (
 	google.golang.org/grpc v1.83.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
-	k8s.io/api v0.36.1
+	k8s.io/api v0.36.3
 	k8s.io/apiextensions-apiserver v0.36.0
-	k8s.io/apimachinery v0.36.1
+	k8s.io/apimachinery v0.36.3
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.7.0
-	k8s.io/client-go v0.36.1
+	k8s.io/client-go v0.36.3
 	k8s.io/code-generator v0.36.1
 	k8s.io/ingress-gce v1.20.1
 	k8s.io/metrics v0.36.1
@@ -99,7 +99,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
-	k8s.io/streaming v0.36.1 // indirect
+	k8s.io/streaming v0.36.3 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 )
