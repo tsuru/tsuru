@@ -517,7 +517,9 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	canRead := permission.Check(ctx, t, permission.PermTeamRead)
+	canRead := permission.Check(ctx, t, permission.PermTeamRead,
+		permission.Context(permTypes.CtxTeam, teamName),
+	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
