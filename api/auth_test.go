@@ -606,6 +606,48 @@ func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
+func (s *AuthSuite) TestTeamInfoAllowsTeamPermissionScopedToTeam(c *check.C) {
+	s.assertTeamInfoAllowed(c, "abc", "team-info-team-scoped", permTypes.Permission{
+		Scheme:  permission.PermTeam,
+		Context: permission.Context(permTypes.CtxTeam, "abc"),
+	})
+}
+
+func (s *AuthSuite) TestTeamInfoAllowsTeamReadPermissionScopedGlobally(c *check.C) {
+	s.assertTeamInfoAllowed(c, "abc", "team-info-team-read-global", permTypes.Permission{
+		Scheme:  permission.PermTeamRead,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+}
+
+func (s *AuthSuite) TestTeamInfoAllowsTeamPermissionScopedGlobally(c *check.C) {
+	s.assertTeamInfoAllowed(c, "abc", "team-info-team-global", permTypes.Permission{
+		Scheme:  permission.PermTeam,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+}
+
+func (s *AuthSuite) TestTeamInfoAllowsTeamReadPermissionScopedToTeam(c *check.C) {
+	s.assertTeamInfoAllowed(c, "abc", "team-info-team-read-scoped", permTypes.Permission{
+		Scheme:  permission.PermTeamRead,
+		Context: permission.Context(permTypes.CtxTeam, "abc"),
+	})
+}
+
+func (s *AuthSuite) assertTeamInfoAllowed(c *check.C, teamName, userName string, perm permTypes.Permission) {
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, userName, perm)
+	request, err := http.NewRequest(http.MethodGet, "/teams/"+teamName, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
 func (s *AuthSuite) TestTeamInfoReturnsAppInfoWithoutEnvironments(c *check.C) {
 	ctx := context.TODO()
 	teamName := "team-test"
