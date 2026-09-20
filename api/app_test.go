@@ -5,6 +5,7 @@
 package api
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -6685,4 +6686,47 @@ func (s *S) TestFollowLogs(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(msgSlice, check.HasLen, 1)
 	c.Assert(msgSlice[0].Message, check.Equals, "xyz")
+}
+
+func (s *S) TestUploadFile(c *check.C) {
+	a := appTypes.App{Name: "myapp", Router: "fake-tls"}
+	ctx := context.Background()
+
+	err := app.CreateApp(ctx, &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	unitName := "web"
+	err = s.provisioner.AddUnits(ctx, &a, 1, unitName, nil, nil)
+	c.Assert(err, check.IsNil)
+
+	var buffer bytes.Buffer
+	tw := tar.NewWriter(&buffer)
+	file := []byte("Hello, world!")
+	filename := "transfer.txt"
+	fileSize := int64(len(file))
+	header := &tar.Header{
+		Name: filename,
+		Mode: 0600,
+		Size: fileSize,
+	}
+
+	err = tw.WriteHeader(header)
+	c.Assert(err, check.IsNil)
+	_, err = tw.Write(file)
+	c.Assert(err, check.IsNil)
+	err = tw.Close()
+	c.Assert(err, check.IsNil)
+
+	body := bytes.NewReader(buffer.Bytes())
+	url := fmt.Sprintf("/apps/%s/unit/%s/transfer/upload", a.Name, unitName)
+	request, err := http.NewRequest("POST", url, body)
+
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-tar")
+	request.Header.Set("x-filepath", "/tmp")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
