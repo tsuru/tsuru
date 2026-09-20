@@ -81,6 +81,7 @@ func (s *S) TestNewDone(c *check.C) {
 		UniqueID:       evt.ID,
 		Target:         eventTypes.Target{Type: "app", Value: "myapp"},
 		Lock:           &eventTypes.Target{Type: "app", Value: "myapp"},
+		Locks:          []eventTypes.Target{{Type: "app", Value: "myapp"}},
 		Kind:           eventTypes.Kind{Type: eventTypes.KindTypePermission, Name: "app.update.env.set"},
 		Owner:          eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:        true,
@@ -115,6 +116,7 @@ func (s *S) TestNewDone(c *check.C) {
 	expected.Running = false
 	expected.ID = evts[0].ID
 	expected.Lock = nil
+	expected.Locks = nil
 	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
@@ -172,6 +174,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 		UniqueID:        evt.UniqueID,
 		Target:          eventTypes.Target{Type: "app", Value: "myapp"},
 		Lock:            &eventTypes.Target{Type: "app", Value: "myapp"},
+		Locks:           []eventTypes.Target{{Type: "app", Value: "myapp"}},
 		Kind:            eventTypes.Kind{Type: eventTypes.KindTypePermission, Name: "app.update.env.set"},
 		Owner:           eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:         true,
@@ -205,6 +208,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	expected.ID = evts[0].UniqueID
 	expected.EndCustomData = evts[0].EndCustomData
 	expected.Lock = nil
+	expected.Locks = nil
 	expected.Instance = evts[0].Instance
 	c.Assert(evts[0], check.DeepEquals, expected)
 }
@@ -1310,6 +1314,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 		UniqueID:       evt.UniqueID,
 		Target:         eventTypes.Target{Type: "app", Value: "myapp"},
 		Lock:           &eventTypes.Target{Type: "app", Value: "myapp"},
+		Locks:          []eventTypes.Target{{Type: "app", Value: "myapp"}},
 		Kind:           eventTypes.Kind{Type: eventTypes.KindTypePermission, Name: "app.update.env.set"},
 		Owner:          eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:        true,
@@ -1385,6 +1390,7 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 		UniqueID:        evt.UniqueID,
 		Target:          eventTypes.Target{Type: "app", Value: "myapp"},
 		Lock:            &eventTypes.Target{Type: "app", Value: "myapp"},
+		Locks:           []eventTypes.Target{{Type: "app", Value: "myapp"}},
 		Kind:            eventTypes.Kind{Type: eventTypes.KindTypePermission, Name: "app.update.env.set"},
 		Owner:           eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:         true,
