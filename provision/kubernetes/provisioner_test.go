@@ -748,6 +748,47 @@ func (s *S) TestRestart(c *check.C) {
 	require.NotEqual(s.t, id, units[0].ID)
 }
 
+func (s *S) TestRestartEmptyClusterFallsBackToStoredVersion(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	units, err := s.p.Units(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
+	err = s.p.Restart(context.TODO(), a, "", nil, nil)
+	require.NoError(s.t, err)
+	wait()
+	units, err = s.p.Units(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 1)
+	require.Equal(s.t, 1, units[0].Version)
+}
+
+func (s *S) TestRestartEmptyClusterNoVersionsIsNoop(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Restart(context.TODO(), a, "", nil, nil)
+	require.NoError(s.t, err)
+	units, err := s.p.Units(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
+}
+
+func (s *S) TestStopEmptyClusterDoesNotCreateResources(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	newSuccessfulVersion(c, a, map[string][]string{
+		"web": {"python", "myapp.py"},
+	})
+	err := s.p.Stop(context.TODO(), a, "", nil, nil)
+	require.NoError(s.t, err)
+	units, err := s.p.Units(context.TODO(), a)
+	require.NoError(s.t, err)
+	require.Len(s.t, units, 0)
+}
+
 func (s *S) TestShouldRestartOnlyOnce(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
