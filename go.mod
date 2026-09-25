@@ -1,12 +1,12 @@
 module github.com/tsuru/tsuru
 
-go 1.26.6
+go 1.26.8
 
 require (
 	github.com/adhocore/gronx v1.6.6
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
-	github.com/containerd/containerd/v2 v2.3.5
+	github.com/containerd/containerd/v2 v2.3.6
 	github.com/docker/cli v29.2.0+incompatible
 	github.com/elazarl/goproxy v1.2.1
 	github.com/felixge/fgprof v0.9.1
