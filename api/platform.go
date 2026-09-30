@@ -208,6 +208,12 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	if !canUsePlat {
+		// A Dockerfile can name internal registries.
+		for i := range platforms {
+			platforms[i].Source = ""
+		}
+	}
 	if len(platforms) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil

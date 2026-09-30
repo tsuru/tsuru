@@ -6505,6 +6505,9 @@ definitions:
         type: string
       disabled:
         type: boolean
+      source:
+        type: string
+        description: Dockerfile the platform was last built from, empty after a rollback. Only returned to users allowed to create or update platforms.
   PlatformInfo:
     type: object
     properties:
