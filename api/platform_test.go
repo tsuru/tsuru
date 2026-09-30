@@ -356,6 +356,47 @@ func (s *PlatformSuite) TestPlatformList(c *check.C) {
 	c.Assert(got, check.DeepEquals, platforms)
 }
 
+func (s *PlatformSuite) TestPlatformListWithSource(c *check.C) {
+	platforms := []appTypes.Platform{
+		{Name: "java", Source: "FROM registry.company.com/tsuru/java"},
+		{Name: "static"},
+	}
+	s.mockService.Platform.OnList = func(enabledOnly bool) ([]appTypes.Platform, error) {
+		return platforms, nil
+	}
+	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var got []appTypes.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, platforms)
+}
+
+func (s *PlatformSuite) TestPlatformListHidesSourceFromUsers(c *check.C) {
+	s.mockService.Platform.OnList = func(enabledOnly bool) ([]appTypes.Platform, error) {
+		return []appTypes.Platform{{Name: "java", Source: "FROM registry.company.com/tsuru/java"}}, nil
+	}
+	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var got []appTypes.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, []appTypes.Platform{{Name: "java"}})
+}
+
 func (s *PlatformSuite) TestPlatformListGetOnlyEnabledPlatforms(c *check.C) {
 	platforms := []appTypes.Platform{
 		{Name: "python"},
@@ -421,6 +462,28 @@ func (s *PlatformSuite) TestPlatformInfo(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *PlatformSuite) TestPlatformInfoWithSource(c *check.C) {
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		return &appTypes.Platform{Name: name, Source: "FROM tsuru/myplatform"}, nil
+	}
+	s.mockService.PlatformImage.OnListImagesOrDefault = func(name string) ([]string, error) {
+		return []string{"tsuru/myplatform:v1"}, nil
+	}
+	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var got struct {
+		Platform appTypes.Platform
+	}
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got.Platform, check.DeepEquals, appTypes.Platform{Name: "myplatform", Source: "FROM tsuru/myplatform"})
 }
 
 func (s *PlatformSuite) TestPlatformInfoDefaultImage(c *check.C) {
