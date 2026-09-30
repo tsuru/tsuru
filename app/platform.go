@@ -117,13 +117,16 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		return appTypes.ErrPlatformNameMissing
 	}
 
-	_, err := s.FindByName(ctx, opts.Name)
+	p, err := s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
 
 	if disabled := opts.Args["disabled"]; disabled == "" && len(opts.Data) == 0 {
-		return errors.New("either disabled or dockerfile must be provided")
+		if p.Source == "" {
+			return errors.New("either disabled or dockerfile must be provided")
+		}
+		opts.Data = []byte(p.Source)
 	}
 
 	if len(opts.Data) > 0 {

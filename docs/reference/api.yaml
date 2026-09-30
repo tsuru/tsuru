@@ -2367,8 +2367,13 @@ paths:
       parameters:
       - name: dockerfile_content
         in: formData
-        required: true
+        required: false
         type: file
+        description: Dockerfile to build the new version from. When omitted and disabled is not set, the platform is rebuilt from the Dockerfile it was last built from.
+      - name: disabled
+        in: formData
+        required: false
+        type: string
       produces:
       - application/x-json-stream
       consumes:

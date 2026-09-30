@@ -645,3 +645,25 @@ func (s *PlatformSuite) TestPlatformRollbackClearsSource(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cleared, check.Equals, true)
 }
+
+func (s *PlatformSuite) TestPlatformUpdate_WithoutDockerfileRebuildsFromStoredSource(c *check.C) {
+	var recorded string
+	ps := &platformService{storage: &appTypes.MockPlatformStorage{
+		OnFindByName: func(n string) (*appTypes.Platform, error) {
+			return &appTypes.Platform{Name: n, Source: "FROM registry.company.com/tsuru/my-plat"}, nil
+		},
+		OnSetSource: func(name, source string) error {
+			recorded = source
+			return nil
+		},
+	}}
+	var built []byte
+	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) ([]string, error) {
+		built = o.Data
+		return []string{"tsuru/my-plat:v1"}, nil
+	}
+	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: "my-plat", Args: map[string]string{"disabled": ""}})
+	c.Assert(err, check.IsNil)
+	c.Assert(string(built), check.Equals, "FROM registry.company.com/tsuru/my-plat")
+	c.Assert(recorded, check.Equals, "FROM registry.company.com/tsuru/my-plat")
+}
