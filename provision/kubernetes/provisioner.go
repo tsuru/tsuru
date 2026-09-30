@@ -526,7 +526,7 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a *appTyp
 	return versions, nil
 }
 
-func changeState(ctx context.Context, a *appTypes.App, process string, version appTypes.AppVersion, state servicecommon.ProcessState, w io.Writer) error {
+func (p *kubernetesProvisioner) changeState(ctx context.Context, a *appTypes.App, process string, version appTypes.AppVersion, state servicecommon.ProcessState, w io.Writer) error {
 	client, err := clusterForPool(ctx, a.Pool)
 	if err != nil {
 		return err
@@ -548,7 +548,7 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 				versionsMap[v.VersionInfo().Version] = v
 			}
 
-			units, err := GetProvisioner().Units(ctx, a)
+			units, err := p.Units(ctx, a)
 			if err != nil {
 				return err
 			}
@@ -578,6 +578,22 @@ func changeState(ctx context.Context, a *appTypes.App, process string, version a
 			}
 
 			versions = append(versions, appVersion)
+		}
+	}
+
+	if len(versions) == 0 && state.Start {
+		// The cluster has no resources for the app, e.g. the pool was moved
+		// to a brand new cluster. Fall back to the last successful version
+		// stored in tsuru so start/restart can recreate everything.
+		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
+		if err != nil && !errors.Is(err, appTypes.ErrNoVersionsAvailable) {
+			return err
+		}
+		if latest != nil {
+			if w != nil {
+				fmt.Fprintf(w, " ---> App has no resources in the cluster, recreating them from the last successful version (v%d)\n", latest.Version())
+			}
+			versions = append(versions, latest)
 		}
 	}
 
@@ -701,15 +717,15 @@ func (p *kubernetesProvisioner) RemoveUnits(ctx context.Context, a *appTypes.App
 }
 
 func (p *kubernetesProvisioner) Restart(ctx context.Context, a *appTypes.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true, Restart: true}, w)
+	return p.changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true, Restart: true}, w)
 }
 
 func (p *kubernetesProvisioner) Start(ctx context.Context, a *appTypes.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true}, w)
+	return p.changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true}, w)
 }
 
 func (p *kubernetesProvisioner) Stop(ctx context.Context, a *appTypes.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, w)
+	return p.changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, w)
 }
 
 var stateMap = map[apiv1.PodPhase]provTypes.UnitStatus{
