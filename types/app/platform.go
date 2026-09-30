@@ -12,6 +12,9 @@ import (
 type Platform struct {
 	Name     string
 	Disabled bool
+	// Source is the Dockerfile the latest version was built from, empty when
+	// none was recorded.
+	Source string `json:",omitempty"`
 }
 
 type PlatformOptions struct {
@@ -39,5 +42,6 @@ type PlatformStorage interface {
 	FindAll(context.Context) ([]Platform, error)
 	FindEnabled(context.Context) ([]Platform, error)
 	Update(context.Context, Platform) error
+	SetSource(context.Context, string, string) error
 	Delete(context.Context, Platform) error
 }

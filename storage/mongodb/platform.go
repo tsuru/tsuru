@@ -22,6 +22,7 @@ type PlatformStorage struct{}
 type platform struct {
 	Name     string `bson:"_id"`
 	Disabled bool   `bson:",omitempty"`
+	Source   string `bson:",omitempty"`
 }
 
 func (s *PlatformStorage) Insert(ctx context.Context, p app.Platform) error {
@@ -126,6 +127,33 @@ func (s *PlatformStorage) Update(ctx context.Context, p app.Platform) error {
 	}
 
 	if result.ModifiedCount == 0 {
+		return app.ErrPlatformNotFound
+	}
+	return nil
+}
+
+func (s *PlatformStorage) SetSource(ctx context.Context, name, source string) error {
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, platformsCollectionName)
+	span.SetMongoID(name)
+	defer span.Finish()
+
+	collection, err := storagev2.Collection(platformsCollectionName)
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+	var update mongoBSON.M
+	if source == "" {
+		update = mongoBSON.M{"$unset": mongoBSON.M{"source": ""}}
+	} else {
+		update = mongoBSON.M{"$set": mongoBSON.M{"source": source}}
+	}
+	result, err := collection.UpdateOne(ctx, mongoBSON.M{"_id": name}, update)
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+	if result.MatchedCount == 0 {
 		return app.ErrPlatformNotFound
 	}
 	return nil
