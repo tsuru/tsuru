@@ -574,3 +574,74 @@ func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, RollbackVersion: 1})
 	c.Assert(err, check.IsNil)
 }
+
+func (s *PlatformSuite) TestPlatformCreateRecordsSource(c *check.C) {
+	var gotName, gotSource string
+	ps := &platformService{storage: &appTypes.MockPlatformStorage{
+		OnInsert: func(appTypes.Platform) error { return nil },
+		OnSetSource: func(name, source string) error {
+			gotName, gotSource = name, source
+			return nil
+		},
+	}}
+	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) ([]string, error) {
+		return []string{"tsuru/myplatform:v1"}, nil
+	}
+	err := ps.Create(context.TODO(), appTypes.PlatformOptions{Name: "myplatform", Data: []byte("FROM tsuru/myplatform")})
+	c.Assert(err, check.IsNil)
+	c.Assert(gotName, check.Equals, "myplatform")
+	c.Assert(gotSource, check.Equals, "FROM tsuru/myplatform")
+}
+
+func (s *PlatformSuite) TestPlatformCreateIgnoresSourceRecordError(c *check.C) {
+	ps := &platformService{storage: &appTypes.MockPlatformStorage{
+		OnInsert:    func(appTypes.Platform) error { return nil },
+		OnSetSource: func(string, string) error { return errors.New("mongo went away") },
+	}}
+	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) ([]string, error) {
+		return []string{"tsuru/myplatform:v1"}, nil
+	}
+	err := ps.Create(context.TODO(), appTypes.PlatformOptions{Name: "myplatform", Data: []byte("FROM tsuru/myplatform")})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *PlatformSuite) TestPlatformUpdateRecordsSource(c *check.C) {
+	name := "test-platform-update"
+	var gotSource string
+	ps := &platformService{storage: &appTypes.MockPlatformStorage{
+		OnFindByName: func(n string) (*appTypes.Platform, error) { return &appTypes.Platform{Name: n}, nil },
+		OnSetSource: func(n, source string) error {
+			c.Check(n, check.Equals, name)
+			gotSource = source
+			return nil
+		},
+	}}
+	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) ([]string, error) {
+		return []string{"tsuru/" + name + ":v1"}, nil
+	}
+	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: map[string]string{"disabled": ""}, Data: []byte("FROM tsuru/test")})
+	c.Assert(err, check.IsNil)
+	c.Assert(gotSource, check.Equals, "FROM tsuru/test")
+}
+
+func (s *PlatformSuite) TestPlatformRollbackClearsSource(c *check.C) {
+	name := "test-platform-rollback"
+	cleared := false
+	ps := &platformService{storage: &appTypes.MockPlatformStorage{
+		OnFindByName: func(n string) (*appTypes.Platform, error) {
+			return &appTypes.Platform{Name: n, Source: "FROM tsuru/test"}, nil
+		},
+		OnSetSource: func(n, source string) error {
+			c.Check(n, check.Equals, name)
+			c.Check(source, check.Equals, "")
+			cleared = true
+			return nil
+		},
+	}}
+	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) ([]string, error) {
+		return []string{"tsuru/" + name + ":v2"}, nil
+	}
+	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, RollbackVersion: 1})
+	c.Assert(err, check.IsNil)
+	c.Assert(cleared, check.Equals, true)
+}
