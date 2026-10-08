@@ -87,6 +87,10 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 		}
 	}
 
+	if multiErr.Len() == 0 && len(imgs) > 0 {
+		s.recordSource(ctx, opts)
+	}
+
 	return multiErr.ToError()
 }
 
@@ -113,13 +117,16 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		return appTypes.ErrPlatformNameMissing
 	}
 
-	_, err := s.FindByName(ctx, opts.Name)
+	p, err := s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
 
 	if disabled := opts.Args["disabled"]; disabled == "" && len(opts.Data) == 0 {
-		return errors.New("either disabled or dockerfile must be provided")
+		if p.Source == "" {
+			return errors.New("either disabled or dockerfile must be provided")
+		}
+		opts.Data = []byte(p.Source)
 	}
 
 	if len(opts.Data) > 0 {
@@ -143,6 +150,10 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 
 		if multiErr.Len() > 0 {
 			return multiErr.ToError()
+		}
+
+		if len(imgs) > 0 {
+			s.recordSource(ctx, opts)
 		}
 
 		var apps []*appTypes.App
@@ -237,6 +248,11 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 	if multiErr.Len() > 0 {
 		return multiErr.ToError()
 	}
+	// The rolled-back version was not built from the stored source, so a later
+	// update without a Dockerfile must not rebuild from it.
+	if err = s.storage.SetSource(ctx, opts.Name, ""); err != nil {
+		return err
+	}
 	appsCollection, err := storagev2.AppsCollection()
 	if err != nil {
 		return err
@@ -265,4 +281,15 @@ func (s *platformService) validate(p appTypes.Platform) error {
 		return appTypes.ErrInvalidPlatformName
 	}
 	return nil
+}
+
+// recordSource keeps the Dockerfile the platform was just built from, so it
+// can be shown and built again. Failing to record it does not fail the build.
+func (s *platformService) recordSource(ctx context.Context, opts appTypes.PlatformOptions) {
+	if len(opts.Data) == 0 {
+		return
+	}
+	if err := s.storage.SetSource(ctx, opts.Name, string(opts.Data)); err != nil {
+		log.Errorf("unable to record the build source of platform %q: %s", opts.Name, err)
+	}
 }
