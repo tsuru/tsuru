@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
 	"k8s.io/client-go/informers"
@@ -1863,6 +1864,33 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 	require.Len(s.t, appList.Items, 1)
 	require.Equal(s.t, a.Name, appList.Items[0].Name)
 	require.Equal(s.t, "default", appList.Items[0].Spec.NamespaceName)
+}
+
+func (s *S) TestProvisionerProvisionCRDAlreadyEstablishedDoesNotCreate(c *check.C) {
+	// DefaultReactions provisions "myapp" once already, which creates and
+	// establishes the apps.tsuru.io CRD through the normal Get-then-Create path.
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", func(action ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, k8sErrors.NewForbidden(
+			schema.GroupResource{Group: "apiextensions.k8s.io", Resource: "customresourcedefinitions"},
+			"apps.tsuru.io",
+			fmt.Errorf("user cannot create resource at cluster scope"),
+		)
+	})
+
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(context.TODO(), a)
+	require.NoError(s.t, err)
+
+	crdList, err := s.client.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+	require.NoError(s.t, err)
+	require.Len(s.t, crdList.Items, 1)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
+	require.NoError(s.t, err)
+	require.Len(s.t, appList.Items, 1)
+	require.Equal(s.t, a.Name, appList.Items[0].Name)
 }
 
 func (s *S) TestProvisionerUpdateApp(c *check.C) {
