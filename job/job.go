@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
@@ -681,6 +682,17 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 		c := cron.New()
 		if _, err := c.AddFunc(j.Spec.Schedule, func() {}); err != nil {
 			return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidSchedule.Error()}
+		}
+	}
+	if j.Spec.TimeZone != nil {
+		tz := strings.TrimSpace(*j.Spec.TimeZone)
+		if tz == "" {
+			j.Spec.TimeZone = nil
+		} else {
+			if _, err := time.LoadLocation(tz); err != nil {
+				return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()}
+			}
+			*j.Spec.TimeZone = tz
 		}
 	}
 	if j.Spec.ConcurrencyPolicy != nil {
