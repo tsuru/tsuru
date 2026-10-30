@@ -1,7 +1,13 @@
 name: ci
-on: [push, pull_request]
+
 permissions:
   contents: read
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch: # run by release-please.yaml with --ref <tag>
+
 jobs:
   actions-lock-verify:
     runs-on: ubuntu-latest

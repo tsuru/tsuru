@@ -1,0 +1,27 @@
+# release-please only opens release PRs and creates the vX.Y.Z tag with a draft
+# release. Publishing (docker image, binaries, release) is done by ci.yaml,
+# dispatched from here on the new tag: tags pushed with GITHUB_TOKEN do not
+# trigger other workflows, but workflow_dispatch does.
+name: release-please
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: googleapis/release-please-action@v4
+      id: release
+      with:
+        config-file: release-please-config.json
+        manifest-file: .release-please-manifest.json
+    - name: Trigger the release jobs on the new tag
+      if: ${{ steps.release.outputs.release_created }}
+      run: gh workflow run ci.yaml --repo "$GITHUB_REPOSITORY" --ref "$TAG"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.release.outputs.tag_name }}

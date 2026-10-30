@@ -61,7 +61,7 @@ import (
 )
 
 var (
-	Version = "1.23.1"
+	Version = "1.32.0" // x-release-please-version
 	GitHash = ""
 )
 

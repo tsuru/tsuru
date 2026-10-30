@@ -69,6 +69,10 @@ api-doc: _install_api_doc
 check-api-doc: _install_api_doc
 	@exit $$(tsuru-api-docs | grep missing | wc -l)
 
+# The tsurud version and the CHANGELOG are owned by release-please (see
+# release-please-config.json); this target only bumps the major.minor version
+# advertised by the OpenAPI spec, which is also the SwaggerHub API version and
+# therefore must not follow the patch number.
 release:
 	@if [ ! $(version) ]; then \
 		echo "version parameter is required... use: make release version=<value>"; \
@@ -85,7 +89,6 @@ release:
 
 	@echo "Releasing tsuru $(version) version."
 	@echo "Replacing version string."
-	@$(SED) -i 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
 	@$(SED) -i 's/version: ".*"/version: "$(MINOR)"/' docs/reference/api.yaml
 
 install:
