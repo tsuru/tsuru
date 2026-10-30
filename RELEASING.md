@@ -32,12 +32,17 @@ The version bump is derived from the commits landing on `main`:
 - `fix: ...` (and `perf:`, `revert:`) bumps the patch number
 - `feat: ...` bumps the minor number
 - `feat!: ...` or a `BREAKING CHANGE:` footer bumps the major number
-- anything else (`chore:`, `ci:`, `docs:`, unprefixed subjects) does not bump
-  the version and is left out of the changelog
+- `chore: ...` and `deps: ...` appear in the notes but do not bump the version
+  on their own; this is where dependabot's `chore(deps): bump ...` subjects land
+- `ci:`, `docs:`, `test:`, `build:`, `refactor:`, `style:` and unprefixed
+  subjects neither bump the version nor appear in the notes
 
 Pull requests are squash-merged with their title as the commit subject, so the
 **pull request title** is what release-please reads. A release only happens once
-at least one `fix:`/`feat:` commit has landed since the previous tag.
+at least one `fix:`/`feat:` commit has landed since the previous tag — a run of
+dependency bumps on its own does not open a release pull request, the bumps ride
+along with the next fix or feature. A dependency bump that has to ship on its
+own (a CVE, say) should be titled `fix(deps): ...` so that it cuts a patch.
 
 ## The OpenAPI spec version
 
