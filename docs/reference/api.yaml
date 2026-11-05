@@ -3962,6 +3962,10 @@ paths:
           description: Team token created.
           schema:
             $ref: "#/definitions/TeamToken"
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
         "401":
           description: Unauthorized.
           schema:

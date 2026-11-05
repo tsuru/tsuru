@@ -84,6 +84,7 @@ func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // responses:
 //
 //	201: Token created
+//	400: Invalid data
 //	401: Unauthorized
 //	409: Token already exists
 func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {

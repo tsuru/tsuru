@@ -158,6 +158,18 @@ func (s *S) TestTeamTokenCreateNoPermission(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden, check.Commentf("body: %q", recorder.Body.String()))
 }
 
+func (s *S) TestTeamTokenCreateInvalidTokenID(c *check.C) {
+	body := strings.NewReader(`token_id=Invalid%20ID&team=` + s.team.Name)
+	request, err := http.NewRequest("POST", "/1.6/tokens", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest, check.Commentf("body: %q", recorder.Body.String()))
+	c.Assert(recorder.Body.String(), check.Equals, "invalid token_id\n")
+}
+
 func (s *S) TestTeamTokenDelete(c *check.C) {
 	_, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,

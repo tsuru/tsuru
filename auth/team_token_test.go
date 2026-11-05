@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -101,6 +102,7 @@ func (s *S) Test_TeamTokenService_Create_ValidationError(c *check.C) {
 			c.Check(err, check.IsNil)
 		} else {
 			c.Check(err, check.ErrorMatches, test.expectedErr.Error())
+			c.Check(err, check.FitsTypeOf, &tsuruErrors.ValidationError{})
 		}
 	}
 }
