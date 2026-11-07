@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Find old issues and mark them stale
-      uses: yuiseki/issue-triage-action@0f3dbc5e1b60a174da2024bf62b4b4f9de6b7349 # v1.2
+      uses: yuiseki/issue-triage-action@v1.2
       with:
         ghToken: ${{ secrets.GITHUB_TOKEN }}
         staleAfter: 30
