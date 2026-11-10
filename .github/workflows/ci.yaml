@@ -6,8 +6,9 @@ jobs:
   actions-lock-verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Check actions lockfile
-        run: gh actions-lock --verify
+      - run: |
+          gh extension install github/gh-actions-lock
+          gh actions-lock --verify
   test:
     needs:
       - actions-lock-verify
