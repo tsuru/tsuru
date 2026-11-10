@@ -40,6 +40,7 @@ jobs:
         k8s_version:
         - "1.33"
         - "1.34"
+        - "1.35"
     steps:
     - uses: actions/checkout@v4
     - name: Running up Kubernetes (using Minikube)
