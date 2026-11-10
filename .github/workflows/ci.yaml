@@ -6,12 +6,12 @@ jobs:
   actions-lock-verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.4.0
-      - run: |
-          gh extension install github/gh-actions-lock
-          gh actions-lock --verify
-        env:
-          GH_TOKEN: ${{ github.token }}
+    - uses: actions/checkout@v4.4.0
+    - run: |
+        gh extension install github/gh-actions-lock
+        gh actions-lock --verify
+      env:
+        GH_TOKEN: ${{ github.token }}
   test:
     runs-on: ubuntu-latest
     services:
