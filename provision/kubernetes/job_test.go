@@ -347,7 +347,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					Pool:      "test-default",
 					Spec: jobTypes.JobSpec{
 						Schedule: "* * * * *",
-						TimeZone: ptr.To("America/Sao_Paulo"),
+						TimeZone: new("America/Sao_Paulo"),
 						Container: jobTypes.ContainerInfo{
 							OriginalImageSrc: "ubuntu:latest",
 							Command:          []string{"echo", "hello world"},
@@ -701,7 +701,7 @@ func (s *S) TestProvisionerUpdateCronJobTimeZone(c *check.C) {
 		return cj.Spec.TimeZone
 	}
 
-	for _, step := range []*string{nil, ptr.To("America/Sao_Paulo"), ptr.To("America/Santiago"), nil} {
+	for _, step := range []*string{nil, new("America/Sao_Paulo"), new("America/Santiago"), nil} {
 		err := s.p.EnsureJob(context.TODO(), newJob(step))
 		waitCron()
 		require.NoError(s.t, err)

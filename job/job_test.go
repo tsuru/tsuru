@@ -24,7 +24,6 @@ import (
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
-	"k8s.io/utils/ptr"
 )
 
 func (s *S) TestCreateJobWithTimeZone(c *check.C) {
@@ -35,20 +34,20 @@ func (s *S) TestCreateJobWithTimeZone(c *check.C) {
 	}{
 		{
 			name:     "valid timezone",
-			timeZone: ptr.To("America/Sao_Paulo"),
+			timeZone: new("America/Sao_Paulo"),
 		},
 		{
 			name:     "valid timezone UTC",
-			timeZone: ptr.To("UTC"),
+			timeZone: new("UTC"),
 		},
 		{
 			name:        "invalid timezone",
-			timeZone:    ptr.To("Invalid/TimeZone"),
+			timeZone:    new("Invalid/TimeZone"),
 			expectedErr: &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()},
 		},
 		{
 			name:        "Local timezone",
-			timeZone:    ptr.To("Local"),
+			timeZone:    new("Local"),
 			expectedErr: &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()},
 		},
 		{
@@ -937,7 +936,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			newJob: jobTypes.Job{
 				Name: "some-job",
 				Spec: jobTypes.JobSpec{
-					TimeZone: ptr.To("America/Sao_Paulo"),
+					TimeZone: new("America/Sao_Paulo"),
 				},
 			},
 			expectedJob: jobTypes.Job{
@@ -954,7 +953,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
-					TimeZone: ptr.To("America/Sao_Paulo"),
+					TimeZone: new("America/Sao_Paulo"),
 					Container: jobTypes.ContainerInfo{
 						OriginalImageSrc:      "alpine:latest",
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
@@ -962,7 +961,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 					},
 					ServiceEnvs:           []bind.ServiceEnvVar{},
 					Envs:                  []bind.EnvVar{},
-					ActiveDeadlineSeconds: ptr.To(int64(0)),
+					ActiveDeadlineSeconds: new(int64(0)),
 				},
 			},
 		},
@@ -983,7 +982,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			newJob: jobTypes.Job{
 				Name: "some-job",
 				Spec: jobTypes.JobSpec{
-					TimeZone: ptr.To("Invalid/TimeZone"),
+					TimeZone: new("Invalid/TimeZone"),
 				},
 			},
 			expectedErr: &tsuruErrors.ValidationError{Message: "invalid time zone"},
@@ -996,7 +995,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Pool:      s.Pool,
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
-					TimeZone: ptr.To("America/Sao_Paulo"),
+					TimeZone: new("America/Sao_Paulo"),
 					Container: jobTypes.ContainerInfo{
 						OriginalImageSrc: "alpine:latest",
 						Command:          []string{"echo", "hello!"},
@@ -1006,7 +1005,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			newJob: jobTypes.Job{
 				Name: "some-job",
 				Spec: jobTypes.JobSpec{
-					TimeZone: ptr.To(""),
+					TimeZone: new(""),
 				},
 			},
 			expectedJob: jobTypes.Job{
@@ -1030,7 +1029,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 					},
 					ServiceEnvs:           []bind.ServiceEnvVar{},
 					Envs:                  []bind.EnvVar{},
-					ActiveDeadlineSeconds: ptr.To(int64(0)),
+					ActiveDeadlineSeconds: new(int64(0)),
 				},
 			},
 		},
