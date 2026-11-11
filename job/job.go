@@ -320,8 +320,13 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
 	// in which case we would switch oldJob to be dst and newJob to be src
+	// mergo treats a pointer to "" as empty and restores the old value, so an explicit empty timeZone must be cleared after the merge
+	clearTimeZone := newJob.Spec.TimeZone != nil && strings.TrimSpace(*newJob.Spec.TimeZone) == ""
 	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
+	}
+	if clearTimeZone {
+		newJob.Spec.TimeZone = nil
 	}
 
 	if deployOptionsHasChanged {

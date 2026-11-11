@@ -988,6 +988,53 @@ func (s *S) TestUpdateJob(c *check.C) {
 			expectedErr: &tsuruErrors.ValidationError{Message: "invalid time zone"},
 		},
 		{
+			name: "update job keeps the timezone when it is not sent",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					TimeZone: new("America/Sao_Paulo"),
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					Schedule: "*/5 * * * *",
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Tags:      []string{},
+				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+				DeployOptions: &jobTypes.DeployOptions{
+					Kind:  provisionTypes.DeployImage,
+					Image: "alpine:latest",
+				},
+				Spec: jobTypes.JobSpec{
+					Schedule: "*/5 * * * *",
+					TimeZone: new("America/Sao_Paulo"),
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc:      "alpine:latest",
+						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+						Command:               []string{"echo", "hello!"},
+					},
+					ServiceEnvs:           []bind.ServiceEnvVar{},
+					Envs:                  []bind.EnvVar{},
+					ActiveDeadlineSeconds: new(int64(0)),
+				},
+			},
+		},
+		{
 			name: "update job clearing the timezone with an empty value",
 			oldJob: jobTypes.Job{
 				Name:      "some-job",
