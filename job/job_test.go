@@ -47,6 +47,11 @@ func (s *S) TestCreateJobWithTimeZone(c *check.C) {
 			expectedErr: &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()},
 		},
 		{
+			name:        "Local timezone",
+			timeZone:    ptr.To("Local"),
+			expectedErr: &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()},
+		},
+		{
 			name:     "nil timezone",
 			timeZone: nil,
 		},
@@ -982,6 +987,52 @@ func (s *S) TestUpdateJob(c *check.C) {
 				},
 			},
 			expectedErr: &tsuruErrors.ValidationError{Message: "invalid time zone"},
+		},
+		{
+			name: "update job clearing the timezone with an empty value",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					TimeZone: ptr.To("America/Sao_Paulo"),
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					TimeZone: ptr.To(""),
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Tags:      []string{},
+				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+				DeployOptions: &jobTypes.DeployOptions{
+					Kind:  provisionTypes.DeployImage,
+					Image: "alpine:latest",
+				},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc:      "alpine:latest",
+						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+						Command:               []string{"echo", "hello!"},
+					},
+					ServiceEnvs:           []bind.ServiceEnvVar{},
+					Envs:                  []bind.EnvVar{},
+					ActiveDeadlineSeconds: ptr.To(int64(0)),
+				},
+			},
 		},
 		{
 			name: "update concurrency policy",

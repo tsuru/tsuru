@@ -689,7 +689,8 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 		if tz == "" {
 			j.Spec.TimeZone = nil
 		} else {
-			if _, err := time.LoadLocation(tz); err != nil {
+			// Kubernetes rejects "Local", although LoadLocation accepts it
+			if _, err := time.LoadLocation(tz); err != nil || tz == "Local" {
 				return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()}
 			}
 			*j.Spec.TimeZone = tz

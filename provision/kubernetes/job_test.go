@@ -676,6 +676,42 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 	}
 }
 
+func (s *S) TestProvisionerUpdateCronJobTimeZone(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	newJob := func(tz *string) *jobTypes.Job {
+		return &jobTypes.Job{
+			Name:      "myjob",
+			TeamOwner: s.team.Name,
+			Pool:      "test-default",
+			Spec: jobTypes.JobSpec{
+				Schedule: "* * * * *",
+				TimeZone: tz,
+				Container: jobTypes.ContainerInfo{
+					OriginalImageSrc: "ubuntu:latest",
+					Command:          []string{"echo", "hello world"},
+				},
+			},
+		}
+	}
+	gotTimeZone := func() *string {
+		cj, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
+		require.NoError(s.t, err)
+		return cj.Spec.TimeZone
+	}
+
+	for _, step := range []*string{nil, ptr.To("America/Sao_Paulo"), ptr.To("America/Santiago"), nil} {
+		err := s.p.EnsureJob(context.TODO(), newJob(step))
+		waitCron()
+		require.NoError(s.t, err)
+		require.Equal(s.t, step, gotTimeZone())
+	}
+
+	err := s.p.DestroyJob(context.TODO(), newJob(nil))
+	require.NoError(s.t, err)
+}
+
 func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()
