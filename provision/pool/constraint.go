@@ -177,14 +177,23 @@ func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field Pool
 	if err != nil {
 		return nil, err
 	}
+	if len(pools) == 0 {
+		return nil, nil
+	}
+	// Load the field constraints once and reuse them for every pool.
+	constraints, err := ListPoolsConstraints(ctx, mongoBSON.M{"field": mongoBSON.M{"$in": []PoolConstraintType{field}}})
+	if err != nil {
+		return nil, err
+	}
+	patterns, err := compileConstraintPatterns(constraints)
+	if err != nil {
+		return nil, err
+	}
 	var satisfying []Pool
 	for _, p := range pools {
 		checked := false
-		constraints, err := getConstraintsForPool(ctx, p.Name, field)
-		if err != nil {
-			return nil, err
-		}
-		c, ok := constraints[field]
+		poolConstraints := resolveConstraintsForPool(p.Name, constraints, patterns)
+		c, ok := poolConstraints[field]
 		if !ok {
 			continue
 		}
@@ -213,14 +222,29 @@ func getConstraintsForPool(ctx context.Context, pool string, fields ...PoolConst
 	if err != nil {
 		return nil, err
 	}
-	var matches []*PoolConstraint
-	for _, c := range constraints {
-		pattern := exprAsGlobPattern(c.PoolExpr)
-		match, err := rCache.MatchString(pattern, pool)
+	patterns, err := compileConstraintPatterns(constraints)
+	if err != nil {
+		return nil, err
+	}
+	return resolveConstraintsForPool(pool, constraints, patterns), nil
+}
+
+func compileConstraintPatterns(constraints []*PoolConstraint) ([]*regexp.Regexp, error) {
+	patterns := make([]*regexp.Regexp, len(constraints))
+	for i, c := range constraints {
+		pattern, err := rCache.Lookup(exprAsGlobPattern(c.PoolExpr))
 		if err != nil {
 			return nil, err
 		}
-		if match {
+		patterns[i] = pattern
+	}
+	return patterns, nil
+}
+
+func resolveConstraintsForPool(pool string, constraints []*PoolConstraint, patterns []*regexp.Regexp) map[PoolConstraintType]*PoolConstraint {
+	var matches []*PoolConstraint
+	for i, c := range constraints {
+		if patterns[i].MatchString(pool) {
 			matches = append(matches, c)
 		}
 	}
@@ -231,7 +255,7 @@ func getConstraintsForPool(ctx context.Context, pool string, fields ...PoolConst
 			merged[matches[i].Field] = matches[i]
 		}
 	}
-	return merged, nil
+	return merged
 }
 
 func getExactConstraintForPool(ctx context.Context, pool string, field PoolConstraintType) (*PoolConstraint, error) {

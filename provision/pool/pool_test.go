@@ -6,6 +6,7 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -638,6 +639,86 @@ func (s *S) TestListPoolsForTeamGlobPoolExpr(c *check.C) {
 	}
 	sort.Strings(names)
 	c.Assert(names, check.DeepEquals, []string{"pool1", "pool2"})
+}
+
+func (s *S) TestListPoolsConstraintsLoadedOnce(c *check.C) {
+	ctx := context.TODO()
+	collection, err := storagev2.PoolConstraintsCollection()
+	c.Assert(err, check.IsNil)
+	// Use the test database profiler to count constraint queries for each listing.
+	database := collection.Database()
+	filter := mongoBSON.M{"ns": database.Name() + ".pool_constraints", "command.find": "pool_constraints"}
+	err = database.RunCommand(ctx, mongoBSON.D{{Key: "profile", Value: 2}, {Key: "filter", Value: filter}}).Err()
+	c.Assert(err, check.IsNil)
+	defer func() {
+		err := database.RunCommand(ctx, mongoBSON.D{{Key: "profile", Value: 0}, {Key: "filter", Value: mongoBSON.M{}}}).Err()
+		c.Check(err, check.IsNil)
+	}()
+
+	err = SetPoolConstraint(ctx, &PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeTeam, Values: []string{"team1"}})
+	c.Assert(err, check.IsNil)
+	profile := database.Collection("system.profile")
+	poolCount := 0
+	for _, count := range []int{0, 1, 5} {
+		for poolCount < count {
+			poolCount++
+			err = AddPool(ctx, AddPoolOptions{Name: fmt.Sprintf("pool%d", poolCount)})
+			c.Assert(err, check.IsNil)
+		}
+		before, err := profile.CountDocuments(ctx, filter)
+		c.Assert(err, check.IsNil)
+		pools, err := ListPoolsForTeam(ctx, "team1")
+		c.Assert(err, check.IsNil)
+		c.Assert(pools, check.HasLen, count)
+		after, err := profile.CountDocuments(ctx, filter)
+		c.Assert(err, check.IsNil)
+		expectedQueries := int64(1)
+		if count == 0 {
+			expectedQueries = 0
+			c.Assert(pools, check.IsNil)
+		}
+		c.Assert(after-before, check.Equals, expectedQueries, check.Commentf("pool count: %d", count))
+	}
+}
+
+func (s *S) TestListPoolsConstraintBehavior(c *check.C) {
+	ctx := context.TODO()
+	for _, name := range []string{"pool5", "pool3", "other", "pool1", "pool4", "pool2"} {
+		err := AddPool(ctx, AddPoolOptions{Name: name})
+		c.Assert(err, check.IsNil)
+	}
+	constraints := []*PoolConstraint{
+		{PoolExpr: "pool*", Field: ConstraintTypeTeam, Values: []string{"team1"}},
+		{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"team1"}},
+		{PoolExpr: "pool2", Field: ConstraintTypeTeam, Values: []string{"team2"}},
+		{PoolExpr: "pool3", Field: ConstraintTypeTeam, Values: []string{"team2"}, Blacklist: true},
+		{PoolExpr: "pool5*", Field: ConstraintTypeTeam, Values: []string{"team*"}},
+		{PoolExpr: "other", Field: ConstraintTypeRouter, Values: []string{"team1"}},
+	}
+	for _, constraint := range constraints {
+		err := SetPoolConstraint(ctx, constraint)
+		c.Assert(err, check.IsNil)
+	}
+	for _, test := range []struct {
+		name     string
+		exact    bool
+		values   []string
+		expected []string
+	}{
+		{"exact team values and wildcard pool expressions", true, []string{"team1"}, []string{"pool3", "pool1", "pool4"}},
+		{"blacklisted team is excluded", true, []string{"team2"}, []string{"pool2"}},
+		{"wildcard team values", false, []string{"team1"}, []string{"pool5", "pool3", "pool1", "pool4"}},
+		{"multiple teams", false, []string{"team2", "team1"}, []string{"pool5", "pool3", "pool1", "pool4", "pool2"}},
+		{"no values", false, nil, []string{"pool5", "pool3", "pool1", "pool4", "pool2"}},
+	} {
+		pools, err := getPoolsSatisfyConstraints(ctx, test.exact, ConstraintTypeTeam, test.values...)
+		c.Assert(err, check.IsNil, check.Commentf("%s", test.name))
+		names := make([]string, len(pools))
+		for i, pool := range pools {
+			names[i] = pool.Name
+		}
+		c.Assert(names, check.DeepEquals, test.expected, check.Commentf("%s", test.name))
+	}
 }
 
 func (s *S) TestListPossiblePoolsAll(c *check.C) {
