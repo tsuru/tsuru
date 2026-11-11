@@ -7,6 +7,8 @@ package main
 import (
 	"log"
 	"os"
+	// embeds the tz database, the alpine runtime image has none and job timeZone validation needs it
+	_ "time/tzdata"
 
 	"github.com/google/gops/agent"
 	"github.com/tsuru/config"
@@ -15,8 +17,6 @@ import (
 	_ "github.com/tsuru/tsuru/provision/kubernetes"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	_ "go.uber.org/automaxprocs"
-	// embeds the tz database, the alpine runtime image has none and job timeZone validation needs it
-	_ "time/tzdata"
 )
 
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"
