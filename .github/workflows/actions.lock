@@ -20,6 +20,8 @@ workflows:
         - 'surgo/docker-smart-tag-action@v1.0.3'
     '.github/workflows/issues.yaml':
         - 'yuiseki/issue-triage-action@v1.2'
+    '.github/workflows/pr-title.yaml':
+        - 'amannn/action-semantic-pull-request@v6.1.2'
     '.github/workflows/release-please.yaml':
         - 'googleapis/release-please-action@v4.4.1'
 dependencies:
@@ -43,6 +45,11 @@ dependencies:
         commit: 'sha1-3235b876344d2a9aa001b8d1453c930bba69e610'
         owner_id: 44036562
         repo_id: 189476904
+    'amannn/action-semantic-pull-request@v6.1.2':
+        ref: 'v6.1.2'
+        commit: 'sha1-2252a14e810aa9b85c2d560bd7070c802206ecf6'
+        owner_id: 4038316
+        repo_id: 220418983
     'azure/setup-helm@v1.1':
         ref: 'v1.1'
         commit: 'sha1-18bc76811624f360dbd7f18c2d4ecb32c7b87bab'
