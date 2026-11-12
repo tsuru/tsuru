@@ -37,7 +37,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -373,19 +372,12 @@ func (s *KubeMock) AppReaction(a *appTypes.App, c *check.C) ktesting.ReactionFun
 func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		crd, ok := obj.(*extensionsv1beta1.CustomResourceDefinition)
-		if ok {
-			crd.Status.Conditions = []extensionsv1beta1.CustomResourceDefinitionCondition{
-				{Type: extensionsv1beta1.Established, Status: extensionsv1beta1.ConditionTrue},
-			}
-		} else {
-			crdV1, ok := obj.(*extensionsv1.CustomResourceDefinition)
-			if !ok {
-				return false, nil, errors.Errorf("invalid crd object %#v", obj)
-			}
-			crdV1.Status.Conditions = []extensionsv1.CustomResourceDefinitionCondition{
-				{Type: extensionsv1.Established, Status: extensionsv1.ConditionTrue},
-			}
+		crd, ok := obj.(*extensionsv1.CustomResourceDefinition)
+		if !ok {
+			return false, nil, errors.Errorf("invalid crd object %#v", obj)
+		}
+		crd.Status.Conditions = []extensionsv1.CustomResourceDefinitionCondition{
+			{Type: extensionsv1.Established, Status: extensionsv1.ConditionTrue},
 		}
 		return false, nil, nil
 	}
