@@ -29,7 +29,7 @@ type PlatformOptions struct {
 
 type PlatformService interface {
 	Create(context.Context, PlatformOptions) error
-	List(context.Context, bool) ([]Platform, error)
+	List(ctx context.Context, enabledPlatformsOnly bool) ([]Platform, error)
 	FindByName(context.Context, string) (*Platform, error)
 	Update(context.Context, PlatformOptions) error
 	Remove(context.Context, string) error

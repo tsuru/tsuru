@@ -95,8 +95,8 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 }
 
 // List implements List method of PlatformService interface
-func (s *platformService) List(ctx context.Context, enabledOnly bool) ([]appTypes.Platform, error) {
-	if enabledOnly {
+func (s *platformService) List(ctx context.Context, enabledPlatformsOnly bool) ([]appTypes.Platform, error) {
+	if enabledPlatformsOnly {
 		return s.storage.FindEnabled(ctx)
 	}
 	return s.storage.FindAll(ctx)

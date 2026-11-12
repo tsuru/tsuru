@@ -202,13 +202,14 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	401: Unauthorized
 func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
+	userCanWritePlatforms := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
 		permission.Check(ctx, t, permission.PermPlatformCreate)
-	platforms, err := servicemanager.Platform.List(ctx, !canUsePlat)
+	platforms, err := servicemanager.Platform.List(ctx, !userCanWritePlatforms)
 	if err != nil {
 		return err
 	}
-	if !canUsePlat {
+	if !userCanWritePlatforms {
+		// NOTE: Do not display source for users without write permissions.
 		// A Dockerfile can name internal registries.
 		for i := range platforms {
 			platforms[i].Source = ""
@@ -234,9 +235,7 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
-		permission.Check(ctx, t, permission.PermPlatformRead)
-	if !canUsePlat {
+	if !permission.Check(ctx, t, permission.PermPlatformRead) {
 		return permission.ErrUnauthorized
 	}
 	platform, err := servicemanager.Platform.FindByName(ctx, name)
@@ -245,6 +244,16 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if err != nil {
 		return err
+	}
+	userCanWritePlatforms := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
+		permission.Check(ctx, t, permission.PermPlatformCreate)
+	if !userCanWritePlatforms {
+		if platform.Disabled {
+			return permission.ErrUnauthorized
+		}
+		// NOTE: Do not display source for users without write permissions.
+		// A Dockerfile can name internal registries.
+		platform.Source = ""
 	}
 	images, err := servicemanager.PlatformImage.ListImagesOrDefault(ctx, name)
 	if err != nil {
