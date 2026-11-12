@@ -18,6 +18,7 @@ type MockPlatformStorage struct {
 	OnFindAll     func() ([]Platform, error)
 	OnFindEnabled func() ([]Platform, error)
 	OnUpdate      func(Platform) error
+	OnSetSource   func(string, string) error
 	OnDelete      func(Platform) error
 }
 
@@ -39,6 +40,13 @@ func (m *MockPlatformStorage) FindEnabled(ctx context.Context) ([]Platform, erro
 
 func (m *MockPlatformStorage) Update(ctx context.Context, p Platform) error {
 	return m.OnUpdate(p)
+}
+
+func (m *MockPlatformStorage) SetSource(ctx context.Context, name, source string) error {
+	if m.OnSetSource == nil {
+		return nil
+	}
+	return m.OnSetSource(name, source)
 }
 
 func (m *MockPlatformStorage) Delete(ctx context.Context, p Platform) error {

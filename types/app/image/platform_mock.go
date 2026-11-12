@@ -48,7 +48,7 @@ type MockPlatformImageService struct {
 }
 
 func (m *MockPlatformImageService) NewVersion(ctx context.Context, platformName string) (int, error) {
-	if m.OnNewImage == nil {
+	if m.OnNewVersion == nil {
 		return 0, nil
 	}
 	return m.OnNewVersion(platformName)
