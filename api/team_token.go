@@ -119,9 +119,6 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer func() { evt.Done(ctx, err) }()
 	token, err := servicemanager.TeamToken.Create(ctx, args, t)
 	if err != nil {
-		return err
-	}
-	if err != nil {
 		if err == authTypes.ErrTeamTokenAlreadyExists {
 			return &errors.HTTP{
 				Code:    http.StatusConflict,
