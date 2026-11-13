@@ -336,6 +336,47 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				require.True(s.t, k8sErrors.IsNotFound(err))
 			},
 		},
+		{
+			name:      "create cronjob with timezone",
+			jobName:   "myjob-1cec0fa1",
+			namespace: "default",
+			scenario: func() {
+				cj := jobTypes.Job{
+					Name:      "myjob",
+					TeamOwner: s.team.Name,
+					Pool:      "test-default",
+					Spec: jobTypes.JobSpec{
+						Schedule: "* * * * *",
+						TimeZone: new("America/Sao_Paulo"),
+						Container: jobTypes.ContainerInfo{
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
+						},
+					},
+				}
+				err := s.p.EnsureJob(context.TODO(), &cj)
+				waitCron()
+				require.NoError(s.t, err)
+			},
+			assertion: func(gotCron *batchv1.CronJob) {
+				require.NotNil(s.t, gotCron.Spec.TimeZone)
+				require.EqualValues(s.t, "America/Sao_Paulo", *gotCron.Spec.TimeZone)
+			},
+			teardown: func() {
+				j := jobTypes.Job{
+					Name: "myjob",
+					Pool: "test-default",
+					Spec: jobTypes.JobSpec{
+						Schedule: "* * * * *",
+					},
+				}
+				err := s.p.DestroyJob(context.TODO(), &j)
+				require.NoError(s.t, err)
+
+				_, err = s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
+				require.True(s.t, k8sErrors.IsNotFound(err))
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt.scenario()
@@ -633,6 +674,42 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 		err = s.p.DestroyJob(context.TODO(), &j)
 		require.NoError(s.t, err)
 	}
+}
+
+func (s *S) TestProvisionerUpdateCronJobTimeZone(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	newJob := func(tz *string) *jobTypes.Job {
+		return &jobTypes.Job{
+			Name:      "myjob",
+			TeamOwner: s.team.Name,
+			Pool:      "test-default",
+			Spec: jobTypes.JobSpec{
+				Schedule: "* * * * *",
+				TimeZone: tz,
+				Container: jobTypes.ContainerInfo{
+					OriginalImageSrc: "ubuntu:latest",
+					Command:          []string{"echo", "hello world"},
+				},
+			},
+		}
+	}
+	gotTimeZone := func() *string {
+		cj, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob-1cec0fa1", metav1.GetOptions{})
+		require.NoError(s.t, err)
+		return cj.Spec.TimeZone
+	}
+
+	for _, step := range []*string{nil, new("America/Sao_Paulo"), new("America/Santiago"), nil} {
+		err := s.p.EnsureJob(context.TODO(), newJob(step))
+		waitCron()
+		require.NoError(s.t, err)
+		require.Equal(s.t, step, gotTimeZone())
+	}
+
+	err := s.p.DestroyJob(context.TODO(), newJob(nil))
+	require.NoError(s.t, err)
 }
 
 func (s *S) TestProvisionerDeleteCronjob(c *check.C) {

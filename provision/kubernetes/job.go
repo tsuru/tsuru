@@ -284,6 +284,7 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule: job.Spec.Schedule,
+			TimeZone: job.Spec.TimeZone,
 			Suspend:  &job.Spec.Manual,
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: jobSpec,

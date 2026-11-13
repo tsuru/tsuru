@@ -6030,6 +6030,10 @@ definitions:
             type: string
             x-go-custom-type: "*string"
             description: concurrency policy.
+          timeZone:
+            type: string
+            x-go-custom-type: "*string"
+            description: Optional IANA time zone for the schedule, e.g. "America/Sao_Paulo". If not specified, UTC will be used. On update, send an empty string to remove it.
           container:
             type: object
             properties:
@@ -6088,6 +6092,10 @@ definitions:
         type: string
         x-go-custom-type: "*string"
         description: concurrency policy.
+      timeZone:
+        type: string
+        x-go-custom-type: "*string"
+        description: Optional IANA time zone for the schedule, e.g. "America/Sao_Paulo". If not specified, UTC will be used. On update, send an empty string to remove it.
       container:
         type: object
         $ref: "#/definitions/JobSpecContainer"
