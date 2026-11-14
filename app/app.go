@@ -1629,9 +1629,19 @@ func RemoveCName(ctx context.Context, app *appTypes.App, cnames ...string) error
 		&checkCNameExists,
 		&removeCNameFromDatabase,
 		&removeCertIssuersFromDatabase,
-		&rebuildRoutes,
 	}
-	return action.NewPipeline(actions...).Execute(ctx, app, cnames)
+	if app.Deploys > 0 {
+		actions = append(actions, &rebuildRoutes)
+		return action.NewPipeline(actions...).Execute(ctx, app, cnames)
+	}
+	err := action.NewPipeline(actions...).Execute(ctx, app, cnames)
+	if err != nil {
+		return err
+	}
+	// An app with no deploy has no routes yet, so its rebuild can fail without
+	// leaving the cname in a router. Inside the pipeline that failure would put
+	// the cname back and the app could never drop it.
+	return rebuild.RebuildRoutesWithAppName(app.Name, nil)
 }
 
 func SetCertIssuer(ctx context.Context, app *appTypes.App, cname, certIssuer string) error {
