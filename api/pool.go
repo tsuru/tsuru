@@ -102,26 +102,27 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	poolsMap := make(map[string]struct{})
-	var poolList []*pool.PoolInfo
+	var orderedPools []pool.Pool
 	for _, p := range pools {
 		if _, ok := poolsMap[p.Name]; ok {
 			continue
 		}
-
-		poolInfo, err := p.Info(ctx)
-		if err != nil {
-			return err
-		}
-
-		poolList = append(poolList, poolInfo)
+		orderedPools = append(orderedPools, p)
 		poolsMap[p.Name] = struct{}{}
 	}
-	if len(poolList) == 0 {
+	// Infos shares the reference-list and constraint queries across every
+	// pool, turning the previous ~7 queries per pool into a fixed number of
+	// queries per request.
+	infos, err := pool.Infos(ctx, orderedPools)
+	if err != nil {
+		return err
+	}
+	if len(infos) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(poolList)
+	return json.NewEncoder(w).Encode(infos)
 }
 
 // title: pool create
