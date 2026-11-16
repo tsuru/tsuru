@@ -673,6 +673,26 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 			return permission.ErrUnauthorized
 		}
 	}
+	if contextType != "" {
+		role, err := getRoleReturnNotFound(ctx, roleName)
+		if err != nil {
+			return err
+		}
+		candidate := role
+		ctxType, err := permission.ParseContext(contextType)
+		if err != nil {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		candidate.ContextType = ctxType
+		// Changing the context type widens the grants of every existing role
+		// holder to the new scope, so the same anti-escalation rule enforced
+		// on role assignment applies here: the caller must hold every
+		// permission the role grants, under the new context type (the global
+		// context value is the empty string).
+		if err := canUseRole(ctx, t, candidate, ""); err != nil {
+			return err
+		}
+	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdate,

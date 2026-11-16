@@ -1041,7 +1041,7 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 		Kind:   "user.update.reset",
 		StartCustomData: []map[string]any{
 			{"name": ":email", "value": user.Email},
-			{"name": "token", "value": t["_id"]},
+			{"name": "token", "value": "*****"},
 		},
 	}, eventtest.HasEvent)
 }

@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/tsuru/tsuru/permission"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/provision"
@@ -295,5 +297,41 @@ func (s *S) TestListProvisioners(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(retProvs, check.DeepEquals, []provisionerInfo{
 		{Name: "fake"},
+	})
+}
+
+func (s *S) TestClusterInfoNonAdminRedacted(c *check.C) {
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermClusterRead,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
+		return &provision.Cluster{
+			Name:        "c1",
+			Addresses:   []string{"addr1"},
+			Provisioner: "fake",
+			Default:     true,
+			ClientKey:   []byte("testKey"),
+			CustomData:  map[string]string{"token": "secret-token", "password": "secret-password"},
+			KubeConfig: &provision.KubeConfig{
+				AuthInfo: clientcmdapi.AuthInfo{Token: "kube-token"},
+			},
+		}, nil
+	}
+	request, err := http.NewRequest(http.MethodGet, "/1.8/provisioner/clusters/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
+	var retCluster provision.Cluster
+	err = json.Unmarshal(recorder.Body.Bytes(), &retCluster)
+	c.Assert(err, check.IsNil)
+	c.Assert(retCluster, check.DeepEquals, provision.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+		CustomData:  map[string]string{},
 	})
 }

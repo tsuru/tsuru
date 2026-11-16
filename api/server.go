@@ -215,6 +215,11 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		fatal(err)
 	}
+	if peerToken, _ := config.GetString("auth:peer:token"); peerToken == "" {
+		log.Errorf(`WARNING: auth:peer:token is not configured: peer authentication is disabled, ` +
+			`which breaks instance-to-instance log aggregation when log:app-log-service is "memory". ` +
+			`Set auth:peer:token to a generated secret to enable it.`)
+	}
 	m := apiRouter.NewRouter()
 
 	for _, handler := range tsuruHandlerList {
