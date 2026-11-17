@@ -107,6 +107,23 @@ func (s *S) TestTeamTokenCreate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestTeamTokenCreateAlreadyExists(c *check.C) {
+	_, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
+		TokenID: "t1",
+		Team:    s.team.Name,
+	}, s.token)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(`token_id=t1&team=` + s.team.Name)
+	request, err := http.NewRequest("POST", "/1.6/tokens", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict, check.Commentf("body: %q", recorder.Body.String()))
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrTeamTokenAlreadyExists.Error()+"\n")
+}
+
 func (s *S) TestTeamTokenCreateAutomaticTeam(c *check.C) {
 	body := strings.NewReader(`token_id=t1&description=desc&expires_in=60`)
 	request, err := http.NewRequest("POST", "/1.6/tokens", body)
