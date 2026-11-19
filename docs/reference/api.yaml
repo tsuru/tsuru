@@ -6225,6 +6225,58 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
+      healthcheck:
+        type: object
+        $ref: "#/definitions/Healthcheck"
+      startupcheck:
+        type: object
+        $ref: "#/definitions/Startupcheck"
+  Healthcheck:
+    type: object
+    properties:
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      path:
+        type: string
+      scheme:
+        type: string
+      command:
+        type: array
+        items:
+          type: string
+      allowed_failures:
+        type: integer
+      interval_seconds:
+        type: integer
+      timeout_seconds:
+        type: integer
+      deploy_timeout_seconds:
+        type: integer
+      force_restart:
+        type: boolean
+  Startupcheck:
+    type: object
+    properties:
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      path:
+        type: string
+      scheme:
+        type: string
+      command:
+        type: array
+        items:
+          type: string
+      allowed_failures:
+        type: integer
+      interval_seconds:
+        type: integer
+      timeout_seconds:
+        type: integer
   MetadataItem:
     description: Metadata items
     type: object
