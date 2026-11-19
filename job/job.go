@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
@@ -319,8 +320,13 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
 	// in which case we would switch oldJob to be dst and newJob to be src
+	// mergo treats a pointer to "" as empty and restores the old value, so an explicit empty timeZone must be cleared after the merge
+	clearTimeZone := newJob.Spec.TimeZone != nil && strings.TrimSpace(*newJob.Spec.TimeZone) == ""
 	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
+	}
+	if clearTimeZone {
+		newJob.Spec.TimeZone = nil
 	}
 
 	if deployOptionsHasChanged {
@@ -681,6 +687,18 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 		c := cron.New()
 		if _, err := c.AddFunc(j.Spec.Schedule, func() {}); err != nil {
 			return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidSchedule.Error()}
+		}
+	}
+	if j.Spec.TimeZone != nil {
+		tz := strings.TrimSpace(*j.Spec.TimeZone)
+		if tz == "" {
+			j.Spec.TimeZone = nil
+		} else {
+			// Kubernetes rejects "Local", although LoadLocation accepts it
+			if _, err := time.LoadLocation(tz); err != nil || tz == "Local" {
+				return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidTimeZone.Error()}
+			}
+			*j.Spec.TimeZone = tz
 		}
 	}
 	if j.Spec.ConcurrencyPolicy != nil {
