@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -358,13 +359,142 @@ func plansNames(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func (p *Pool) Info(ctx context.Context) (*PoolInfo, error) {
+// poolInfoCache holds the reference lists and the full constraint set shared
+// by every pool resolved in a single request, so listing N pools costs a
+// fixed number of queries instead of a number proportional to N.
+type poolInfoCache struct {
+	teams       []string
+	routers     []string
+	services    []string
+	plans       []string
+	volumePlans []string
+	constraints []*PoolConstraint
+}
 
-	teams, err := getExactConstraintForPool(ctx, p.Name, ConstraintTypeTeam)
+func newPoolInfoCache(ctx context.Context) (*poolInfoCache, error) {
+	teams, err := teamsNames(ctx)
 	if err != nil {
 		return nil, err
 	}
-	resolvedConstraints, err := p.allowedValues(ctx)
+	routers, err := routersNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	services, err := servicesNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	plans, err := plansNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	volumePlans, err := volumePlanNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	constraints, err := ListPoolsConstraints(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &poolInfoCache{
+		teams:       teams,
+		routers:     routers,
+		services:    services,
+		plans:       plans,
+		volumePlans: volumePlans,
+		constraints: constraints,
+	}, nil
+}
+
+func (c *poolInfoCache) exactConstraintFor(pool string, field PoolConstraintType) *PoolConstraint {
+	for _, constraint := range c.constraints {
+		if constraint.Field == field && constraint.PoolExpr == pool {
+			return constraint
+		}
+	}
+	return nil
+}
+
+func (c *poolInfoCache) allowedValuesFor(pool string) (map[PoolConstraintType][]string, error) {
+	resolved := map[PoolConstraintType][]string{
+		ConstraintTypeRouter:     c.routers,
+		ConstraintTypeService:    c.services,
+		ConstraintTypeTeam:       c.teams,
+		ConstraintTypePlan:       c.plans,
+		ConstraintTypeVolumePlan: c.volumePlans,
+	}
+	fields := []PoolConstraintType{ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan}
+	for _, field := range fields {
+		var matches constraintList
+		for _, constraint := range c.constraints {
+			if constraint.Field != field {
+				continue
+			}
+			pattern := exprAsGlobPattern(constraint.PoolExpr)
+			match, err := rCache.MatchString(pattern, pool)
+			if err != nil {
+				return nil, err
+			}
+			if match {
+				matches = append(matches, constraint)
+			}
+		}
+		sort.Sort(matches)
+		if len(matches) == 0 || matches[0] == nil {
+			continue
+		}
+		names := resolved[field]
+		var validNames []string
+		for _, n := range names {
+			if matches[0].check(n) {
+				validNames = append(validNames, n)
+			}
+		}
+		resolved[field] = validNames
+	}
+	return resolved, nil
+}
+
+// Infos resolves the info for every given pool, sharing the reference-list
+// and constraint queries across all pools: listing N pools costs a fixed
+// number of queries instead of a number proportional to N.
+func Infos(ctx context.Context, pools []Pool) ([]*PoolInfo, error) {
+	if len(pools) == 0 {
+		return nil, nil
+	}
+	cache, err := newPoolInfoCache(ctx)
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]*PoolInfo, 0, len(pools))
+	for i := range pools {
+		info, err := pools[i].info(ctx, cache)
+		if err != nil {
+			return nil, err
+		}
+		infos = append(infos, info)
+	}
+	return infos, nil
+}
+
+func (p *Pool) Info(ctx context.Context) (*PoolInfo, error) {
+	return p.info(ctx, nil)
+}
+
+func (p *Pool) info(ctx context.Context, cache *poolInfoCache) (*PoolInfo, error) {
+	var teams *PoolConstraint
+	var resolvedConstraints map[PoolConstraintType][]string
+	var err error
+	if cache != nil {
+		teams = cache.exactConstraintFor(p.Name, ConstraintTypeTeam)
+		resolvedConstraints, err = cache.allowedValuesFor(p.Name)
+	} else {
+		teams, err = getExactConstraintForPool(ctx, p.Name, ConstraintTypeTeam)
+		if err != nil {
+			return nil, err
+		}
+		resolvedConstraints, err = p.allowedValues(ctx)
+	}
 	if err != nil {
 		return nil, err
 	}

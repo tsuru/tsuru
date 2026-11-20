@@ -140,3 +140,22 @@ func (s *S) TestKeepAliveWriterRace(c *check.C) {
 	c.Assert(strings.Contains(buf.String(), "..."), check.Equals, true)
 	c.Assert(strings.Contains(buf.String(), "......"), check.Equals, false)
 }
+
+func (s *S) TestKeepAliveWriterConcurrentStopDoesNotDoubleClose(c *check.C) {
+	var buf closableBuffer
+	w := NewKeepAliveWriter(&buf, 20*time.Millisecond, "...")
+	wg := sync.WaitGroup{}
+	for range 8 {
+		wg.Go(func() {
+			w.Stop()
+		})
+	}
+	wg.Go(func() {
+		for range 20 {
+			w.Write([]byte("x"))
+			time.Sleep(time.Millisecond)
+		}
+	})
+	wg.Wait()
+	w.Stop()
+}

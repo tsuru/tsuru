@@ -53,17 +53,28 @@ func (w *keepAliveWriter) writeInterval() {
 	numBytes, err := w.w.Write(msg)
 	if err != nil {
 		log.Debugf("Error writing keepalive, exiting loop: %s", err.Error())
-		w.Stop()
+		w.stopLocked()
 	} else if numBytes != len(msg) {
 		log.Debugf("Short write on keepalive, exiting loop.")
-		w.Stop()
+		w.stopLocked()
 	}
 	if w.testCh != nil {
 		w.testCh <- struct{}{}
 	}
 }
 
+// Stop terminates the keepalive loop and closes the ping channel. It is safe
+// to call Stop multiple times and concurrently with Write and with the
+// background keepalive goroutine; the running flag and channel closes are
+// guarded by writeLock so a concurrent Stop and a write error cannot close
+// the channels twice.
 func (w *keepAliveWriter) Stop() {
+	w.writeLock.Lock()
+	defer w.writeLock.Unlock()
+	w.stopLocked()
+}
+
+func (w *keepAliveWriter) stopLocked() {
 	if !w.running {
 		return
 	}
@@ -96,7 +107,7 @@ func (w *keepAliveWriter) Write(b []byte) (int, error) {
 	w.lastByte = b[len(b)-1]
 	written, err := w.w.Write(b)
 	if err != nil {
-		w.Stop()
+		w.stopLocked()
 	}
 	return written, err
 }
