@@ -24,6 +24,23 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
+// clusterEventSensitiveExcludes masks credential-bearing fields so they are
+// never persisted in the event custom data, matching the convention used by
+// the auth, app env and job env handlers.
+var clusterEventSensitiveExcludes = []string{
+	"clientkey",
+	"cacert",
+	"clientcert",
+	"custom_data.token",
+	"custom_data.password",
+	"kubeConfig.user.token",
+	"kubeConfig.user.password",
+	"kubeConfig.user.username",
+	"kubeConfig.user.clientKey",
+	"kubeConfig.user.clientKeyData",
+	"kubeConfig.user.clientCertificateData",
+}
+
 // title: create provisioner cluster
 // path: /provisioner/clusters
 // method: POST
@@ -58,7 +75,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Kind:       permission.PermClusterCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
+		CustomData: event.FormToCustomData(InputFields(r, clusterEventSensitiveExcludes...)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -133,7 +150,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
+		CustomData: event.FormToCustomData(InputFields(r, clusterEventSensitiveExcludes...)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -235,6 +252,13 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 			}
 		}
 		return err
+	}
+	// Match the listClusters behavior: only cluster admins get the full
+	// record, everyone else receives a redacted copy without credential
+	// material.
+	admin := permission.Check(ctx, t, permission.PermClusterAdmin)
+	if !admin {
+		cluster.CleanUpSensitive()
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(cluster)

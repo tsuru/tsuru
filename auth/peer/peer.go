@@ -5,6 +5,7 @@ package peer
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 
 	"github.com/tsuru/config"
@@ -15,16 +16,21 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
-var DefaultToken = "97ef27b972cb168a9875a32cba96010e1eb6a6065e9f4cc5928a7cb66d2a6b86" // sha256 of "tsuru"
-
 func Auth(ctx context.Context, token string) (auth.Token, error) {
 	expectedToken := TokenValue()
+	if expectedToken == "" {
+		// Fail closed: without a configured peer token there is no peer
+		// authentication. There is intentionally no default value, as a
+		// source-shipped constant would grant global log read access to
+		// anyone who reads the repository.
+		return nil, auth.ErrInvalidToken
+	}
 	parsedToken, err := auth.ParseToken(token)
 	if err != nil {
 		return nil, err
 	}
 
-	if expectedToken == parsedToken {
+	if subtle.ConstantTimeCompare([]byte(expectedToken), []byte(parsedToken)) == 1 {
 		return &Token{Token: parsedToken}, nil
 	}
 
@@ -66,10 +72,5 @@ func (t *Token) Permissions(ctx context.Context) ([]permTypes.Permission, error)
 
 func TokenValue() string {
 	token, _ := config.GetString("auth:peer:token")
-
-	if token == "" {
-		return DefaultToken
-	}
-
 	return token
 }
