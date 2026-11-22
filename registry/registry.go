@@ -286,7 +286,10 @@ func nextPagePath(link string) string {
 			continue
 		}
 		u, err := url.Parse(strings.Trim(strings.TrimSpace(target), "<>"))
-		if err != nil || u.Path == "" {
+		// The path is appended to the registry's address, so one that does not
+		// start with a slash ("@other.host/") would point the request, and its
+		// credentials, at another host.
+		if err != nil || !strings.HasPrefix(u.Path, "/") {
 			return ""
 		}
 		return u.RequestURI()

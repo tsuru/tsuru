@@ -265,6 +265,9 @@ func (s *S) TestNextPagePath(c *check.C) {
 	c.Check(nextPagePath(`</v2/a/tags/list?last=v2&n=2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2&n=2")
 	c.Check(nextPagePath(`<http://reg:5000/v2/a/tags/list?last=v2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2")
 	c.Check(nextPagePath(`</v2/a/tags/list>; rel="prev"`), check.Equals, "")
+	c.Check(nextPagePath(`<@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<//other.host/v2/a/tags/list?last=v2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2")
 }
 
 func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
