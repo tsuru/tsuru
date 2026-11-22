@@ -267,6 +267,8 @@ func (s *S) TestNextPagePath(c *check.C) {
 	c.Check(nextPagePath(`</v2/a/tags/list>; rel="prev"`), check.Equals, "")
 	c.Check(nextPagePath(`<@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
 	c.Check(nextPagePath(`<v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<%2F@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<http:@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
 	c.Check(nextPagePath(`<//other.host/v2/a/tags/list?last=v2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2")
 }
 

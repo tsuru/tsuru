@@ -289,10 +289,16 @@ func nextPagePath(link string) string {
 		// The path is appended to the registry's address, so one that does not
 		// start with a slash ("@other.host/") would point the request, and its
 		// credentials, at another host.
-		if err != nil || !strings.HasPrefix(u.Path, "/") {
+		// The check is on the text that is sent: the decoded path of "%2F@other.host/"
+		// starts with a slash, its escaped form does not.
+		if err != nil || u.Opaque != "" {
 			return ""
 		}
-		return u.RequestURI()
+		next := u.RequestURI()
+		if !strings.HasPrefix(next, "/") {
+			return ""
+		}
+		return next
 	}
 	return ""
 }
