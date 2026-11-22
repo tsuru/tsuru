@@ -447,12 +447,28 @@ func sweepOldImages() error {
 
 		log.Debugf("[image gc] sweeping %d versions from app %q", len(versions), appName)
 
+		var removing []string
+		for _, version := range versions {
+			for _, image := range []string{version.DeployImage, version.BuildImage} {
+				if image != "" {
+					removing = append(removing, image)
+				}
+			}
+		}
+
 		versionsToRemove := []int{}
 		for _, version := range versions {
 			log.Debugf("[image gc] sweeping version %d from app %q - DeployImage: %s, BuildImage: %s", version.Version, appName, version.DeployImage, version.BuildImage)
-			err = pruneVersionFromRegistry(ctx, version)
+			var shared bool
+			shared, err = pruneVersionFromRegistry(ctx, version, removing)
 			if err != nil {
 				multi.Add(err)
+				continue
+			}
+			if shared {
+				// Another version runs the same image. This one stays marked, so a
+				// later sweep removes it once no other version points at the image.
+				log.Debugf("[image gc] version %d of app %q shares its image with another version, left for a later sweep", version.Version, appName)
 				continue
 			}
 
@@ -530,42 +546,45 @@ func pruneAllVersionsByApp(ctx context.Context, appVersions appTypes.AppVersions
 	return multi.ToError()
 }
 
-func pruneVersionFromRegistry(ctx context.Context, version appTypes.AppVersionInfo) error {
+// pruneVersionFromRegistry removes the version's images, except one whose
+// manifest a tag outside removing shares: shared reports that some image stayed.
+func pruneVersionFromRegistry(ctx context.Context, version appTypes.AppVersionInfo, removing []string) (shared bool, err error) {
 	multi := tsuruErrors.NewMultiError()
 
-	if version.DeployImage != "" {
-		err := pruneImageFromRegistry(ctx, version.DeployImage)
+	for _, image := range []string{version.DeployImage, version.BuildImage} {
+		if image == "" {
+			continue
+		}
+		imageShared, err := pruneImageFromRegistry(ctx, image, removing)
 		if err != nil {
 			multi.Add(err)
 		}
+		shared = shared || imageShared
 	}
 
-	if version.BuildImage != "" {
-		err := pruneImageFromRegistry(ctx, version.BuildImage)
-		if err != nil {
-			multi.Add(err)
-		}
-	}
-
-	return multi.ToError()
+	return shared, multi.ToError()
 }
 
-func pruneImageFromRegistry(ctx context.Context, image string) error {
+func pruneImageFromRegistry(ctx context.Context, image string, removing []string) (bool, error) {
 	registryPruneTotal.Inc()
 	timer := prometheus.NewTimer(registryPruneDuration)
 	defer timer.ObserveDuration()
 
 	log.Debugf("[image gc] removing image from registry: %s", image)
 
-	if err := registry.RemoveImageIgnoreNotFound(ctx, image); err != nil {
+	shared, err := registry.RemoveImageUnlessShared(ctx, image, removing)
+	if err != nil {
 		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
 		log.Errorf("[image gc] %s", err.Error())
 		registryPruneFailuresTotal.Inc()
-		return err
+		return false, err
+	}
+	if shared {
+		return true, nil
 	}
 
 	log.Debugf("[image gc] successfully removed image from registry: %s", image)
-	return nil
+	return false, nil
 }
 
 func pruneVersionFromStorage(ctx context.Context, appVersions appTypes.AppVersions, versions []int) error {

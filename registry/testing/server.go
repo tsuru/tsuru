@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +34,13 @@ type Repository struct {
 	Password string
 	Token    string
 	Expire   int
+	// OCI makes the tags OCI manifests: as distribution does, the registry
+	// then answers 404 to a manifest request whose Accept header does not
+	// list an OCI media type.
+	OCI bool
+	// TagsPageSize, when positive, makes the tag listing answer that many
+	// tags at a time, with a Link header to the next page.
+	TagsPageSize int
 }
 
 type tagListResponse struct {
@@ -202,12 +210,17 @@ func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "storage delete is disabled", http.StatusMethodNotAllowed)
 		return
 	}
+	// A manifest goes with every tag that points at it, as in distribution.
+	found := false
 	for t, d := range repo.Tags {
 		if digest == d {
 			delete(repo.Tags, t)
-			w.WriteHeader(http.StatusAccepted)
-			return
+			found = true
 		}
+	}
+	if found {
+		w.WriteHeader(http.StatusAccepted)
+		return
 	}
 	http.Error(w, fmt.Sprintf("unknown manifest=%s", digest), http.StatusNotFound)
 }
@@ -227,6 +240,10 @@ func (s *RegistryServer) getDigest(w http.ResponseWriter, r *http.Request) {
 	}
 	s.reposLock.RLock()
 	defer s.reposLock.RUnlock()
+	if repo.OCI && !strings.Contains(strings.Join(r.Header.Values("Accept"), ","), "application/vnd.oci.image.manifest.v1+json") {
+		http.Error(w, "OCI manifest found, but accept header does not support OCI manifests", http.StatusNotFound)
+		return
+	}
 	for t, digest := range repo.Tags {
 		if t == tag {
 			w.Header().Set("Docker-Content-Digest", digest)
@@ -250,11 +267,19 @@ func (s *RegistryServer) listTags(w http.ResponseWriter, r *http.Request) {
 	}
 	s.reposLock.RLock()
 	defer s.reposLock.RUnlock()
-	tags := make([]string, len(repo.Tags))
-	i := 0
+	tags := make([]string, 0, len(repo.Tags))
 	for t := range repo.Tags {
-		tags[i] = t
-		i++
+		tags = append(tags, t)
+	}
+	if repo.TagsPageSize > 0 {
+		sort.Strings(tags)
+		if last := r.URL.Query().Get("last"); last != "" {
+			tags = tags[sort.SearchStrings(tags, last+"\x00"):]
+		}
+		if len(tags) > repo.TagsPageSize {
+			tags = tags[:repo.TagsPageSize]
+			w.Header().Set("Link", fmt.Sprintf(`</v2/%s/tags/list?last=%s>; rel="next"`, repo.Name, tags[len(tags)-1]))
+		}
 	}
 	err = json.NewEncoder(w).Encode(tagListResponse{Name: repo.Name, Tags: tags})
 	if err != nil {
