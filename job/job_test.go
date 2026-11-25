@@ -16,9 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/auth"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
@@ -209,7 +207,7 @@ func (s *S) TestIncreaseDecreaseQuotaForJob(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
-	s.mockService.TeamQuota.OnInc = func(item *auth.Team, quantity int) error {
+	s.mockService.TeamQuota.OnInc = func(item *authTypes.Team, quantity int) error {
 		*teaminUseNow += quantity
 		c.Assert(item.Name, check.Equals, s.team.Name)
 		return nil
@@ -312,7 +310,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
-					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs:           []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
@@ -364,7 +362,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -409,7 +407,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -459,7 +457,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -506,7 +504,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
@@ -550,7 +548,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command:               []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
-					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs:           []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
 				DeployOptions: &jobTypes.DeployOptions{
@@ -591,7 +589,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -746,7 +744,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -796,7 +794,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -845,7 +843,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
@@ -898,7 +896,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command:               []string{"echo", "hello!"},
 					},
 					ConcurrencyPolicy: func() *string { s := "Forbid"; return &s }(),
-					ServiceEnvs:       []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs:       []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 			},

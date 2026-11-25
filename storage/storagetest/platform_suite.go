@@ -96,6 +96,30 @@ func (s *PlatformSuite) TestUpdatePlatformNotFound(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *PlatformSuite) TestSetPlatformSource(c *check.C) {
+	platform := app.Platform{Name: "static", Disabled: true}
+	err := s.PlatformStorage.Insert(context.TODO(), platform)
+	c.Assert(err, check.IsNil)
+	err = s.PlatformStorage.SetSource(context.TODO(), "static", "FROM tsuru/static:latest")
+	c.Assert(err, check.IsNil)
+	p, err := s.PlatformStorage.FindByName(context.TODO(), "static")
+	c.Assert(err, check.IsNil)
+	c.Assert(p, check.DeepEquals, &app.Platform{Name: "static", Disabled: true, Source: "FROM tsuru/static:latest"})
+	// Setting the same source again is not an error.
+	err = s.PlatformStorage.SetSource(context.TODO(), "static", "FROM tsuru/static:latest")
+	c.Assert(err, check.IsNil)
+	err = s.PlatformStorage.SetSource(context.TODO(), "static", "")
+	c.Assert(err, check.IsNil)
+	p, err = s.PlatformStorage.FindByName(context.TODO(), "static")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Source, check.Equals, "")
+}
+
+func (s *PlatformSuite) TestSetPlatformSourceNotFound(c *check.C) {
+	err := s.PlatformStorage.SetSource(context.TODO(), "static", "FROM tsuru/static:latest")
+	c.Assert(err, check.Equals, app.ErrPlatformNotFound)
+}
+
 func (s *PlatformSuite) TestDeletePlatform(c *check.C) {
 	platform := app.Platform{Name: "static"}
 	err := s.PlatformStorage.Insert(context.TODO(), platform)
