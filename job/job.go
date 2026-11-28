@@ -540,8 +540,8 @@ func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bindTypes.SetEnvArg
 			if index == -1 && env.ManagedBy == setEnvs.ManagedBy {
 				if setEnvs.Writer != nil {
 					streamfmt.FprintlnSectionf(setEnvs.Writer, "Pruning %s from environment variables", env.Name)
-					delete(mapEnvs, env.Name)
 				}
+				delete(mapEnvs, env.Name)
 			}
 		}
 	}

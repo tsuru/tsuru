@@ -124,7 +124,6 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		filter.Tags = tags
 	}
 	contexts := permission.ContextsForPermission(ctx, t, permission.PermJobRead)
-	contexts = append(contexts, permission.ContextsForPermission(ctx, t, permission.PermJobRead)...)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -299,7 +298,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	name := r.URL.Query().Get(":name")
 	j, err := getJob(ctx, name)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return err
 	}
 	force, _ := strconv.ParseBool(InputValue(r, "force"))
 	allowed := permission.Check(ctx, t, permission.PermJobUnitKill,
@@ -533,9 +532,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		if err == jobTypes.ErrJobAlreadyExists {
 			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 		}
-		return err
-	}
-	if err != nil {
 		return err
 	}
 	msg := map[string]any{

@@ -806,7 +806,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	appName := r.URL.Query().Get(":app")
 	a, err := app.GetByName(ctx, appName)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return err
 	}
 	force, _ := strconv.ParseBool(InputValue(r, "force"))
 	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitKill,

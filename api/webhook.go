@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -62,7 +63,7 @@ func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	webhook, err := servicemanager.Webhook.Find(ctx, webhookName)
 	if err != nil {
 		if err == eventTypes.ErrWebhookNotFound {
-			w.WriteHeader(http.StatusNotFound)
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
 	}
@@ -116,7 +117,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}()
 	err = servicemanager.Webhook.Create(ctx, webhook)
 	if err == eventTypes.ErrWebhookAlreadyExists {
-		w.WriteHeader(http.StatusConflict)
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return err
 }
@@ -158,7 +159,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}()
 	err = servicemanager.Webhook.Update(ctx, webhook)
 	if err == eventTypes.ErrWebhookNotFound {
-		w.WriteHeader(http.StatusNotFound)
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
 }
@@ -177,7 +178,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	webhook, err := servicemanager.Webhook.Find(ctx, webhookName)
 	if err != nil {
 		if err == eventTypes.ErrWebhookNotFound {
-			w.WriteHeader(http.StatusNotFound)
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
 	}
