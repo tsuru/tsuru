@@ -1882,3 +1882,59 @@ func (s *S) TestDissociateRoleFromAuthGroupNotAuthorized(c *check.C) {
 		},
 	})
 }
+
+func (s *S) TestRoleUpdateContextTypeRequiresCanUseRole(c *check.C) {
+	_, err := permission.NewRole(context.TODO(), "escalating", "team", "")
+	c.Assert(err, check.IsNil)
+	role, err := permission.FindRole(context.TODO(), "escalating")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions(context.TODO(), "app.deploy")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("name=escalating&contextType=global")
+	req, err := http.NewRequest(http.MethodPut, "/roles", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdateContextType,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusForbidden, check.Commentf("body: %q", rec.Body.String()))
+	c.Assert(rec.Body.String(), check.Equals, "User not authorized to use permission app.deploy(global)\n")
+	role, err = permission.FindRole(context.TODO(), "escalating")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.ContextType, check.Equals, permTypes.CtxTeam)
+}
+
+func (s *S) TestRoleUpdateContextTypeWithSchemesAllowed(c *check.C) {
+	_, err := permission.NewRole(context.TODO(), "myteamrole", "team", "")
+	c.Assert(err, check.IsNil)
+	role, err := permission.FindRole(context.TODO(), "myteamrole")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions(context.TODO(), "app.deploy")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("name=myteamrole&contextType=global")
+	req, err := http.NewRequest(http.MethodPut, "/roles", body)
+	c.Assert(err, check.IsNil)
+	// The caller holds every scheme the role grants in the target (global)
+	// context, so the flip is authorized.
+	token := userWithPermission(c, permTypes.Permission{
+		Scheme:  permission.PermRoleUpdateContextType,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permTypes.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", rec.Body.String()))
+	role, err = permission.FindRole(context.TODO(), "myteamrole")
+	c.Assert(err, check.IsNil)
+	c.Assert(role.ContextType, check.Equals, permTypes.CtxGlobal)
+}

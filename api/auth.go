@@ -240,7 +240,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		Kind:       permission.PermUserUpdateReset,
 		RawOwner:   eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: email},
 		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
+		CustomData: event.FormToCustomData(InputFields(r, "token")),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {

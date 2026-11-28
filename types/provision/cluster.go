@@ -59,6 +59,7 @@ type ClusterStorage interface {
 
 func (c *Cluster) CleanUpSensitive() {
 	c.ClientKey = nil
+	c.KubeConfig = nil
 	delete(c.CustomData, "token")
 	delete(c.CustomData, "password")
 }
