@@ -1628,10 +1628,28 @@ func (s *S) TestRemoveCNameRollback(c *check.C) {
 	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu2.mycompany.com")
 	c.Assert(hasCName, check.Equals, true)
 
+	a.Deploys = 1
 	routertest.FakeRouter.FailuresByHost["ktulu3.mycompany.com"] = true
 	err = RemoveCName(context.TODO(), &a, "ktulu2.mycompany.com")
 	c.Assert(err, check.ErrorMatches, "Forced failure")
 	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com"})
+	stored, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(stored.CName, check.DeepEquals, []string{"ktulu3.mycompany.com", "ktulu.mycompany.com", "ktulu2.mycompany.com"})
+}
+
+func (s *S) TestRemoveCNameWithoutDeployKeepsRemovalWhenRebuildFails(c *check.C) {
+	a := appTypes.App{Name: "ktulu", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	err = AddCName(context.TODO(), &a, "ktulu2.mycompany.com", "ktulu3.mycompany.com")
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.FailuresByHost["ktulu3.mycompany.com"] = true
+	err = RemoveCName(context.TODO(), &a, "ktulu2.mycompany.com")
+	c.Assert(err, check.ErrorMatches, "Forced failure")
+	stored, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(stored.CName, check.DeepEquals, []string{"ktulu3.mycompany.com"})
 }
 
 func (s *S) TestRemoveCNameRemovesFromDatabase(c *check.C) {
