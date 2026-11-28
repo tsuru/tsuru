@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
@@ -149,7 +149,7 @@ func (s *teamTokenService) Create(ctx context.Context, args authTypes.TeamTokenC
 		resultToken.TokenID = fmt.Sprintf("%s-%s", resultToken.Team, resultToken.Token[:5])
 	}
 	if !validation.ValidateName(resultToken.TokenID) {
-		return authTypes.TeamToken{}, errors.New("invalid token_id")
+		return authTypes.TeamToken{}, &tsuruErrors.ValidationError{Message: "invalid token_id"}
 	}
 	err = s.storage.Insert(ctx, resultToken)
 	return resultToken, err
