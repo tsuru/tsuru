@@ -9,6 +9,13 @@ builds:
   goos: [linux]
   goarch:
   - amd64
+# Release customization
+release:
+  # release-please creates the tag with a draft release; publish that one
+  # instead of creating a second release for the same tag.
+  use_existing_draft: true
+changelog:
+  disable: true
 # Archive customization
 archives:
 - name_template: tsuru-server_{{.Version}}_{{.Os}}_{{.Arch}}
