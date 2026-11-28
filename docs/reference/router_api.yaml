@@ -5,315 +5,120 @@ openapi: 3.0.0
 
 info:
   title: Tsuru Router API
-  description: Tsuru Router API integration to external routers
-  version: "1.0.0"
+  description: |
+    Tsuru Router API integration to external routers.
+
+    Any response with status >= 300 is treated as an error by tsuru, and the
+    response body is used as the error message. When the router is configured
+    with `headers`, they are sent on every request. When `multi-cluster` is
+    enabled, the pool's cluster headers are sent on every backend request.
+  version: "2.0.0"
 
 paths:
   /backend/{name}:
     get:
-      summary: Application backend address
+      summary: Application backend addresses
       description: |
-        The backend endpoint returns the address that the
-        application is published.
+        Returns the addresses where the application is published.
       parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
+      - $ref: '#/components/parameters/Name'
       tags:
       - Backends
       responses:
-        200:
-          description: An Address object
+        "200":
+          description: Backend addresses
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Address'
+                $ref: '#/components/schemas/Backend'
+        "404":
+          description: Backend not found
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Error'
+
+    put:
+      summary: Ensure application backend
+      description: |
+        Creates the backend or updates it to match the desired state. The
+        request must be idempotent. The `Content-Type` sent by tsuru is
+        `application/json; router=v2`.
+      parameters:
+      - $ref: '#/components/parameters/Name'
+      requestBody:
+        required: true
+        content:
+          application/json; router=v2:
+            schema:
+              $ref: '#/components/schemas/EnsureBackendOpts'
+      tags:
+      - Backends
+      responses:
+        "200":
+          description: Backend ensured
+        default:
+          $ref: '#/components/responses/Error'
 
     delete:
       summary: Delete application backend
-      description: |
-        The backend endpoint deletes the backend.
       parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
+      - $ref: '#/components/parameters/Name'
       tags:
       - Backends
       responses:
-        200:
-          description: An Address object
-        404:
+        "200":
+          description: Backend removed
+        "400":
+          description: Backend was swapped to other (body contains "backend swapped")
+        "404":
           description: Backend not found
-        400:
-          description: Backend was swapped to other
         default:
-          $ref: '#/components/schemas/Error'
-    post:
-      summary: Add application backend
-      description: |
-        The backend endpoint the backend.
-      parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      tags:
-      - Backends
-      responses:
-        200:
-          description: An Address object
-        404:
-          description: Backend not found
-        409:
-          description: Backend already exists
-        default:
-          $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Error'
 
-  /backend/{name}/routes:
+  /backend/{name}/status:
     get:
-      summary: Application backend routes
-      description: |
-        The backend endpoint returns information about the
-        backends routes for a given application.
+      summary: Application backend status
       parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      - name: route
-        in: path
-        description: Route name.
-        required: true
-        schema:
-          type: string
+      - $ref: '#/components/parameters/Name'
       tags:
       - Backends
       responses:
-        200:
-          description: An array of backends
+        "200":
+          description: Backend status
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Addresses'
+                $ref: '#/components/schemas/Status'
         default:
-          $ref: '#/components/schemas/Error'
-
-  /backend/{name}/routes/{route}:
-    post:
-      summary: Add application backend routes
-      description: |
-        The backend endpoint returns information about the
-        backends routes for a given application.
-      parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      - name: route
-        in: path
-        description: Route name.
-        required: true
-        schema:
-          type: string
-      tags:
-      - Backends
-      responses:
-        200:
-          description: An array of backends
-        404:
-          description: Backend not found
-        default:
-          $ref: '#/components/schemas/Error'
-
-  /backend/{name}/swap:
-    post:
-      summary: Application backend
-      description: |
-        The backend endpoint returns information about the
-        backends for a given application.
-      parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      requestBody:
-        description: Swap parameters
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Swap'
-      tags:
-      - Backends
-      responses:
-        200:
-          description: Swapped backends
-        404:
-          description: Backend not found
-        default:
-          $ref: '#/components/schemas/Error'
-
-  /healthcheck:
-    get:
-      summary: Application backend
-      description: |
-        Health check endpoint.
-      tags:
-      - Healthcheck
-      responses:
-        200:
-          description: Return OK
-        default:
-          $ref: '#/components/schemas/Error'
-
-  /support/{type}:
-    get:
-      summary: CNAME Application backend
-      description: |
-        The backend endpoint returns information about the
-        application cname.
-      parameters:
-      - name: type
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      tags:
-      - Support
-      responses:
-        200:
-          description: Check if support types.
-          content:
-            text/plain:
-              schema:
-                type: string
-        default:
-          $ref: '#/components/schemas/Error'
-
-  /backend/{name}/cname:
-    get:
-      summary: Application backend cnames info
-      description: |
-        The backend endpoint returns information about the
-        application cname.
-      parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      tags:
-      - Backends
-      responses:
-        200:
-          description: An array of cnames
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-        default:
-          $ref: '#/components/schemas/Error'
-
-  /backend/{name}/cname/{cnameAddr}:
-    post:
-      summary: CNAME Application backend
-      description: |
-        The backend endpoint adds CNAME to application.
-      parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      - name: cnameAddr
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      tags:
-      - Backends
-      responses:
-        200:
-          description: Cname added ok
-        400:
-          description: Backend does not support CNAME
-        404:
-          description: Backend not found
-        409:
-          description: CNAME already exists
-        default:
-          $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Error'
 
   /backend/{name}/certificate/{cname}:
     get:
-      summary: HTTPS Certificate management endpoint
-      description: "The backend endpoint returns information about the\nHTTPS certificate. \n"
+      summary: Get HTTPS certificate
+      description: Only called when the router supports `tls`.
       parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      - name: cname
-        in: path
-        description: CNAME to get certificate.
-        required: true
-        schema:
-          type: string
+      - $ref: '#/components/parameters/Name'
+      - $ref: '#/components/parameters/Cname'
       tags:
       - Certificate
       responses:
-        200:
-          description: Certificate Object
+        "200":
+          description: Certificate object
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Certificate'
+        "404":
+          description: Certificate not found
         default:
-          $ref: '#/components/schemas/Error'
-    post:
-      summary: HTTPS Certificate management endpoint
-      description: "The backend endpoint returns information about the\nHTTPS certificate. \n"
+          $ref: '#/components/responses/Error'
+
+    put:
+      summary: Add or update HTTPS certificate
+      description: Only called when the router supports `tls`.
       parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      - name: cname
-        in: path
-        description: CNAME to get certificate.
-        required: true
-        schema:
-          type: string
+      - $ref: '#/components/parameters/Name'
+      - $ref: '#/components/parameters/Cname'
       requestBody:
-        description: Swap parameters
         required: true
         content:
           application/json:
@@ -322,79 +127,166 @@ paths:
       tags:
       - Certificate
       responses:
-        200:
-          description: Certificate Object
+        "200":
+          description: Certificate stored
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Error'
 
-  /backend/{name}/healthcheck:
-    put:
-      summary: Application backend healthcheck
-      description: |
-        The backend endpoint to set healthcheck.
+    delete:
+      summary: Remove HTTPS certificate
+      description: Only called when the router supports `tls`.
       parameters:
-      - name: name
+      - $ref: '#/components/parameters/Name'
+      - $ref: '#/components/parameters/Cname'
+      tags:
+      - Certificate
+      responses:
+        "200":
+          description: Certificate removed
+        "404":
+          description: Certificate not found
+        default:
+          $ref: '#/components/responses/Error'
+
+  /support/{feature}:
+    get:
+      summary: Check feature support
+      description: |
+        Capability probe, called when the router is created. Currently the only
+        feature probed is `tls`. A `200` enables the feature and a `404`
+        disables it. Any other status is logged and treated as unsupported.
+      parameters:
+      - name: feature
         in: path
-        description: Application name.
+        description: Feature name.
         required: true
         schema:
           type: string
+          enum:
+          - tls
       tags:
-      - Healthcheck
+      - Support
       responses:
-        200:
-          description: Healthcheck setted properly.
+        "200":
+          description: Feature is supported
+        "404":
+          description: Feature is not supported
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Error'
 
   /info:
     get:
-      summary: Application backend
-      description: |
-        The backend endpoint returns information about
-        the router.
+      summary: Router information
+      description: Returns free-form key/value information about the router.
       tags:
       - Info
       responses:
-        200:
-          description: An array of backends
+        "200":
+          description: Router information
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Info'
         default:
-          $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Error'
 
-  /backend/{name}/status:
-    get:
-      summary: Application backend
-      description: |
-        The backend endpoint returns information about the backends
-        for a given application.
-      parameters:
-      - name: name
-        in: path
-        description: Application name.
-        required: true
-        schema:
-          type: string
-      tags:
-      - Backends
-      responses:
-        200:
-          description: An array of backends
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Status'
-        default:
-          $ref: '#/components/schemas/Error'
-
-# Object definitions          
+# Object definitions
 components:
+  parameters:
+    Name:
+      name: name
+      in: path
+      description: Application (backend) name.
+      required: true
+      schema:
+        type: string
+    Cname:
+      name: cname
+      in: path
+      description: CNAME the certificate belongs to.
+      required: true
+      schema:
+        type: string
+
+  responses:
+    Error:
+      description: Unexpected error. The response body is used as the error message.
+      content:
+        text/plain:
+          schema:
+            type: string
+
   schemas:
+    EnsureBackendOpts:
+      type: object
+      properties:
+        opts:
+          type: object
+          description: |
+            Router options set on the app, plus the keys `tsuru.io/app-pool`,
+            `tsuru.io/app-teamowner` and `tsuru.io/app-teams`, which tsuru
+            always adds.
+          additionalProperties: true
+        cnames:
+          type: array
+          items:
+            type: string
+        team:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        certIssuers:
+          type: object
+          description: Certificate issuer by cname.
+          additionalProperties:
+            type: string
+        prefixes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackendPrefix'
+        healthcheck:
+          $ref: '#/components/schemas/Healthcheck'
+    BackendPrefix:
+      type: object
+      properties:
+        prefix:
+          type: string
+          description: Address prefix, empty for the default target.
+        target:
+          type: object
+          description: Where to route, in kubernetes like `{serviceName, namespace}`.
+          additionalProperties:
+            type: string
+    Healthcheck:
+      type: object
+      properties:
+        Path:
+          type: string
+        TCPOnly:
+          type: boolean
+    Backend:
+      type: object
+      properties:
+        address:
+          type: string
+          description: Main address where the application is published.
+        addresses:
+          type: array
+          description: All addresses where the application is published.
+          items:
+            type: string
+    Status:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ready
+          - not ready
+        detail:
+          type: string
     Certificate:
       type: object
       properties:
@@ -404,46 +296,7 @@ components:
         key:
           type: string
           description: PEM encoded key
-    Swap:
-      type: object
-      properties:
-        target:
-          type: string
-          description: Swap target to swap to.
-        cnameOnly:
-          type: boolean
-          description: Is the swap cname only.
-    Address:
-      type: object
-      properties:
-        address:
-          type: string
-          description: Address that the application is published.
-    Addresses:
-      type: object
-      properties:
-        addresses:
-          type: array
-          items:
-            type: string
     Info:
       type: object
       additionalProperties:
         type: string
-    Status:
-      type: object
-      properties:
-        status:
-          type: string
-        detail:
-          type: string
-    Error:
-      type: object
-      properties:
-        code:
-          type: integer
-          format: int32
-        message:
-          type: string
-        fields:
-          type: string
