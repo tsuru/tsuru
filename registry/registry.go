@@ -7,12 +7,14 @@ package registry
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -57,34 +59,96 @@ func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
 	return nil
 }
 
+// RemoveImageUnlessShared removes an image like RemoveImageIgnoreNotFound, but
+// leaves it alone, and reports shared, when another tag of its repository
+// points at the same manifest. A registry deletes by digest, never by tag, and
+// two builds of unchanged sources get the same digest (so does `latest`):
+// deleting an old version's image would otherwise delete the image a newer
+// version runs. The tags are read from the registry at the time of the call,
+// so a version deployed meanwhile counts. removing lists the images the caller
+// is removing as well: their tags do not hold the manifest, or a group of
+// identical old versions would keep each other for good. A shared image is the
+// caller's to retry.
+func RemoveImageUnlessShared(ctx context.Context, imageName string, removing []string) (shared bool, err error) {
+	shared, err = removeImage(ctx, imageName, true, removing)
+	if err != nil {
+		cause := errors.Cause(err)
+		if cause != ErrDeleteDisabled && cause != ErrDigestNotFound && cause != ErrImageNotFound {
+			return false, err
+		}
+	}
+	return shared, nil
+}
+
 // RemoveImage removes an image manifest from a remote registry v2 server, returning an error
 // in case of failure.
 func RemoveImage(ctx context.Context, imageName string) error {
+	_, err := removeImage(ctx, imageName, false, nil)
+	return err
+}
+
+func removeImage(ctx context.Context, imageName string, keepShared bool, removing []string) (shared bool, err error) {
 	if imageName == "" {
-		return errors.New("invalid empty image name")
+		return false, errors.New("invalid empty image name")
+	}
+	removingParts := make([][3]string, 0, len(removing))
+	for _, k := range removing {
+		kr, ki, kt := image.ParseImageParts(k)
+		removingParts = append(removingParts, [3]string{kr, ki, kt})
 	}
 	registry, image, tag := image.ParseImageParts(imageName)
 	if registry == "" {
-		return errors.New("invalid empty registry")
+		return false, errors.New("invalid empty registry")
 	}
 	if accountID, region, fips, ok := isECRRegistry(registry); ok {
-		return removeECRImage(ctx, registry, accountID, region, fips, image, tag)
+		return false, removeECRImage(ctx, registry, accountID, region, fips, image, tag)
 	}
 	r := &dockerRegistry{registry: registry}
-	err := r.registryAuth(ctx, imageName)
+	err = r.registryAuth(ctx, imageName)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get auth for %s registry", r.registry)
+		return false, errors.Wrapf(err, "failed to get auth for %s registry", r.registry)
 	}
 	digest, err := r.getDigest(ctx, image, tag)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.registry, image, tag)
+		return false, errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.registry, image, tag)
+	}
+	if keepShared {
+		ignore := map[string]bool{}
+		for _, k := range removingParts {
+			if k[0] == registry && k[1] == image {
+				ignore[k[2]] = true
+			}
+		}
+		other, err := r.otherTagWithDigest(ctx, image, tag, digest, ignore)
+		if err == errTagListIncomplete {
+			log.Errorf("[registry] keeping %s/%s:%s: %v", r.registry, image, tag, err)
+			return true, nil
+		}
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to look for other tags of image %s/%s:%s on registry", r.registry, image, tag)
+		}
+		if other != "" {
+			log.Debugf("[registry] keeping %s/%s:%s: tag %q points at the same manifest", r.registry, image, tag, other)
+			return true, nil
+		}
 	}
 	err = r.removeImage(ctx, image, tag, digest)
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.registry, image, tag, digest)
+		return false, errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.registry, image, tag, digest)
 	}
-	return nil
+	return false, nil
 }
+
+// manifestMediaTypes are the manifest kinds an image may be pushed as. A
+// registry answers 404 for a manifest whose kind the request does not accept,
+// so leaving one out reports an existing image as missing: BuildKit pushes OCI
+// manifests, and a request accepting the Docker v2 kind alone never finds them.
+var manifestMediaTypes = strings.Join([]string{
+	"application/vnd.docker.distribution.manifest.v2+json",
+	"application/vnd.docker.distribution.manifest.list.v2+json",
+	"application/vnd.oci.image.manifest.v1+json",
+	"application/vnd.oci.image.index.v1+json",
+}, ", ")
 
 // RemoveAppImages removes all app images on all registry v2 server, returning an error
 // in case of failure.
@@ -121,7 +185,7 @@ func RemoveAppImages(ctx context.Context, appName string) error {
 
 func (r dockerRegistry) getDigest(ctx context.Context, image, tag string) (string, error) {
 	path := fmt.Sprintf("/v2/%s/manifests/%s", image, tag)
-	resp, err := r.doRequest(ctx, "HEAD", path, map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json"})
+	resp, err := r.doRequest(ctx, "HEAD", path, map[string]string{"Accept": manifestMediaTypes})
 	if err != nil {
 		return "", err
 	}
@@ -137,6 +201,106 @@ func (r dockerRegistry) getDigest(ctx context.Context, image, tag string) (strin
 		return "", errors.Errorf("empty digest returned for image %v:%v", image, tag)
 	}
 	return digest, nil
+}
+
+// errTagListIncomplete is what otherTagWithDigest returns when the registry's
+// tag listing lacks the very tag being removed: the listing cannot be trusted
+// to show the other tags either.
+var errTagListIncomplete = errors.New("the registry's tag listing lacks the tag being removed")
+
+// maxTagListPages bounds the pages of one tag listing, against a registry that
+// keeps answering with a next page.
+const maxTagListPages = 1000
+
+// otherTagWithDigest returns a tag of image, not one of ignore, whose manifest
+// is digest, or "" when there is none. tag is the one being removed.
+func (r dockerRegistry) otherTagWithDigest(ctx context.Context, image, tag, digest string, ignore map[string]bool) (string, error) {
+	tags, err := r.listTags(ctx, image)
+	if err != nil {
+		return "", err
+	}
+	if !slices.Contains(tags, tag) {
+		return "", errTagListIncomplete
+	}
+	for _, t := range tags {
+		if t == tag || ignore[t] {
+			continue
+		}
+		d, err := r.getDigest(ctx, image, t)
+		if err == ErrDigestNotFound {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		if d == digest {
+			return t, nil
+		}
+	}
+	return "", nil
+}
+
+// listTags returns every tag of image, following the registry's pages.
+func (r dockerRegistry) listTags(ctx context.Context, image string) ([]string, error) {
+	var tags []string
+	path := fmt.Sprintf("/v2/%s/tags/list", image)
+	for range maxTagListPages {
+		page, next, err := r.listTagsPage(ctx, image, path)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, page...)
+		if next == "" {
+			return tags, nil
+		}
+		path = next
+	}
+	return nil, errors.Errorf("too many pages listing the tags of %v", image)
+}
+
+func (r dockerRegistry) listTagsPage(ctx context.Context, image, path string) (tags []string, next string, err error) {
+	resp, err := r.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, "", errors.Errorf("invalid status listing the tags of %v: %v", image, resp.StatusCode)
+	}
+	var list struct {
+		Tags []string `json:"tags"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, "", errors.Wrapf(err, "invalid tag list for %v", image)
+	}
+	return list.Tags, nextPagePath(resp.Header.Get("Link")), nil
+}
+
+// nextPagePath returns the path and query of the rel="next" target of a Link
+// header, or "" when there is none. A registry links to itself, so the host of
+// an absolute target is dropped.
+func nextPagePath(link string) string {
+	for part := range strings.SplitSeq(link, ",") {
+		target, params, ok := strings.Cut(strings.TrimSpace(part), ";")
+		if !ok || !strings.Contains(strings.ReplaceAll(params, " ", ""), `rel="next"`) {
+			continue
+		}
+		u, err := url.Parse(strings.Trim(strings.TrimSpace(target), "<>"))
+		// The path is appended to the registry's address, so one that does not
+		// start with a slash ("@other.host/") would point the request, and its
+		// credentials, at another host.
+		// The check is on the text that is sent: the decoded path of "%2F@other.host/"
+		// starts with a slash, its escaped form does not.
+		if err != nil || u.Opaque != "" {
+			return ""
+		}
+		next := u.RequestURI()
+		if !strings.HasPrefix(next, "/") {
+			return ""
+		}
+		return next
+	}
+	return ""
 }
 
 func (r dockerRegistry) removeImage(ctx context.Context, image, tag, digest string) error {

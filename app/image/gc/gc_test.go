@@ -6,6 +6,7 @@ package gc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -156,6 +157,16 @@ func insertTestVersions(c *check.C, a *appTypes.App, desiredNumberOfVersions int
 	}
 }
 
+// fakeTagList is a registry's listing of the tags insertTestVersions creates.
+func fakeTagList() []byte {
+	tags := []string{"my-custom-tag", "latest"}
+	for i := 1; i <= 30; i++ {
+		tags = append(tags, fmt.Sprintf("v%d", i), fmt.Sprintf("v%d-builder", i))
+	}
+	b, _ := json.Marshal(map[string][]string{"tags": tags})
+	return b
+}
+
 func (s *S) TestGCStartNothingToDo(c *check.C) {
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
@@ -166,6 +177,10 @@ func (s *S) TestGCStartNothingToDo(c *check.C) {
 func (s *S) TestGCStartAppNotFound(c *check.C) {
 	var regDeleteCalls []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Write(fakeTagList())
+			return
+		}
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
@@ -245,6 +260,10 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Write(fakeTagList())
+			return
+		}
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
@@ -321,6 +340,63 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	})
 }
 
+// An old version whose image another version shares stays marked, and in
+// storage, so a later sweep removes it once no other version runs that image.
+func (s *S) TestGCStartWithAppSharedImage(c *check.C) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
+	a := &appTypes.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+
+	var regDeleteCalls []string
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Write([]byte(`{"tags": ["v2", "v2-builder", "v3", "v3-builder", "v13", "v13-builder"]}`))
+			return
+		}
+		if r.Method == "HEAD" {
+			digest := "sha256:same"
+			if strings.HasSuffix(r.URL.Path, "-builder") {
+				digest = r.URL.Path
+			}
+			w.Header().Set("Docker-Content-Digest", digest)
+			return
+		}
+		if r.Method == "DELETE" {
+			regDeleteCalls = append(regDeleteCalls, r.URL.Path)
+		}
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	s.cluster.CustomData = map[string]string{"registry": u.Host + "/tsuru"}
+	defer registrySrv.Close()
+
+	insertTestVersions(c, a, 12)
+
+	gc := &imgGC{once: &sync.Once{}}
+	gc.start()
+	err = gc.Shutdown(context.Background())
+	c.Assert(err, check.IsNil)
+	sort.Strings(regDeleteCalls)
+	c.Check(regDeleteCalls, check.DeepEquals, []string{
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2-builder",
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
+		"/v2/tsuru/app-myapp/manifests/v2-builder",
+		"/v2/tsuru/app-myapp/manifests/v3-builder",
+	})
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	var marked []int
+	for _, version := range versions.Versions {
+		if version.MarkedToRemoval {
+			marked = append(marked, version.Version)
+		}
+	}
+	sort.Ints(marked)
+	c.Check(marked, check.DeepEquals, []int{2, 3})
+}
+
 func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
@@ -332,6 +408,10 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 	}))
 	defer nodeSrv.Close()
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Write(fakeTagList())
+			return
+		}
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
@@ -413,6 +493,10 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 	}))
 	defer nodeSrv.Close()
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Write(fakeTagList())
+			return
+		}
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 		}
@@ -484,6 +568,10 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Write(fakeTagList())
+			return
+		}
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return

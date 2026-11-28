@@ -201,6 +201,77 @@ func (s *S) TestRegistryRemoveImage(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
 
+// BuildKit pushes OCI manifests, which the registry serves only to a request
+// that accepts them.
+func (s *S) TestRegistryRemoveImageOCIManifest(c *check.C) {
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, OCI: true})
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.server.Repos[0].Tags, check.DeepEquals, map[string]string{"v2": "hijklmn"})
+}
+
+// Two builds of unchanged sources share a digest, and so does `latest`: the
+// image GC must not delete the manifest another version still runs. The tags
+// of versions being removed too do not hold a manifest: removing one takes the
+// others along.
+func (s *S) TestRegistryRemoveImageUnlessShared(c *check.C) {
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", OCI: true, Tags: map[string]string{
+		"v1": "sha256:old", "v2": "sha256:old", "v3": "sha256:same", "v4": "sha256:same", "v5": "sha256:new", "latest": "sha256:new",
+	}})
+	repo := s.server.Addr() + "/tsuru/app-test"
+	removing := []string{repo + ":v1", repo + ":v2", repo + ":v3", s.server.Addr() + "/tsuru/app-other:v4"}
+	shared, err := RemoveImageUnlessShared(context.TODO(), repo+":v3", removing)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, true)
+	shared, err = RemoveImageUnlessShared(context.TODO(), repo+":v5", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, true)
+	shared, err = RemoveImageUnlessShared(context.TODO(), repo+":v1", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, true)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 6)
+	shared, err = RemoveImageUnlessShared(context.TODO(), repo+":v1", removing)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, false)
+	c.Assert(s.server.Repos[0].Tags, check.DeepEquals, map[string]string{
+		"v3": "sha256:same", "v4": "sha256:same", "v5": "sha256:new", "latest": "sha256:new",
+	})
+	shared, err = RemoveImageUnlessShared(context.TODO(), repo+":v2", removing)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, false)
+	shared, err = RemoveImageUnlessShared(context.TODO(), repo+":v3", append(removing, repo+":v4"))
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, false)
+	c.Assert(s.server.Repos[0].Tags, check.DeepEquals, map[string]string{"v5": "sha256:new", "latest": "sha256:new"})
+}
+
+// A tag on a later page of the listing holds the manifest too.
+func (s *S) TestRegistryRemoveImageUnlessSharedPagedTags(c *check.C) {
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", OCI: true, TagsPageSize: 2, Tags: map[string]string{
+		"v1": "sha256:same", "v2": "sha256:a", "v3": "sha256:b", "v4": "sha256:c", "v5": "sha256:same",
+	}})
+	repo := s.server.Addr() + "/tsuru/app-test"
+	shared, err := RemoveImageUnlessShared(context.TODO(), repo+":v1", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, true)
+	shared, err = RemoveImageUnlessShared(context.TODO(), repo+":v4", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(shared, check.Equals, false)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 4)
+}
+
+func (s *S) TestNextPagePath(c *check.C) {
+	c.Check(nextPagePath(""), check.Equals, "")
+	c.Check(nextPagePath(`</v2/a/tags/list?last=v2&n=2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2&n=2")
+	c.Check(nextPagePath(`<http://reg:5000/v2/a/tags/list?last=v2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2")
+	c.Check(nextPagePath(`</v2/a/tags/list>; rel="prev"`), check.Equals, "")
+	c.Check(nextPagePath(`<@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<%2F@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<http:@other.host/v2/a/tags/list>; rel="next"`), check.Equals, "")
+	c.Check(nextPagePath(`<//other.host/v2/a/tags/list?last=v2>; rel="next"`), check.Equals, "/v2/a/tags/list?last=v2")
+}
+
 func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
 	encoded := base64.StdEncoding.EncodeToString([]byte("user:pwd"))
